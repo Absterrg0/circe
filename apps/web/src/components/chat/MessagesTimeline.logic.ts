@@ -267,6 +267,7 @@ export type MessagesTimelineRow =
       id: string;
       createdAt: string;
       message: ChatMessage;
+      projectedItem?: OrchestrationV2ProjectedTurnItem;
       durationStart: string;
       reasoningMessages?: ReadonlyArray<ChatMessage>;
       showAssistantMeta: boolean;
@@ -726,6 +727,9 @@ export function deriveMessagesTimelineRows(input: {
       id: timelineEntry.id,
       createdAt: timelineEntry.createdAt,
       message: timelineEntry.message,
+      ...(timelineEntry.projectedItem === undefined
+        ? {}
+        : { projectedItem: timelineEntry.projectedItem }),
       durationStart,
       showAssistantMeta,
       showAssistantCopyButton: showAssistantMeta,
@@ -874,6 +878,7 @@ function isRowUnchanged(a: MessagesTimelineRow, b: MessagesTimelineRow): boolean
       const bm = b as typeof a;
       return (
         a.message === bm.message &&
+        a.projectedItem === bm.projectedItem &&
         a.durationStart === bm.durationStart &&
         a.showAssistantMeta === bm.showAssistantMeta &&
         a.showAssistantCopyButton === bm.showAssistantCopyButton &&
