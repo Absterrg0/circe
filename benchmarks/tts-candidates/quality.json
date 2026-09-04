@@ -1,0 +1,229 @@
+{
+  "recognizer": "jarvis-parakeet-tdt-ctc-110m-int8",
+  "modelLoadMs": 1961.2453789741267,
+  "method": "24 kHz output resampled to 16 kHz; no contextual hotwords",
+  "records": [
+    {
+      "engine": "kokoro-current",
+      "scenario": "long",
+      "transcript": "I finish the requested update and check the paths that share this behavior. The desktop client now keeps the selected tasks stable across reconnects, while the mobile client reports a disconnected node instead of silently moving work elsewhere. Focus tests cover local and remote routing, cancellation and the reverse transition. The targeted type check and test files pass and no live use data was opened or changed.",
+      "decodeMs": 1828.4909750218503,
+      "referenceWords": 66,
+      "hypothesisWords": 67,
+      "errors": 7,
+      "substitutions": 6,
+      "deletions": 0,
+      "insertions": 1,
+      "wordErrorRate": 0.10606060606060606
+    },
+    {
+      "engine": "kokoro-current",
+      "scenario": "short",
+      "transcript": "Done.",
+      "decodeMs": 180.82238401984796,
+      "referenceWords": 1,
+      "hypothesisWords": 1,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "kokoro-current",
+      "scenario": "typical",
+      "transcript": "The task is complete. I updated the login flow and added regression tests. All targeted checks passed. You can review the changes in the workspace.",
+      "decodeMs": 1227.1860979963094,
+      "referenceWords": 25,
+      "hypothesisWords": 25,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "kokoro-phrases",
+      "scenario": "long",
+      "transcript": "I finish the requested update and check the path that. Share this Baheavi. The desktop client now keeps the selected task stable across reconnects while the mobile client reports a disconnected node instead of silently moving work elsewhere. Focus tests cove local and remote routing, cancellation and the reverse transition, the targeted type check and test vials pass, and no live use data was opened or changed.",
+      "decodeMs": 2079.3986739881802,
+      "referenceWords": 66,
+      "hypothesisWords": 67,
+      "errors": 10,
+      "substitutions": 9,
+      "deletions": 0,
+      "insertions": 1,
+      "wordErrorRate": 0.15151515151515152
+    },
+    {
+      "engine": "kokoro-phrases",
+      "scenario": "short",
+      "transcript": "Done.",
+      "decodeMs": 170.47039399039932,
+      "referenceWords": 1,
+      "hypothesisWords": 1,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "kokoro-phrases",
+      "scenario": "typical",
+      "transcript": "The task is complete. I updated the login flow and added regression tests. All targeted checks passed. You can review the changes in the workspace.",
+      "decodeMs": 1341.3032440003008,
+      "referenceWords": 25,
+      "hypothesisWords": 25,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-fp32",
+      "scenario": "long",
+      "transcript": "I finished the requested update and check the paths that share this behavior. The desktop client now keeps the selected tasks stable across reconnects, while the mobile client reports a disconnected node instead of silently moving work elsewhere. Focus tests cover local and remote routing, cancellation and the reverse transition. The targeted type check and test files pass, and no live user data was opened or changed.",
+      "decodeMs": 1921.5331670129672,
+      "referenceWords": 66,
+      "hypothesisWords": 67,
+      "errors": 5,
+      "substitutions": 4,
+      "deletions": 0,
+      "insertions": 1,
+      "wordErrorRate": 0.07575757575757576
+    },
+    {
+      "engine": "pocket-fp32",
+      "scenario": "short",
+      "transcript": "Done.",
+      "decodeMs": 145.1837949862238,
+      "referenceWords": 1,
+      "hypothesisWords": 1,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-fp32",
+      "scenario": "typical",
+      "transcript": "The task is complete. I updated the login flow and added regression tests. All targeted checks passed. You can review the changes in the workspace.",
+      "decodeMs": 1228.0895040021278,
+      "referenceWords": 25,
+      "hypothesisWords": 25,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-int8",
+      "scenario": "long",
+      "transcript": "I finished the requested update and check the paths that share this behavior. The desktop client now keeps the selected tasks stable across reconnects, while the mobile client reports a disconnected node instead of silently moving work elsewhere. Focus tests cover local and remote routing, cancellation, and the reverse transition. The targeted type check and test files pass, and no live user data was opened or changed.",
+      "decodeMs": 2275.2692599897273,
+      "referenceWords": 66,
+      "hypothesisWords": 67,
+      "errors": 5,
+      "substitutions": 4,
+      "deletions": 0,
+      "insertions": 1,
+      "wordErrorRate": 0.07575757575757576
+    },
+    {
+      "engine": "pocket-int8",
+      "scenario": "short",
+      "transcript": "Done.",
+      "decodeMs": 170.23106801207177,
+      "referenceWords": 1,
+      "hypothesisWords": 1,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-int8",
+      "scenario": "typical",
+      "transcript": "The task is complete. I updated the login flow and added regression tests. All targeted checks passed. You can review the changes in the workspace.",
+      "decodeMs": 1099.1915430058725,
+      "referenceWords": 25,
+      "hypothesisWords": 25,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-sherpa-int8",
+      "scenario": "long",
+      "transcript": "I finished the requested update and check the paths that show this behavior. The desktop client now keeps the selected tasks stable across reconnects while the mobile client reports a disconnected node instead of silently moving work elsewhere. Focus tests cover local and remote routing, cancellation, and the reverse transition, and the reverse transition. The targeted type check and test files pass, and no live user data was opened or changed.",
+      "decodeMs": 2015.600404003635,
+      "referenceWords": 66,
+      "hypothesisWords": 71,
+      "errors": 10,
+      "substitutions": 5,
+      "deletions": 0,
+      "insertions": 5,
+      "wordErrorRate": 0.15151515151515152
+    },
+    {
+      "engine": "pocket-sherpa-int8",
+      "scenario": "short",
+      "transcript": "done.",
+      "decodeMs": 130.32662100158632,
+      "referenceWords": 1,
+      "hypothesisWords": 1,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    },
+    {
+      "engine": "pocket-sherpa-int8",
+      "scenario": "typical",
+      "transcript": "The task is complete. I updated the login flow and added regression tests. All targeted checks passed. You can review the changes in the workspace.",
+      "decodeMs": 1375.8242330222856,
+      "referenceWords": 25,
+      "hypothesisWords": 25,
+      "errors": 0,
+      "substitutions": 0,
+      "deletions": 0,
+      "insertions": 0,
+      "wordErrorRate": 0.0
+    }
+  ],
+  "summary": {
+    "kokoro-current": {
+      "referenceWords": 92,
+      "errors": 7,
+      "wordErrorRate": 0.07608695652173914
+    },
+    "kokoro-phrases": {
+      "referenceWords": 92,
+      "errors": 10,
+      "wordErrorRate": 0.10869565217391304
+    },
+    "pocket-fp32": {
+      "referenceWords": 92,
+      "errors": 5,
+      "wordErrorRate": 0.05434782608695652
+    },
+    "pocket-int8": {
+      "referenceWords": 92,
+      "errors": 5,
+      "wordErrorRate": 0.05434782608695652
+    },
+    "pocket-sherpa-int8": {
+      "referenceWords": 92,
+      "errors": 10,
+      "wordErrorRate": 0.10869565217391304
+    }
+  }
+}

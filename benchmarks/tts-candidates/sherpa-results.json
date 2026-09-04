@@ -1,0 +1,1343 @@
+{
+  "schemaVersion": 1,
+  "createdAt": "2026-09-04T22:02:24.229168+05:30",
+  "method": {
+    "coldRuns": 3,
+    "warmRunsPerScenario": 5,
+    "cpuAffinity": [0, 2],
+    "audibleThresholdDbfs": -45.0,
+    "audibleWindowMs": 10.0,
+    "coldDefinition": "fresh process with model files in the OS page cache",
+    "firstAudibleDefinition": "request to the first 10 ms PCM window at or above -45 dBFS, simulated through an immediate streaming sink; DAC and hardware buffering are excluded"
+  },
+  "system": {
+    "cpu": "12th Gen Intel(R) Core(TM) i7-1255U",
+    "logicalCpuCount": 12,
+    "os": "Linux 7.1.8-200.fc44.x86_64",
+    "machine": "x86_64",
+    "memoryAtStart": {
+      "MemTotal": 16410857472,
+      "MemAvailable": 5131120640,
+      "SwapTotal": 8589930496,
+      "SwapFree": 278528
+    },
+    "memoryAtEnd": {
+      "MemTotal": 16410857472,
+      "MemAvailable": 5562372096,
+      "SwapTotal": 8589930496,
+      "SwapFree": 2527232
+    },
+    "loadAverageAtEnd": [4.13037109375, 2.91064453125, 2.7431640625],
+    "cpuFrequenciesKhzAtStart": [
+      1454609, 1438455, 1300044, 1103276, 1235448, 563751, 492480, 1095991, 1260842, 1191143,
+      1199973, 1299966
+    ],
+    "cpuFrequenciesKhzAtEnd": [
+      400073, 400000, 2349321, 3186375, 465187, 400000, 2980249, 3108757, 885149, 918413, 3190741,
+      3200651
+    ],
+    "gitCommit": "b83823ba23f2c89604f8656d0d68bdcf21a42977"
+  },
+  "footprint": {
+    "kokoroModel": {
+      "apparentBytes": 215321667,
+      "diskBytes": 216510464
+    },
+    "kokoroPythonEnvironment": {
+      "apparentBytes": 563025518,
+      "diskBytes": 587636736
+    },
+    "pocketModelCache": {
+      "apparentBytes": 225289097,
+      "diskBytes": 225312768
+    },
+    "sherpaPocketModel": {
+      "apparentBytes": 203216103,
+      "diskBytes": 203243520
+    },
+    "pocketPythonEnvironment": {
+      "apparentBytes": 1034927499,
+      "diskBytes": 1086894080
+    }
+  },
+  "runs": [
+    {
+      "engine": "pocket-sherpa-int8",
+      "engineVersion": "1.13.6",
+      "python": "3.12.9",
+      "runIndex": 0,
+      "sampleRate": 24000,
+      "baselineMemory": {
+        "rssBytes": 21774336,
+        "peakRssBytes": 21774336,
+        "virtualBytes": 272408576
+      },
+      "readyMemory": {
+        "rssBytes": 362258432,
+        "peakRssBytes": 376397824,
+        "virtualBytes": 1120759808
+      },
+      "commonImportMs": 45.95295499893837,
+      "engineImportMs": 8.115878998069093,
+      "modelLoadMs": 1034.061512997141,
+      "voiceLoadMs": 0.30514399986714125,
+      "processToReadyMs": 1140.0940729945432,
+      "finalMemory": {
+        "rssBytes": 673185792,
+        "peakRssBytes": 688549888,
+        "virtualBytes": 1576554496
+      },
+      "trials": [
+        {
+          "scenario": "typical",
+          "phase": "cold",
+          "repetition": 0,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 5349.063228990417,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 7161.77156232375,
+          "synthesisWallMs": 9577.759516017977,
+          "synthesisCpuMs": 19064.762878,
+          "processCpuPercentOfOneCore": 199.0524281395438,
+          "realTimeFactor": 0.8144353329947259,
+          "speedX": 1.2278445684851884,
+          "streamPlayoutEndMs": 17109.063228990417,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 11,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 282240,
+          "audioDurationMs": 11760.0,
+          "leadingSilenceMs": 1812.7083333333333,
+          "trailingSilenceMs": 44.833333333333336,
+          "rmsDbfs": -21.472980546958524,
+          "peakDbfs": -1.812356476717055,
+          "dcOffset": -8.279493875165914e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 658599936,
+            "peakRssBytes": 658599936,
+            "virtualBytes": 1563045888
+          }
+        },
+        {
+          "scenario": "short",
+          "phase": "warm",
+          "repetition": 0,
+          "textCharacters": 5,
+          "textWords": 1,
+          "firstChunkMs": 801.0753339913208,
+          "firstChunkAudioMs": 720.0,
+          "firstAudiblePcmMs": 1020.9920006579874,
+          "synthesisWallMs": 801.1609590030275,
+          "synthesisCpuMs": 1595.1822749999992,
+          "processCpuPercentOfOneCore": 199.10883787760446,
+          "realTimeFactor": 1.1127235541708715,
+          "speedX": 0.8986958137550474,
+          "streamPlayoutEndMs": 1521.0753339913208,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 1,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 17280,
+          "audioDurationMs": 720.0,
+          "leadingSilenceMs": 219.91666666666666,
+          "trailingSilenceMs": 155.83333333333334,
+          "rmsDbfs": -19.714046818203677,
+          "peakDbfs": -3.979722674055568,
+          "dcOffset": -7.244710007280783e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 658599936,
+            "peakRssBytes": 658599936,
+            "virtualBytes": 1563045888
+          }
+        },
+        {
+          "scenario": "typical",
+          "phase": "warm",
+          "repetition": 0,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 3053.769173013279,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 3536.1858396799457,
+          "synthesisWallMs": 6787.733143981313,
+          "synthesisCpuMs": 13511.628215000002,
+          "processCpuPercentOfOneCore": 199.0595082097588,
+          "realTimeFactor": 0.7856172620348743,
+          "speedX": 1.272884454460484,
+          "streamPlayoutEndMs": 11693.76917301328,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 8,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 207360,
+          "audioDurationMs": 8640.0,
+          "leadingSilenceMs": 482.4166666666667,
+          "trailingSilenceMs": 44.75,
+          "rmsDbfs": -21.21224550681724,
+          "peakDbfs": -3.0676256112163376,
+          "dcOffset": -6.370631798908294e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 658599936,
+            "peakRssBytes": 658599936,
+            "virtualBytes": 1563045888
+          }
+        },
+        {
+          "scenario": "long",
+          "phase": "warm",
+          "repetition": 0,
+          "textCharacters": 424,
+          "textWords": 66,
+          "firstChunkMs": 2200.297645991668,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 2502.297645991668,
+          "synthesisWallMs": 18189.303249004297,
+          "synthesisCpuMs": 36153.443661,
+          "processCpuPercentOfOneCore": 198.76211400774287,
+          "realTimeFactor": 0.7149883352596028,
+          "speedX": 1.3986242162075457,
+          "streamPlayoutEndMs": 29690.634398983093,
+          "playoutGapCount": 1,
+          "playoutUnderrunMs": 2050.336752991425,
+          "chunkCount": 23,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 610560,
+          "audioDurationMs": 25440.0,
+          "leadingSilenceMs": 302.0,
+          "trailingSilenceMs": 112.20833333333333,
+          "rmsDbfs": -19.9640655961533,
+          "peakDbfs": -1.2323415421680357,
+          "dcOffset": -7.156746749311434e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 672776192,
+            "peakRssBytes": 672776192,
+            "virtualBytes": 1576984576
+          }
+        },
+        {
+          "scenario": "short",
+          "phase": "warm",
+          "repetition": 1,
+          "textCharacters": 5,
+          "textWords": 1,
+          "firstChunkMs": 699.1867640172131,
+          "firstChunkAudioMs": 720.0,
+          "firstAudiblePcmMs": 896.2700973505465,
+          "synthesisWallMs": 699.2656619986519,
+          "synthesisCpuMs": 1391.965239000001,
+          "processCpuPercentOfOneCore": 199.06100279848783,
+          "realTimeFactor": 0.971202308331461,
+          "speedX": 1.0296515889856295,
+          "streamPlayoutEndMs": 1419.1867640172131,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 1,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 17280,
+          "audioDurationMs": 720.0,
+          "leadingSilenceMs": 197.08333333333334,
+          "trailingSilenceMs": 183.95833333333334,
+          "rmsDbfs": -18.477720165254915,
+          "peakDbfs": -1.6780818109960018,
+          "dcOffset": -4.554027092059119e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 672776192,
+            "peakRssBytes": 672776192,
+            "virtualBytes": 1576984576
+          }
+        },
+        {
+          "scenario": "typical",
+          "phase": "warm",
+          "repetition": 1,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 3780.0552920089103,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 4228.68029200891,
+          "synthesisWallMs": 7648.982351995073,
+          "synthesisCpuMs": 15226.469213000002,
+          "processCpuPercentOfOneCore": 199.06529407834893,
+          "realTimeFactor": 0.8034645327725918,
+          "speedX": 1.2446100097899837,
+          "streamPlayoutEndMs": 13300.05529200891,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 9,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 228480,
+          "audioDurationMs": 9520.0,
+          "leadingSilenceMs": 448.625,
+          "trailingSilenceMs": 57.625,
+          "rmsDbfs": -23.86257081340967,
+          "peakDbfs": -4.787786371057886,
+          "dcOffset": -6.133395325151673e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 672776192,
+            "peakRssBytes": 672776192,
+            "virtualBytes": 1576984576
+          }
+        },
+        {
+          "scenario": "long",
+          "phase": "warm",
+          "repetition": 1,
+          "textCharacters": 424,
+          "textWords": 66,
+          "firstChunkMs": 2398.0019699956756,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 2584.960303329009,
+          "synthesisWallMs": 16881.057495018467,
+          "synthesisCpuMs": 33530.027828,
+          "processCpuPercentOfOneCore": 198.6251621848606,
+          "realTimeFactor": 0.7482738251337973,
+          "speedX": 1.3364091678887633,
+          "streamPlayoutEndMs": 27488.2595300104,
+          "playoutGapCount": 1,
+          "playoutUnderrunMs": 2530.2575600147247,
+          "chunkCount": 22,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 541440,
+          "audioDurationMs": 22560.0,
+          "leadingSilenceMs": 186.95833333333334,
+          "trailingSilenceMs": 132.625,
+          "rmsDbfs": -19.16908660540297,
+          "peakDbfs": 0.004912802605707157,
+          "dcOffset": -4.295775398776494e-5,
+          "clippedSamplePercent": 0.00018469267139479905,
+          "memoryAfter": {
+            "rssBytes": 672776192,
+            "peakRssBytes": 672776192,
+            "virtualBytes": 1576984576
+          }
+        },
+        {
+          "scenario": "short",
+          "phase": "warm",
+          "repetition": 2,
+          "textCharacters": 5,
+          "textWords": 1,
+          "firstChunkMs": 22951.034386001993,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 23219.534386001993,
+          "synthesisWallMs": 26469.24764601863,
+          "synthesisCpuMs": 52628.332421,
+          "processCpuPercentOfOneCore": 198.8282142538195,
+          "realTimeFactor": 0.6617311911504657,
+          "speedX": 1.5111876444291985,
+          "streamPlayoutEndMs": 62951.03438600199,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 34,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 960000,
+          "audioDurationMs": 40000.0,
+          "leadingSilenceMs": 268.5,
+          "trailingSilenceMs": 0.0,
+          "rmsDbfs": -23.69579306374945,
+          "peakDbfs": -2.494851995590828,
+          "dcOffset": -0.00010957901198671607,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 684900352,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1588273152
+          }
+        },
+        {
+          "scenario": "typical",
+          "phase": "warm",
+          "repetition": 2,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 2947.2095009987243,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 3331.8761676653908,
+          "synthesisWallMs": 6347.975887008943,
+          "synthesisCpuMs": 12630.793318000002,
+          "processCpuPercentOfOneCore": 198.9735553950161,
+          "realTimeFactor": 0.7213608962510162,
+          "speedX": 1.3862686558102868,
+          "streamPlayoutEndMs": 11747.209500998724,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 9,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 211200,
+          "audioDurationMs": 8800.0,
+          "leadingSilenceMs": 384.6666666666667,
+          "trailingSilenceMs": 38.25,
+          "rmsDbfs": -20.491037847317433,
+          "peakDbfs": -2.2120264890618206,
+          "dcOffset": -8.471941806896776e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 656830464,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1560203264
+          }
+        },
+        {
+          "scenario": "long",
+          "phase": "warm",
+          "repetition": 2,
+          "textCharacters": 424,
+          "textWords": 66,
+          "firstChunkMs": 2550.9353279776406,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 2688.976994644307,
+          "synthesisWallMs": 16319.89532301668,
+          "synthesisCpuMs": 32409.50794599999,
+          "processCpuPercentOfOneCore": 198.58894499336284,
+          "realTimeFactor": 0.715784882588451,
+          "speedX": 1.3970677843652672,
+          "streamPlayoutEndMs": 26677.88980198442,
+          "playoutGapCount": 1,
+          "playoutUnderrunMs": 1326.9544740067795,
+          "chunkCount": 21,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 547200,
+          "audioDurationMs": 22800.0,
+          "leadingSilenceMs": 138.04166666666666,
+          "trailingSilenceMs": 144.91666666666666,
+          "rmsDbfs": -19.625556832897857,
+          "peakDbfs": 0.890146946678295,
+          "dcOffset": -8.828737497920267e-5,
+          "clippedSamplePercent": 0.0010964912280701754,
+          "memoryAfter": {
+            "rssBytes": 670846976,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1574219776
+          }
+        },
+        {
+          "scenario": "short",
+          "phase": "warm",
+          "repetition": 3,
+          "textCharacters": 5,
+          "textWords": 1,
+          "firstChunkMs": 732.7410830184817,
+          "firstChunkAudioMs": 640.0,
+          "firstAudiblePcmMs": 947.8244163518151,
+          "synthesisWallMs": 732.8360399988014,
+          "synthesisCpuMs": 1459.6711410000012,
+          "processCpuPercentOfOneCore": 199.18113484189294,
+          "realTimeFactor": 1.1450563124981272,
+          "speedX": 0.873319494495722,
+          "streamPlayoutEndMs": 1372.7410830184817,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 1,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 15360,
+          "audioDurationMs": 640.0,
+          "leadingSilenceMs": 215.08333333333334,
+          "trailingSilenceMs": 143.33333333333334,
+          "rmsDbfs": -21.551906765628797,
+          "peakDbfs": -2.9369112137460887,
+          "dcOffset": -7.38069635563221e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 670846976,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1574219776
+          }
+        },
+        {
+          "scenario": "typical",
+          "phase": "warm",
+          "repetition": 3,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 2833.005527005298,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 3208.5888603386315,
+          "synthesisWallMs": 6093.759697017958,
+          "synthesisCpuMs": 12131.593917000004,
+          "processCpuPercentOfOneCore": 199.08225004239532,
+          "realTimeFactor": 0.7254475829783283,
+          "speedX": 1.378459344911586,
+          "streamPlayoutEndMs": 11233.005527005298,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 8,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 201600,
+          "audioDurationMs": 8400.0,
+          "leadingSilenceMs": 375.5833333333333,
+          "trailingSilenceMs": 84.41666666666667,
+          "rmsDbfs": -19.5355800536338,
+          "peakDbfs": -0.4065295056907624,
+          "dcOffset": -7.865896356694492e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 670846976,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1574219776
+          }
+        },
+        {
+          "scenario": "long",
+          "phase": "warm",
+          "repetition": 3,
+          "textCharacters": 424,
+          "textWords": 66,
+          "firstChunkMs": 2240.435746003641,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 2458.9774126703073,
+          "synthesisWallMs": 16859.597217000555,
+          "synthesisCpuMs": 33552.50116100001,
+          "processCpuPercentOfOneCore": 199.0112855553096,
+          "realTimeFactor": 0.6711623095939712,
+          "speedX": 1.48995255798104,
+          "streamPlayoutEndMs": 29292.976201998536,
+          "playoutGapCount": 1,
+          "playoutUnderrunMs": 1932.5404559948947,
+          "chunkCount": 22,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 602880,
+          "audioDurationMs": 25120.0,
+          "leadingSilenceMs": 218.54166666666666,
+          "trailingSilenceMs": 120.29166666666667,
+          "rmsDbfs": -20.44447829390787,
+          "peakDbfs": -1.5805529033748258,
+          "dcOffset": -7.299721574526798e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 673181696,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1576554496
+          }
+        },
+        {
+          "scenario": "short",
+          "phase": "warm",
+          "repetition": 4,
+          "textCharacters": 5,
+          "textWords": 1,
+          "firstChunkMs": 780.4178670048714,
+          "firstChunkAudioMs": 720.0,
+          "firstAudiblePcmMs": 991.084533671538,
+          "synthesisWallMs": 780.4974889731966,
+          "synthesisCpuMs": 1554.9947000000088,
+          "processCpuPercentOfOneCore": 199.23122392689845,
+          "realTimeFactor": 1.0840242902405508,
+          "speedX": 0.9224885539954963,
+          "streamPlayoutEndMs": 1500.4178670048714,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 1,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 17280,
+          "audioDurationMs": 720.0,
+          "leadingSilenceMs": 210.66666666666666,
+          "trailingSilenceMs": 171.79166666666666,
+          "rmsDbfs": -21.81060909109452,
+          "peakDbfs": -4.668980386341229,
+          "dcOffset": -3.746019709562158e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 673181696,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1576554496
+          }
+        },
+        {
+          "scenario": "typical",
+          "phase": "warm",
+          "repetition": 4,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 3111.22650798643,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 3499.8931746530966,
+          "synthesisWallMs": 6504.518864006968,
+          "synthesisCpuMs": 12938.152161000005,
+          "processCpuPercentOfOneCore": 198.91021044759853,
+          "realTimeFactor": 0.8050147108919515,
+          "speedX": 1.2422133241416247,
+          "streamPlayoutEndMs": 11191.22650798643,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 7,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 193920,
+          "audioDurationMs": 8080.0,
+          "leadingSilenceMs": 388.6666666666667,
+          "trailingSilenceMs": 52.041666666666664,
+          "rmsDbfs": -20.719274185385473,
+          "peakDbfs": -2.4494843880192683,
+          "dcOffset": -7.213931015938721e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 673181696,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1576554496
+          }
+        },
+        {
+          "scenario": "long",
+          "phase": "warm",
+          "repetition": 4,
+          "textCharacters": 424,
+          "textWords": 66,
+          "firstChunkMs": 2393.7274670170154,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 2633.019133683682,
+          "synthesisWallMs": 17198.16560400068,
+          "synthesisCpuMs": 34224.223058,
+          "processCpuPercentOfOneCore": 198.99926449154952,
+          "realTimeFactor": 0.721399563926203,
+          "speedX": 1.386194350544821,
+          "streamPlayoutEndMs": 27745.748245012946,
+          "playoutGapCount": 1,
+          "playoutUnderrunMs": 1512.020777995931,
+          "chunkCount": 21,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 572160,
+          "audioDurationMs": 23840.0,
+          "leadingSilenceMs": 239.29166666666666,
+          "trailingSilenceMs": 125.875,
+          "rmsDbfs": -20.69735088301268,
+          "peakDbfs": -1.1861065774363575,
+          "dcOffset": -7.201735490431949e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 673185792,
+            "peakRssBytes": 688549888,
+            "virtualBytes": 1576554496
+          }
+        }
+      ],
+      "subprocessWallMs": 159486.82059100247
+    },
+    {
+      "engine": "pocket-sherpa-int8",
+      "engineVersion": "1.13.6",
+      "python": "3.12.9",
+      "runIndex": 1,
+      "sampleRate": 24000,
+      "baselineMemory": {
+        "rssBytes": 21782528,
+        "peakRssBytes": 21782528,
+        "virtualBytes": 272408576
+      },
+      "readyMemory": {
+        "rssBytes": 363397120,
+        "peakRssBytes": 377491456,
+        "virtualBytes": 1121935360
+      },
+      "commonImportMs": 47.04110597958788,
+      "engineImportMs": 9.387921978486702,
+      "modelLoadMs": 1108.5756559914444,
+      "voiceLoadMs": 0.28553299489431083,
+      "processToReadyMs": 1222.1626279933844,
+      "finalMemory": {
+        "rssBytes": 657059840,
+        "peakRssBytes": 657059840,
+        "virtualBytes": 1560592384
+      },
+      "trials": [
+        {
+          "scenario": "typical",
+          "phase": "cold",
+          "repetition": 0,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 3765.989757986972,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 4362.656424653639,
+          "synthesisWallMs": 7617.3821139964275,
+          "synthesisCpuMs": 15163.820014000003,
+          "processCpuPercentOfOneCore": 199.06865360131408,
+          "realTimeFactor": 0.7556926700393282,
+          "speedX": 1.3232892677759565,
+          "streamPlayoutEndMs": 13845.989757986972,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 9,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 241920,
+          "audioDurationMs": 10080.0,
+          "leadingSilenceMs": 596.6666666666666,
+          "trailingSilenceMs": 62.208333333333336,
+          "rmsDbfs": -21.10016929734229,
+          "peakDbfs": -2.8045918359352635,
+          "dcOffset": -8.456785315786569e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 657055744,
+            "peakRssBytes": 657055744,
+            "virtualBytes": 1560592384
+          }
+        }
+      ],
+      "subprocessWallMs": 8947.720221010968
+    },
+    {
+      "engine": "pocket-sherpa-int8",
+      "engineVersion": "1.13.6",
+      "python": "3.12.9",
+      "runIndex": 2,
+      "sampleRate": 24000,
+      "baselineMemory": {
+        "rssBytes": 22028288,
+        "peakRssBytes": 22028288,
+        "virtualBytes": 272408576
+      },
+      "readyMemory": {
+        "rssBytes": 365674496,
+        "peakRssBytes": 379686912,
+        "virtualBytes": 1124007936
+      },
+      "commonImportMs": 79.38658198690973,
+      "engineImportMs": 9.80613799765706,
+      "modelLoadMs": 1098.340194002958,
+      "voiceLoadMs": 0.35273501998744905,
+      "processToReadyMs": 1252.278138010297,
+      "finalMemory": {
+        "rssBytes": 658178048,
+        "peakRssBytes": 658178048,
+        "virtualBytes": 1561571328
+      },
+      "trials": [
+        {
+          "scenario": "typical",
+          "phase": "cold",
+          "repetition": 0,
+          "textCharacters": 147,
+          "textWords": 25,
+          "firstChunkMs": 3630.606794002233,
+          "firstChunkAudioMs": 1200.0,
+          "firstAudiblePcmMs": 5043.106794002233,
+          "synthesisWallMs": 7415.776701003779,
+          "synthesisCpuMs": 14739.178112999998,
+          "processCpuPercentOfOneCore": 198.75434101197982,
+          "realTimeFactor": 0.7475581351818326,
+          "speedX": 1.3376886063272722,
+          "streamPlayoutEndMs": 13550.606794002233,
+          "playoutGapCount": 0,
+          "playoutUnderrunMs": 0.0,
+          "chunkCount": 9,
+          "joinCount": 0,
+          "maximumJoinStep": null,
+          "sampleCount": 238080,
+          "audioDurationMs": 9920.0,
+          "leadingSilenceMs": 1412.5,
+          "trailingSilenceMs": 64.04166666666667,
+          "rmsDbfs": -21.517138730910077,
+          "peakDbfs": -2.5337656340433097,
+          "dcOffset": -8.630241687353126e-5,
+          "clippedSamplePercent": 0.0,
+          "memoryAfter": {
+            "rssBytes": 658173952,
+            "peakRssBytes": 658173952,
+            "virtualBytes": 1561571328
+          }
+        }
+      ],
+      "subprocessWallMs": 8792.478374001803
+    }
+  ],
+  "summary": {
+    "pocket-sherpa-int8": {
+      "engineVersion": "1.13.6",
+      "python": "3.12.9",
+      "processToReadyMs": {
+        "samples": 3,
+        "median": 1222.1626279933844,
+        "p05": 1148.3009284944274,
+        "p95": 1249.2665870086057,
+        "minimum": 1140.0940729945432,
+        "maximum": 1252.278138010297
+      },
+      "engineImportMs": {
+        "samples": 3,
+        "median": 9.387921978486702,
+        "p05": 8.243083296110854,
+        "p95": 9.764316395740025,
+        "minimum": 8.115878998069093,
+        "maximum": 9.80613799765706
+      },
+      "modelLoadMs": {
+        "samples": 3,
+        "median": 1098.340194002958,
+        "p05": 1040.4893810977228,
+        "p95": 1107.5521097925957,
+        "minimum": 1034.061512997141,
+        "maximum": 1108.5756559914444
+      },
+      "voiceLoadMs": {
+        "samples": 3,
+        "median": 0.30514399986714125,
+        "p05": 0.2874940953915939,
+        "p95": 0.34797591797541827,
+        "minimum": 0.28553299489431083,
+        "maximum": 0.35273501998744905
+      },
+      "readyRssBytes": {
+        "samples": 3,
+        "median": 363397120.0,
+        "p05": 362372300.8,
+        "p95": 365446758.4,
+        "minimum": 362258432.0,
+        "maximum": 365674496.0
+      },
+      "peakRssBytes": {
+        "samples": 3,
+        "median": 658178048.0,
+        "p05": 657171660.8,
+        "p95": 685512704.0,
+        "minimum": 657059840.0,
+        "maximum": 688549888.0
+      },
+      "groups": {
+        "cold:typical": {
+          "firstChunkMs": {
+            "samples": 3,
+            "median": 3765.989757986972,
+            "p05": 3644.145090400707,
+            "p95": 5190.755881890072,
+            "minimum": 3630.606794002233,
+            "maximum": 5349.063228990417
+          },
+          "firstAudiblePcmMs": {
+            "samples": 3,
+            "median": 5043.106794002233,
+            "p05": 4430.701461588498,
+            "p95": 6949.905085491599,
+            "minimum": 4362.656424653639,
+            "maximum": 7161.77156232375
+          },
+          "synthesisWallMs": {
+            "samples": 3,
+            "median": 7617.3821139964275,
+            "p05": 7435.937242303044,
+            "p95": 9381.721775815822,
+            "minimum": 7415.776701003779,
+            "maximum": 9577.759516017977
+          },
+          "synthesisCpuMs": {
+            "samples": 3,
+            "median": 15163.820014000003,
+            "p05": 14781.642303099998,
+            "p95": 18674.668591600002,
+            "minimum": 14739.178112999998,
+            "maximum": 19064.762878
+          },
+          "realTimeFactor": {
+            "samples": 3,
+            "median": 0.7556926700393282,
+            "p05": 0.7483715886675821,
+            "p95": 0.8085610666991861,
+            "minimum": 0.7475581351818326,
+            "maximum": 0.8144353329947259
+          },
+          "speedX": {
+            "samples": 3,
+            "median": 1.3232892677759565,
+            "p05": 1.2373890384142652,
+            "p95": 1.3362486724721405,
+            "minimum": 1.2278445684851884,
+            "maximum": 1.3376886063272722
+          },
+          "streamPlayoutEndMs": {
+            "samples": 3,
+            "median": 13845.989757986972,
+            "p05": 13580.145090400707,
+            "p95": 16782.755881890072,
+            "minimum": 13550.606794002233,
+            "maximum": 17109.063228990417
+          },
+          "playoutGapCount": {
+            "samples": 3,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "playoutUnderrunMs": {
+            "samples": 3,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "audioDurationMs": {
+            "samples": 3,
+            "median": 10080.0,
+            "p05": 9936.0,
+            "p95": 11592.0,
+            "minimum": 9920.0,
+            "maximum": 11760.0
+          },
+          "chunkCount": {
+            "samples": 3,
+            "median": 9.0,
+            "p05": 9.0,
+            "p95": 10.799999999999999,
+            "minimum": 9.0,
+            "maximum": 11.0
+          },
+          "leadingSilenceMs": {
+            "samples": 3,
+            "median": 1412.5,
+            "p05": 678.25,
+            "p95": 1772.6875,
+            "minimum": 596.6666666666666,
+            "maximum": 1812.7083333333333
+          },
+          "trailingSilenceMs": {
+            "samples": 3,
+            "median": 62.208333333333336,
+            "p05": 46.57083333333333,
+            "p95": 63.858333333333334,
+            "minimum": 44.833333333333336,
+            "maximum": 64.04166666666667
+          },
+          "rmsDbfs": {
+            "samples": 3,
+            "median": -21.472980546958524,
+            "p05": -21.51272291251492,
+            "p95": -21.137450422303914,
+            "minimum": -21.517138730910077,
+            "maximum": -21.10016929734229
+          },
+          "peakDbfs": {
+            "samples": 3,
+            "median": -2.5337656340433097,
+            "p05": -2.7775092157460683,
+            "p95": -1.8844973924496806,
+            "minimum": -2.8045918359352635,
+            "maximum": -1.812356476717055
+          },
+          "clippedSamplePercent": {
+            "samples": 3,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          }
+        },
+        "warm:short": {
+          "firstChunkMs": {
+            "samples": 5,
+            "median": 780.4178670048714,
+            "p05": 705.8976278174669,
+            "p95": 18521.042575599855,
+            "minimum": 699.1867640172131,
+            "maximum": 22951.034386001993
+          },
+          "firstAudiblePcmMs": {
+            "samples": 5,
+            "median": 991.084533671538,
+            "p05": 906.5809611508002,
+            "p95": 18779.825908933188,
+            "minimum": 896.2700973505465,
+            "maximum": 23219.534386001993
+          },
+          "synthesisWallMs": {
+            "samples": 5,
+            "median": 780.4974889731966,
+            "p05": 705.9797375986818,
+            "p95": 21335.630308615506,
+            "minimum": 699.2656619986519,
+            "maximum": 26469.24764601863
+          },
+          "synthesisCpuMs": {
+            "samples": 5,
+            "median": 1554.9947000000088,
+            "p05": 1405.506419400001,
+            "p95": 42421.70239179999,
+            "minimum": 1391.965239000001,
+            "maximum": 52628.332421
+          },
+          "realTimeFactor": {
+            "samples": 5,
+            "median": 1.0840242902405508,
+            "p05": 0.7236254145866647,
+            "p95": 1.138589760832676,
+            "minimum": 0.6617311911504657,
+            "maximum": 1.1450563124981272
+          },
+          "speedX": {
+            "samples": 5,
+            "median": 0.9224885539954963,
+            "p05": 0.8783947583475871,
+            "p95": 1.4148804333404847,
+            "minimum": 0.873319494495722,
+            "maximum": 1.5111876444291985
+          },
+          "streamPlayoutEndMs": {
+            "samples": 5,
+            "median": 1500.4178670048714,
+            "p05": 1382.030219218228,
+            "p95": 50665.042575599844,
+            "minimum": 1372.7410830184817,
+            "maximum": 62951.03438600199
+          },
+          "playoutGapCount": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "playoutUnderrunMs": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "audioDurationMs": {
+            "samples": 5,
+            "median": 720.0,
+            "p05": 656.0,
+            "p95": 32143.999999999993,
+            "minimum": 640.0,
+            "maximum": 40000.0
+          },
+          "chunkCount": {
+            "samples": 5,
+            "median": 1.0,
+            "p05": 1.0,
+            "p95": 27.399999999999995,
+            "minimum": 1.0,
+            "maximum": 34.0
+          },
+          "leadingSilenceMs": {
+            "samples": 5,
+            "median": 215.08333333333334,
+            "p05": 199.8,
+            "p95": 258.7833333333333,
+            "minimum": 197.08333333333334,
+            "maximum": 268.5
+          },
+          "trailingSilenceMs": {
+            "samples": 5,
+            "median": 155.83333333333334,
+            "p05": 28.66666666666667,
+            "p95": 181.52499999999998,
+            "minimum": 0.0,
+            "maximum": 183.95833333333334
+          },
+          "rmsDbfs": {
+            "samples": 5,
+            "median": -21.551906765628797,
+            "p05": -23.31875626921846,
+            "p95": -18.724985495844667,
+            "minimum": -23.69579306374945,
+            "maximum": -18.477720165254915
+          },
+          "peakDbfs": {
+            "samples": 5,
+            "median": -2.9369112137460887,
+            "p05": -4.531128843884097,
+            "p95": -1.8414358479149673,
+            "minimum": -4.668980386341229,
+            "maximum": -1.6780818109960018
+          },
+          "clippedSamplePercent": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          }
+        },
+        "warm:typical": {
+          "firstChunkMs": {
+            "samples": 5,
+            "median": 3053.769173013279,
+            "p05": 2855.8463218039833,
+            "p95": 3646.2895352044143,
+            "minimum": 2833.005527005298,
+            "maximum": 3780.0552920089103
+          },
+          "firstAudiblePcmMs": {
+            "samples": 5,
+            "median": 3499.8931746530966,
+            "p05": 3233.246321803984,
+            "p95": 4090.1814015431173,
+            "minimum": 3208.5888603386315,
+            "maximum": 4228.68029200891
+          },
+          "synthesisWallMs": {
+            "samples": 5,
+            "median": 6504.518864006968,
+            "p05": 6144.602935016155,
+            "p95": 7476.732510392321,
+            "minimum": 6093.759697017958,
+            "maximum": 7648.982351995073
+          },
+          "synthesisCpuMs": {
+            "samples": 5,
+            "median": 12938.152161000005,
+            "p05": 12231.433797200005,
+            "p95": 14883.5010134,
+            "minimum": 12131.593917000004,
+            "maximum": 15226.469213000002
+          },
+          "realTimeFactor": {
+            "samples": 5,
+            "median": 0.7856172620348743,
+            "p05": 0.7221782335964787,
+            "p95": 0.8047046752680796,
+            "minimum": 0.7213608962510162,
+            "maximum": 0.8050147108919515
+          },
+          "speedX": {
+            "samples": 5,
+            "median": 1.272884454460484,
+            "p05": 1.2426926612712965,
+            "p95": 1.3847067936305466,
+            "minimum": 1.2422133241416247,
+            "maximum": 1.3862686558102868
+          },
+          "streamPlayoutEndMs": {
+            "samples": 5,
+            "median": 11693.76917301328,
+            "p05": 11199.582311790204,
+            "p95": 12989.486133806873,
+            "minimum": 11191.22650798643,
+            "maximum": 13300.05529200891
+          },
+          "playoutGapCount": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "playoutUnderrunMs": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          },
+          "audioDurationMs": {
+            "samples": 5,
+            "median": 8640.0,
+            "p05": 8144.0,
+            "p95": 9376.0,
+            "minimum": 8080.0,
+            "maximum": 9520.0
+          },
+          "chunkCount": {
+            "samples": 5,
+            "median": 8.0,
+            "p05": 7.200000000000001,
+            "p95": 9.0,
+            "minimum": 7.0,
+            "maximum": 9.0
+          },
+          "leadingSilenceMs": {
+            "samples": 5,
+            "median": 388.6666666666667,
+            "p05": 377.4,
+            "p95": 475.65833333333336,
+            "minimum": 375.5833333333333,
+            "maximum": 482.4166666666667
+          },
+          "trailingSilenceMs": {
+            "samples": 5,
+            "median": 52.041666666666664,
+            "p05": 39.550000000000004,
+            "p95": 79.05833333333332,
+            "minimum": 38.25,
+            "maximum": 84.41666666666667
+          },
+          "rmsDbfs": {
+            "samples": 5,
+            "median": -20.719274185385473,
+            "p05": -23.332505752091183,
+            "p95": -19.726671612370527,
+            "minimum": -23.86257081340967,
+            "maximum": -19.5355800536338
+          },
+          "peakDbfs": {
+            "samples": 5,
+            "median": -2.4494843880192683,
+            "p05": -4.443754219089577,
+            "p95": -0.7676289023649744,
+            "minimum": -4.787786371057886,
+            "maximum": -0.4065295056907624
+          },
+          "clippedSamplePercent": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0,
+            "minimum": 0.0,
+            "maximum": 0.0
+          }
+        },
+        "warm:long": {
+          "firstChunkMs": {
+            "samples": 5,
+            "median": 2393.7274670170154,
+            "p05": 2208.3252659940626,
+            "p95": 2520.3486563812476,
+            "minimum": 2200.297645991668,
+            "maximum": 2550.9353279776406
+          },
+          "firstAudiblePcmMs": {
+            "samples": 5,
+            "median": 2584.960303329009,
+            "p05": 2467.6414593345794,
+            "p95": 2677.7854224521825,
+            "minimum": 2458.9774126703073,
+            "maximum": 2688.976994644307
+          },
+          "synthesisWallMs": {
+            "samples": 5,
+            "median": 16881.057495018467,
+            "p05": 16427.835701813456,
+            "p95": 17991.075720003573,
+            "minimum": 16319.89532301668,
+            "maximum": 18189.303249004297
+          },
+          "synthesisCpuMs": {
+            "samples": 5,
+            "median": 33552.50116100001,
+            "p05": 32633.611922399996,
+            "p95": 35767.5995404,
+            "minimum": 32409.50794599999,
+            "maximum": 36153.443661
+          },
+          "realTimeFactor": {
+            "samples": 5,
+            "median": 0.715784882588451,
+            "p05": 0.6799275147270976,
+            "p95": 0.7428989728922784,
+            "minimum": 0.6711623095939712,
+            "maximum": 0.7482738251337973
+          },
+          "speedX": {
+            "samples": 5,
+            "median": 1.3970677843652672,
+            "p05": 1.346366204419975,
+            "p95": 1.471686889626341,
+            "minimum": 1.3364091678887633,
+            "maximum": 1.48995255798104
+          },
+          "streamPlayoutEndMs": {
+            "samples": 5,
+            "median": 27745.748245012946,
+            "p05": 26839.963747589616,
+            "p95": 29611.10275958618,
+            "minimum": 26677.88980198442,
+            "maximum": 29690.634398983093
+          },
+          "playoutGapCount": {
+            "samples": 5,
+            "median": 1.0,
+            "p05": 1.0,
+            "p95": 1.0,
+            "minimum": 1.0,
+            "maximum": 1.0
+          },
+          "playoutUnderrunMs": {
+            "samples": 5,
+            "median": 1932.5404559948947,
+            "p05": 1363.9677348046098,
+            "p95": 2434.2733986100648,
+            "minimum": 1326.9544740067795,
+            "maximum": 2530.2575600147247
+          },
+          "audioDurationMs": {
+            "samples": 5,
+            "median": 23840.0,
+            "p05": 22608.0,
+            "p95": 25376.0,
+            "minimum": 22560.0,
+            "maximum": 25440.0
+          },
+          "chunkCount": {
+            "samples": 5,
+            "median": 22.0,
+            "p05": 21.0,
+            "p95": 22.799999999999997,
+            "minimum": 21.0,
+            "maximum": 23.0
+          },
+          "leadingSilenceMs": {
+            "samples": 5,
+            "median": 218.54166666666666,
+            "p05": 147.82500000000002,
+            "p95": 289.4583333333333,
+            "minimum": 138.04166666666666,
+            "maximum": 302.0
+          },
+          "trailingSilenceMs": {
+            "samples": 5,
+            "median": 125.875,
+            "p05": 113.825,
+            "p95": 142.45833333333331,
+            "minimum": 112.20833333333333,
+            "maximum": 144.91666666666666
+          },
+          "rmsDbfs": {
+            "samples": 5,
+            "median": -19.9640655961533,
+            "p05": -20.646776365191716,
+            "p95": -19.260380650901947,
+            "minimum": -20.69735088301268,
+            "maximum": -19.16908660540297
+          },
+          "peakDbfs": {
+            "samples": 5,
+            "median": -1.1861065774363575,
+            "p05": -1.510910631133468,
+            "p95": 0.7131001178637772,
+            "minimum": -1.5805529033748258,
+            "maximum": 0.890146946678295
+          },
+          "clippedSamplePercent": {
+            "samples": 5,
+            "median": 0.0,
+            "p05": 0.0,
+            "p95": 0.0009141315167351,
+            "minimum": 0.0,
+            "maximum": 0.0010964912280701754
+          }
+        }
+      }
+    }
+  }
+}

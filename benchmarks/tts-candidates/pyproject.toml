@@ -1,0 +1,13 @@
+[project]
+name = "jarvis-tts-candidate-benchmark"
+version = "0.1.0"
+requires-python = ">=3.14,<3.15"
+dependencies = ["pocket-tts==3.1.0", "torch==2.14.0+cpu"]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cpu" }]
