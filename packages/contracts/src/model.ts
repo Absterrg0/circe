@@ -167,6 +167,21 @@ export const DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER: Partial<
   [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
 };
 
+/**
+ * Per-provider semantic-supervisor model defaults: the simplest model that
+ * can serve the schema-constrained proposal call. The supervisor always runs
+ * at low reasoning effort, so a larger model only spends quota.
+ */
+export const DEFAULT_JARVIS_SUPERVISOR_MODEL_BY_PROVIDER: Partial<
+  Record<ProviderDriverKind, string>
+> = {
+  [CODEX_DRIVER_KIND]: DEFAULT_JARVIS_SUPERVISOR_MODEL,
+  [CLAUDE_DRIVER_KIND]: "claude-sonnet-5",
+  [CURSOR_DRIVER_KIND]: "composer-2",
+  [GROK_DRIVER_KIND]: "grok-build",
+  [OPENCODE_DRIVER_KIND]: "openai/gpt-5",
+};
+
 export const MODEL_SLUG_ALIASES_BY_PROVIDER: Partial<
   Record<ProviderDriverKind, Record<string, string>>
 > = {

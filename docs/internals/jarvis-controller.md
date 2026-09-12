@@ -25,6 +25,12 @@ The Jarvis Director has two narrow stages. A configurable semantic supervisor—
 
 This boundary is deliberately narrow:
 
+- Exact read-only status phrases naming a catalog task, and "list projects", can resolve before the
+  semantic call. They use the same task resolver and retain duplicate-name clarification. Compound
+  instructions, unknown names, continuations, and pending replies still use the supervisor. This
+  shortcut grants no write or dispatch authority and is shared by every client and provider.
+- Node vocabulary and configuration reads run together. Desktop speech preparation starts before
+  routing reads, so model warmup can overlap validation; no acknowledgement claims acceptance early.
 - The web/desktop mesh previews spoken project names against the typed catalogs of connected nodes. It never tells an agent to change directory, and the selected Host validates the target again against its local catalog.
 - Full and Controller queue raw recognition envelopes until a fresh catalog is available. Exact and conservative spelling matches produce a stable `ProjectRef` plus canonical utterance; a phonetic match or node collision pauses the request for clarification.
 - The supervisor handles natural paraphrases, but its proposal has no authority. It cannot provide internal IDs, authorize a tool, answer an approval without typed pending state, or dispatch a command.

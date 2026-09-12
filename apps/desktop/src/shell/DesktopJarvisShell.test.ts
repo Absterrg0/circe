@@ -1,4 +1,4 @@
-// @effect-diagnostics nodeBuiltinImport:off - tests assert the helper profile lands under the injected directory on the real filesystem.
+// @effect-diagnostics nodeBuiltinImport:off globalTimers:off - tests assert the helper profile lands under the injected directory on the real filesystem; hold-recovery tests use short real timers.
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 import type * as Electron from "electron";
@@ -16,6 +16,7 @@ import {
   resolveDesktopJarvisOverlayPosition,
   resolveDesktopJarvisTrayIconPath,
   shouldStartDesktopJarvisShell,
+  type DesktopJarvisShortcutEvent,
 } from "./DesktopJarvisShell.ts";
 import { desktopPushToTalkKeys, type DesktopPushToTalkHook } from "./DesktopPushToTalk.ts";
 
@@ -206,6 +207,92 @@ describe("DesktopJarvisShell", () => {
     voiceStateListener?.({ status: "ready" });
     onPressed?.();
     expect(startCapture).toHaveBeenCalledTimes(2);
+    shell.stop();
+  });
+
+  it("ends a portal hold when repeats stop without Deactivated and admits the next hold", async () => {
+    let onPressed: (() => void) | undefined;
+    let onReleased: (() => void) | undefined;
+    let onVoiceState:
+      | ((state: { readonly status: string; readonly native?: boolean }) => void)
+      | undefined;
+    const startCapture = vi.fn(async () => ({ accepted: true }));
+    const releaseCapture = vi.fn(async () => ({ accepted: true }));
+    const shell = createDesktopJarvisShell({
+      displayName: "Jarvis",
+      iconPath: null,
+      platform: "linux",
+      architecture: "x64",
+      holdRepeatWatchdogMs: 20,
+      holdSafetyTimeoutMs: 500,
+      installPortalHoldShortcut: async (handlers) => {
+        onPressed = handlers.onPressed;
+        onReleased = handlers.onReleased;
+        return { close: async () => undefined };
+      },
+      dispatchVoiceToggle: vi.fn(),
+      voice: { startCapture, releaseCapture } as never,
+      onVoiceState: (listener) => {
+        onVoiceState = listener as typeof onVoiceState;
+        return () => undefined;
+      },
+      getVoiceState: () => ({ status: "ready", native: true }),
+      revealMain: vi.fn(),
+      quit: vi.fn(),
+    });
+
+    shell.start();
+    await Promise.resolve();
+    await Promise.resolve();
+    // Production portal repeats Activated while held; Deactivated never arrives.
+    onPressed?.();
+    onPressed?.();
+    onPressed?.();
+    expect(startCapture).toHaveBeenCalledTimes(1);
+    expect(onReleased).toBeDefined();
+    // Repeats stop on physical release: the watchdog ends the hold.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    expect(releaseCapture).toHaveBeenCalledTimes(1);
+    // The worker finalizes the released capture before the next press.
+    onVoiceState?.({ status: "transcribing", native: true });
+    onVoiceState?.({ status: "ready", native: true });
+    // The next physical press owns a fresh capture instead of dying silently.
+    onPressed?.();
+    await Promise.resolve();
+    expect(startCapture).toHaveBeenCalledTimes(2);
+    onReleased?.();
+    expect(releaseCapture).toHaveBeenCalledTimes(2);
+    shell.stop();
+  });
+
+  it("bounds a portal hold even when repeats continue without Deactivated", async () => {
+    let onPressed: (() => void) | undefined;
+    const startCapture = vi.fn(async () => ({ accepted: true }));
+    const releaseCapture = vi.fn(async () => ({ accepted: true }));
+    const shell = createDesktopJarvisShell({
+      displayName: "Jarvis",
+      iconPath: null,
+      platform: "linux",
+      architecture: "x64",
+      holdRepeatWatchdogMs: 1_000,
+      holdSafetyTimeoutMs: 30,
+      installPortalHoldShortcut: async (handlers) => {
+        onPressed = handlers.onPressed;
+        return { close: async () => undefined };
+      },
+      dispatchVoiceToggle: vi.fn(),
+      voice: { startCapture, releaseCapture } as never,
+      revealMain: vi.fn(),
+      quit: vi.fn(),
+    });
+
+    shell.start();
+    await Promise.resolve();
+    await Promise.resolve();
+    onPressed?.();
+    expect(startCapture).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => setTimeout(resolve, 80));
+    expect(releaseCapture).toHaveBeenCalledTimes(1);
     shell.stop();
   });
 
@@ -970,6 +1057,7 @@ describe("DesktopJarvisShell", () => {
 
   it("keeps an explicit unavailable mode when shortcut registration fails", async () => {
     let trayTemplate: Electron.MenuItemConstructorOptions[] = [];
+    const events: Array<DesktopJarvisShortcutEvent> = [];
     const shell = createDesktopJarvisShell({
       displayName: "Jarvis",
       iconPath: "/icon.png",
@@ -983,6 +1071,7 @@ describe("DesktopJarvisShell", () => {
       dispatchVoiceToggle: vi.fn(),
       revealMain: vi.fn(),
       quit: vi.fn(),
+      reportShortcutEvent: (event) => events.push(event),
       createTray: () =>
         ({ setToolTip: vi.fn(), setContextMenu: vi.fn(), on: vi.fn(), destroy: vi.fn() }) as never,
       buildTrayMenu: (template) => {
@@ -992,7 +1081,18 @@ describe("DesktopJarvisShell", () => {
     });
     shell.start();
     await Promise.resolve();
-    expect(trayTemplate.map((item) => item.label)).toContain("Talk to Jarvis");
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(trayTemplate.map((item) => item.label)).toContain(
+      "Hotkey unavailable — click to talk to Jarvis",
+    );
+    expect(events).toContainEqual({
+      type: "electron-tap-result",
+      registered: false,
+      accelerator: JARVIS_GLOBAL_SHORTCUT,
+    });
+    expect(events).toContainEqual({ type: "shortcut-mode", mode: "unavailable" });
     shell.stop();
   });
 

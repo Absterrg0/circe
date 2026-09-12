@@ -712,20 +712,20 @@ const handle = async (command: DesktopVoiceWorkerCommand): Promise<boolean> => {
           throw new Error("Another remote voice operation is already active.");
         }
         activeRemoteComputeOperationId = command.operationId;
-        setState("transcribing");
+        // Remote compute serves another node and is state-silent locally: no
+        // transcribing/ready/error may represent local interaction or open the
+        // laptop toast. The result below carries the outcome to the caller.
         try {
           const text = await runtime.transcribe({
             audio: Buffer.from(command.input.audioBase64, "base64"),
             sampleRate: command.input.sampleRate,
             channels: command.input.channels,
           });
-          setState("ready");
           result(command.requestId, undefined, false, true, undefined, {
             operation: "transcribe",
             text,
           });
         } catch (cause) {
-          setState("ready");
           result(command.requestId, cause);
         } finally {
           if (activeRemoteComputeOperationId === command.operationId) {
@@ -739,7 +739,9 @@ const handle = async (command: DesktopVoiceWorkerCommand): Promise<boolean> => {
           throw new Error("Another remote voice operation is already active.");
         }
         activeRemoteComputeOperationId = command.operationId;
-        setState("speaking");
+        // Remote compute serves another node and is state-silent locally: no
+        // speaking/ready/error may drive local playback UI or the laptop
+        // toast. Audio flows only through remote-audio chunks to the caller.
         try {
           const synthesized = await runtime.synthesize(
             command.text,
@@ -749,7 +751,6 @@ const handle = async (command: DesktopVoiceWorkerCommand): Promise<boolean> => {
                 }
               : undefined,
           );
-          setState("ready");
           result(command.requestId, undefined, false, true, undefined, {
             operation: "synthesize",
             sampleRate: synthesized.sampleRate,
@@ -757,7 +758,6 @@ const handle = async (command: DesktopVoiceWorkerCommand): Promise<boolean> => {
             pcmBase64: synthesized.pcm.toString("base64"),
           });
         } catch (cause) {
-          setState("ready");
           result(command.requestId, cause);
         } finally {
           if (activeRemoteComputeOperationId === command.operationId) {

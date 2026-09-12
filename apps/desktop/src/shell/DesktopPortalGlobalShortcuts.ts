@@ -78,6 +78,24 @@ export type DesktopPortalGlobalShortcutsHandle = {
   readonly close: () => Promise<void>;
 };
 
+/**
+ * Routing-only lifecycle reports. Fields carry portal identity (session
+ * handle, shortcut id, trigger); audio contents never leave local capture.
+ */
+export type DesktopPortalShortcutEvent =
+  | { readonly type: "portal-bind-pending"; readonly shortcutId: string; readonly trigger: string }
+  | {
+      readonly type: "portal-bind-result";
+      readonly ok: true;
+      readonly sessionHandle: string;
+      readonly shortcutId: string;
+      readonly trigger: string;
+    }
+  | { readonly type: "portal-bind-result"; readonly ok: false; readonly reason: string }
+  | { readonly type: "portal-activated"; readonly shortcutId: string }
+  | { readonly type: "portal-deactivated"; readonly shortcutId: string }
+  | { readonly type: "portal-closed" };
+
 export type AttachDesktopPortalGlobalShortcutsInput = {
   readonly appId: string;
   readonly shortcutId?: string;
@@ -87,6 +105,8 @@ export type AttachDesktopPortalGlobalShortcutsInput = {
   readonly onActivated: (shortcutId: string) => void;
   readonly onDeactivated: (shortcutId: string) => void;
   readonly bindTimeoutMs?: number;
+  /** Routing-only lifecycle reports for production diagnostics. Defaults to silent. */
+  readonly report?: (event: DesktopPortalShortcutEvent) => void;
   readonly loadDbusNext?: () => Promise<DbusNextModule>;
   readonly readCgroup?: () => string;
   readonly pid?: number;
@@ -226,12 +246,21 @@ export async function attachDesktopPortalGlobalShortcuts(
   const bindTimeoutMs = input.bindTimeoutMs ?? 120_000;
   const instanceToken = input.instanceToken ?? NodeCrypto.randomBytes(6).toString("hex");
   const pid = input.pid ?? process.pid;
+  const report = input.report ?? (() => undefined);
+  let resultReported = false;
+  const reportResult = (
+    event: Extract<DesktopPortalShortcutEvent, { type: "portal-bind-result" }>,
+  ): void => {
+    resultReported = true;
+    report(event);
+  };
 
   let dbusModule: DbusNextModule;
   try {
     applyDesktopDbusNextElectronCompat();
     dbusModule = await (input.loadDbusNext ?? defaultLoadDbusNext)();
   } catch {
+    reportResult({ type: "portal-bind-result", ok: false, reason: "unavailable" });
     return null;
   }
 
@@ -282,6 +311,7 @@ export async function attachDesktopPortalGlobalShortcuts(
       globalShortcuts.BindShortcuts === undefined
     ) {
       await close();
+      reportResult({ type: "portal-bind-result", ok: false, reason: "unsupported" });
       return null;
     }
 
@@ -306,23 +336,42 @@ export async function attachDesktopPortalGlobalShortcuts(
     const created = await createResponse.promise;
     if (created.response !== 0) {
       await close();
+      reportResult({ type: "portal-bind-result", ok: false, reason: "rejected" });
       return null;
     }
     const sessionHandle = variantValue(created.results.session_handle);
     if (typeof sessionHandle !== "string" || sessionHandle.length === 0) {
       await close();
+      reportResult({ type: "portal-bind-result", ok: false, reason: "rejected" });
       return null;
     }
 
+    // Some portal backends repeat Activated while the key remains held. Keep
+    // diagnostics edge-triggered to avoid a log storm, but forward every
+    // portal signal to the shell. If a Deactivated signal is lost, the shell
+    // must still be able to recover on the next physical press.
+    let shortcutActive = false;
     const onActivated = (...args: Array<unknown>) => {
       const session = String(args[0] ?? "");
       const id = String(args[1] ?? "");
-      if (session === sessionHandle && id === shortcutId) input.onActivated(id);
+      if (session === sessionHandle && id === shortcutId) {
+        if (!shortcutActive) {
+          shortcutActive = true;
+          report({ type: "portal-activated", shortcutId: id });
+        }
+        input.onActivated(id);
+      }
     };
     const onDeactivated = (...args: Array<unknown>) => {
       const session = String(args[0] ?? "");
       const id = String(args[1] ?? "");
-      if (session === sessionHandle && id === shortcutId) input.onDeactivated(id);
+      if (session === sessionHandle && id === shortcutId) {
+        if (shortcutActive) {
+          shortcutActive = false;
+          report({ type: "portal-deactivated", shortcutId: id });
+        }
+        input.onDeactivated(id);
+      }
     };
     globalShortcuts.on?.("Activated", onActivated);
     globalShortcuts.on?.("Deactivated", onDeactivated);
@@ -330,6 +379,9 @@ export async function attachDesktopPortalGlobalShortcuts(
     const bindToken = `bs_${instanceToken}`;
     const bindPath = portalRequestPath(bus.name, bindToken);
     await addResponseMatch(bus, dbus.Message, bindPath);
+    // A first-time bind waits on the user in Settings; the pending report is
+    // the only trace until they approve or the bind times out.
+    report({ type: "portal-bind-pending", shortcutId, trigger: preferredTrigger });
     const bindResponse = waitPortalResponse({
       bus,
       MessageType: dbus.MessageType,
@@ -358,8 +410,20 @@ export async function attachDesktopPortalGlobalShortcuts(
     const bound = await bindResponse.promise;
     if (bound.response !== 0 || !responseContainsShortcut(bound.results, shortcutId)) {
       await close();
+      reportResult({
+        type: "portal-bind-result",
+        ok: false,
+        reason: bound.response !== 0 ? "rejected" : "empty",
+      });
       return null;
     }
+    reportResult({
+      type: "portal-bind-result",
+      ok: true,
+      sessionHandle,
+      shortcutId,
+      trigger: preferredTrigger,
+    });
 
     return {
       close: async () => {
@@ -375,11 +439,25 @@ export async function attachDesktopPortalGlobalShortcuts(
         } catch {
           // Session may already be gone on logout.
         }
+        report({ type: "portal-closed" });
         await close();
       },
     };
-  } catch {
+  } catch (cause) {
     await close();
+    if (!resultReported) {
+      // A bare "error" hid the actual portal failure (timeout, rejected
+      // method call, missing session handle) and made a dead hold chord
+      // undiagnosable from production logs. Keep the "error" prefix so
+      // existing consumers matching on it still work, but carry the detail.
+      const detail = cause instanceof Error ? cause.message : String(cause ?? "");
+      const suffix = detail.length > 200 ? `${detail.slice(0, 200)}…` : detail;
+      reportResult({
+        type: "portal-bind-result",
+        ok: false,
+        reason: suffix.length > 0 ? `error: ${suffix}` : "error",
+      });
+    }
     return null;
   }
 }

@@ -13,6 +13,7 @@ import * as Electron from "electron";
 
 import * as DesktopAssets from "../app/DesktopAssets.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
+import { makeComponentLogger } from "../app/DesktopObservability.ts";
 import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as DesktopWindow from "../window/DesktopWindow.ts";
 import type { DesktopJarvisVoiceState } from "@t3tools/contracts";
@@ -27,6 +28,7 @@ import { attachDesktopPushToTalkHook, type DesktopPushToTalkHook } from "./Deskt
 import {
   attachDesktopPortalGlobalShortcuts,
   type DesktopPortalGlobalShortcutsHandle,
+  type DesktopPortalShortcutEvent,
 } from "./DesktopPortalGlobalShortcuts.ts";
 
 export const JARVIS_GLOBAL_SHORTCUT = "CommandOrControl+Shift+J";
@@ -150,6 +152,16 @@ export function desktopJarvisOverlayHelperArgs(userDataDir: string): ReadonlyArr
 
 export type DesktopJarvisShortcutMode = "hold" | "tap" | "unavailable";
 
+/** Shell-owned shortcut lifecycle reports; portal events pass through untouched. */
+export type DesktopJarvisShortcutEvent =
+  | DesktopPortalShortcutEvent
+  | {
+      readonly type: "electron-tap-result";
+      readonly registered: boolean;
+      readonly accelerator: string;
+    }
+  | { readonly type: "shortcut-mode"; readonly mode: DesktopJarvisShortcutMode };
+
 const loadDesktopPushToTalkHook = async (): Promise<DesktopPushToTalkHook | null> => {
   try {
     // Keep this optional: distributions that do not ship the native module
@@ -197,7 +209,10 @@ export interface DesktopJarvisShellInput {
   readonly installPortalHoldShortcut?: (handlers: {
     readonly onPressed: () => void;
     readonly onReleased: () => void;
+    readonly report: (event: DesktopPortalShortcutEvent) => void;
   }) => Promise<DesktopPortalGlobalShortcutsHandle | null>;
+  /** Routing-only shortcut lifecycle reports for production diagnostics. Defaults to silent. */
+  readonly reportShortcutEvent?: (event: DesktopJarvisShortcutEvent) => void;
   readonly createTray?: (icon: string | Electron.NativeImage) => Electron.Tray;
   readonly buildTrayMenu?: (template: Electron.MenuItemConstructorOptions[]) => Electron.Menu;
   readonly createOverlay?: () => Electron.BrowserWindow;
@@ -220,6 +235,15 @@ export interface DesktopJarvisShellInput {
   readonly prepareVoice?: () => Promise<unknown>;
   readonly now?: () => number;
   readonly getOverlayWorkArea?: () => Pick<Electron.Rectangle, "x" | "y" | "width" | "height">;
+  /**
+   * Lost-release recovery for portal hold. Some portal backends repeat
+   * Activated while held but never deliver Deactivated, which would leave
+   * the microphone open and the next press dead. The repeat watchdog ends
+   * the hold when the repeat stream goes quiet; the safety timeout bounds
+   * the hold even when repeats continue. Tests pass short values.
+   */
+  readonly holdRepeatWatchdogMs?: number;
+  readonly holdSafetyTimeoutMs?: number;
 }
 
 /**
@@ -236,6 +260,8 @@ export function createDesktopJarvisShell(
   const buildTrayMenu =
     input.buildTrayMenu ?? ((template) => Electron.Menu.buildFromTemplate(template));
   const now = input.now ?? (() => Number(process.hrtime.bigint() / 1_000_000n));
+  const reportShortcutEvent: (event: DesktopJarvisShortcutEvent) => void =
+    input.reportShortcutEvent ?? (() => undefined);
   let tray: Electron.Tray | null = null;
   let overlay: Electron.BrowserWindow | null = null;
   let overlayHelper: DesktopJarvisOverlayHelper | null = null;
@@ -256,16 +282,31 @@ export function createDesktopJarvisShell(
     shortcutRegistered = false;
   };
 
+  const setShortcutMode = (mode: DesktopJarvisShortcutMode): void => {
+    shortcutMode = mode;
+    reportShortcutEvent({ type: "shortcut-mode", mode });
+    refreshTrayMenu();
+  };
+
   const installElectronTapShortcut = (): void => {
     if (stopped || shortcutRegistered) return;
     try {
       shortcutRegistered = shortcut.register(JARVIS_GLOBAL_SHORTCUT, activateTapShortcut);
-      shortcutMode = shortcutRegistered ? "tap" : "unavailable";
+      reportShortcutEvent({
+        type: "electron-tap-result",
+        registered: shortcutRegistered,
+        accelerator: JARVIS_GLOBAL_SHORTCUT,
+      });
+      setShortcutMode(shortcutRegistered ? "tap" : "unavailable");
     } catch {
       shortcutRegistered = false;
-      shortcutMode = "unavailable";
+      reportShortcutEvent({
+        type: "electron-tap-result",
+        registered: false,
+        accelerator: JARVIS_GLOBAL_SHORTCUT,
+      });
+      setShortcutMode("unavailable");
     }
-    refreshTrayMenu();
   };
   let started = false;
   let stopped = false;
@@ -281,6 +322,32 @@ export function createDesktopJarvisShell(
   let voiceStatus: DesktopJarvisVoiceState["status"] | undefined;
   let voiceFinalizing = false;
   let pendingHold = false;
+  // Lost-release recovery: the portal may repeat Activated without ever
+  // sending Deactivated. The watchdog ends the hold when repeats stop; the
+  // safety timer bounds it even when repeats continue.
+  const holdRepeatWatchdogMs = input.holdRepeatWatchdogMs ?? 900;
+  const holdSafetyTimeoutMs = input.holdSafetyTimeoutMs ?? 35_000;
+  let holdWatchdogTimer: ReturnType<typeof setTimeout> | null = null;
+  let holdSafetyTimer: ReturnType<typeof setTimeout> | null = null;
+  const clearHoldTimers = (): void => {
+    if (holdWatchdogTimer !== null) {
+      clearTimeout(holdWatchdogTimer);
+      holdWatchdogTimer = null;
+    }
+    if (holdSafetyTimer !== null) {
+      clearTimeout(holdSafetyTimer);
+      holdSafetyTimer = null;
+    }
+  };
+  const armHoldWatchdog = (): void => {
+    if (holdWatchdogTimer !== null) clearTimeout(holdWatchdogTimer);
+    holdWatchdogTimer = setTimeout(() => {
+      holdWatchdogTimer = null;
+      // Repeats stopped with no Deactivated: the key is physically up.
+      releaseTalk();
+    }, holdRepeatWatchdogMs);
+    holdWatchdogTimer.unref?.();
+  };
 
   const ensureOverlay = (): Electron.BrowserWindow | null => {
     if (overlaySurface === "helper") {
@@ -467,9 +534,22 @@ export function createDesktopJarvisShell(
   };
 
   const startTalk = (): void => {
-    if (stopped || holdActive) return;
+    if (stopped) return;
+    if (holdActive) {
+      // Portal repeats Activated while held. Reset the watchdog so a quiet
+      // stream (no repeats, no Deactivated) still ends the hold.
+      armHoldWatchdog();
+      return;
+    }
     const requestEpoch = ++holdEpoch;
     holdActive = true;
+    armHoldWatchdog();
+    if (holdSafetyTimer !== null) clearTimeout(holdSafetyTimer);
+    holdSafetyTimer = setTimeout(() => {
+      holdSafetyTimer = null;
+      releaseTalk();
+    }, holdSafetyTimeoutMs);
+    holdSafetyTimer.unref?.();
     const current = input.getVoiceState?.();
     if (
       input.voice !== undefined &&
@@ -488,12 +568,14 @@ export function createDesktopJarvisShell(
           if (result.accepted || requestEpoch !== holdEpoch || !holdActive) return;
           holdActive = false;
           pendingHold = false;
+          clearHoldTimers();
           setOverlayState({ status: "error", native: current?.native ?? true });
         },
         () => {
           if (requestEpoch !== holdEpoch || !holdActive) return;
           holdActive = false;
           pendingHold = false;
+          clearHoldTimers();
           setOverlayState({ status: "error", native: current?.native ?? true });
         },
       );
@@ -506,6 +588,7 @@ export function createDesktopJarvisShell(
     if (stopped || !holdActive) return;
     const releaseEpoch = ++holdEpoch;
     holdActive = false;
+    clearHoldTimers();
     if (input.voice !== undefined) {
       if (pendingHold) {
         pendingHold = false;
@@ -564,7 +647,7 @@ export function createDesktopJarvisShell(
                 ? "Hold Ctrl+Shift+J to talk"
                 : shortcutMode === "tap"
                   ? `Tap ${shortcutLabel} to start or stop talking`
-                  : "Talk to Jarvis",
+                  : "Hotkey unavailable — click to talk to Jarvis",
             click: talk,
           },
           { type: "separator" },
@@ -579,8 +662,7 @@ export function createDesktopJarvisShell(
   const promoteToHold = (detach: () => void): void => {
     removePushToTalk = detach;
     clearElectronTapShortcut();
-    shortcutMode = "hold";
-    refreshTrayMenu();
+    setShortcutMode("hold");
   };
 
   const installPortalHold = async (generation: number): Promise<boolean> => {
@@ -590,7 +672,11 @@ export function createDesktopJarvisShell(
     const install = input.installPortalHoldShortcut;
     let handle: DesktopPortalGlobalShortcutsHandle | null = null;
     try {
-      handle = await install({ onPressed: startTalk, onReleased: releaseTalk });
+      handle = await install({
+        onPressed: startTalk,
+        onReleased: releaseTalk,
+        report: reportShortcutEvent,
+      });
     } catch {
       handle = null;
     }
@@ -700,17 +786,20 @@ export function createDesktopJarvisShell(
           if (pendingHold && holdActive) {
             pendingHold = false;
             holdActive = false;
+            clearHoldTimers();
             startTalk();
             return;
           }
           pendingHold = false;
           holdEpoch += 1;
           holdActive = false;
+          clearHoldTimers();
         } else if (state.status === "error" || state.status === "unavailable") {
           voiceFinalizing = false;
           pendingHold = false;
           holdEpoch += 1;
           holdActive = false;
+          clearHoldTimers();
         }
         setOverlayState(state);
       }) ?? null;
@@ -759,6 +848,7 @@ export function createDesktopJarvisShell(
     holdActive = false;
     pendingHold = false;
     voiceFinalizing = false;
+    clearHoldTimers();
     if (tray !== null) {
       try {
         tray.destroy();
@@ -794,6 +884,25 @@ export const layer = Layer.effect(
       DesktopEnvironment.DesktopEnvironment | DesktopWindow.DesktopWindow | ElectronApp.ElectronApp
     >();
     const run = Effect.runPromiseWith(context);
+    const runFork = Effect.runForkWith(context);
+    // Routing-only shortcut diagnostics: binding result, activation edges,
+    // and fallback mode. Audio contents never leave local capture.
+    const { logInfo: logShortcutInfo, logWarning: logShortcutWarning } =
+      makeComponentLogger("desktop-jarvis-shell");
+    const reportShortcutEvent = (event: DesktopJarvisShortcutEvent): void => {
+      if (event.type === "portal-bind-result" && !event.ok) {
+        runFork(logShortcutWarning("portal shortcut bind result", { ...event }));
+      } else if (event.type === "shortcut-mode" && event.mode === "unavailable") {
+        runFork(
+          logShortcutWarning("desktop shortcut unavailable", {
+            ...event,
+            accelerator: JARVIS_GLOBAL_SHORTCUT,
+          }),
+        );
+      } else {
+        runFork(logShortcutInfo("desktop shortcut event", { ...event }));
+      }
+    };
     const dispatchVoiceAction = (action: string): void => {
       void run(desktopWindow.dispatchMainRendererAction(action));
     };
@@ -814,6 +923,7 @@ export const layer = Layer.effect(
                 appId: environment.appUserModelId,
                 onActivated: () => handlers.onPressed(),
                 onDeactivated: () => handlers.onReleased(),
+                report: handlers.report,
               }),
           }
         : {}),
@@ -830,6 +940,7 @@ export const layer = Layer.effect(
       quit: () => {
         void run(electronApp.quit);
       },
+      reportShortcutEvent,
       setCloseToTrayEnabled: (enabled) => {
         void run(desktopWindow.setCloseToTrayEnabled(enabled));
       },

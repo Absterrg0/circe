@@ -14,7 +14,8 @@
     "./clarification": "./src/clarification.ts",
     "./groundVoiceTurn": "./src/groundVoiceTurn.ts",
     "./modelChoice": "./src/modelChoice.ts",
-    "./spokenSummary": "./src/spokenSummary.ts"
+    "./spokenSummary": "./src/spokenSummary.ts",
+    "./supervisorModel": "./src/supervisorModel.ts"
   },
   "scripts": {
     "typecheck": "tsgo --noEmit",

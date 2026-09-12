@@ -12,6 +12,7 @@ import {
   type OrchestrationThread,
   type TurnId,
 } from "@t3tools/contracts";
+import * as Cause from "effect/Cause";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -38,6 +39,7 @@ import {
   buildJarvisSemanticPrompt,
   describeJarvisTaskStatus,
   interpretJarvisCommand,
+  interpretJarvisReadOnlyCommand,
   interpretPendingJarvisReply,
   JarvisSemanticIntent,
   prepareJarvisSemanticTurn,
@@ -50,14 +52,21 @@ import {
   isExpectedPendingReply,
 } from "@t3tools/jarvis-core/confirmation";
 import { deriveJarvisTaskState, hasActiveJarvisTurn } from "@t3tools/jarvis-core/deriveTaskState";
+import { resolveJarvisSupervisorModelSelection } from "@t3tools/jarvis-core/supervisorModel";
+import {
+  extractJarvisClarificationRestart,
+  isJarvisClarificationDiscard,
+} from "@t3tools/jarvis-core/clarification";
 import { jarvisRequestAcceptanceKey } from "@t3tools/jarvis-core/requestIdentity";
 import type { JarvisControllerExecuteInput } from "../Services/JarvisController.ts";
 import {
   commandTaskFromShell,
   commandTaskFromThread,
+  jarvisSupervisorFallbackPrompt,
   navigationCandidateFromDesk,
   normalizeTaskDeskAnswer,
   ordinalTaskChoice,
+  projectClarificationChoiceIndex,
   routedThreadMatches,
   taskRefFor,
   taskTitle,
@@ -72,8 +81,19 @@ const defaultInterpreterLayer = Layer.effect(
       interpret: (input) => {
         const prepared = prepareJarvisSemanticTurn(input);
         if (prepared.status === "needs-input") return Effect.succeed(prepared);
+        const readOnly = interpretJarvisReadOnlyCommand(input, prepared);
+        if (readOnly !== null) return Effect.succeed(readOnly);
+        // The supervisor always runs the simplest model for its provider
+        // family (Luna, Sonnet, Composer, and so on): the call is a
+        // schema-constrained proposal at low reasoning effort, so a larger
+        // model only spends quota. An explicit model the instance offers is
+        // kept; anything it cannot serve falls back per driver.
+        const supervisorModelSelection = resolveJarvisSupervisorModelSelection({
+          selection: input.supervisorModelSelection,
+          providers: input.providers,
+        });
         return providerRegistry
-          .getTextGenerationForInstance(input.supervisorModelSelection.instanceId)
+          .getTextGenerationForInstance(supervisorModelSelection.instanceId)
           .pipe(
             Effect.flatMap((generation) =>
               generation === undefined
@@ -90,7 +110,7 @@ const defaultInterpreterLayer = Layer.effect(
                           cwd,
                           prompt: buildJarvisSemanticPrompt(input, prepared),
                           outputSchema: JarvisSemanticIntent,
-                          modelSelection: input.supervisorModelSelection,
+                          modelSelection: supervisorModelSelection,
                         }),
                       ),
                     ),
@@ -100,13 +120,17 @@ const defaultInterpreterLayer = Layer.effect(
             Effect.tapError((cause) =>
               Effect.logWarning("Semantic supervisor request failed", cause),
             ),
-            Effect.orElseSucceed(() => ({
-              status: "needs-input" as const,
-              reason: "unsupported-command" as const,
-              prompt:
-                "Jarvis couldn't interpret that request safely. Check the semantic supervisor and try again.",
-              choices: [],
-            })),
+            Effect.catchCause((cause) =>
+              Effect.succeed({
+                status: "needs-input" as const,
+                reason: "unsupported-command" as const,
+                prompt: jarvisSupervisorFallbackPrompt({
+                  instanceId: input.supervisorModelSelection.instanceId,
+                  cause: Cause.squash(cause),
+                }),
+                choices: [],
+              }),
+            ),
           );
       },
     });
@@ -214,7 +238,53 @@ export const makeJarvisControllerLive = <R>(
           }
         }
 
-        const pending = desk.pendingInteraction;
+        let pending = desk.pendingInteraction;
+        const restart = extractJarvisClarificationRestart(executionInput.utterance);
+        if (pending !== null && restart !== undefined) {
+          const consumed = yield* taskDesk.consumePendingInteraction({
+            sessionId: input.sessionId,
+            ...(pending.frame.frameId === undefined
+              ? {}
+              : { expectedFrameId: pending.frame.frameId }),
+          });
+          if (consumed === null) {
+            return {
+              status: "needs-input" as const,
+              reason: "control-target-required" as const,
+              prompt: "The question changed. Please restate your request.",
+              choices: [],
+            };
+          }
+          if (restart.kind === "restart") {
+            return {
+              status: "acknowledged" as const,
+              action: "focused" as const,
+              projectId: executionInput.projectId,
+              message: "Selection cleared. What would you like to do?",
+            };
+          }
+          executionInput = {
+            ...executionInput,
+            utterance: restart.utterance,
+            confirmedProjectId: undefined,
+            confirmedProjectAlias: undefined,
+            clarificationFrameId: undefined,
+            expectedReply: undefined,
+            contextThreadId: undefined,
+            referenceThreadId: undefined,
+            continueContext: undefined,
+            ...(executionInput.requestMetadata === undefined
+              ? {}
+              : {
+                  requestMetadata: {
+                    ...executionInput.requestMetadata,
+                    sourceUtterance: restart.utterance,
+                  },
+                }),
+          };
+          desk = yield* taskDesk.get(input.sessionId);
+          pending = null;
+        }
         if (pending !== null) {
           const expectedFrameId = pending.frame.frameId;
           if (expectedFrameId === undefined) {
@@ -248,7 +318,7 @@ export const makeJarvisControllerLive = <R>(
               choices: [],
             };
           }
-          if (/^(?:cancel|never mind|none|no)$/u.test(answer)) {
+          if (isJarvisClarificationDiscard(executionInput.utterance)) {
             const cancelled = yield* taskDesk.consumePendingInteraction({
               sessionId: input.sessionId,
               expectedFrameId,
@@ -273,7 +343,7 @@ export const makeJarvisControllerLive = <R>(
               return {
                 status: "needs-input" as const,
                 reason: "control-target-required" as const,
-                prompt: "Which recent task did you mean? Say its number, or say cancel.",
+                prompt: "Which recent task did you mean? Say its number, or say start over.",
                 choices: pending.frame.candidates.map((item) => item.label),
                 ...(pending.frame.frameId === undefined
                   ? {}
@@ -344,16 +414,25 @@ export const makeJarvisControllerLive = <R>(
             };
           }
           if (pending.kind === "project") {
+            // Ordinals first; an unambiguous bare project title answers too.
+            // Task labels are numbered recitals, so name choice stays project-only.
+            const choice =
+              selected ??
+              projectClarificationChoiceIndex({
+                candidates: pending.frame.candidates,
+                projects: shell.projects,
+                answer,
+              });
             const readCandidate =
-              selected === undefined ? undefined : pending.frame.candidates[selected];
+              choice === undefined ? undefined : pending.frame.candidates[choice];
             if (readCandidate === undefined) {
               return {
                 status: "needs-input" as const,
                 reason: "control-target-required" as const,
                 prompt:
                   pending.frame.candidates.length === 1
-                    ? `Did you mean ${pending.frame.candidates[0]!.label}? Say yes or no.`
-                    : "Which project did you mean? Say its number, or say cancel.",
+                    ? `Did you mean ${pending.frame.candidates[0]!.label}? Say yes, its name or number, or start over.`
+                    : "Which project did you mean? Say its name or number, or say start over.",
                 choices: pending.frame.candidates.map((item) => item.label),
                 ...(pending.frame.frameId === undefined
                   ? {}
@@ -367,7 +446,7 @@ export const makeJarvisControllerLive = <R>(
             if (frame === null || frame.kind !== "project") {
               return staleReply;
             }
-            const candidate = selected === undefined ? undefined : frame.frame.candidates[selected];
+            const candidate = choice === undefined ? undefined : frame.frame.candidates[choice];
             if (candidate === undefined) {
               return staleReply;
             }

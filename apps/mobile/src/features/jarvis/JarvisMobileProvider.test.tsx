@@ -201,4 +201,174 @@ describe("mobile provider answer transport lifecycle", () => {
     await instruction("Start another task");
     expect(state.execute).toHaveBeenCalledTimes(3);
   });
+
+  it("keeps a model question pending on an unmatched answer instead of dispatching fresh work", async () => {
+    await startTask();
+    state.desk.mockResolvedValue(desk("request-A"));
+    state.execute.mockResolvedValueOnce({
+      _tag: "Success",
+      value: {
+        status: "needs-input",
+        reason: "effort-missing",
+        prompt: "Which effort?",
+        choices: ["low"],
+        modelDraft: { instanceId: ProviderInstanceId.make("codex"), model: "sol" },
+      },
+    });
+    await instruction("allow");
+    expect(state.execute).toHaveBeenCalledTimes(2);
+    // "use the fancy model please" names no catalog effort: it must re-prompt
+    // with the escape instead of falling through into fresh work.
+    await instruction("use the fancy model please");
+    expect(state.execute).toHaveBeenCalledTimes(2);
+    expect(render().message).toMatch(/cancel/i);
+    // The question is still pending, so cancel still discards it instead of
+    // dispatching "cancel" as fresh work.
+    await instruction("cancel");
+    expect(state.execute).toHaveBeenCalledTimes(2);
+    expect(render().message).toBe("Okay, I discarded that request.");
+  });
+
+  it.each(["start over", "actually,", "instead,", "never mind,"])(
+    "replaces a local project question using %s",
+    async (prefix) => {
+      const homeProjectId = ProjectId.make("project-B");
+      const home = {
+        ref: { nodeId, projectId: homeProjectId },
+        projectId: homeProjectId,
+        title: "Home",
+        workspaceRoot: "/home",
+        nodeLabel: "Node A",
+        repositoryNames: [],
+        aliases: [],
+        aliasDetails: [],
+      };
+      state.catalog = {
+        nodes: [{ nodeId, label: "Node A", reachability: "online" }],
+        projects: [project, home],
+        providers: [],
+      };
+      await instruction("Review the latest changes.");
+      expect(state.execute).not.toHaveBeenCalled();
+      expect(render().message).toMatch(/Which project/);
+      if (prefix === "start over") {
+        await instruction(prefix);
+        expect(state.execute).not.toHaveBeenCalled();
+        expect(render().message).toMatch(/starting over/i);
+        await instruction("In Home, review the latest changes.");
+      } else {
+        await instruction(`${prefix} In Home, review the latest changes.`);
+      }
+      expect(state.execute).toHaveBeenCalledTimes(1);
+      expect(state.execute.mock.calls[0]?.[0]).toMatchObject({
+        utterance: "In Home, review the latest changes.",
+        projectRef: home.ref,
+      });
+    },
+  );
+
+  it("verifies cancel before replacing a server question on restart", async () => {
+    await startTask();
+    state.desk.mockResolvedValue(desk("request-A"));
+    state.execute.mockResolvedValueOnce({
+      _tag: "Success",
+      value: {
+        status: "needs-input",
+        reason: "task-choice",
+        prompt: "Which task should I use?",
+      },
+    });
+    await instruction("allow");
+    expect(state.execute).toHaveBeenCalledTimes(2);
+    // No frame id travels with the question, so the verified cancel is a safe
+    // no-op: nothing new goes out and the invite replaces the prompt.
+    await instruction("start over");
+    expect(state.execute).toHaveBeenCalledTimes(2);
+    expect(render().message).toMatch(/starting over/i);
+    // A replacement routes fresh under a new request identity, never as an
+    // answer to the retired question.
+    await instruction("new instruction: Implement a feature");
+    expect(state.execute).toHaveBeenCalledTimes(3);
+    const retiredRequestId = state.execute.mock.calls[1]?.[0].requestMetadata.requestId;
+    const replacement = state.execute.mock.calls[2]?.[0];
+    expect(replacement.utterance).toBe("Implement a feature");
+    expect(replacement.requestMetadata.requestId).not.toBe(retiredRequestId);
+    expect(replacement.clarificationFrameId).toBeUndefined();
+  });
+
+  it.each(["success", "failure"] as const)(
+    "holds mobile instructions during %s of a server question cancellation",
+    async (outcome) => {
+      state.execute.mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "needs-input",
+          reason: "task-choice",
+          prompt: "Which task?",
+          clarificationFrameId: "frame-mobile-1",
+        },
+      });
+      await instruction("Review Work");
+      let finishCancel!: (value: unknown) => void;
+      state.execute.mockReturnValueOnce(
+        new Promise((resolve) => {
+          finishCancel = resolve;
+        }),
+      );
+      const restart = instruction("start over");
+      expect(state.execute).toHaveBeenCalledTimes(2);
+      expect(state.execute.mock.calls[1]?.[0]).toMatchObject({
+        utterance: "cancel",
+        clarificationFrameId: "frame-mobile-1",
+      });
+      const fresh = instruction("Implement another feature in Work");
+      await Promise.resolve();
+      await Promise.resolve();
+      expect(state.execute).toHaveBeenCalledTimes(2);
+      finishCancel(
+        outcome === "success"
+          ? {
+              _tag: "Success",
+              value: { status: "acknowledged", action: "stopped", message: "Cancelled" },
+            }
+          : { _tag: "Failure", cause: new Error("Node disconnected") },
+      );
+      await Promise.all([restart, fresh]);
+      if (outcome === "failure") {
+        expect(render().message).toMatch(/still waiting on its node/);
+        await instruction("one");
+        expect(state.execute.mock.calls.at(-1)?.[0]).toMatchObject({
+          utterance: "one",
+          clarificationFrameId: "frame-mobile-1",
+        });
+        return;
+      }
+      await instruction("Implement another feature in Work");
+      expect(state.execute.mock.calls.at(-1)?.[0]).toMatchObject({
+        utterance: "Implement another feature in Work",
+      });
+      expect(state.execute.mock.calls.at(-1)?.[0].clarificationFrameId).toBeUndefined();
+    },
+  );
+
+  it("gives busy feedback instead of silently dropping an explicit restart while submitting", async () => {
+    let release!: (value: { _tag: string; value: unknown }) => void;
+    const gate = new Promise<{ _tag: string; value: unknown }>((resolve) => {
+      release = resolve;
+    });
+    state.execute.mockReturnValueOnce(gate);
+    const controller = render();
+    const first = controller.runInstruction(controller.createTextTurn(), "Implement a feature");
+    while (state.execute.mock.calls.length === 0) await Promise.resolve();
+    await instruction("start over");
+    expect(state.execute).toHaveBeenCalledTimes(1);
+    expect(render().message ?? String(render().message)).toMatch(/still submitting|try .* moment/i);
+    release({
+      _tag: "Success",
+      value: { status: "acknowledged", action: "stopped", message: "Done" },
+    });
+    await first;
+    await instruction("start over");
+    expect(render().message).toMatch(/starting over/i);
+  });
 });

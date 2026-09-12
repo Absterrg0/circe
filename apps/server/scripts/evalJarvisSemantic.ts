@@ -23,8 +23,8 @@ import {
   type JarvisCommandTask,
 } from "@t3tools/jarvis-core/command";
 import * as Schema from "effect/Schema";
+import * as OpenAiStructuredOutput from "effect/unstable/ai/OpenAiStructuredOutput";
 
-import { toJsonSchemaObject } from "../src/textGeneration/TextGenerationUtils.ts";
 import {
   jarvisSemanticEvalCorpus,
   type JarvisSemanticEvalCase,
@@ -214,6 +214,13 @@ function score(expected: string | undefined, actual: string | null): boolean | u
   return expected === undefined ? undefined : actual === expected;
 }
 
+if (
+  process.argv[1] === undefined ||
+  !process.argv[1].endsWith("evalJarvisSemantic.ts")
+) {
+  throw new Error("evalJarvisSemantic.ts is a CLI entrypoint; importing it would run live inference.");
+}
+
 const model = option("--model") ?? "gpt-5.6-luna";
 const effort = option("--effort") ?? "low";
 const caseFilter = option("--case");
@@ -229,8 +236,9 @@ if (selectedCases.length === 0) throw new Error("No semantic eval cases matched.
 
 const directory = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "jarvis-semantic-eval-"));
 const schemaPath = NodePath.join(directory, "intent.schema.json");
-NodeFS.writeFileSync(schemaPath, JSON.stringify(toJsonSchemaObject(JarvisSemanticIntent)), "utf8");
-const decodeIntent = Schema.decodeUnknownSync(JarvisSemanticIntent);
+const adapted = OpenAiStructuredOutput.toCodecOpenAI(JarvisSemanticIntent);
+NodeFS.writeFileSync(schemaPath, JSON.stringify(adapted.jsonSchema), "utf8");
+const decodeIntent = Schema.decodeUnknownSync(adapted.codec);
 const results: Array<{
   id: string;
   expectedAction: string;
@@ -241,6 +249,7 @@ const results: Array<{
   providerCorrect?: boolean;
   clarification?: string;
   error?: string;
+  elapsedMs?: number;
 }> = [];
 
 try {
@@ -258,6 +267,11 @@ try {
       continue;
     }
     const outputPath = NodePath.join(directory, `${entry.id}.json`);
+    if (process.argv.includes("--print-prompt")) {
+      process.stdout.write(buildJarvisSemanticPrompt(context, prepared));
+      continue;
+    }
+    const startedAt = performance.now();
     const run = NodeChildProcess.spawnSync(
       process.env.JARVIS_SEMANTIC_EVAL_CODEX ?? "codex",
       [
@@ -290,9 +304,17 @@ try {
         "plugins",
         "--disable",
         "hooks",
+        "--disable",
+        "skill_search",
+        "--disable",
+        "skill_mcp_dependency_install",
+        "--disable",
+        "tool_suggest",
+        "--config",
+        "skills.max_context_tokens=1",
         "--ephemeral",
         "--skip-git-repo-check",
-        "--sandbox",
+        "-s",
         "read-only",
         "--model",
         model,
@@ -312,7 +334,8 @@ try {
         timeout: 120_000,
       },
     );
-    if (run.status !== 0) {
+    const elapsedMs = Math.round(performance.now() - startedAt);
+    if (run.error !== undefined || run.signal !== null || run.status !== 0) {
       const detail = (
         run.error?.message ||
         run.stderr ||
@@ -326,6 +349,7 @@ try {
         expectedAction: entry.action,
         actionCorrect: false,
         error: detail,
+        elapsedMs,
       });
       if (!jsonOutput)
         process.stdout.write(`[${index + 1}/${selectedCases.length}] ${entry.id}: ERROR\n`);
@@ -341,6 +365,7 @@ try {
         id: entry.id,
         expectedAction: entry.action,
         actualAction: intent.action,
+        elapsedMs,
         actionCorrect: intent.action === entry.action,
         ...(taskCorrect === undefined ? {} : { taskCorrect }),
         ...(projectCorrect === undefined ? {} : { projectCorrect }),
@@ -367,6 +392,7 @@ try {
         expectedAction: entry.action,
         actionCorrect: false,
         error: error instanceof Error ? error.message : String(error),
+        elapsedMs,
       });
     }
   }

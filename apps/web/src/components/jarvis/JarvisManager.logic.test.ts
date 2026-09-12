@@ -14,6 +14,7 @@ import {
   applyJarvisClarificationChoice,
   buildJarvisRequestMetadata,
   createJarvisVoiceSubmissionQueue,
+  extractJarvisVoiceRestart,
   isJarvisVoiceClarificationDiscard,
   desktopVoiceAllowsBrowserFallback,
   isJarvisShortcut,
@@ -375,6 +376,110 @@ describe("Jarvis manager controls", () => {
       instruction: "fix the login tests",
       projectRef: { nodeId: EnvironmentId.make("laptop"), projectId: project },
     });
+  });
+
+  it("resolves spoken number words and carrier phrases for a pending project", () => {
+    const rivvl = ProjectId.make("rivvl");
+    const other = ProjectId.make("other");
+    const candidates = [
+      { ref: { nodeId: EnvironmentId.make("laptop"), projectId: rivvl }, title: "Rivvl" },
+      { ref: { nodeId: EnvironmentId.make("laptop"), projectId: other }, title: "Other" },
+    ];
+    for (const answer of ["one", "number one", "option 1"]) {
+      expect(
+        resolveJarvisVoiceProjectChoice({ instruction: "fix the login tests", answer, candidates })
+          ?.projectRef.projectId,
+      ).toBe(rivvl);
+    }
+    for (const answer of ["two", "option 2", "the second one"]) {
+      expect(
+        resolveJarvisVoiceProjectChoice({ instruction: "fix the login tests", answer, candidates })
+          ?.projectRef.projectId,
+      ).toBe(other);
+    }
+  });
+
+  it("strips a possessive before matching a pending project name", () => {
+    const rivvl = ProjectId.make("rivvl");
+    expect(
+      resolveJarvisVoiceProjectChoice({
+        instruction: "fix the login tests",
+        answer: "Rivvl's",
+        candidates: [
+          {
+            ref: { nodeId: EnvironmentId.make("laptop"), projectId: rivvl },
+            title: "Rivvl",
+          },
+          {
+            ref: { nodeId: EnvironmentId.make("laptop"), projectId: ProjectId.make("other") },
+            title: "Other",
+          },
+        ],
+      })?.projectRef.projectId,
+    ).toBe(rivvl);
+  });
+
+  it("leaves ambiguous, out-of-range, and fresh instructions unmatched", () => {
+    const laptop = EnvironmentId.make("laptop");
+    const alphaLaptop = {
+      ref: { nodeId: laptop, projectId: ProjectId.make("alpha-laptop") },
+      title: "Alpha",
+      label: "Alpha — Laptop",
+    };
+    const alphaServer = {
+      ref: { nodeId: laptop, projectId: ProjectId.make("alpha-server") },
+      title: "Alpha",
+      label: "Alpha — Server",
+    };
+    expect(
+      resolveJarvisVoiceProjectChoice({
+        instruction: "review the latest changes",
+        answer: "Alpha",
+        candidates: [alphaLaptop, alphaServer],
+      }),
+    ).toBeNull();
+    expect(
+      resolveJarvisVoiceProjectChoice({
+        instruction: "review the latest changes",
+        answer: "Alpha — Server",
+        candidates: [alphaLaptop, alphaServer],
+      })?.projectRef.projectId,
+    ).toBe(alphaServer.ref.projectId);
+    const candidates = [
+      { ref: { nodeId: laptop, projectId: ProjectId.make("jarvis") }, title: "Jarvis" },
+      { ref: { nodeId: laptop, projectId: ProjectId.make("alertify") }, title: "Alertify" },
+    ];
+    for (const answer of ["three", "5", "take a look at the failing tests"]) {
+      expect(
+        resolveJarvisVoiceProjectChoice({
+          instruction: "review the latest changes",
+          answer,
+          candidates,
+        }),
+      ).toBeNull();
+    }
+  });
+
+  describe("pending restart escape", () => {
+    it.each(["start over", "Start over."])("recognizes a bare restart: %s", (answer) => {
+      expect(extractJarvisVoiceRestart(answer)).toEqual({ kind: "restart" });
+    });
+
+    it("replaces pending with the new instruction text", () => {
+      expect(
+        extractJarvisVoiceRestart("new instruction: In Alertify, review the latest changes."),
+      ).toEqual({
+        kind: "replace",
+        utterance: "In Alertify, review the latest changes.",
+      });
+    });
+
+    it.each(["one", "Rivvl", "cancel", "never mind", "start something new", ""])(
+      "leaves ordinary answers alone: %s",
+      (answer) => {
+        expect(extractJarvisVoiceRestart(answer)).toBeUndefined();
+      },
+    );
   });
 
   it("accepts an affirmation only for a single-candidate confirmation", () => {

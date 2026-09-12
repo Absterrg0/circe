@@ -195,6 +195,7 @@ export function buildJarvisSemanticPrompt(
         };
   return [
     "Translate one Jarvis request into one structured semantic proposal.",
+    "Do not call any tools. Answer directly from this request and the catalog below.",
     "Return only the schema fields. Never invent or return internal IDs.",
     "Use exact catalog names when naming a project, task, provider, model, or effort.",
     "Use null when the user did not specify a field. Put the work or reply text in instruction.",

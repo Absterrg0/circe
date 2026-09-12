@@ -20,7 +20,10 @@ import type {
   ModelSelection,
   ThreadId,
 } from "@t3tools/contracts";
-import { isJarvisClarificationDiscard } from "@t3tools/jarvis-core/clarification";
+import {
+  formatJarvisClarificationPrompt,
+  isJarvisClarificationDiscard,
+} from "@t3tools/jarvis-core/clarification";
 import {
   answerJarvisModelChoice,
   isJarvisModelClarificationReason,
@@ -70,6 +73,7 @@ import {
   type ReconcileMobileThreadLookup,
 } from "./mobileJarvisReconcile";
 import {
+  extractMobileJarvisRestart,
   resolveMobileJarvisInstructionRoute,
   resolveMobileJarvisPendingAnswer,
   type MobileJarvisPendingRoute,
@@ -191,6 +195,8 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
     readonly sourceUtterance?: string;
     readonly reason: JarvisModelClarificationReason;
     readonly draft: JarvisModelDraft;
+    readonly prompt: string;
+    readonly choices: ReadonlyArray<string>;
     readonly requestId: string;
   } | null>(null);
   // Server-owned project/task clarification pins its node and origin turn:
@@ -756,15 +762,15 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
               : { sourceUtterance: args.sourceUtterance }),
             reason,
             draft: result.value.modelDraft ?? {},
+            prompt: result.value.prompt,
+            choices: result.value.choices,
             requestId,
           };
           replaceActiveTurn(turn);
-          const prompt =
-            result.value.choices.length === 0
-              ? result.value.prompt
-              : `${result.value.prompt} ${result.value.choices
-                  .map((choice, index) => `${index + 1}. ${choice}`)
-                  .join("  ")}`;
+          const prompt = formatJarvisClarificationPrompt(
+            result.value.prompt,
+            result.value.choices,
+          );
           setMessage(prompt);
           if (draftForSpeech.speechEnabled && shouldSpeakMobile("needs-input")) {
             speechSink.current?.(prompt, draftForSpeech.voiceNodeId);
@@ -774,7 +780,10 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
           // question): pin the origin node and turn so the next instruction
           // goes back raw for the Host frame to consume. Candidates stay
           // server-side; an unmatched answer re-prompts instead of dispatching.
-          const response = result.value.prompt;
+          const response = formatJarvisClarificationPrompt(
+            result.value.prompt,
+            result.value.choices,
+          );
           setMessage(response);
           if (turn.speechEnabled && shouldSpeakMobile("needs-input")) {
             speechSink.current?.(response, turn.voiceNodeId);
@@ -851,14 +860,68 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
   const runInstruction = useCallback(
     async (draft: MobileJarvisDraft, text: string) => {
       const utterance = text.trim();
-      if (utterance.length === 0 || submittingRef.current) return;
+      if (utterance.length === 0) return;
+      // An explicit restart never cancels provider work: while a submission
+      // is in flight it gets honest busy feedback and keeps every pending.
+      const busyRestart = extractMobileJarvisRestart(utterance);
+      if (submittingRef.current) {
+        setMessage("Still submitting your last instruction. Try again in a moment.");
+        return;
+      }
       // A switch cancellation in flight owns the session: wait for it instead
       // of racing the old frame with a new command.
       const inFlightCancel = cancelInFlight.current;
       if (inFlightCancel !== null) {
         await inFlightCancel;
-        if (cancelInFlight.current !== null || submittingRef.current) return;
+        if (cancelInFlight.current !== null || submittingRef.current) {
+          if (busyRestart !== undefined) {
+            setMessage("Still submitting your last instruction. Try again in a moment.");
+          }
+          return;
+        }
       }
+      // An explicit restart escapes any pending clarification before answers
+      // are parsed: local questions drop, and a server-owned frame is verified
+      // cancelled first so the replacement can never be consumed as its
+      // answer. A bare restart only clears and invites a fresh instruction.
+      const restart = extractMobileJarvisRestart(utterance);
+      let replacement: string | null = null;
+      if (restart !== undefined) {
+        const serverRestart = pendingServerAnswer.current;
+        const previousRoute = pendingRoute.current;
+        const previousModel = pendingModelAnswer.current;
+        pendingRoute.current = null;
+        pendingModelAnswer.current = null;
+        if (serverRestart !== null) {
+          // Keep the question and admission gate until its node confirms the
+          // cancellation. A second transcript cannot race into the old frame.
+          submittingRef.current = true;
+          setSubmitting(true);
+          let outcome: "cleared" | "retired" | "failed";
+          try {
+            outcome = await cancelServerFrame(serverRestart);
+          } finally {
+            submittingRef.current = false;
+            setSubmitting(false);
+          }
+          if (outcome === "failed") {
+            setMessage("That question is still waiting on its node. Answer it or try again.");
+            pendingServerAnswer.current = serverRestart;
+            pendingRoute.current = previousRoute;
+            pendingModelAnswer.current = previousModel;
+            return;
+          }
+          pendingServerAnswer.current = null;
+          removeActiveTurn(serverRestart.turn.originInteractionId);
+        }
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        if (restart.kind === "restart") {
+          setMessage("Okay, starting over. Say your instruction with its project name.");
+          return;
+        }
+        replacement = restart.utterance;
+      }
+      const effectiveUtterance = replacement ?? utterance;
       // A server-owned frame intercepts any execute on its session, so its
       // raw answer goes first: the Host parses yes/no/ordinal/cancel and
       // re-prompts on anything else instead of starting new work. The pinned
@@ -929,10 +992,10 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
               ...modelPending,
               draft: answered.draft,
               reason: answered.reason,
+              prompt: answered.prompt,
+              choices: answered.choices,
             };
-            const prompt = `${answered.prompt} ${answered.choices
-              .map((choice, index) => `${index + 1}. ${choice}`)
-              .join("  ")}`;
+            const prompt = formatJarvisClarificationPrompt(answered.prompt, answered.choices);
             setMessage(prompt);
             if (draft.speechEnabled && shouldSpeakMobile("needs-input")) {
               speechSink.current?.(prompt, draft.voiceNodeId);
@@ -953,7 +1016,16 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
           });
           return;
         }
-        pendingModelAnswer.current = null;
+        // Unmatched answers stay on the pending question with the escape
+        // spelled out: falling through would dispatch the raw text as fresh
+        // work, which could deny an unrelated live approval.
+        const reask = formatJarvisClarificationPrompt(modelPending.prompt, modelPending.choices);
+        const modelRetryMessage = `I couldn't match that choice. ${reask} Say "cancel" to discard it, or "start over" for a fresh instruction.`;
+        setMessage(modelRetryMessage);
+        if (draft.speechEnabled && shouldSpeakMobile("needs-input")) {
+          speechSink.current?.(modelRetryMessage, draft.voiceNodeId);
+        }
+        return;
       }
       const pending = pendingRoute.current;
       const pendingAnswer =
@@ -967,7 +1039,13 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
         return;
       }
       if (pendingAnswer?.status === "unmatched") {
-        const retryMessage = "I couldn't match that project. Say its name or number.";
+        const retryCandidates = (pending?.route.candidates ?? []).map(
+          (candidate) => candidate.label,
+        );
+        const retryMessage = `${formatJarvisClarificationPrompt(
+          "I couldn't match that project. Say its name or number.",
+          retryCandidates,
+        )} Say "cancel" to discard it, or "start over" for a fresh instruction.`;
         setMessage(retryMessage);
         if (draft.speechEnabled && shouldSpeakMobile("needs-input")) {
           speechSink.current?.(retryMessage, draft.voiceNodeId);
@@ -978,7 +1056,7 @@ export function JarvisMobileProvider(props: { readonly children: ReactNode }) {
         pendingAnswer?.status === "resolved"
           ? pendingAnswer
           : resolveMobileJarvisInstructionRoute({
-              utterance,
+              utterance: effectiveUtterance,
               inputMode: draft.inputMode,
               projects: catalog?.projects ?? [],
               ambientProject: selectedProject,

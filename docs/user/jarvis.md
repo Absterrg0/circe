@@ -60,6 +60,10 @@ submissions; it does not stop provider work. Answering a task with more than one
 request, or answering a request that already closed, returns a short message
 that names the current state instead of acting on the stale pin.
 
+When Jarvis asks which project to use, answer with its spoken name or its number from the list, for example "Rivvl", "first", "the second one", "number two", or "option one". When two nodes share a project name, use the shown "Name - Node" form or the number. An answer that matches more than one project, names no project, or gives a number outside the list keeps the question waiting instead of guessing; it is never sent as new work.
+
+Say "cancel" to discard the waiting question, "start over" to clear it and say a fresh instruction, or "new instruction: ..." followed by replacement text to clear it and send that text instead. You can also say "actually, ...", "instead, ...", or "never mind, ..." followed by the replacement instruction. Jarvis clears the old question before grounding the replacement as new work. If Jarvis cannot confirm the cancel with the node that owns the question, the question stays waiting: answer it or try again. While a submission is still being sent, a restart waits with a busy message and keeps the question.
+
 Jarvis Host keeps a bounded list of recent task identities for each connected device. To switch by name, use explicit task language such as “Switch to the Rivvl review task.” If more than one recent task matches, Jarvis asks you to choose instead of guessing. Starting another conversation creates the task immediately once the request includes an objective.
 
 Jarvis targets the current project and thread. When T3 has just spoken a report, it remembers the exact thread that produced it and shows that thread as the target for your reply. The visible highlight and any spoken progress sentence are feedback only. The typed target plus Host validation decide where the command runs.
@@ -81,6 +85,11 @@ Use Codex Sol at high effort to implement device presence.
 T3 resolves those names against the providers and models available in the selected environment. It asks for clarification instead of silently substituting another provider, model, or effort. If you replace a provider or change its account, select the new provider in **Default agent for new tasks** and save it; an unavailable selection is reported clearly instead of being replaced with a different agent.
 
 Jarvis uses a separate semantic supervisor—Codex Luna at low reasoning by default—to understand natural phrasing. That supervisor only proposes an action and visible catalog names. It runs without project access or tools. Jarvis Host still validates the real project, task, provider, model, effort, and any pending approval, then reloads the selected task immediately before dispatching through the ordinary T3 provider adapter. The supervisor never chooses internal IDs or authorizes tools, and changing it does not change the coding agent selected for your task.
+
+For a quicker read-only response, say "List projects" or "What's the status of Authentication review?"
+using the task's full name. Jarvis can resolve these directly without waiting for the supervisor.
+Duplicate names still require clarification. Free-form questions and replies to a pending request
+continue through the supervisor. The speech voice is unchanged.
 
 To review one provider's output with another, open the source thread and ask:
 

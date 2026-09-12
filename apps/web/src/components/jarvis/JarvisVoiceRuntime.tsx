@@ -17,6 +17,7 @@ import {
   isJarvisModelClarificationReason,
   type JarvisModelDraft,
 } from "@t3tools/jarvis-core/modelChoice";
+import { formatJarvisClarificationPrompt } from "@t3tools/jarvis-core/clarification";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type {
   EnvironmentId,
@@ -61,6 +62,7 @@ import {
 import {
   buildJarvisRequestMetadata,
   desktopVoiceAllowsBrowserFallback,
+  extractJarvisVoiceRestart,
   jarvisErrorMessage,
   jarvisExecutionFeedback,
   resolveJarvisVoiceDefaultTarget,
@@ -630,7 +632,7 @@ export function JarvisVoiceRuntime({
       }
       const feedback = jarvisExecutionFeedback(input.result);
       emitFeedback({
-        text: feedback.speech,
+        text: formatJarvisClarificationPrompt(feedback.speech, input.result.choices),
         kind: "needs-input",
         inputMode: input.inputMode,
         captureId: input.captureId,
@@ -883,6 +885,9 @@ export function JarvisVoiceRuntime({
       } finally {
         submissionBusyRef.current = false;
         syncPending();
+        // A capture queued while the verified cancel held the busy gate:
+        // drain now that it is clear.
+        void voiceSubmissionQueueRef.current?.drain();
       }
     },
     [
@@ -915,7 +920,15 @@ export function JarvisVoiceRuntime({
       }
       cancelInteractionSpeech();
       if (voiceClarificationRef.current !== null) {
-        if (submissionBusyRef.current || queue?.isRunning()) return;
+        if (submissionBusyRef.current || queue?.isRunning()) {
+          emitFeedback({
+            text: "Still submitting your last instruction. Try again in a moment.",
+            kind: "error",
+            inputMode: action.inputMode,
+          });
+          syncPending();
+          return;
+        }
         await cancelPendingClarification(action.inputMode);
         return;
       }
@@ -1022,8 +1035,18 @@ export function JarvisVoiceRuntime({
       ...(snapshot === undefined ? {} : { requestId: snapshot.requestId }),
       inputMode: input.inputMode,
     });
-    if (enqueueResult === "enqueued") void voiceSubmissionQueueRef.current?.drain();
-    else if (enqueueResult === "full") {
+    if (enqueueResult === "enqueued") {
+      if (!voiceSubmissionReadyRef.current) {
+        emitFeedback({
+          text: "Waiting for your node to connect. Your instruction is queued.",
+          kind: "needs-input",
+          inputMode: input.inputMode,
+          captureId: input.captureId,
+          speak: false,
+        });
+      }
+      void voiceSubmissionQueueRef.current?.drain();
+    } else if (enqueueResult === "full") {
       emitFeedback({
         text: "Requests are backed up. Wait for one to finish, then try again.",
         kind: "error",
@@ -1039,6 +1062,141 @@ export function JarvisVoiceRuntime({
    * The single entry point for every submission: native transcripts, browser
    * speech results, and composer text share one cancel and resume policy.
    */
+  const restartPendingClarification = (
+    pending: JarvisPendingClarification,
+    restart:
+      | { readonly kind: "restart" }
+      | { readonly kind: "replace"; readonly utterance: string },
+    options: {
+      readonly inputMode: SubmissionInputMode;
+      readonly captureId: string;
+      readonly requestId?: string;
+    },
+  ): void => {
+    const queue = voiceSubmissionQueueRef.current;
+    // An explicit restart never cancels provider work: while a submission
+    // or verified cancel holds the gate it gets honest busy feedback and
+    // the pending clarification stays intact.
+    if (submissionBusyRef.current || queue?.isRunning()) {
+      emitFeedback({
+        text: "Still submitting your last instruction. Try again in a moment.",
+        kind: "error",
+        inputMode: options.inputMode,
+        captureId: pending.captureId,
+        requestId: pending.requestId,
+      });
+      syncPending();
+      return;
+    }
+    const retireLocally = (): void => {
+      // Drop the retired question before routing anything fresh: the
+      // replacement gets a new capture and request identity, never the old
+      // pin or frame.
+      voiceClarificationRef.current = null;
+      voiceSubmissionSnapshotsRef.current.delete(pending.captureId);
+      queue?.discard(pending.captureId);
+      cancelInteractionSpeech();
+      if (restart.kind === "restart") {
+        emitFeedback({
+          text: "Okay, starting over. Say your instruction with its project name.",
+          kind: "done",
+          inputMode: options.inputMode,
+          captureId: pending.captureId,
+          requestId: pending.requestId,
+        });
+      } else {
+        enqueueUnifiedSubmission({
+          captureId: options.captureId,
+          transcript: restart.utterance,
+          sourceTranscript: restart.utterance,
+          ...(options.requestId === undefined ? {} : { requestId: options.requestId }),
+          inputMode: options.inputMode,
+        });
+      }
+      syncPending();
+    };
+    const cancelTarget = pending.target;
+    const frameId = pending.clarification.clarificationFrameId;
+    if (pending.origin !== "server" || cancelTarget === null || frameId === undefined) {
+      // Client grounding and legacy frames without an id are local-only:
+      // discarding them dispatches nothing.
+      retireLocally();
+      return;
+    }
+    // A server-owned frame is verified cancelled first so the replacement
+    // can never be consumed as its answer. A failed cancel retains the
+    // prompt: answer it or try again.
+    submissionBusyRef.current = true;
+    syncPending();
+    void (async () => {
+      try {
+        const commandResult = await executeInstruction({
+          kind: "control",
+          projectRef: cancelTarget.projectRef,
+          requestMetadata: buildJarvisRequestMetadata({
+            requestId: pending.requestId,
+            originInteractionId: jarvisReporterIdentity(),
+            originNodeId,
+            ...(options.inputMode === "voice" ? { inputMode: "voice" as const } : {}),
+            sourceUtterance: pending.sourceUtterance,
+          }),
+          ...(cancelTarget.contextThreadId
+            ? { contextThreadId: cancelTarget.contextThreadId }
+            : {}),
+          ...(cancelTarget.referenceThreadId
+            ? { referenceThreadId: cancelTarget.referenceThreadId }
+            : {}),
+          clarificationFrameId: frameId,
+          utterance: "cancel",
+        });
+        if (commandResult._tag === "Failure") {
+          emitFeedback({
+            text: "That question is still waiting on its node. Answer it or try again.",
+            kind: "error",
+            inputMode: options.inputMode,
+            captureId: pending.captureId,
+            requestId: pending.requestId,
+          });
+          return;
+        }
+        if (commandResult.value.status === "needs-input") {
+          if (commandResult.value.reason === "source-output-unavailable") {
+            // The exact submitted frame is gone server-side: retire the local
+            // prompt and continue the restart below.
+          } else {
+            // Keep the original reply guards when cancellation needs more input.
+            storeServerClarification({
+              instruction: pending.instruction,
+              sourceUtterance: pending.sourceUtterance,
+              result: commandResult.value,
+              target: cancelTarget,
+              captureId: pending.captureId,
+              requestId: pending.requestId,
+              inputMode: options.inputMode,
+              previous: pending,
+            });
+            return;
+          }
+        }
+        retireLocally();
+      } catch {
+        emitFeedback({
+          text: "That question is still waiting on its node. Answer it or try again.",
+          kind: "error",
+          inputMode: options.inputMode,
+          captureId: pending.captureId,
+          requestId: pending.requestId,
+        });
+      } finally {
+        submissionBusyRef.current = false;
+        syncPending();
+        // The replacement (or any waiting capture) enqueued while the
+        // verified cancel held the busy gate: drain now that it is clear.
+        void voiceSubmissionQueueRef.current?.drain();
+      }
+    })();
+  };
+
   const receiveSubmission = (
     text: string,
     options: {
@@ -1050,7 +1208,36 @@ export function JarvisVoiceRuntime({
   ): void => {
     const trimmed = text.trim();
     if (trimmed.length === 0) return;
+    // An explicit restart escapes before answers are parsed: only "start
+    // over" and "new instruction: ..." leave a pending clarification.
+    // Anything else still answers it, never fresh work.
+    const restart = extractJarvisVoiceRestart(trimmed);
     const pendingClarification = voiceClarificationRef.current;
+    if (restart !== undefined) {
+      if (pendingClarification === null) {
+        if (restart.kind === "restart") {
+          emitFeedback({
+            text: "Okay, starting over. Say your instruction with its project name.",
+            kind: "done",
+            inputMode: options.inputMode,
+            captureId: options.captureId,
+            ...(options.requestId === undefined ? {} : { requestId: options.requestId }),
+          });
+          syncPending();
+          return;
+        }
+        enqueueUnifiedSubmission({
+          captureId: options.captureId,
+          transcript: restart.utterance,
+          sourceTranscript: restart.utterance,
+          ...(options.requestId === undefined ? {} : { requestId: options.requestId }),
+          inputMode: options.inputMode,
+        });
+        return;
+      }
+      restartPendingClarification(pendingClarification, restart, options);
+      return;
+    }
     if (pendingClarification !== null) {
       if (isJarvisVoiceClarificationDiscard(trimmed)) {
         void handleCommandAction({ type: "cancel", inputMode: options.inputMode });
@@ -1210,6 +1397,27 @@ export function JarvisVoiceRuntime({
         if (modelAnswer !== null) {
           instruction = modelAnswer.instruction;
           modelSelectionOverride = modelAnswer.selection;
+        } else if (
+          pendingVoiceClarification.origin === "client" &&
+          isJarvisModelClarificationReason(pendingVoiceClarification.clarification.reason) !== null
+        ) {
+          // A local model question stays pending on an unmatched answer with
+          // the escape spelled out: falling through would dispatch the raw
+          // text as fresh work. Server frames still answer raw below so the
+          // Director re-prompts on anything else.
+          const retryPrompt = pendingVoiceClarification.clarification.prompt;
+          const retryChoices = pendingVoiceClarification.clarification.choices;
+          const reask = formatJarvisClarificationPrompt(retryPrompt, retryChoices);
+          emitFeedback({
+            text: `I couldn't match that choice. ${reask} Say "cancel" to discard it, or "start over" for a fresh instruction.`,
+            kind: "needs-input",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            ...(voiceSubmission.requestId === undefined
+              ? {}
+              : { requestId: voiceSubmission.requestId }),
+          });
+          return "pause" as const;
         } else {
           instruction = capturedInstruction.trim();
         }
@@ -1217,12 +1425,22 @@ export function JarvisVoiceRuntime({
         instruction = capturedInstruction.trim();
       }
       if (submissionBusyRef.current || !catalogReady || instruction.trim().length === 0) return;
+      if (inputMode === "voice") {
+        // Warm the current voice during routing, including clarification paths.
+        void window.desktopBridge?.jarvisVoice?.prepareSpeech().catch(() => undefined);
+      }
       if (
         pendingVoiceClarification?.projectCandidates !== undefined &&
         pendingProjectChoice === null
       ) {
+        const retryCandidates = pendingVoiceClarification.projectCandidates.map(
+          (candidate) => candidate.label,
+        );
         emitFeedback({
-          text: "I couldn't match that project. Say its name or give its number.",
+          text: `${formatJarvisClarificationPrompt(
+            "I couldn't match that project. Say its name or number.",
+            retryCandidates,
+          )} Say "cancel" to discard it, or "start over" for a fresh instruction.`,
           kind: "needs-input",
           inputMode,
           captureId: voiceSubmission.captureId,
@@ -1541,7 +1759,6 @@ export function JarvisVoiceRuntime({
         try {
           if (inputMode === "voice") {
             void playJarvisAcknowledgement();
-            void window.desktopBridge?.jarvisVoice?.prepareSpeech().catch(() => undefined);
           }
           const answerPin = expectedReplyForTarget(submissionTarget);
           const executeInput = voiceSnapshot?.execution ?? {

@@ -68,6 +68,29 @@ function makeVoice() {
 }
 
 describe("desktop Jarvis voice admission", () => {
+  it("reports the microphone failure and admits a new capture after a failed start", async () => {
+    const { voice, sent, emitLine, errors, spawn } = makeVoice();
+    const first = voice.startCapture();
+    await vi.waitFor(() => expect(spawn).toHaveBeenCalled());
+    emitLine(`{"type":"ready"}`);
+    await vi.waitFor(() => expect(sent).toHaveLength(1));
+    emitLine(JSON.stringify({ type: "state", state: "error" }));
+    emitLine(JSON.stringify({
+      type: "result", requestId: sent[0]!.requestId, ok: false,
+      message: "The default microphone was disconnected.",
+    }));
+    await expect(first).resolves.toEqual({ accepted: false });
+    expect(errors).toEqual(["The default microphone was disconnected."]);
+
+    const retry = voice.startCapture();
+    await vi.waitFor(() => expect(sent).toHaveLength(2));
+    emitLine(`{"type":"state","state":"capturing"}`);
+    emitLine(JSON.stringify({ type: "result", requestId: sent[1]!.requestId, ok: true }));
+    await expect(retry).resolves.toEqual({ accepted: true });
+    expect(voice.getState().status).toBe("capturing");
+    voice.stop();
+  });
+
   it("starts capture during a report by preempting speech instead of rejecting", async () => {
     const { voice, sent, emitLine, errors, spawn } = makeVoice();
 

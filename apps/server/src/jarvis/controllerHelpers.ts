@@ -14,6 +14,10 @@ import {
   type JarvisCommandTask,
   type JarvisTaskNavigationCandidate,
 } from "@t3tools/jarvis-core/command";
+import {
+  resolveJarvisClarificationChoice,
+  resolveJarvisClarificationOrdinal,
+} from "@t3tools/jarvis-core/clarification";
 import { listPendingJarvisReplies } from "@t3tools/jarvis-core/confirmation";
 import { deriveJarvisTaskState } from "@t3tools/jarvis-core/deriveTaskState";
 import * as Option from "effect/Option";
@@ -99,31 +103,96 @@ export const normalizeTaskDeskAnswer = (utterance: string): string =>
     .toLowerCase()
     .replace(/[.,!?;:]+$/u, "");
 
-export const ordinalTaskChoice = (answer: string): number | undefined => {
-  const normalized = normalizeTaskDeskAnswer(answer).replace(/^the\s+/u, "");
-  return new Map([
-    ["first", 0],
-    ["first one", 0],
-    ["1", 0],
-    ["one", 0],
-    ["second", 1],
-    ["second one", 1],
-    ["2", 1],
-    ["two", 1],
-    ["third", 2],
-    ["third one", 2],
-    ["3", 2],
-    ["three", 2],
-    ["fourth", 3],
-    ["fourth one", 3],
-    ["4", 3],
-    ["four", 3],
-    ["fifth", 4],
-    ["fifth one", 4],
-    ["5", 4],
-    ["five", 4],
-  ]).get(normalized);
-};
+/** Task ordinal via the shared clarification parser (first one, option, number). */
+export const ordinalTaskChoice = (answer: string): number | undefined =>
+  resolveJarvisClarificationOrdinal(answer);
+
+const SUPERVISOR_REFUSAL_PATTERN =
+  /usage limit|quota|rate.?limit|too many requests|unauthorized|unauthenticated|forbidden|sign.?in|not authenticated|invalid api key|\b401\b|\b403\b|\b429\b/iu;
+
+function supervisorFailureText(cause: unknown): string {
+  if (cause instanceof Error) return `${cause.name}: ${cause.message}`;
+  if (typeof cause === "object" && cause !== null && "message" in cause) {
+    const message = (cause as { readonly message?: unknown }).message;
+    if (typeof message === "string") return message;
+  }
+  return String(cause);
+}
+
+/**
+ * User-facing prompt for a failed semantic-supervisor call. A provider
+ * refusal (quota, auth) names the supervisor instance and the refusal so
+ * the message is actionable; every other failure keeps the generic prompt
+ * instead of leaking CLI output into speech.
+ */
+export function jarvisSupervisorFallbackPrompt(input: {
+  readonly instanceId: string;
+  readonly cause: unknown;
+}): string {
+  if (SUPERVISOR_REFUSAL_PATTERN.test(supervisorFailureText(input.cause))) {
+    return (
+      `The ${input.instanceId} supervisor refused the request (usage limit or sign-in). ` +
+      `Check the provider and try again.`
+    );
+  }
+  return "Jarvis couldn't interpret that request safely. Check the semantic supervisor and try again.";
+}
+
+function basenameLower(value: string): string | undefined {
+  const base = value.split("/").filter((part) => part.length > 0).pop();
+  return base === undefined || base.length === 0 ? undefined : base;
+}
+
+/**
+ * Answer a pending project clarification by spoken name. Ordinals are tried
+ * first by the caller; this resolves an unambiguous bare project name (the
+ * natural one-word voice answer) against the live catalog, including the
+ * repository name behind a title that differs. Ambiguous names and new
+ * instructions stay unmatched so the pending route is kept.
+ */
+export function projectClarificationChoiceIndex(input: {
+  readonly candidates: ReadonlyArray<{
+    readonly projectId: ProjectId;
+    readonly label: string;
+    readonly learnedAlias?: string | undefined;
+  }>;
+  readonly projects: ReadonlyArray<{
+    readonly id: ProjectId;
+    readonly title: string;
+    readonly workspaceRoot?: string | undefined;
+    readonly repositoryIdentity?:
+      | {
+          readonly name?: string | null | undefined;
+          readonly displayName?: string | null | undefined;
+        }
+      | null
+      | undefined;
+  }>;
+  readonly answer: string;
+}): number | undefined {
+  const views = input.candidates.map((candidate) => {
+    const project = input.projects.find((entry) => entry.id === candidate.projectId);
+    const extra: Array<string> = [];
+    if (project !== undefined) {
+      const base = project.workspaceRoot === undefined ? undefined : basenameLower(project.workspaceRoot);
+      if (base !== undefined) extra.push(base);
+      const repoName = project.repositoryIdentity?.name;
+      if (typeof repoName === "string" && repoName.trim().length > 0) extra.push(repoName);
+      const displayName = project.repositoryIdentity?.displayName;
+      if (typeof displayName === "string" && displayName.trim().length > 0) extra.push(displayName);
+    }
+    return {
+      label: candidate.label,
+      names: [
+        candidate.label,
+        ...(project === undefined ? [] : [project.title, ...extra]),
+        ...(candidate.learnedAlias === undefined ? [] : [candidate.learnedAlias]),
+      ],
+    };
+  });
+  const choice = resolveJarvisClarificationChoice(views, input.answer);
+  return choice === undefined ? undefined : views.indexOf(choice);
+}
 
 export function commandTaskFromThread(input: {
   readonly thread: OrchestrationThread;

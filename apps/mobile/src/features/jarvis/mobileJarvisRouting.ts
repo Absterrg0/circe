@@ -1,5 +1,10 @@
 import type { EnvironmentId } from "@t3tools/contracts";
-import { isJarvisClarificationDiscard } from "@t3tools/jarvis-core/clarification";
+import {
+  extractJarvisClarificationRestart,
+  isJarvisClarificationDiscard,
+  resolveJarvisClarificationChoice,
+  type JarvisClarificationRestart,
+} from "@t3tools/jarvis-core/clarification";
 import type {
   JarvisMeshProject,
   JarvisMeshReachability,
@@ -93,19 +98,10 @@ function selectConverseNode(
   );
 }
 
-function ordinalPosition(answer: string): number | undefined {
-  const numeric = /^(?:the\s+)?(\d+)(?:st|nd|rd|th)?(?:\s+one)?$/u.exec(answer)?.[1];
-  if (numeric !== undefined) return Number(numeric);
-  const words: Readonly<Record<string, number>> = {
-    first: 1,
-    second: 2,
-    third: 3,
-    fourth: 4,
-    fifth: 5,
-  };
-  const word = /^(?:the\s+)?(first|second|third|fourth|fifth)(?:\s+one)?$/u.exec(answer)?.[1];
-  return word === undefined ? undefined : words[word];
-}
+export type MobileJarvisRestart = JarvisClarificationRestart;
+
+/** Mobile alias for the shared pending-clarification restart escape. */
+export const extractMobileJarvisRestart = extractJarvisClarificationRestart;
 
 export function resolveMobileJarvisInstructionRoute(input: {
   readonly utterance: string;
@@ -294,18 +290,30 @@ export function resolveMobileJarvisRouteChoice(input: {
   const affirmative = /^(?:yes|yeah|yep|correct|that one|use that)$/u.test(answer);
   const selectedByAffirmation =
     input.pending.acceptsAffirmation && affirmative ? input.pending.candidates[0] : undefined;
-  const position = ordinalPosition(answer);
-  const selectedByPosition =
-    position === undefined || position < 1 ? undefined : input.pending.candidates[position - 1];
-  const matchingCandidates = input.pending.candidates.filter(({ project, label }) =>
-    [project.title, label, ...project.repositoryNames, ...project.aliases].some(
-      (name) => normalizeChoice(name) === answer,
-    ),
+  // Ordinal and name matching is the shared pending-clarification choice:
+  // ordinals select by position bounded to the candidate list, otherwise a
+  // possessive-stripped exact name must match exactly one candidate.
+  // Ambiguous names and multi-word instructions stay unmatched so the caller
+  // keeps the pending route. The affirmation above stays mobile-local: only
+  // one-candidate confirmations accept it, and it re-grounds the mishearing.
+  const sharedChoice = resolveJarvisClarificationChoice(
+    input.pending.candidates.map((candidate) => ({
+      label: candidate.label,
+      names: [
+        candidate.project.title,
+        candidate.label,
+        ...candidate.project.repositoryNames,
+        ...candidate.project.aliases,
+      ],
+      project: candidate.project,
+    })),
+    input.answer,
   );
   const selected =
     selectedByAffirmation ??
-    selectedByPosition ??
-    (matchingCandidates.length === 1 ? matchingCandidates[0] : undefined);
+    (sharedChoice === undefined
+      ? undefined
+      : { project: sharedChoice.project, label: sharedChoice.label });
   if (selected === undefined) return null;
   // An affirmation ("yes") carries no project words, so the pending raw
   // utterance still holds the mishearing. Re-ground with the confirmed

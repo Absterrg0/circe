@@ -263,6 +263,12 @@ export function createDesktopJarvisVoice(input: {
 
   const setState = (next: DesktopJarvisVoiceState) => {
     if (stopped) return;
+    // Remote compute serves another node (for example mobile STT/TTS) and
+    // must never represent local interaction. Worker states arriving while
+    // it runs keep neither current nor the shell overlay: current stays the
+    // last local truth so getState and the next local admission check do
+    // not observe a foreign transcribing/speaking/ready/error.
+    if (remoteComputeActive) return;
     current = next;
     emit({ type: "state", state: next.status === "unavailable" ? "error" : next.status });
     for (const listener of stateListeners) {
@@ -323,6 +329,7 @@ export function createDesktopJarvisVoice(input: {
       return;
     }
     if (message.type === "transcript") {
+      if (remoteComputeActive) return;
       if (message.captureId !== undefined && message.captureId !== activeCapture?.captureId) return;
       emit({
         ...message,
@@ -332,6 +339,9 @@ export function createDesktopJarvisVoice(input: {
       return;
     }
     if (message.type === "level") {
+      // Remote compute owns no local microphone; its audio levels must never
+      // drive the laptop waveform overlay.
+      if (remoteComputeActive) return;
       for (const listener of levelListeners) {
         try {
           listener(message.level);
@@ -350,6 +360,7 @@ export function createDesktopJarvisVoice(input: {
       return;
     }
     if (message.type === "capture-result") {
+      if (remoteComputeActive) return;
       if (message.captureId !== undefined && message.captureId !== activeCapture?.captureId) return;
       activeCapture = undefined;
       if (!message.ok) {
@@ -363,6 +374,12 @@ export function createDesktopJarvisVoice(input: {
     }
     if (message.type === "fatal") {
       restartRequired = true;
+      // A dead compute worker cannot produce a result. Retire it and release
+      // remote admission immediately, while preserving local presentation.
+      if (remoteComputeActive) {
+        failAll(new Error(message.message));
+        return;
+      }
       emit({
         type: "error",
         message: message.message,
@@ -607,7 +624,13 @@ export function createDesktopJarvisVoice(input: {
               : true,
       };
     } catch (cause) {
-      if (type === "speak" || type === "play-acknowledgement") {
+      if (
+        type === "speak" ||
+        type === "play-acknowledgement" ||
+        type === "capture-start" ||
+        type === "capture-release" ||
+        type === "capture-cancel"
+      ) {
         emit({ type: "error", message: errorMessage(cause) });
       }
       return { accepted: false };
@@ -770,6 +793,15 @@ export function createDesktopJarvisVoice(input: {
       // is closed, so do not replace that identity with a new start while the
       // previous transcript is still in flight.
       if (remoteComputeActive || activeCapture !== undefined) {
+        // Local origin, so this busy feedback may toast: the hotkey needs a
+        // clear reason instead of the shell's generic error. Remote failures
+        // themselves never emit; they reject to their own caller below.
+        if (remoteComputeActive) {
+          emit({
+            type: "error",
+            message: "Desktop voice is busy with another capture or speech operation.",
+          });
+        }
         return { accepted: false };
       }
       if (localSpeechOperationActive) {
@@ -923,6 +955,24 @@ export const layer = Layer.effect(
         : { pipecatProjectRoot: NodePath.resolve(environment.dirname, "../pipecat") }),
       executablePath: environment.executablePath,
       emit: (message) => {
+        if (message.type === "capture-ready") {
+          runFork(
+            logVoiceInfo("voice capture admitted", {
+              captureId: message.captureId,
+              purpose: message.purpose,
+            }),
+          );
+        }
+        if (message.type === "capture-result") {
+          runFork(
+            logVoiceInfo("voice capture result", {
+              captureId: message.captureId,
+              purpose: message.purpose,
+              ok: message.ok,
+              ...(message.ok ? {} : { code: message.code, message: message.message }),
+            }),
+          );
+        }
         if (message.type === "speech-timing") {
           runFork(logVoiceInfo("Pocket speech timing", message.timing));
         }

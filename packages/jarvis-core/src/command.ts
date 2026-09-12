@@ -645,6 +645,56 @@ function resolveNavigationTask(
   };
 }
 
+/** Exact read-only phrases use the same catalog resolver as semantic proposals.
+ * Pending replies and free-form requests still belong to the supervisor.
+ */
+export function interpretJarvisReadOnlyCommand(
+  input: JarvisCommandContext,
+  prepared: Extract<PreparedJarvisSemanticTurn, { status: "ready" }>,
+): JarvisCommandInterpretation | null {
+  if (
+    input.continueContext ||
+    input.confirmedTaskId !== undefined ||
+    input.expectedReply != null ||
+    (input.contextThread !== undefined &&
+      getPendingJarvisReplyState(input.contextThread.activities).status !== "none")
+  )
+    return null;
+  const utterance = normalize(prepared.utterance).replace(/^(?:jarvis )?(?:please )?/u, "");
+  if (["list projects", "show projects", "what projects are available"].includes(utterance)) {
+    return { status: "command", command: { type: "list-projects" } };
+  }
+  const candidates = [
+    input.contextTask,
+    input.referenceTask,
+    input.focusedTask,
+    ...(input.recentCommandTasks ?? []),
+  ];
+  for (const candidate of candidates) {
+    if (candidate === undefined) continue;
+    for (const name of [candidate.title, candidate.objective]) {
+      const query = normalize(name);
+      if (query.length === 0) continue;
+      if (
+        ![
+          `what s the status of ${query}`,
+          `what is the status of ${query}`,
+          `give me the current state of ${query}`,
+          `is ${query} still running`,
+          `how did ${query} finish`,
+          `report on the ${query} task`,
+        ].includes(utterance)
+      )
+        continue;
+      const task = resolveCommandTask(input, name);
+      return "status" in task
+        ? task
+        : { status: "command", command: { type: "status", task: taskIdentity(task) } };
+    }
+  }
+  return null;
+}
+
 function resolveCommandTask(
   input: JarvisCommandContext,
   entity: string | null,

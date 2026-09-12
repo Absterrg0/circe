@@ -14,6 +14,7 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThread,
   type JarvisPendingInteraction,
+  JarvisProjectClarificationFrame,
   type JarvisRequestMetadata,
   type JarvisTaskDeskState,
   type ModelSelection,
@@ -49,6 +50,8 @@ import {
   JarvisSemanticIntent,
   prepareJarvisSemanticTurn,
 } from "@t3tools/jarvis-core/command";
+
+const decodeProjectClarificationFrame = Schema.decodeSync(JarvisProjectClarificationFrame);
 
 const project: OrchestrationProjectShell = {
   id: ProjectId.make("project-jarvis"),
@@ -3894,6 +3897,17 @@ describe("JarvisController", () => {
       expect(commands).toHaveLength(0);
       expect(deskState.pendingInteraction?.frame.frameId).toBe(frameId);
 
+      for (const utterance of ["start over", "new instruction: Fix Jarvis."]) {
+        const staleRestart = yield* controller.execute({
+          ...input,
+          utterance,
+          clarificationFrameId: "frame-wrong",
+        });
+        expect(staleRestart).toMatchObject({ status: "needs-input" });
+        expect(deskState.pendingInteraction?.frame.frameId).toBe(frameId);
+        expect(commands).toHaveLength(0);
+      }
+
       const result = yield* controller.execute({
         ...input,
         utterance: "yes",
@@ -4029,4 +4043,161 @@ describe("JarvisController", () => {
       }).pipe(Effect.provide(layer));
     },
   );
+
+  describe.each([
+    "Beta",
+    "one",
+    "start over",
+    "new instruction: Check out Jarvis and fix the login bug.",
+    "actually, Check out Jarvis and fix the login bug.",
+    "instead, Check out Jarvis and fix the login bug.",
+    "never mind, Check out Jarvis and fix the login bug.",
+  ])("pending project answer: %s", (answer) => {
+    it.effect("resolves or leaves the pending selection without replaying old work", () => {
+      const commands: Array<OrchestrationCommand> = [];
+      const betaProject = {
+        ...project,
+        id: ProjectId.make("project-beta-bare-name"),
+        title: "Beta",
+        workspaceRoot: "/workspace/beta",
+      };
+      const frame = decodeProjectClarificationFrame({
+        frameId: "frame-bare-name",
+        originalUtterance: "Check out Beta and fix the login bug.",
+        originProjectId: project.id,
+        candidates: [
+          { projectId: project.id, label: "Jarvis — jarvis" },
+          { projectId: betaProject.id, label: "Beta — beta" },
+        ],
+        createdAt: "2026-09-06T00:00:00.000Z",
+        expiresAt: "2027-06-01T00:00:00.000Z",
+      });
+      let deskState: JarvisTaskDeskState = {
+        focusedTask: null,
+        recentTasks: [],
+        pendingInteraction: { kind: "project", frame },
+        updatedAt: null,
+      };
+      const deskLayer = makeTaskDeskLayer(deskState, (next) => {
+        deskState = next;
+      });
+      const interpreterLayer = Layer.succeed(JarvisControllerInterpreter, {
+        interpret: (context) => {
+          const prepared = prepareJarvisSemanticTurn(context);
+          return Effect.succeed(
+            prepared.status === "needs-input"
+              ? prepared
+              : interpretJarvisCommand(
+                  context,
+                  prepared,
+                  testSemanticIntent(`Request: ${prepared.utterance}`),
+                ),
+          );
+        },
+      });
+      const layer = makeJarvisControllerLive(interpreterLayer).pipe(
+        Layer.provideMerge(testFollowUpQueueLayer),
+        Layer.provideMerge(testLexiconLayer),
+        Layer.provideMerge(deskLayer),
+        Layer.provideMerge(
+          ServerSettingsModule.ServerSettingsService.layerTest({
+            jarvisDefaultModelSelection: null,
+          }),
+        ),
+        Layer.provideMerge(
+          Layer.mock(ProviderRegistry)({
+            getProviders: Effect.succeed([codexProvider]),
+          }),
+        ),
+        Layer.provideMerge(
+          Layer.mock(ProjectionSnapshotQuery)({
+            getProjectShellById: (projectId) =>
+              Effect.succeed(Option.some(projectId === betaProject.id ? betaProject : project)),
+            getShellSnapshot: () =>
+              Effect.succeed({
+                snapshotSequence: 1,
+                projects: [project, betaProject],
+                threads: [],
+                updatedAt: "2026-08-12T00:02:00.000Z",
+              }),
+            getThreadDetailById: () => Effect.succeed(Option.none()),
+          }),
+        ),
+        Layer.provideMerge(
+          Layer.mock(OrchestrationEngineService)({
+            dispatch: (command) =>
+              Effect.sync(() => {
+                commands.push(command);
+                return { sequence: commands.length };
+              }),
+            readEvents: () => Stream.empty,
+            streamDomainEvents: Stream.empty,
+            latestSequence: Effect.succeed(0),
+          }),
+        ),
+        Layer.provideMerge(testCryptoLayer),
+      );
+
+      return Effect.gen(function* () {
+        const controller = yield* JarvisController;
+        const baseAnswer = {
+          sessionId,
+          projectId: project.id,
+          executionNodeId: EnvironmentId.make("node-bare-name"),
+          modelSelection: {
+            instanceId: codexProvider.instanceId,
+            model: "gpt-5.6-sol",
+            options: [{ id: "reasoningEffort", value: "high" as const }],
+          },
+          requestMetadata: {
+            requestId: "controller-bare-name",
+            inputMode: "voice" as const,
+            sourceUtterance: "Beta",
+          },
+        };
+        // A garbled STT answer (or a new instruction) must not consume the
+        // frame: the pending clarification survives for a retry.
+        const garbled = yield* controller.execute({
+          ...baseAnswer,
+          utterance: "zzz unknown project",
+        });
+        expect(garbled).toMatchObject({
+          status: "needs-input",
+          reason: "control-target-required",
+        });
+        expect(deskState.pendingInteraction?.frame.frameId).toBe("frame-bare-name");
+        expect(commands).toHaveLength(0);
+        // A one-word spoken answer naming the project must resolve instead of
+        // re-prompting for a number.
+        const result = yield* controller.execute({
+          ...baseAnswer,
+          utterance: answer,
+          ...(answer.includes("Check out Jarvis")
+            ? { confirmedProjectId: betaProject.id, confirmedProjectAlias: "old alias" }
+            : {}),
+        });
+        if (answer === "start over") {
+          expect(result).toMatchObject({ status: "acknowledged" });
+          expect(deskState.pendingInteraction).toBeNull();
+          expect(commands).toHaveLength(0);
+          return;
+        }
+        expect(result).toMatchObject({
+          status: "started",
+          projectId: answer === "Beta" ? betaProject.id : project.id,
+        });
+        expect(deskState.pendingInteraction).toBeNull();
+        expect(commands.map((command) => command.type)).toEqual([
+          "thread.create",
+          "thread.activity.append",
+          "thread.turn.start",
+        ]);
+        if (answer.includes("Check out Jarvis")) {
+          expect(commands.find((command) => command.type === "thread.turn.start")).toMatchObject({
+            message: { text: expect.stringContaining("Check out Jarvis") },
+          });
+        }
+      }).pipe(Effect.provide(layer));
+    });
+  });
 });

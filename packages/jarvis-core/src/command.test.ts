@@ -15,6 +15,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   buildJarvisSemanticPrompt,
   interpretJarvisCommand,
+  interpretJarvisReadOnlyCommand,
   interpretPendingJarvisReply,
   JarvisSemanticIntent,
   prepareJarvisSemanticTurn,
@@ -185,6 +186,51 @@ function commandType(command: JarvisCommand): JarvisCommand["type"] {
 }
 
 describe("Jarvis semantic command boundary", () => {
+  it.each([
+    "What's the status of Authentication review?",
+    "Jarvis, please give me the current state of Authentication review.",
+    "Is Authentication review still running?",
+    "How did Authentication review finish?",
+    "Report on the Authentication review task.",
+  ])("resolves exact read-only wording against the task catalog: %s", (utterance) => {
+    const input = context({ utterance, recentCommandTasks: [task] });
+    expect(interpretJarvisReadOnlyCommand(input, ready(input))).toEqual({
+      status: "command",
+      command: { type: "status", task: { threadId: task.threadId } },
+    });
+  });
+
+  it.each([
+    "What's the status of Authentication review and then stop it?",
+    "Implement a button to list projects.",
+    "What's the status of a task that does not exist?",
+    "Explain why Authentication review failed.",
+  ])("keeps free-form and compound requests on the supervisor: %s", (utterance) => {
+    const input = context({ utterance, recentCommandTasks: [task] });
+    expect(interpretJarvisReadOnlyCommand(input, ready(input))).toBeNull();
+  });
+
+  it("keeps duplicate task names ambiguous on the read-only path", () => {
+    const input = context({
+      utterance: "What's the status of Authentication review?",
+      recentCommandTasks: [task, { ...task, threadId: ThreadId.make("other-auth") }],
+    });
+    expect(interpretJarvisReadOnlyCommand(input, ready(input))).toMatchObject({
+      status: "needs-input",
+      reason: "control-target-required",
+      taskClarification: { candidates: [{ threadId: task.threadId }, { threadId: "other-auth" }] },
+    });
+  });
+
+  it.each([
+    { continueContext: true },
+    { expectedReply: { kind: "approval" as const, requestId: "approval-1" } },
+    { confirmedTaskId: task.threadId },
+  ])("does not shortcut a bound reply or continuation: %j", (binding) => {
+    const input = context({ utterance: "List projects.", ...binding });
+    expect(interpretJarvisReadOnlyCommand(input, ready(input))).toBeNull();
+  });
+
   it("keeps the supervisor acknowledgement outside the closed command", () => {
     expect(
       interpret(
@@ -909,6 +955,7 @@ describe("Jarvis semantic command boundary", () => {
   it("rejects an internal provider instance id emitted as a catalog name", () => {
     const input = context();
     const prompt = buildJarvisSemanticPrompt(input, ready(input));
+    expect(prompt).toContain("Do not call any tools.");
     expect(prompt).not.toContain("fable-alt");
     expect(prompt).not.toContain("reasoningEffort");
     expect(prompt).not.toContain('"High"');

@@ -4,6 +4,7 @@ import type { JarvisMeshProject } from "@t3tools/jarvis-client-runtime/jarvis/me
 
 import { resolveMobileJarvisProject } from "./mobileJarvisSelection";
 import {
+  extractMobileJarvisRestart,
   resolveMobileJarvisInstructionRoute,
   resolveMobileJarvisPendingAnswer,
   resolveMobileJarvisRouteChoice,
@@ -359,6 +360,129 @@ describe("mobile Jarvis instruction routing", () => {
     });
   });
 
+  it("accepts spoken number words and carrier phrases for a pending route", () => {
+    const pending = {
+      utterance: "Review the latest changes.",
+      sourceUtterance: "Review the latest changes.",
+      candidates: [
+        { project: jarvis, label: "Jarvis — Laptop" },
+        { project: alertify, label: "Alertify — Desktop" },
+      ],
+      acceptsAffirmation: false,
+    } as const;
+
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "one" })).toMatchObject({
+      status: "resolved",
+      project: jarvis,
+    });
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "two" })).toMatchObject({
+      status: "resolved",
+      project: alertify,
+    });
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "number one" })).toMatchObject({
+      status: "resolved",
+      project: jarvis,
+    });
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "option 2" })).toMatchObject({
+      status: "resolved",
+      project: alertify,
+    });
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "the second one" })).toMatchObject({
+      status: "resolved",
+      project: alertify,
+    });
+  });
+
+  it("strips a possessive before matching a pending project name", () => {
+    const pending = {
+      utterance: "Review the latest changes.",
+      sourceUtterance: "Review the latest changes.",
+      candidates: [
+        { project: jarvis, label: "Jarvis — Laptop" },
+        { project: alertify, label: "Alertify — Desktop" },
+      ],
+      acceptsAffirmation: false,
+    } as const;
+
+    expect(resolveMobileJarvisRouteChoice({ pending, answer: "Jarvis's" })).toMatchObject({
+      status: "resolved",
+      project: jarvis,
+    });
+  });
+
+  it("keeps ambiguous, out-of-range, and fresh instructions pending", () => {
+    const pending = {
+      utterance: "Review the latest changes.",
+      sourceUtterance: "Review the latest changes.",
+      candidates: [
+        { project: jarvis, label: "Jarvis — Laptop" },
+        { project: alertify, label: "Alertify — Desktop" },
+      ],
+      acceptsAffirmation: false,
+    } as const;
+
+    // Bounded ambiguity: Rivvl is a real project but not a candidate here, so
+    // it must not resolve or dispatch — the pending route stays intact.
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "Rivvl" })).toEqual({
+      status: "unmatched",
+    });
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "three" })).toEqual({
+      status: "unmatched",
+    });
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "5" })).toEqual({
+      status: "unmatched",
+    });
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "start something new" })).toEqual({
+      status: "unmatched",
+    });
+    expect(
+      resolveMobileJarvisPendingAnswer({ pending, answer: "take a look at the failing tests" }),
+    ).toEqual({ status: "unmatched" });
+  });
+
+  it("leaves an ambiguous bare name pending instead of guessing", () => {
+    const alphaLaptop = project(laptop, "alpha", "Alpha", "Laptop");
+    const alphaServer = project(desktop, "alpha", "Alpha", "Server");
+    const pending = {
+      utterance: "Review the latest changes.",
+      sourceUtterance: "Review the latest changes.",
+      candidates: [
+        { project: alphaLaptop, label: "Alpha — Laptop" },
+        { project: alphaServer, label: "Alpha — Server" },
+      ],
+      acceptsAffirmation: false,
+    } as const;
+
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "Alpha" })).toEqual({
+      status: "unmatched",
+    });
+    expect(resolveMobileJarvisPendingAnswer({ pending, answer: "Alpha — Server" })).toMatchObject({
+      status: "resolved",
+      project: alphaServer,
+    });
+  });
+
+  describe("pending restart escape", () => {
+    it.each(["start over", "Start over."])("recognizes a bare restart: %s", (answer) => {
+      expect(extractMobileJarvisRestart(answer)).toEqual({ kind: "restart" });
+    });
+
+    it("replaces pending with the new instruction text", () => {
+      expect(
+        extractMobileJarvisRestart("new instruction: In Alertify, review the latest changes."),
+      ).toEqual({
+        kind: "replace",
+        utterance: "In Alertify, review the latest changes.",
+      });
+    });
+
+    it.each(["one", "Rivvl", "cancel", "never mind", "start something new", ""])(
+      "leaves ordinary answers alone: %s",
+      (answer) => {
+        expect(extractMobileJarvisRestart(answer)).toBeUndefined();
+      },
+    );
+  });
   it("canonicalizes the misheard span when the user affirms the guess", () => {
     const rivvl = project(laptop, "rivvl", "Rivvl", "Laptop");
     const route = resolveMobileJarvisInstructionRoute({

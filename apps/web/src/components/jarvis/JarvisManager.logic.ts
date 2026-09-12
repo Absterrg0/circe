@@ -10,7 +10,12 @@ import type {
   JarvisTaskDeskTaskView,
   ThreadId,
 } from "@t3tools/contracts";
-import { isJarvisClarificationDiscard } from "@t3tools/jarvis-core/clarification";
+import {
+  isJarvisClarificationDiscard,
+  resolveJarvisClarificationChoice,
+  extractJarvisClarificationRestart,
+  type JarvisClarificationRestart,
+} from "@t3tools/jarvis-core/clarification";
 
 export type JarvisVoiceDefaultTarget =
   | {
@@ -133,12 +138,12 @@ export function resolveJarvisVoiceProjectChoice(input: {
   }>;
   readonly acceptsAffirmation?: boolean;
 }): { readonly instruction: string; readonly projectRef: JarvisProjectRef } | null {
+  if (input.answer.trim().length === 0) return null;
   const answer = input.answer
     .trim()
     .toLocaleLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
-  if (answer.length === 0) return null;
   if (
     input.acceptsAffirmation === true &&
     /^(?:yes|yeah|yep|correct|that one|use that)$/u.test(answer) &&
@@ -147,42 +152,25 @@ export function resolveJarvisVoiceProjectChoice(input: {
   ) {
     return { instruction: input.instruction, projectRef: input.candidates[0].ref };
   }
-  const ordinalWords = new Map([
-    ["first", 1],
-    ["second", 2],
-    ["third", 3],
-    ["fourth", 4],
-    ["fifth", 5],
-  ]);
-  const ordinal = /^(?:the\s+)?(\d+)(?:st|nd|rd|th)?(?:\s+one)?$/u.exec(answer);
-  const wordOrdinal = /^(?:the\s+)?(first|second|third|fourth|fifth)(?:\s+one)?$/u.exec(answer);
-  const position =
-    ordinal?.[1] === undefined
-      ? wordOrdinal?.[1] === undefined
-        ? undefined
-        : ordinalWords.get(wordOrdinal[1])
-      : Number(ordinal[1]);
-  const positionalCandidate =
-    position === undefined || position < 1 ? undefined : input.candidates[position - 1];
-  if (positionalCandidate !== undefined) {
-    return { instruction: input.instruction, projectRef: positionalCandidate.ref };
-  }
-  const matches = input.candidates.filter((candidate) =>
-    [candidate.title, candidate.label]
-      .filter((value): value is string => value !== undefined)
-      .some(
-        (value) =>
-          value
-            .trim()
-            .toLocaleLowerCase()
-            .replace(/[^\p{L}\p{N}]+/gu, " ")
-            .trim() === answer,
-      ),
-  );
-  return matches.length === 1
-    ? { instruction: input.instruction, projectRef: matches[0]!.ref }
-    : null;
+  // Ordinals, number words, carrier phrases, possessives, and ambiguity all
+  // resolve through the shared clarification parser: this caller only maps
+  // the shared choice back onto its project refs.
+  const views = input.candidates.map((candidate) => ({
+    label: candidate.label ?? candidate.title,
+    names:
+      candidate.label === undefined || candidate.label === candidate.title
+        ? [candidate.title]
+        : [candidate.title, candidate.label],
+    ref: candidate.ref,
+  }));
+  const choice = resolveJarvisClarificationChoice(views, input.answer);
+  return choice === undefined ? null : { instruction: input.instruction, projectRef: choice.ref };
 }
+
+export type JarvisVoiceRestart = JarvisClarificationRestart;
+
+/** Web alias for the shared pending-clarification restart escape. */
+export const extractJarvisVoiceRestart = extractJarvisClarificationRestart;
 
 export interface JarvisVoiceSubmissionQueue {
   readonly enqueue: (
