@@ -91,6 +91,7 @@ export type AttachDesktopPortalGlobalShortcutsInput = {
   readonly readCgroup?: () => string;
   readonly pid?: number;
   readonly instanceToken?: string;
+  readonly onDebug?: (message: string) => void;
 };
 
 function resolveDbus(module: DbusNextModule): {
@@ -226,12 +227,15 @@ export async function attachDesktopPortalGlobalShortcuts(
   const bindTimeoutMs = input.bindTimeoutMs ?? 120_000;
   const instanceToken = input.instanceToken ?? NodeCrypto.randomBytes(6).toString("hex");
   const pid = input.pid ?? process.pid;
+  const debug = input.onDebug ?? (() => {});
+  debug(`attach appId=${input.appId} shortcut=${shortcutId} trigger=${preferredTrigger}`);
 
   let dbusModule: DbusNextModule;
   try {
     applyDesktopDbusNextElectronCompat();
     dbusModule = await (input.loadDbusNext ?? defaultLoadDbusNext)();
-  } catch {
+  } catch (cause) {
+    debug(`dbus load failed: ${cause instanceof Error ? cause.message : String(cause)}`);
     return null;
   }
 
@@ -318,11 +322,13 @@ export async function attachDesktopPortalGlobalShortcuts(
       throw cause;
     }
     const created = await createResponse.promise;
+    debug(`CreateSession response=${created.response}`);
     if (created.response !== 0) {
       await close();
       return null;
     }
     const sessionHandle = variantValue(created.results.session_handle);
+    debug(`CreateSession sessionHandle=${String(sessionHandle)}`);
     if (typeof sessionHandle !== "string" || sessionHandle.length === 0) {
       await close();
       return null;
@@ -331,11 +337,15 @@ export async function attachDesktopPortalGlobalShortcuts(
     const onActivated = (...args: Array<unknown>) => {
       const session = String(args[0] ?? "");
       const id = String(args[1] ?? "");
+      debug(
+        `Activated session=${session} id=${id} accepted=${session === sessionHandle && id === shortcutId}`,
+      );
       if (session === sessionHandle && id === shortcutId) input.onActivated(id);
     };
     const onDeactivated = (...args: Array<unknown>) => {
       const session = String(args[0] ?? "");
       const id = String(args[1] ?? "");
+      debug(`Deactivated session=${session} id=${id}`);
       if (session === sessionHandle && id === shortcutId) input.onDeactivated(id);
     };
     globalShortcuts.on?.("Activated", onActivated);
@@ -370,10 +380,14 @@ export async function attachDesktopPortalGlobalShortcuts(
       throw cause;
     }
     const bound = await bindResponse.promise;
+    debug(
+      `BindShortcuts response=${bound.response} shortcuts=${JSON.stringify(bound.results.shortcuts ?? null)}`,
+    );
     if (bound.response !== 0 || !responseContainsShortcut(bound.results, shortcutId)) {
       await close();
       return null;
     }
+    debug("portal shortcut bound");
 
     return {
       close: async () => {
@@ -392,7 +406,8 @@ export async function attachDesktopPortalGlobalShortcuts(
         await close();
       },
     };
-  } catch {
+  } catch (cause) {
+    debug(`portal attach failed: ${cause instanceof Error ? cause.message : String(cause)}`);
     await close();
     return null;
   }

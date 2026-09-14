@@ -1,3 +1,5 @@
+import { FetchHttpClient } from "effect/unstable/http";
+import { runCirceQuickLookup } from "../Services/CirceQuickLookup.ts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
@@ -259,7 +261,9 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.subscribeCircePresentation]: AuthOrchestrationReadScope,
   [WS_METHODS.circeRegisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeUnregisterPushToken]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
 } as const satisfies Readonly<
   Record<RpcGroup.Rpcs<typeof CirceWsRpcGroup>["_tag"], AuthEnvironmentScope>
 >;
@@ -376,6 +380,23 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 WS_METHODS.circeCancelRequest,
                 circe.cancelRequest({ ...input, executionNodeId }),
                 { "rpc.aggregate": "circe" },
+              ),
+            [WS_METHODS.circeQuickLookup]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeQuickLookup,
+                runCirceQuickLookup(input, config.circeNodePreset ?? "full").pipe(
+                  Effect.provide(FetchHttpClient.layer),
+                  Effect.provideService(FetchHttpClient.RequestInit, { redirect: "error" }),
+                ),
+                { "rpc.aggregate": "circe.quick" },
+              ),
+            [WS_METHODS.circeVoiceLiveRelease]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeVoiceLiveRelease,
+                liveVoice
+                  .releaseSession(input)
+                  .pipe(Effect.mapError(toCirceVoiceLiveStartClientError)),
+                { "rpc.aggregate": "circe.voice" },
               ),
             [WS_METHODS.circeVoiceLiveStart]: (input) =>
               context.observeRpcEffect(

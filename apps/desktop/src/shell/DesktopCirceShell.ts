@@ -32,6 +32,7 @@ import {
   desktopCirceOverlayDataUrl,
   desktopCirceOverlayOrbCenter,
   parseDesktopCirceOverlayEvent,
+  snapDesktopCirceOverlayAnchor,
   resolveDesktopCirceOverlayBounds,
   type DesktopCirceOverlayAnchor,
   type DesktopCirceOrbDragEvent,
@@ -45,6 +46,18 @@ import {
 } from "./DesktopPortalGlobalShortcuts.ts";
 
 export const CIRCE_GLOBAL_SHORTCUT = "CommandOrControl+Shift+J";
+
+/** Temporary shortcut diagnostics; writes beside the desktop state logs. */
+function debugLog(message: string): void {
+  try {
+    NodeFS.appendFileSync(
+      NodePath.join(Electron.app.getPath("userData"), "circe-shortcut-debug.log"),
+      `${message}\n`,
+    );
+  } catch {
+    // Diagnostics only.
+  }
+}
 
 export function shouldStartDesktopCirceShell(
   distribution: DesktopEnvironment.DesktopDistribution,
@@ -302,6 +315,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
     } catch {
       shortcutRegistered = false;
     }
+    debugLog(`electron tap shortcut registered=${shortcutRegistered}`);
     refreshTrayMenu();
   };
   let started = false;
@@ -368,10 +382,19 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
       return;
     }
     overlayDragStart = null;
+    if (typeof window.getBounds !== "function") return;
     try {
-      if (typeof window.getBounds === "function") {
-        overlayAnchor = desktopCirceOverlayOrbCenter(window.getBounds());
-      }
+      const workArea =
+        input.getOverlayWorkArea?.() ??
+        Electron.screen.getDisplayNearestPoint(Electron.screen.getCursorScreenPoint()).workArea;
+      overlayAnchor = snapDesktopCirceOverlayAnchor(
+        workArea,
+        desktopCirceOverlayOrbCenter(window.getBounds()),
+      );
+      const snapped = resolveDesktopCirceOverlayBounds(workArea, overlayExpanded, overlayAnchor);
+      if (typeof window.setBounds === "function") window.setBounds(snapped, false);
+      else if (typeof window.setPosition === "function")
+        window.setPosition(snapped.x, snapped.y, false);
     } catch {
       // Keep the previous anchor if the window cannot report its bounds.
     }
@@ -593,6 +616,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
   };
 
   const talk = (): void => {
+    debugLog("talk(): hotkey activation reached the shell");
     if (stopped) return;
     // The one hotkey owns a full-duplex live conversation toggle. The orb
     // stays up so the user sees the session start.
@@ -612,6 +636,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
   };
 
   const startTalk = (): void => {
+    debugLog("startTalk(): portal/hook press reached the shell");
     if (stopped) return;
     // Hold hardware acts as a tap for live: press toggles, release clears.
     liveToggleHeld = true;
@@ -662,15 +687,18 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
 
   const installPortalHold = async (generation: number): Promise<boolean> => {
     if (input.platform !== "linux" || input.installPortalHoldShortcut === undefined) {
+      debugLog("portal hold skipped (not linux or no installer)");
       return false;
     }
     const install = input.installPortalHoldShortcut;
     let handle: DesktopPortalGlobalShortcutsHandle | null = null;
     try {
       handle = await install({ onPressed: startTalk, onReleased: releaseTalk });
-    } catch {
+    } catch (cause) {
+      debugLog(`portal hold threw: ${cause instanceof Error ? cause.message : String(cause)}`);
       handle = null;
     }
+    debugLog(`portal hold result=${handle === null ? "null" : "handle"}`);
     if (stopped || generation !== pushToTalkLoadGeneration) {
       void handle?.close().catch(() => undefined);
       return true;
@@ -694,6 +722,9 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
       input.architecture === "x64" &&
       (input.platform === "win32" ||
         (input.platform === "linux" && input.desktopSessionType?.toLowerCase() !== "wayland"));
+    debugLog(
+      `native hook eligible=${nativeHookEligible} arch=${input.architecture} session=${String(input.desktopSessionType)}`,
+    );
     if (!nativeHookEligible) return false;
     try {
       hook =
@@ -752,6 +783,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
     // Honest fallback: Electron tap-toggle has no key-up. Install it only
     // after hold setup has failed so one physical chord can never change modes
     // between its down and up edges.
+    debugLog("falling back to electron tap shortcut");
     installElectronTapShortcut();
   };
 
@@ -887,6 +919,7 @@ export const layer = Layer.effect(
                 appId: environment.appUserModelId,
                 onActivated: () => handlers.onPressed(),
                 onDeactivated: () => handlers.onReleased(),
+                onDebug: debugLog,
               }),
           }
         : {}),
