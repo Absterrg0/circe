@@ -53,7 +53,7 @@ export interface DecisionCatalog {
   readonly projects: ReadonlyArray<DecisionProjectInput>;
   readonly tasks: ReadonlyArray<DecisionTaskInput>;
   readonly providers: ReadonlyArray<DecisionProviderInput>;
-  readonly efforts?: ReadonlyArray<DecisionEffortInput>;
+  readonly efforts?: ReadonlyArray<DecisionEffortInput> | undefined;
 }
 
 export interface DecisionOptionEntry {

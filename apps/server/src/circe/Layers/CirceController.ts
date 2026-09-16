@@ -68,6 +68,16 @@ import {
   tryBoundedLocalGrammarForEvidence,
 } from "@circe/core/localGrammar";
 import { CirceLocalModel } from "../Services/CirceLocalModel.ts";
+import { CirceDecision } from "../Services/CirceDecision.ts";
+import { CirceDecisionDisabledLive } from "./CirceDecision.ts";
+import {
+  decisionCatalogFromContext,
+  decisionCatalogFromEvidence,
+  decisionStateFromContext,
+  decisionStateFromEvidence,
+  runCirceDecisionTier,
+} from "../decisionTier.ts";
+import type { DecisionRequest } from "@circe/core/decision";
 import {
   CirceCodexSupervisor,
   type CirceCodexSupervisorAvailability,
@@ -340,6 +350,13 @@ const defaultInterpreterLayer = Layer.effect(
       infer: (_input: { readonly source: string }) =>
         Effect.succeed({ status: "decline", reason: "local-model-disabled" } as const),
     }));
+    // Optional System One decision tier. Absent means disabled: the request
+    // is never sent and the provider cascade below is unchanged.
+    const decisionOpt = yield* Effect.serviceOption(CirceDecision);
+    const decision = Option.getOrElse(decisionOpt, () => ({
+      decide: (_request: DecisionRequest) =>
+        Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
+    }));
     // Optional fast supervisor (fx using the user's own subscription login).
     // Absent means decline: the provider cascade below is unchanged.
     // Optional direct Codex supervisor (ChatGPT subscription Responses API).
@@ -576,6 +593,22 @@ const defaultInterpreterLayer = Layer.effect(
           return Effect.succeed(interpretCirceCommand(input, prepared, grammar.proposal));
         }
         return Effect.gen(function* () {
+          // System One decision tier: one or two finite requests, composed in
+          // code, then the ordinary Director. A composed needs-input is a
+          // deliberate Clarify and never falls through; only a decline (no
+          // key, timeout, 429, or network failure) reaches the provider net.
+          const tier = yield* runCirceDecisionTier({
+            source: prepared.sourceUtterance,
+            state: decisionStateFromContext(input, prepared.sourceUtterance),
+            catalog: decisionCatalogFromContext(input),
+            decide: decision.decide,
+          });
+          if (tier.status === "proposal") {
+            return interpretCirceCommand(input, prepared, tier.proposal);
+          }
+          if (tier.status === "needs-input") {
+            return tier.needsInput;
+          }
           const prompt = buildCirceSemanticPrompt(input, prepared);
           // fx has no structured-output schema, so it gets the compact prompt
           // that states the proposal shape and keeps reasoning short.
@@ -683,6 +716,27 @@ const defaultInterpreterLayer = Layer.effect(
           if (grammar.status === "proposal") {
             return grammar.proposal;
           }
+          // Decision tier over untrusted evidence. No Director here; the
+          // execution node revalidates. A composed needs-input becomes
+          // unsupported, and only a decline reaches the provider net.
+          const tier = yield* runCirceDecisionTier({
+            source,
+            state: decisionStateFromEvidence(input),
+            catalog: decisionCatalogFromEvidence(input),
+            decide: decision.decide,
+          });
+          if (tier.status === "proposal") {
+            return tier.proposal;
+          }
+          if (tier.status === "needs-input") {
+            return {
+              action: "unsupported" as const,
+              refs: [],
+              model: null,
+              effort: null,
+              answer: null,
+            };
+          }
           const prompt = buildMeshSemanticPrompt({ source, evidence: input });
           const settings = yield* serverSettings.getSettings;
           const providers = yield* readSemanticProviders;
@@ -747,13 +801,15 @@ const defaultInterpreterLayer = Layer.effect(
   }),
 );
 
-export const makeCirceControllerInterpreterLive = <R2 = never, E2 = never>(
+export const makeCirceControllerInterpreterLive = <R2 = never, E2 = never, R3 = never, E3 = never>(
   providerRegistryLayer: Layer.Layer<ProviderRegistry>,
   localModelLayer: Layer.Layer<CirceLocalModel, E2, R2> = CirceLocalModelDisabledLive,
+  decisionLayer: Layer.Layer<CirceDecision, E3, R3> = CirceDecisionDisabledLive,
 ) =>
   defaultInterpreterLayer.pipe(
     Layer.provide(providerRegistryLayer),
     Layer.provide(localModelLayer),
+    Layer.provide(decisionLayer),
   );
 
 /**
