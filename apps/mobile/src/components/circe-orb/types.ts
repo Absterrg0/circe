@@ -24,6 +24,20 @@ export interface CirceOrbProps {
    * where the surrounding strands would be clipped or distracting.
    */
   readonly showField?: boolean;
+  /**
+   * Which field renderer draws behind the sphere. `ribbon` is the shipped silk
+   * geometry; `threads` is the Web Threads shader prototype. Defaults to
+   * `ribbon`.
+   */
+  readonly fieldRenderer?: "ribbon" | "threads";
+  /**
+   * Reveal of the external fiber field, 0..1. Accepts a Reanimated shared
+   * value so the wave can grow outward from the orb during a scene
+   * transition without a React render. The sphere and its interior refraction
+   * are unaffected; only the rear and front planes reveal. Defaults to fully
+   * revealed.
+   */
+  readonly fieldReveal?: number | SharedValue<number>;
   /** Canvas width for the fiber field. Defaults to the window width. */
   readonly width?: number;
   readonly interactive?: boolean;

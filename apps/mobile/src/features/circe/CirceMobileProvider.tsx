@@ -43,6 +43,7 @@ import {
 import { circePlanTargetOutcomes } from "@circe/client-runtime/circe/planPresentation";
 
 import { uuidv4 } from "../../lib/uuid";
+import { NO_DEVICES_COPY } from "./circeAvailability";
 import { circeEnvironment } from "../../state/circe";
 import { circeMeshCatalogAtom, circeMeshEnvironment } from "../../state/circeMesh";
 import { lookupThread } from "../../state/threads";
@@ -64,6 +65,7 @@ import {
   type MobileCirceDraft,
   type MobileCirceTurn,
 } from "./mobileCirceTurn";
+import { speakInLiveConversation, registerLiveConversationDelegate } from "./liveVoiceBridge";
 import {
   hasEnvironmentConnected,
   isAppForegroundTransition,
@@ -130,6 +132,12 @@ function nextOriginInteractionId(): string {
 const MAX_INTERPRETING_TRANSCRIPT_LENGTH = 120;
 
 /**
+ * The lane label while a turn is being interpreted. It is written, never
+ * spoken: a placeholder the user should not hear read aloud.
+ */
+const MOBILE_INTERPRETING_MARKER = "Interpreting";
+
+/**
  * Submission feedback through the message lane: the request is being
  * interpreted, not accepted, and no task progress is claimed. The retained
  * transcript travels along so correction stays possible.
@@ -140,7 +148,9 @@ function formatMobileInterpretingMessage(utterance: string): string {
     retained.length <= MAX_INTERPRETING_TRANSCRIPT_LENGTH
       ? retained
       : `${retained.slice(0, MAX_INTERPRETING_TRANSCRIPT_LENGTH - 1).trim()}…`;
-  return bounded.length === 0 ? "Interpreting your request…" : `Heard: "${bounded}" Interpreting…`;
+  return bounded.length === 0
+    ? "Interpreting your request…"
+    : `Heard: "${bounded}" ${MOBILE_INTERPRETING_MARKER}…`;
 }
 
 export function CirceMobileProvider(props: { readonly children: ReactNode }) {
@@ -1302,7 +1312,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         selectedProject?.ref ??
         preferredProjectRef;
       if (catalog === null) {
-        setMessage("Connect an Circe execution node before starting work.");
+        setMessage(NO_DEVICES_COPY);
         return;
       }
       const semanticNode = selectCirceSemanticNode(
@@ -1314,7 +1324,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         setMessage(
           anyOnline
             ? "No Circe conversation provider is ready. Check the node's provider setup."
-            : "Connect an Circe execution node before starting work.",
+            : NO_DEVICES_COPY,
         );
         return;
       }
@@ -1331,7 +1341,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
       const liveSemanticNode =
         evidenceCatalog.nodes.find((node) => node.nodeId === semanticNode.nodeId) ?? semanticNode;
       if (liveSemanticNode.reachability !== "online") {
-        setMessage("Connect an Circe execution node before starting work.");
+        setMessage(NO_DEVICES_COPY);
         return;
       }
       // Bounded evidence matches the direct wire's 8-task window: recent desk
@@ -1677,7 +1687,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           }));
           const prompt =
             candidates.length === 0
-              ? "Connect an Circe execution node before starting work."
+              ? NO_DEVICES_COPY
               : "Which project should I use? Type its name or number.";
           if (candidates.length === 0) {
             setMessage(prompt);
@@ -1812,6 +1822,9 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
 
   const onPresentation = useCallback(
     (turn: MobileCirceTurn, event: CircePresentationEvent) => {
+      // The written lane records the result; a live conversation speaks it
+      // through the message funnel below, so the transcript and the durable
+      // task state stay inspectable.
       setMessage(event.text);
       setPresentations((current) =>
         [
@@ -1843,6 +1856,31 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     },
     [refreshTaskDesk, removeActiveTurn, replaceActiveTurn],
   );
+
+  // A live conversation submits each delegated utterance through the ordinary
+  // queue, so the Director, grounding, clarification, and approval state behave
+  // exactly as a typed turn. The handler is sync because the live protocol
+  // needs to know immediately whether a submission was accepted; the turn
+  // itself is already tracked by the queue once accepted.
+  useEffect(
+    () =>
+      registerLiveConversationDelegate((utterance) => {
+        void runInstruction(createTextTurn(), utterance);
+        return true;
+      }),
+    [createTextTurn, runInstruction],
+  );
+
+  // Every user-visible lane message is also spoken while a live conversation is
+  // running: the user is listening, not reading. This is the one seam that
+  // covers task presentations and bounded actions (lookup, website, converse)
+  // alike. Interpret progress placeholders stay written-only.
+  useEffect(() => {
+    if (message === null) return;
+    const spoken = message.trim();
+    if (spoken.length === 0 || spoken.includes(MOBILE_INTERPRETING_MARKER)) return;
+    speakInLiveConversation(spoken);
+  }, [message]);
 
   const value = useMemo<CirceControllerValue>(
     () => ({

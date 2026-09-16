@@ -12,7 +12,8 @@
  * alpha ceiling is 0.42 so the pass reads as smoked glass, not as a second
  * opaque sphere.
  *
- * Order in the composition is base, interior ribbon, volume, shell.
+ * Order in the composition is base, volume, shell. The ribbon is behind the
+ * whole sphere, so nothing in this pass competes with strands.
  */
 export const ORB_VOLUME_SKSL = `
 uniform float2 center;
@@ -32,26 +33,37 @@ half4 main(float2 xy) {
 
   // Broad field hugging the inside of the hull. This is the bulk of the
   // volume, and it is why the sphere is not a black disc.
-  float edgeField = smoothstep(0.30, 0.96, r);
+  float edgeField = smoothstep(0.55, 0.99, r);
 
-  // Two asymmetric lobes: a lower-body glow and a left-side light. The
-  // reference lighting is not radially symmetric.
+  // Three asymmetric lobes: a lower-body glow, a left-side light, and a key
+  // reflection high on the lit side. The reference lighting is not radially
+  // symmetric, and without the key term the outer field alone reads as a ring
+  // rather than as light collecting on a surface.
   float lowerGlow = exp(
     -pow((uv.x - 0.12) / 0.78, 2.0) - pow((uv.y - 0.34) / 0.55, 2.0)
   );
   float sideGlow = exp(
-    -pow((uv.x + 0.48) / 0.45, 2.0) - pow((uv.y + 0.08) / 0.75, 2.0)
+    -pow((uv.x + 0.52) / 0.42, 2.0) - pow((uv.y + 0.08) / 0.70, 2.0)
+  );
+  float keyGlow = exp(
+    -pow((uv.x + 0.55) / 0.36, 2.0) - pow((uv.y + 0.72) / 0.34, 2.0)
   );
 
-  float warm = edgeField * 0.22 + lowerGlow * 0.18 + sideGlow * 0.12;
-  warm *= volumeIntensity * (1.0 + energy * 0.3);
+  // Every lobe is pushed out toward the hull on purpose, and masked again by
+  // radius so none of them can light the middle. The centre of this object
+  // absorbs light; letting the volume reach it is what turns the lens into a
+  // copper coin, which is the one failure the palette notes call out by name.
+  float hullMask = smoothstep(0.48, 0.92, r);
+  float warm =
+    edgeField * 0.30 + (lowerGlow * 0.16 + sideGlow * 0.12 + keyGlow * 0.18) * hullMask;
+  warm *= volumeIntensity * (1.0 + energy * 0.40);
 
   // Read through deep copper into copper, with peach only at the strongest
   // lobes. White is never reached here.
   float3 color = mix(deepColor.rgb, copperColor.rgb, smoothstep(0.0, 0.8, warm));
   color = mix(color, peachColor.rgb, smoothstep(0.7, 1.0, warm) * 0.5);
 
-  float alpha = clamp(warm, 0.0, 0.42);
+  float alpha = clamp(warm, 0.0, 0.40);
   float edge = 1.0 - smoothstep(0.985, 1.0, r);
   return half4(color * alpha * edge, alpha * edge);
 }

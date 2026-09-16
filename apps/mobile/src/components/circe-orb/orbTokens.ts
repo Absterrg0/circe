@@ -76,8 +76,6 @@ export const ORB_MOTION = {
   shellTraversalMs: 11000,
   /** Wavelength of the primary fiber, in points. */
   strandWavelengthPx: 322,
-  /** Blend steps the fiber field interpolates between. */
-  morphSteps: 3,
 } as const;
 
 export interface OrbAppearanceTuning {
@@ -101,13 +99,15 @@ export const ORB_APPEARANCE: Record<OrbAppearance, OrbAppearanceTuning> = {
     bloomScale: 0.85,
     shellScale: 1,
     coreWarmthScale: 1,
-    fieldAlphaScale: 0.9,
+    fieldAlphaScale: 0.8,
   },
   dark: {
     bloomScale: 0.5,
     shellScale: 1.15,
     coreWarmthScale: 1.1,
-    fieldAlphaScale: 1.15,
+    // A thin glowing thread at low alpha disappears against near-black; the
+    // dark surface needs the field to emit more light, not just cover more.
+    fieldAlphaScale: 1.5,
   },
 };
 

@@ -27,7 +27,7 @@ export function OrbShell({
   readonly centerY: number;
   readonly radius: number;
   readonly energySV: SharedValue<number>;
-  readonly shellIntensity: number;
+  readonly shellIntensity: SharedValue<number>;
   readonly reducedMotion: boolean;
 }) {
   const clock = useClock();
@@ -58,7 +58,7 @@ export function OrbShell({
       center: [centerX, centerY],
       radius,
       shellPhase: phase,
-      shellIntensity,
+      shellIntensity: shellIntensity.value,
       energy: energySV.value,
       deepColor: colors.deep,
       copperColor: colors.copper,
@@ -66,6 +66,10 @@ export function OrbShell({
       hotColor: colors.hot,
     };
   }, [centerX, centerY, clock, colors, energySV, radius, reducedMotion, shellIntensity]);
+
+  // Only the no-shader fallback paints the hull as a stroked circle, so its
+  // opacity stays a derived value rather than a React-rendered number.
+  const fallbackOpacity = useDerivedValue(() => 0.5 * shellIntensity.value, [shellIntensity]);
 
   if (effect !== null) {
     return (
@@ -83,7 +87,7 @@ export function OrbShell({
       style="stroke"
       strokeWidth={1.2}
       color={ORB_PALETTE.peach}
-      opacity={0.5 * shellIntensity}
+      opacity={fallbackOpacity}
     />
   );
 }

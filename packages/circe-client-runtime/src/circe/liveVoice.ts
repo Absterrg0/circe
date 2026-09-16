@@ -36,6 +36,14 @@ export const CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS = 8_000;
 export const CIRCE_LIVE_VOICE_MAX_FRAGMENTS = 200;
 
 /**
+ * The on-screen caption shows only the tail of whoever is speaking. A live
+ * session transcript grows for its whole duration, so a caption read from the
+ * cumulative text would keep appending and swamp the orb.
+ */
+export const CIRCE_LIVE_VOICE_MAX_CAPTION_SENTENCES = 3;
+export const CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS = 220;
+
+/**
  * Silence between transcript fragments that starts a new utterance. The live
  * model may delegate after several spoken lines ("hello", "can you hear me",
  * "check pull requests in Rivvl"); the Director needs the request line, not
@@ -43,6 +51,40 @@ export const CIRCE_LIVE_VOICE_MAX_FRAGMENTS = 200;
  * clock, and delivery can be uneven, so this is a grouping heuristic.
  */
 export const CIRCE_LIVE_VOICE_UTTERANCE_GAP_MS = 1_200;
+
+/**
+ * Follow-up speech that only makes sense against the previous request: an
+ * instruction to act on it, or a correction to it. Deliberately narrow.
+ *
+ * A short general command ("stop", "yes", "no") is not included, because those
+ * are legitimate new requests and must not inherit the previous one. Only
+ * explicit references to the earlier request are carried.
+ */
+export const CIRCE_LIVE_VOICE_FOLLOW_UP =
+  /\b(?:just|please)\s+delegate\b|\b(?:go ahead|do it|try again|check it|look it up|you can (?:check|look|try|just|delegate|ask)|i mean|actually|instead|not that|that's not what)\b/iu;
+
+/** Word budget for a follow-up; a long sentence states its own request. */
+export const CIRCE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS = 12;
+
+/**
+ * Deterministic quick actions: weather and local time in a named place. These
+ * are backend tools with a fixed, cheap implementation, so they must never
+ * depend on the speech model deciding to delegate.
+ *
+ * A realtime speech model is not a reliable dispatcher: prompted not to refuse,
+ * it still improvises "I can't check live weather", and the delegation carries
+ * no intent for the client to recover. Recognizing the request from the
+ * transcript and delegating it directly is the difference between "normal
+ * things work" and "it randomly says it can't".
+ *
+ * Deliberately narrow: only weather/time phrasings, so ordinary conversation is
+ * never force-delegated and answered twice.
+ */
+export function isCirceLiveVoiceQuickAction(text: string): boolean {
+  return /\b(?:weather|forecast|temperature|how (?:hot|cold)|will it (?:rain|snow)|is it (?:raining|snowing)|local time|what time is it|time in)\b/iu.test(
+    text,
+  );
+}
 
 export interface CirceLiveVoiceTranscriptFragment {
   readonly text: string;
@@ -63,6 +105,12 @@ export interface CirceLiveVoiceTranscriptState {
   readonly assistantFragments: ReadonlyArray<CirceLiveVoiceTranscriptFragment>;
   /** User fragments added since the last delegation was taken. */
   readonly pendingUserFragments: ReadonlyArray<CirceLiveVoiceTranscriptFragment>;
+  /**
+   * The last utterance actually handed to the backend. A follow-up or
+   * correction has no meaning on its own ("just delegate", "you can check live
+   * weather"), so it is delegated together with the request it refers to.
+   */
+  readonly lastDelegatedText: string;
 }
 
 export function createCirceLiveVoiceTranscript(): CirceLiveVoiceTranscriptState {
@@ -73,6 +121,7 @@ export function createCirceLiveVoiceTranscript(): CirceLiveVoiceTranscriptState 
     userFragments: [],
     assistantFragments: [],
     pendingUserFragments: [],
+    lastDelegatedText: "",
   };
 }
 
@@ -209,6 +258,52 @@ export function applyCirceLiveVoiceTranscript(
   }
 }
 
+/**
+ * The live caption: the tail of what Circe has said, cut to the last few
+ * sentences and a hard character bound.
+ *
+ * Only the assistant side is ever shown. The caption is a readout of the
+ * assistant, not a two-party transcript: echoing the user's own words back at
+ * them in the same slot makes the surface look like it is transcribing the room
+ * instead of speaking. The user already knows what they said, and the live
+ * model makes no sense shown next to its own prompt.
+ *
+ * Derived on every fragment instead of accumulated, so a long conversation
+ * cannot grow the caption.
+ */
+export function circeLiveVoiceCaption(
+  state: CirceLiveVoiceTranscriptState,
+  options?: { readonly maxSentences?: number; readonly maxChars?: number },
+): string | null {
+  const maxSentences = options?.maxSentences ?? CIRCE_LIVE_VOICE_MAX_CAPTION_SENTENCES;
+  const maxChars = options?.maxChars ?? CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS;
+  const spoken = state.assistantText.trim();
+  if (spoken.length === 0) return null;
+  const bounded = boundCaptionChars(lastSentences(spoken, maxSentences), maxChars);
+  return bounded.length === 0 ? null : bounded;
+}
+
+/** Sentence-final punctuation followed by whitespace or the end of the run. */
+const SENTENCE_END = /[.!?]+(?=\s|$)/gu;
+
+/** The last `maxSentences` sentences, with commas and abbreviations left alone. */
+function lastSentences(text: string, maxSentences: number): string {
+  if (maxSentences <= 0) return text;
+  const ends = [...text.matchAll(SENTENCE_END)];
+  if (ends.length <= maxSentences) return text;
+  const boundary = ends[ends.length - maxSentences - 1];
+  if (boundary?.index === undefined) return text;
+  return text.slice(boundary.index + boundary[0].length).trim();
+}
+
+/** Trim from the front at a word boundary so a caption never starts mid-word. */
+function boundCaptionChars(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const tail = text.slice(text.length - maxChars);
+  const firstSpace = tail.search(/\s/u);
+  return (firstSpace === -1 ? tail : tail.slice(firstSpace)).trimStart();
+}
+
 /** Last sentence of a run with no usable timing; commas never split. */
 function lastSentence(text: string): string {
   const trimmed = text.trim();
@@ -305,14 +400,17 @@ export function takeCirceLiveVoiceDelegateUtterance(state: CirceLiveVoiceTranscr
       .map((fragment) => fragment.text)
       .join("")
       .trim();
-    return { utterance: lastSentence(joined), state: cleared };
+    const utterance = lastSentence(joined);
+    return { utterance, state: { ...cleared, lastDelegatedText: utterance } };
   }
   const candidate = groups[groups.length - 1];
   if (candidate === undefined || candidate.text.length === 0) {
     return { utterance: "", state: cleared };
   }
 
+  const words = candidate.text.split(/\s+/u).filter((word) => word.length > 0);
   let utterance = candidate.text;
+  let inherited = false;
   if (groups.length >= 2) {
     const previousPendingGroup = groups[groups.length - 2]!;
     const answeredQuestion = state.assistantFragments.some(
@@ -323,12 +421,24 @@ export function takeCirceLiveVoiceDelegateUtterance(state: CirceLiveVoiceTranscr
         fragment.endMs <= candidate.startMs &&
         fragment.text.includes("?"),
     );
-    const words = candidate.text.split(/\s+/u).filter((word) => word.length > 0);
     if (answeredQuestion && words.length <= 4) {
       utterance = `${previousPendingGroup.text} ${candidate.text}`.trim();
+      inherited = true;
     }
   }
-  return { utterance, state: cleared };
+  // A correction or instruction aimed at the previous request ("you can check
+  // live weather", "just delegate") is meaningless alone; the backend needs the
+  // request it refers to. The pending utterance is only the follow-up because
+  // the original was already consumed by the previous delegation.
+  if (
+    !inherited &&
+    state.lastDelegatedText.length > 0 &&
+    words.length <= CIRCE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS &&
+    CIRCE_LIVE_VOICE_FOLLOW_UP.test(candidate.text)
+  ) {
+    utterance = `${state.lastDelegatedText} ${candidate.text}`.trim();
+  }
+  return { utterance, state: { ...cleared, lastDelegatedText: utterance } };
 }
 
 /**

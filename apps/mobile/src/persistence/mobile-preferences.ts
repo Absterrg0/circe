@@ -43,6 +43,12 @@ export interface Preferences {
   readonly codeFontSize?: number | null;
   readonly codeWordBreak?: boolean;
   readonly connectOnboardingOptOutAccounts?: ReadonlyArray<string>;
+  /**
+   * Runs Circe without a Circe Mesh account. Set from the welcome screen when
+   * the user chooses "Continue as guest"; cleared whenever a session is
+   * activated. The signed-out gate treats it as permission to skip onboarding.
+   */
+  readonly guestMode?: boolean;
   readonly collapsedProjectGroups?: readonly string[];
   /** @deprecated Kept temporarily so older OTA bundles retain the selected mode. */
   readonly projectGroupingEnabled?: boolean;
@@ -116,6 +122,7 @@ export function sanitizePreferences(parsed: Preferences): Preferences {
     codeFontSize?: number | null;
     codeWordBreak?: boolean;
     connectOnboardingOptOutAccounts?: ReadonlyArray<string>;
+    guestMode?: boolean;
     collapsedProjectGroups?: readonly string[];
     projectGroupingEnabled?: boolean;
     projectGroupingMode?: SidebarProjectGroupingMode;
@@ -196,6 +203,9 @@ export function sanitizePreferences(parsed: Preferences): Preferences {
     preferences.connectOnboardingOptOutAccounts = parsed.connectOnboardingOptOutAccounts.filter(
       (account): account is string => typeof account === "string",
     );
+  }
+  if (typeof parsed.guestMode === "boolean") {
+    preferences.guestMode = parsed.guestMode;
   }
   if (Array.isArray(parsed.collapsedProjectGroups)) {
     preferences.collapsedProjectGroups = parsed.collapsedProjectGroups.filter(

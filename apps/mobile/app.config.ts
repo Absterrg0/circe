@@ -99,7 +99,7 @@ const RELEASE_ASSETS = {
 const VARIANT_CONFIG = {
   development: {
     appName: "Circe Dev",
-    scheme: "t3code-dev",
+    scheme: "circe-dev",
     iosBundleIdentifier: "com.abstergo.circe.dev",
     androidPackage: "com.abstergo.circe.dev",
     relyingParty: CLERK_RELYING_PARTY,
@@ -107,7 +107,7 @@ const VARIANT_CONFIG = {
   },
   preview: {
     appName: "Circe Preview",
-    scheme: "t3code-preview",
+    scheme: "circe-preview",
     iosBundleIdentifier: "com.abstergo.circe.preview",
     androidPackage: "com.abstergo.circe.preview",
     relyingParty: CLERK_RELYING_PARTY,
@@ -115,7 +115,7 @@ const VARIANT_CONFIG = {
   },
   production: {
     appName: "Circe",
-    scheme: "t3code",
+    scheme: "circe",
     iosBundleIdentifier: "com.abstergo.circe",
     androidPackage: "com.abstergo.circe",
     relyingParty: CLERK_RELYING_PARTY,

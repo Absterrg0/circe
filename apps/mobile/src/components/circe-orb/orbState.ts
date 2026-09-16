@@ -20,6 +20,13 @@ export interface OrbStateParams {
   readonly fieldCycleSeconds: number;
   /** Shell (hull light) intensity. */
   readonly rimIntensity: number;
+  /**
+   * How much of the thread field is refracted inside the lens. Its own knob
+   * rather than a side effect of `fieldAlpha`: the field behind the orb is part
+   * of the idle composition, but threads floating inside an otherwise still
+   * lens read as dirt on the glass. Zero in idle, one when the orb is active.
+   */
+  readonly interiorThreads: number;
   /** Atmospheric bloom intensity. */
   readonly bloomIntensity: number;
   /**
@@ -43,6 +50,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 0.85,
     fieldCycleSeconds: 11,
     rimIntensity: 0.8,
+    interiorThreads: 0,
     bloomIntensity: 0.45,
     volumeIntensity: 1,
     coreWarmth: 0.72,
@@ -55,6 +63,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 1.15,
     fieldCycleSeconds: 5,
     rimIntensity: 1.15,
+    interiorThreads: 1,
     bloomIntensity: 0.8,
     volumeIntensity: 1.25,
     coreWarmth: 0.8,
@@ -69,6 +78,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 0.8,
     fieldCycleSeconds: 9,
     rimIntensity: 1.05,
+    interiorThreads: 0.7,
     bloomIntensity: 0.55,
     volumeIntensity: 1.1,
     coreWarmth: 0.82,
@@ -81,6 +91,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 1.25,
     fieldCycleSeconds: 6,
     rimIntensity: 1.25,
+    interiorThreads: 1,
     bloomIntensity: 0.85,
     volumeIntensity: 1.3,
     coreWarmth: 0.68,
@@ -93,6 +104,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 1,
     fieldCycleSeconds: 12,
     rimIntensity: 1.4,
+    interiorThreads: 0.45,
     bloomIntensity: 0.95,
     volumeIntensity: 1.15,
     coreWarmth: 0.6,
@@ -105,6 +117,7 @@ const BASE: Record<CirceOrbState, OrbStateParams> = {
     fieldAmplitude: 0.55,
     fieldCycleSeconds: 8,
     rimIntensity: 0.6,
+    interiorThreads: 0.2,
     bloomIntensity: 0.35,
     volumeIntensity: 0.7,
     coreWarmth: 0.35,

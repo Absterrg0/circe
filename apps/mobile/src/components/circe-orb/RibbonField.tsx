@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Group, Path, Skia, usePathInterpolation, type SkPath } from "@shopify/react-native-skia";
+import { Group, Path, Skia, type SkPath } from "@shopify/react-native-skia";
 import { useDerivedValue, type SharedValue } from "react-native-reanimated";
 
 import {
@@ -10,7 +10,7 @@ import {
   hash01,
   type OrbAppearance,
 } from "./orbTokens";
-import type { OrbStateParams } from "./orbState";
+import type { OrbAnimatedParams } from "./orbTransition";
 
 /**
  * The Circe ribbon.
@@ -46,8 +46,27 @@ interface Filament {
 }
 
 const OVERSCAN = 140;
-const SEGMENTS = 128;
-const MORPH_STEPS = ORB_MOTION.morphSteps;
+const SEGMENTS = 64;
+
+/**
+ * How far the ribbon sways, in points. The field drifts by translating its
+ * geometry because paths cannot be animated on this Skia build: handing a
+ * shared value to a `path` prop takes the whole canvas down, whether the path
+ * was built on the JS thread or inside the derived value. That is also why
+ * Skia's own `usePathInterpolation` left every fiber invisible — its
+ * interpolated path is published through a private UI-thread notification the
+ * renderer never heard.
+ *
+ * Travel is bounded rather than continuous. The field's amplitude envelope is
+ * centred on the sphere, and translating the geometry carries that envelope
+ * with it, so a full wavelength of travel would sweep the ribbon's shape across
+ * the screen instead of flowing it through the orb. A fraction of a wavelength
+ * reads as the silk sliding past and leaves the shape where it was designed.
+ */
+const FLOW_TRAVEL = 52;
+
+/** A translate-only transform array, the shape Skia's Group accepts. */
+type TranslateTransform = { translateX: number }[];
 
 /** Primary wavelength of the shared centerline, in points. */
 const CENTERLINE_K = (Math.PI * 2) / ORB_MOTION.strandWavelengthPx;
@@ -101,29 +120,19 @@ function buildFilaments(radius: number): Filament[] {
   return filaments;
 }
 
-export type RibbonPlane = "rear" | "interior" | "front";
-
 /**
  * The shared centerline: one broad S-curve that every ribbon filament follows.
  *
- * Both harmonics carry an integer coefficient on the phase, so the curve
- * returns to exactly its starting shape after a full phase revolution and the
- * interpolation between keyframes is seamless.
+ * The shape is built once, at zero phase, and the field's travel is a
+ * translation of that geometry rather than a re-derivation of it. There is no
+ * phase argument and no amplitude argument for the same reason: both were part
+ * of a path-morphing approach this renderer cannot support, and a knob nothing
+ * can turn is worse than no knob.
  */
-function centerlineY(
-  x: number,
-  centerX: number,
-  centerY: number,
-  radius: number,
-  phase: number,
-  amplitudeScale: number,
-): number {
+function centerlineY(x: number, centerX: number, centerY: number, radius: number): number {
   const envelope = 0.28 + 0.72 * Math.exp(-Math.pow((x - centerX) / (radius * 1.35), 2));
   return (
-    centerY +
-    (Math.sin(CENTERLINE_K * x + phase) * 17 + Math.sin(CENTERLINE_K * 0.5 * x - phase) * 8) *
-      envelope *
-      amplitudeScale
+    centerY + (Math.sin(CENTERLINE_K * x) * 17 + Math.sin(CENTERLINE_K * 0.5 * x) * 8) * envelope
   );
 }
 
@@ -132,26 +141,25 @@ function bundleEnvelope(x: number, centerX: number, radius: number): number {
   return 0.3 + 0.7 * Math.exp(-Math.pow((x - centerX) / (radius * 1.1), 2));
 }
 
+/**
+ * One strand, as a polyline. The bundle is widest where it passes the sphere,
+ * which is what makes the ribbon read as a single piece of silk gathered at the
+ * centre rather than as parallel lines.
+ */
 function buildFilamentPath(
   filament: Filament,
-  phase: number,
   width: number,
   centerX: number,
   centerY: number,
   radius: number,
-  plane: RibbonPlane,
-  amplitudeScale: number,
 ): SkPath {
   const path = Skia.PathBuilder.Make();
   const span = width + OVERSCAN * 2;
   const bundleHalfWidth = radius * 0.3;
-  const refraction = plane === "interior";
 
   for (let s = 0; s <= SEGMENTS; s += 1) {
     const t = s / SEGMENTS;
     const x = t * span - OVERSCAN;
-    const nx = Math.max(-1, Math.min(1, (x - centerX) / radius));
-    const z = Math.sqrt(Math.max(0, 1 - nx * nx));
 
     let outY: number;
 
@@ -159,22 +167,11 @@ function buildFilamentPath(
       outY =
         centerY +
         filament.yOffset +
-        Math.sin(filament.frequency * x + phase + filament.phase) * filament.amplitude;
+        Math.sin(filament.frequency * x + filament.phase) * filament.amplitude;
     } else {
-      // Inside the lens the centerline's phase is delayed by depth and its
-      // amplitude grows, so the ribbon visibly bends as it enters the sphere.
-      const lensPhase = refraction ? phase + z * 1.1 : phase;
-      const lensAmplitude = amplitudeScale * (refraction ? 1 + z * 0.45 : 1);
-      const base = centerlineY(x, centerX, centerY, radius, lensPhase, lensAmplitude);
-      const jitter =
-        Math.sin(x * 0.021 + phase * 0.5 + filament.jitterPhase) * filament.jitterAmount;
+      const base = centerlineY(x, centerX, centerY, radius);
+      const jitter = Math.sin(x * 0.021 + filament.jitterPhase) * filament.jitterAmount;
       outY = base + filament.offset * bundleHalfWidth * bundleEnvelope(x, centerX, radius) + jitter;
-
-      if (refraction) {
-        // Lens pinch: the bundle compresses toward the optical axis, hardest
-        // at the centre of the sphere where the glass is thickest.
-        outY = centerY + (outY - centerY) * (1 - 0.42 * z);
-      }
     }
 
     if (s === 0) path.moveTo(x, outY);
@@ -189,8 +186,7 @@ function Filament({
   centerX,
   centerY,
   radius,
-  plane,
-  fieldPhase,
+  flowTransform,
   energySV,
   params,
   appearance,
@@ -200,58 +196,49 @@ function Filament({
   readonly centerX: number;
   readonly centerY: number;
   readonly radius: number;
-  readonly plane: RibbonPlane;
-  readonly fieldPhase: SharedValue<number>;
+  readonly flowTransform: SharedValue<TranslateTransform>;
   readonly energySV: SharedValue<number>;
-  readonly params: OrbStateParams;
+  readonly params: OrbAnimatedParams;
   readonly appearance: OrbAppearance;
 }) {
-  // The state's field amplitude feeds the path itself, not just a scale applied
-  // afterwards. Without this the parameter existed but changed nothing.
-  const amplitudeScale = params.fieldAmplitude;
-
-  const frames = useMemo(() => {
-    const step = (Math.PI * 2) / MORPH_STEPS;
-    return Array.from({ length: MORPH_STEPS + 1 }, (_, index) =>
-      buildFilamentPath(
-        filament,
-        index * step,
-        width,
-        centerX,
-        centerY,
-        radius,
-        plane,
-        amplitudeScale,
-      ),
-    );
-  }, [filament, width, centerX, centerY, radius, plane, amplitudeScale]);
-
-  const localPhase = useDerivedValue(() => fieldPhase.value, [fieldPhase]);
-  const morphed = usePathInterpolation(
-    localPhase,
-    Array.from({ length: MORPH_STEPS + 1 }, (_, index) => index),
-    frames,
+  // Built once at unit amplitude. The state's field amplitude is a scale on the
+  // group below rather than baked geometry, so a state change eases instead of
+  // rebuilding every path on the JS thread and popping the ribbon's shape.
+  const path = useMemo(
+    () => buildFilamentPath(filament, width, centerX, centerY, radius),
+    [filament, width, centerX, centerY, radius],
   );
 
-  // Microphone energy widens the ribbon vertically and lifts its brightness.
+  // The state's field amplitude sets the wave height, and the voice opens the
+  // ribbon up from there: because the scale is applied to the whole strand and
+  // not only to the wave, energy lifts the bundle's spread as well as its
+  // height. That spread is the ruffle — the silk loosening as someone speaks
+  // and settling back when they stop.
   const stretch = useDerivedValue(
-    () => [{ scaleY: 1 + energySV.value * 0.45 * params.energyResponse }],
-    [energySV, params.energyResponse],
+    () => [
+      {
+        scaleY:
+          params.fieldAmplitude.value * (1 + energySV.value * 0.85 * params.energyResponse.value),
+      },
+    ],
+    [energySV, params.energyResponse, params.fieldAmplitude],
   );
+  // Brightness is deliberately not multiplied by the reveal here: the field's
+  // own group already fades the whole ribbon in, and doing it twice made the
+  // strands quadratic through the transition and hollow at the halfway point.
   const liveAlpha = useDerivedValue(
     () =>
       filament.alpha *
-      params.fieldAlpha *
+      params.fieldAlpha.value *
       ORB_APPEARANCE[appearance].fieldAlphaScale *
-      (1 + energySV.value * 0.35 * params.energyResponse),
+      (1 + energySV.value * 0.8 * params.energyResponse.value),
     [appearance, energySV, filament.alpha, params.energyResponse, params.fieldAlpha],
   );
 
   const restY = centerY + filament.yOffset;
-  const glowColor = useDerivedValue(
-    () => alphaColor(filament.color, liveAlpha.value * 0.1),
-    [filament.color, liveAlpha],
-  );
+  // One pass per filament. An earlier glow-plus-core double pass doubled the
+  // fill for a halo the eye could not separate from the stroke, so the core
+  // carries a little extra width instead.
   const coreColor = useDerivedValue(
     () => alphaColor(filament.color, liveAlpha.value),
     [filament.color, liveAlpha],
@@ -259,65 +246,71 @@ function Filament({
 
   return (
     <Group origin={{ x: centerX, y: restY }} transform={stretch}>
-      <Path
-        path={morphed}
-        style="stroke"
-        strokeWidth={filament.width * 5}
-        strokeCap="round"
-        color={glowColor}
-      />
-      <Path
-        path={morphed}
-        style="stroke"
-        strokeWidth={filament.width}
-        strokeCap="round"
-        color={coreColor}
-      />
+      <Group transform={flowTransform}>
+        <Path
+          path={path}
+          style="stroke"
+          strokeWidth={filament.width * 1.15}
+          strokeCap="round"
+          color={coreColor}
+        />
+      </Group>
     </Group>
   );
 }
 
 /**
- * One plane of the ribbon field.
+ * The ribbon field, drawn once and entirely behind the lens.
  *
- * `rear` renders behind the sphere, `interior` is refracted and must be drawn
- * between the base and volume passes, and `front` crosses over the whole
- * composition. The same ribbon in three planes is what produces depth; none of
- * this is a real 3D render.
+ * There is one pass, not three. An earlier version also drew the ribbon
+ * refracted inside the glass and again across the front, which read as strands
+ * printed on the lens and broke the silhouette. The sphere's opaque base is now
+ * the only thing that hides the ribbon, so it passes behind the object the way
+ * a physical ribbon behind a lens would.
  */
-export function OrbRibbonPlane({
-  plane,
+export function OrbRibbonField({
   width,
   centerX,
   centerY,
   radius,
-  clip,
-  fieldPhase,
+  flowSV,
   energySV,
+  revealSV,
   params,
   appearance,
 }: {
-  readonly plane: RibbonPlane;
   readonly width: number;
   readonly centerX: number;
   readonly centerY: number;
   readonly radius: number;
-  readonly clip?: SkPath;
-  readonly fieldPhase: SharedValue<number>;
+  readonly flowSV: SharedValue<number>;
   readonly energySV: SharedValue<number>;
-  readonly params: OrbStateParams;
+  readonly revealSV: SharedValue<number>;
+  readonly params: OrbAnimatedParams;
   readonly appearance: OrbAppearance;
 }) {
   const filaments = useMemo(() => buildFilaments(radius), [radius]);
 
-  // The front plane carries only the two highlighted filaments, so the ribbon
-  // reads as crossing in front rather than as a second full field.
-  const visible =
-    plane === "front"
-      ? filaments.filter((f) => !f.independent && (f.index === 2 || f.index === 5))
-      : filaments;
+  // The reveal grows the field outward from the sphere: strands fade in while
+  // the whole ribbon scales up from the orb centre, so the wave reads as
+  // originating from Circe rather than switching on across the screen. The
+  // strands themselves carry no reveal term, so this is the only place the
+  // transition is applied.
+  // The whole ribbon travels together, so this is composed once for the field
+  // rather than once per strand. Every strand's travel is now identical, and
+  // twenty-eight identical derivations invalidate on every frame for nothing.
+  const flowTransform = useDerivedValue(
+    () => [{ translateX: flowSV.value * FLOW_TRAVEL }],
+    [flowSV],
+  );
 
-  const strands = visible.map((filament) => (
+  const revealOpacity = useDerivedValue(() => revealSV.value, [revealSV]);
+  const revealTransform = useDerivedValue(
+    () => [{ scale: 0.55 + 0.45 * revealSV.value }],
+    [revealSV],
+  );
+
+  const strands = filaments.map((filament) => (
     <Filament
       key={filament.index}
       filament={filament}
@@ -325,14 +318,16 @@ export function OrbRibbonPlane({
       centerX={centerX}
       centerY={centerY}
       radius={radius}
-      plane={plane}
-      fieldPhase={fieldPhase}
+      flowTransform={flowTransform}
       energySV={energySV}
       params={params}
       appearance={appearance}
     />
   ));
 
-  if (clip === undefined) return <Group>{strands}</Group>;
-  return <Group clip={clip}>{strands}</Group>;
+  return (
+    <Group origin={{ x: centerX, y: centerY }} transform={revealTransform} opacity={revealOpacity}>
+      {strands}
+    </Group>
+  );
 }

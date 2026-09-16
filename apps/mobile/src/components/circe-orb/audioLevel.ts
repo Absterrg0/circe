@@ -4,13 +4,17 @@
  *   raw meter (0..1 amplitude) -> noise floor -> response curve
  *   -> attack/release smoothing -> clamped 0..1 level
  *
- * Silence settles gracefully, speech onset reacts quickly, release is slower
- * so the visual never jitters. Tiny microphone noise stays below the floor.
+ * Silence settles gracefully, speech onset reacts quickly, release is slower so
+ * the visual never jitters. Tiny microphone noise stays below the floor.
+ *
+ * The attack and release rates are per sample, so they are tuned against the
+ * meter interval in the orb hook: at 50 ms, an attack of 0.62 puts most of a
+ * syllable's onset into the first frame the orb sees.
  */
 
 export const ORB_NOISE_FLOOR = 0.06;
-export const ORB_ATTACK = 0.55;
-export const ORB_RELEASE = 0.12;
+export const ORB_ATTACK = 0.62;
+export const ORB_RELEASE = 0.14;
 
 export function clamp01(value: number): number {
   if (!Number.isFinite(value)) return 0;

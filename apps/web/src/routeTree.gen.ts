@@ -14,6 +14,7 @@ import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ConnectRouteImport } from './routes/connect'
+import { Route as CircePreviewRouteImport } from './routes/circe-preview'
 import { Route as CirceRouteImport } from './routes/circe'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
@@ -57,6 +58,11 @@ const PairRoute = PairRouteImport.update({
 const ConnectRoute = ConnectRouteImport.update({
   id: '/connect',
   path: '/connect',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CircePreviewRoute = CircePreviewRouteImport.update({
+  id: '/circe-preview',
+  path: '/circe-preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CirceRoute = CirceRouteImport.update({
@@ -158,6 +164,7 @@ const ChatEnvironmentIdThreadIdRoute =
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
   '/circe': typeof CirceRoute
+  '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -182,6 +189,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/circe': typeof CirceRoute
+  '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -209,6 +217,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
   '/circe': typeof CirceRoute
+  '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
@@ -237,6 +246,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/circe'
+    | '/circe-preview'
     | '/connect'
     | '/pair'
     | '/settings'
@@ -261,6 +271,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/circe'
+    | '/circe-preview'
     | '/connect'
     | '/pair'
     | '/settings'
@@ -287,6 +298,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_chat'
     | '/circe'
+    | '/circe-preview'
     | '/connect'
     | '/pair'
     | '/settings'
@@ -314,6 +326,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   CirceRoute: typeof CirceRoute
+  CircePreviewRoute: typeof CircePreviewRoute
   ConnectRoute: typeof ConnectRoute
   PairRoute: typeof PairRoute
   SettingsRoute: typeof SettingsRouteWithChildren
@@ -358,6 +371,13 @@ declare module '@tanstack/react-router' {
       path: '/connect'
       fullPath: '/connect'
       preLoaderRoute: typeof ConnectRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/circe-preview': {
+      id: '/circe-preview'
+      path: '/circe-preview'
+      fullPath: '/circe-preview'
+      preLoaderRoute: typeof CircePreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/circe': {
@@ -547,6 +567,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   CirceRoute: CirceRoute,
+  CircePreviewRoute: CircePreviewRoute,
   ConnectRoute: ConnectRoute,
   PairRoute: PairRoute,
   SettingsRoute: SettingsRouteWithChildren,

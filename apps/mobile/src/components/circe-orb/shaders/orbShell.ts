@@ -1,9 +1,8 @@
 /**
  * Transparent shell pass.
  *
- * This is the *second* sphere pass. It is drawn over the refracted interior
- * fibers, which is what makes them read as being inside glass rather than as
- * lines printed on a surface.
+ * This is the last sphere pass. The ribbon is drawn behind the whole sphere,
+ * so nothing here has to sit over a strand: the hull can stay clean glass.
  *
  * Design system v1 specifies the lighting explicitly: the strongest warm region
  * sits upper-left and lower-left, with a small brilliant specular flare on the
@@ -60,10 +59,13 @@ half4 main(float2 xy) {
   float drift = sin(shellPhase) * 0.16;
   float upperLeft = lobe(angle, 2.356 + drift, 0.95);
   float lowerLeft = lobe(angle, 3.927 - drift, 0.95);
-  // A narrow, brilliant flare on the right edge.
-  float specular = lobe(angle, 0.0 + drift * 0.5, 0.30);
+  // A narrow, brilliant flare on the right edge, and a dimmer one opposite it.
+  // A single specular reads as a spotlight glued to the rim; the pair is what
+  // makes the hull look like it is reflecting a room.
+  float specular = lobe(angle, 0.0 + drift * 0.5, 0.22);
+  float counter = lobe(angle, 3.142 - drift * 0.5, 0.55);
 
-  float uneven = 0.20 + 0.46 * upperLeft + 0.42 * lowerLeft + 0.70 * specular;
+  float uneven = 0.18 + 0.46 * upperLeft + 0.42 * lowerLeft + 0.85 * specular + 0.16 * counter;
   uneven = clamp(uneven, 0.0, 1.0);
 
   // Read outward through the ramp so the dark body meets the shell through
@@ -72,13 +74,16 @@ half4 main(float2 xy) {
   color = mix(color, peachColor.rgb, smoothstep(0.45, 0.9, fresnel));
   color += hotColor.rgb * pow(fresnel, 6.0) * 0.55 * (0.35 + specular);
 
-  float alpha = fresnel * uneven * shellIntensity * (1.0 + energy * 0.35);
+  // The hull is the orb's other strong voice response. Sweeping from the rim to
+  // the volume as someone speaks is what makes the object feel lit rather than
+  // drawn.
+  float alpha = fresnel * uneven * shellIntensity * (1.0 + energy * 0.6);
 
   // The thin incandescent lip at the hull. Design system v1 gives this as a
   // ~3px near-white ring at full opacity; at orb scale that is about one point.
   float lip = smoothstep(0.968, 0.996, r) * (1.0 - smoothstep(0.996, 1.002, r));
-  alpha += lip * (0.35 + 0.65 * uneven) * 0.6 * shellIntensity;
-  color += hotColor.rgb * lip * 0.5;
+  alpha += lip * (0.35 + 0.65 * uneven) * 0.7 * shellIntensity * (1.0 + energy * 0.5);
+  color += hotColor.rgb * lip * 0.55;
 
   float clamped = clamp(alpha, 0.0, 1.0);
   return half4(color * clamped, clamped);

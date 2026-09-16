@@ -23,7 +23,7 @@ export function OrbVolume({
   readonly centerY: number;
   readonly radius: number;
   readonly energySV: SharedValue<number>;
-  readonly volumeIntensity: number;
+  readonly volumeIntensity: SharedValue<number>;
 }) {
   const effect = useMemo(() => {
     try {
@@ -46,7 +46,7 @@ export function OrbVolume({
     () => ({
       center: [centerX, centerY],
       radius,
-      volumeIntensity,
+      volumeIntensity: volumeIntensity.value,
       energy: energySV.value,
       deepColor: colors.deep,
       copperColor: colors.copper,

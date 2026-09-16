@@ -1,8 +1,6 @@
 import {
   RecordingPresets,
   requestRecordingPermissionsAsync,
-  setAudioModeAsync,
-  setIsAudioActiveAsync,
   useAudioRecorder,
   type RecordingStatus,
 } from "expo-audio";
@@ -24,6 +22,7 @@ import {
   type VoiceInputState,
 } from "@t3tools/client-runtime/voice-input";
 import { normalizeVoiceInputDecibels, VOICE_WAVEFORM_SAMPLE_COUNT } from "./voiceInputMetering";
+import { configureVoiceAudioForCapture, releaseVoiceAudio } from "./voiceAudioSession";
 
 const INITIAL_STATE: VoiceInputState = { phase: "idle", error: null, errorAction: null };
 const VOICE_METERING_INTERVAL_MS = 80;
@@ -31,35 +30,6 @@ const VOICE_RECORDING_OPTIONS = {
   ...RecordingPresets.HIGH_QUALITY,
   isMeteringEnabled: true,
 };
-
-async function releaseVoiceRecordingAudio(): Promise<void> {
-  try {
-    await setAudioModeAsync({ allowsRecording: false });
-  } finally {
-    // Expo does not deactivate AVAudioSession when recording stops or its
-    // category changes. Explicit deactivation resumes interrupted app audio.
-    await setIsAudioActiveAsync(false);
-  }
-}
-
-async function configureVoiceRecordingAudio(): Promise<void> {
-  try {
-    await setAudioModeAsync({
-      allowsRecording: true,
-      interruptionMode: "doNotMix",
-      playsInSilentMode: true,
-      shouldPlayInBackground: false,
-    });
-    await setIsAudioActiveAsync(true);
-  } catch (error) {
-    try {
-      await releaseVoiceRecordingAudio();
-    } catch {
-      // Keep the setup error. The controller has not started a recorder yet.
-    }
-    throw error;
-  }
-}
 
 export function useVoiceInputController(input: {
   readonly ownerKey: string | null;
@@ -105,8 +75,8 @@ export function useVoiceInputController(input: {
         const permission = await requestRecordingPermissionsAsync();
         return { granted: permission.granted, canAskAgain: permission.canAskAgain };
       },
-      configureRecording: configureVoiceRecordingAudio,
-      releaseRecording: releaseVoiceRecordingAudio,
+      configureRecording: configureVoiceAudioForCapture,
+      releaseRecording: releaseVoiceAudio,
       deleteRecording: (uri) => new File(uri).delete(),
       readDraft: (): VoiceDraftSnapshot | null => {
         const current = latestInputRef.current;

@@ -180,7 +180,7 @@ function ConfiguredSettingsRouteScreen() {
   const environmentCount = connections.length;
   const accountLabel = useMemo(() => {
     if (!isLoaded) return "Checking";
-    if (!isSignedIn) return "Sign in";
+    if (!isSignedIn) return "Sign in to Mesh";
     return user?.primaryEmailAddress?.emailAddress ?? "Signed in";
   }, [isLoaded, isSignedIn, user?.primaryEmailAddress?.emailAddress]);
 
@@ -285,7 +285,7 @@ function ConfiguredSettingsRouteScreen() {
   const promptSignIn = useCallback(() => {
     Alert.alert(
       "Sign in to Circe Mesh",
-      "Live Activity updates require Circe Mesh so relay can deliver updates to this device.",
+      "Live Activity updates and device notifications are delivered through Circe Mesh. Sign in to enable them for this device.",
       [
         { text: "Cancel", style: "cancel" },
         {
@@ -500,16 +500,18 @@ function ConfiguredSettingsRouteScreen() {
         }}
       >
         <View className="gap-3">
-          <SettingsSection title="Account">
+          <SettingsSection>
             <SettingsRow
               icon="person.crop.circle"
-              label="T3 Account"
+              label="Account"
               value={accountLabel}
               onPress={openAccount}
             />
           </SettingsSection>
           <Text className="px-2 text-sm text-foreground-muted">
-            Circe works locally without signing in. Cloud features are optional.
+            {isSignedIn
+              ? "Circe works locally without signing in. Cloud features are optional."
+              : "You're using Circe as a guest. Sign in to reach your machines from anywhere."}
           </Text>
         </View>
 

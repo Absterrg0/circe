@@ -30,6 +30,13 @@ const SIZES: ReadonlyArray<{ readonly label: string; readonly value: number }> =
   { label: "Hero", value: 236 },
 ];
 
+type FieldRenderer = "ribbon" | "threads";
+
+const FIELD_RENDERERS: ReadonlyArray<{ readonly label: string; readonly value: FieldRenderer }> = [
+  { label: "Silk ribbon", value: "ribbon" },
+  { label: "Web threads", value: "threads" },
+];
+
 /**
  * Development-only visual QA surface for the orb.
  *
@@ -46,6 +53,7 @@ export function OrbGalleryRouteScreen() {
   const [appearance, setAppearance] = useState<OrbAppearance>("light");
   const [levelValue, setLevelValue] = useState(0.75);
   const [size, setSize] = useState(168);
+  const [fieldRenderer, setFieldRenderer] = useState<FieldRenderer>("ribbon");
   const level = useSharedValue(0.75);
 
   const background = appearance === "light" ? "#FAF7F3" : "#0B0B0C";
@@ -104,6 +112,39 @@ export function OrbGalleryRouteScreen() {
         ))}
       </Row>
 
+      <Row label="Fiber field" text={text}>
+        {FIELD_RENDERERS.map((entry) => (
+          <Chip
+            key={entry.value}
+            label={entry.label}
+            active={fieldRenderer === entry.value}
+            text={text}
+            onPress={() => setFieldRenderer(entry.value)}
+          />
+        ))}
+      </Row>
+
+      {/* The prototype is judged against the shipped ribbon, not in isolation:
+          both renderers at the same state, size, appearance, and audio level,
+          side by side. */}
+      <View style={{ flexDirection: "row" }}>
+        {FIELD_RENDERERS.map((entry) => (
+          <View key={entry.value} style={{ flex: 1, alignItems: "center", gap: 6 }}>
+            <Text style={{ color: text, fontSize: 11, fontWeight: "600", opacity: 0.7 }}>
+              {entry.label}
+            </Text>
+            <CirceOrb
+              state="listening"
+              size={size}
+              level={level}
+              appearance={appearance}
+              width={Math.round(width / 2)}
+              fieldRenderer={entry.value}
+            />
+          </View>
+        ))}
+      </View>
+
       {/* The welcome hero is a different visual system from the product orb: a
           single static illustration rather than a stateful widget. It is
           surfaced here so it can be inspected without needing a signed-out
@@ -122,7 +163,14 @@ export function OrbGalleryRouteScreen() {
           >
             {state}
           </Text>
-          <CirceOrb state={state} size={size} level={level} appearance={appearance} width={width} />
+          <CirceOrb
+            state={state}
+            size={size}
+            level={level}
+            appearance={appearance}
+            width={width}
+            fieldRenderer={fieldRenderer}
+          />
         </View>
       ))}
     </ScrollView>

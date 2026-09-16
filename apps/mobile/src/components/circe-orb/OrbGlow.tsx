@@ -13,14 +13,13 @@ import {
 /**
  * Atmospheric bloom, drawn before everything else.
  *
- * Three separate fields, because one broad gradient cannot be simultaneously
- * broad and present:
+ * Two fields, because one broad gradient cannot be simultaneously broad and
+ * present:
  *
  *   A. ~1.55R  broad peach atmosphere, the light spilling onto the page
- *   B. ~1.22R  medium warm bloom hugging the object
- *   C. ~1.05R  localized shell aura
+ *   B. ~1.22R  warm bloom hugging the object, peaking into a shell aura
  *
- * None of them is a ring: ring-shaped peaks read as concentric outlines.
+ * Neither is a ring: ring-shaped peaks read as concentric outlines.
  *
  * The field is driven by microphone energy through `energySV`. An earlier
  * version documented bloom as audio-responsive while never passing the level
@@ -42,13 +41,13 @@ export function OrbGlow({
   readonly centerX: number;
   readonly centerY: number;
   readonly radius: number;
-  readonly bloomIntensity: number;
+  readonly bloomIntensity: SharedValue<number>;
   readonly energySV: SharedValue<number>;
   readonly appearance: OrbAppearance;
   readonly reducedMotion: boolean;
 }) {
   const clock = useClock();
-  const peak = bloomIntensity * ORB_APPEARANCE[appearance].bloomScale;
+  const bloomScale = ORB_APPEARANCE[appearance].bloomScale;
 
   // The broad atmosphere is centred slightly above the object, matching the
   // reference where the page is lit from the upper part of the globe.
@@ -57,32 +56,31 @@ export function OrbGlow({
     [centerX, centerY, radius],
   );
 
+  // Voice reaches the glow strongly. The bloom is the light the orb casts on
+  // the page, so it is the first thing that should answer someone speaking;
+  // before this the energy term moved the bloom by a few percent and the object
+  // read as inert while the microphone was live.
   const atmosphereColors = useDerivedValue(() => {
-    const gain = peak * (1 + energySV.value * 0.2);
+    const gain = bloomIntensity.value * bloomScale * (1 + energySV.value * 0.8);
     return [
       alphaColor(ORB_PALETTE.peach, gain * 0.04),
       alphaColor(ORB_PALETTE.peach, gain * 0.1),
       alphaColor(ORB_PALETTE.peach, 0),
     ];
-  }, [energySV, peak]);
+  }, [bloomIntensity, bloomScale, energySV]);
 
+  // One warm hug instead of two overlapping ones: the medium bloom and the
+  // localized shell aura peaked within a few percent of each other, so a
+  // single gradient carries the copper body out to the peach edge.
   const bloomColors = useDerivedValue(() => {
-    const gain = peak * (1 + energySV.value * 0.25);
+    const gain = bloomIntensity.value * bloomScale * (1 + energySV.value * 0.95);
     return [
       alphaColor(ORB_PALETTE.copper, 0),
       alphaColor(ORB_PALETTE.copper, gain * 0.17),
-      alphaColor(ORB_PALETTE.peach, 0),
-    ];
-  }, [energySV, peak]);
-
-  const shellAuraColors = useDerivedValue(() => {
-    const gain = peak * (1 + energySV.value * 0.35);
-    return [
-      alphaColor(ORB_PALETTE.copper, 0),
       alphaColor(ORB_PALETTE.peach, gain * 0.26),
       alphaColor(ORB_PALETTE.peach, 0),
     ];
-  }, [energySV, peak]);
+  }, [bloomIntensity, bloomScale, energySV]);
 
   const swell = useDerivedValue(() => {
     if (reducedMotion) return 0.5;
@@ -92,7 +90,6 @@ export function OrbGlow({
 
   const atmosphereR = useDerivedValue(() => radius * (1.55 + swell.value * 0.06), [radius, swell]);
   const bloomR = useDerivedValue(() => radius * (1.22 + swell.value * 0.04), [radius, swell]);
-  const shellAuraR = useDerivedValue(() => radius * (1.05 + swell.value * 0.02), [radius, swell]);
 
   return (
     <Group>
@@ -106,23 +103,13 @@ export function OrbGlow({
         />
       </Circle>
 
-      {/* B. Medium warm bloom. */}
+      {/* B. Warm bloom with a shell-aura peak. */}
       <Circle cx={centerX} cy={centerY} r={bloomR}>
         <RadialGradient
           c={vec(centerX, centerY)}
           r={bloomR}
           colors={bloomColors}
-          positions={[0.7, 0.92, 1]}
-        />
-      </Circle>
-
-      {/* C. Localized shell aura. */}
-      <Circle cx={centerX} cy={centerY} r={shellAuraR}>
-        <RadialGradient
-          c={vec(centerX, centerY)}
-          r={shellAuraR}
-          colors={shellAuraColors}
-          positions={[0.82, 0.96, 1]}
+          positions={[0.7, 0.9, 0.96, 1]}
         />
       </Circle>
     </Group>

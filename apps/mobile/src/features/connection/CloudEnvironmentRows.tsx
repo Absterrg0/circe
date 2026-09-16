@@ -10,6 +10,7 @@ import {
   resolveEnvironmentMachineKind,
 } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
+import { useNavigation } from "@react-navigation/native";
 import { useCallback, useState } from "react";
 import {
   ActivityIndicator,
@@ -71,8 +72,42 @@ export function CloudEnvironmentRows(props: CloudEnvironmentRowsProps) {
 
 function SignedInCloudEnvironmentRows(props: CloudEnvironmentRowsProps) {
   const { isSignedIn } = useAuth({ treatPendingAsSignedOut: false });
-  if (!isSignedIn) return <ConnectedOnlyCloudEnvironmentRows {...props} />;
+  if (!isSignedIn) return <SignedOutCloudEnvironmentRows {...props} />;
   return <CloudEnvironmentRowsContent {...props} />;
+}
+
+/**
+ * A guest keeps any relay environments already registered on this device, but
+ * discovery needs a session. Explain that instead of silently omitting the
+ * section, so "sign in to reach more machines" is discoverable where the
+ * missing machines would otherwise have been.
+ */
+function SignedOutCloudEnvironmentRows(props: CloudEnvironmentRowsProps) {
+  const navigation = useNavigation();
+  const connected =
+    props.connectedCloudEnvironments.length > 0 ? (
+      <CloudEnvironmentRowsContent {...props} discoveryAvailable={false} />
+    ) : null;
+
+  return (
+    <View collapsable={false} className="gap-3">
+      {connected}
+      <View collapsable={false} className="gap-3 rounded-[24px] bg-card p-5">
+        <Text className="text-base font-t3-bold text-foreground">Circe Mesh</Text>
+        <Text className="text-sm leading-normal text-foreground-muted">
+          Sign in to see every machine published to your account.
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Sign in to Circe Mesh"
+          onPress={() => navigation.navigate("SettingsSheet", { screen: "SettingsAuth" })}
+          className="self-start rounded-full bg-subtle px-3.5 py-2 active:opacity-70"
+        >
+          <Text className="text-xs font-t3-bold text-foreground">Sign in</Text>
+        </Pressable>
+      </View>
+    </View>
+  );
 }
 
 function ConnectedOnlyCloudEnvironmentRows(props: CloudEnvironmentRowsProps) {

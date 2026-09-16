@@ -20,12 +20,11 @@ import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime"
 import { AppText as Text } from "./components/AppText";
 import { getCompactBrandHeaderOptions } from "./components/CompactBrandTitle";
 import { ArchivedThreadsRouteScreen } from "./features/archive/ArchivedThreadsRouteScreen";
-import { VoiceRouteScreen } from "./features/circe/VoiceRouteScreen";
 import { OrbGalleryRouteScreen } from "./features/circe/OrbGalleryRouteScreen";
-import { WelcomeAuthRouteScreen } from "./features/welcome/WelcomeAuthRouteScreen";
 import { WelcomeRouteScreen } from "./features/welcome/WelcomeRouteScreen";
-import { WelcomeGate } from "./features/welcome/useWelcomeGate";
-import { hasCloudPublicConfig } from "./features/cloud/publicConfig";
+import { WelcomeAuthRouteScreen } from "./features/welcome/WelcomeAuthRouteScreen";
+// WelcomeGate is deferred: the app opens in guest mode like t3code did, and
+// Circe Mesh sign-in lives in Settings. Welcome routes stay registered below.
 import {
   useExpoPushRegistration,
   type ExpoPushRegistrationNode,
@@ -357,7 +356,6 @@ const WORKSPACE_OVERLAY_ROUTES = new Set([
   "SettingsSheet",
   "ThreadReviewComment",
   "ThreadSettingsSheet",
-  "Voice",
 ]);
 
 /**
@@ -457,7 +455,7 @@ function RootStackLayout(props: {
     <HardwareKeyboardCommandProvider pathname={pathname}>
       <ThreadOutboxDrainWorker />
       <ShowcaseCaptureCoordinator pathname={pathname} />
-      {hasCloudPublicConfig() ? <WelcomeGate state={props.state} /> : null}
+      {/* Signup gate deferred: guest mode by default. Settings owns Clerk login. */}
       <ExistingThreadSettingsRouteProvider>
         <AdaptiveWorkspaceLayout pathname={workspacePathname}>
           {props.children}
@@ -546,16 +544,6 @@ export const RootStack = createNativeStackNavigator({
       options: {
         headerShown: false,
         contentStyle: { backgroundColor: "#FAF7F3" },
-      },
-    }),
-    Voice: createNativeStackScreen({
-      screen: VoiceRouteScreen,
-      linking: "voice",
-      options: {
-        headerShown: false,
-        presentation: "fullScreenModal",
-        animation: "fade",
-        contentStyle: { backgroundColor: "#0F1620" },
       },
     }),
     // The gallery is a development affordance. Gate it on `__DEV__` rather

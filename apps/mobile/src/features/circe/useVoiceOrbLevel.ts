@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { AccessibilityInfo } from "react-native";
 import { useSharedValue } from "react-native-reanimated";
 import { requestRecordingPermissionsAsync, RecordingPresets, useAudioRecorder } from "expo-audio";
@@ -11,7 +11,12 @@ import {
 import type { CirceOrbState } from "../../components/circe-orb/types";
 import { normalizeVoiceInputDecibels } from "../voice-input/voiceInputMetering";
 
-const METERING_INTERVAL_MS = 80;
+/**
+ * 20 Hz. The metering interval is the orb's reaction time to a voice, so it is
+ * set below the point where an onset is visible as a delay rather than a
+ * response. Nothing per-sample reaches React: only the level shared value.
+ */
+const METERING_INTERVAL_MS = 50;
 
 export type VoiceScreenPhase = CirceOrbState;
 
@@ -26,6 +31,13 @@ export function useVoiceOrbLevel(active: boolean): {
   readonly phase: VoiceScreenPhase;
   readonly errorMessage: string | null;
   readonly elapsedLabel: string;
+  /**
+   * Stops the recorder and hands back the recording file URI, or null when
+   * nothing was captured. The caller owns transcription from there; the hook
+   * only ever metered the mic and discarded the file, which is why speaking
+   * never got a reply.
+   */
+  readonly stopAndCaptureUri: () => Promise<string | null>;
 } {
   const levelSV = useSharedValue(0);
   const [phase, setPhase] = useState<VoiceScreenPhase>("listening");
@@ -35,6 +47,23 @@ export function useVoiceOrbLevel(active: boolean): {
     ...RecordingPresets.HIGH_QUALITY,
     isMeteringEnabled: true,
   });
+  const recordingUrlRef = useRef<string | null>(null);
+
+  // A session can end in "error", and this hook is not remounted between
+  // sessions. Clearing it in the effect below would leave the previous failure
+  // committed for one frame, flashing its copy across the listening surface, so
+  // the reset happens during render instead — the adjustment React documents
+  // for state that depends on a prop. The condition is stored state, so it
+  // converges after one extra render.
+  const [sessionActive, setSessionActive] = useState(active);
+  if (sessionActive !== active) {
+    setSessionActive(active);
+    if (active) {
+      setPhase("listening");
+      setErrorMessage(null);
+      setElapsedSeconds(0);
+    }
+  }
 
   useEffect(() => {
     if (!active) return;
@@ -65,6 +94,7 @@ export function useVoiceOrbLevel(active: boolean): {
         if (cancelled) return;
         const status = recorder.getStatus();
         if (!status.isRecording) return;
+        if (status.url) recordingUrlRef.current = status.url;
         const raw = responseCurve(applyNoiseFloor(normalizeVoiceInputDecibels(status.metering)));
         levelSV.value = smoother.push(raw);
         const elapsed = Math.floor((Date.now() - startedAt) / 1000);
@@ -80,9 +110,36 @@ export function useVoiceOrbLevel(active: boolean): {
     };
   }, [active, levelSV, recorder]);
 
+  const stopAndCaptureUri = useCallback(async (): Promise<string | null> => {
+    const liveUrl = (() => {
+      try {
+        return recorder.getStatus().url;
+      } catch {
+        return null;
+      }
+    })();
+    const captured = recordingUrlRef.current ?? liveUrl;
+    try {
+      await recorder.stop();
+    } catch {
+      // Already stopped by cleanup or the OS; the captured URL still stands.
+    }
+    try {
+      return recorder.getStatus().url ?? captured;
+    } catch {
+      return captured;
+    }
+  }, [recorder]);
+
   const minutes = Math.floor(elapsedSeconds / 60);
   const seconds = String(elapsedSeconds % 60).padStart(2, "0");
-  return { level: levelSV, phase, errorMessage, elapsedLabel: `${minutes}:${seconds}` };
+  return {
+    level: levelSV,
+    phase,
+    errorMessage,
+    elapsedLabel: `${minutes}:${seconds}`,
+    stopAndCaptureUri,
+  };
 }
 
 export function useSystemReducedMotion(): boolean {

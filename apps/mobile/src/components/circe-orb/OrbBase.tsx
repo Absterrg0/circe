@@ -26,7 +26,7 @@ export function OrbBase({
   readonly centerY: number;
   readonly radius: number;
   readonly energySV: SharedValue<number>;
-  readonly coreWarmth: number;
+  readonly coreWarmth: SharedValue<number>;
 }) {
   const effect = useMemo(() => {
     try {
@@ -49,7 +49,7 @@ export function OrbBase({
     () => ({
       center: [centerX, centerY],
       radius,
-      coreWarmth,
+      coreWarmth: coreWarmth.value,
       energy: energySV.value,
       coreColor: colors.core,
       coreWarmColor: colors.coreWarm,

@@ -33,9 +33,21 @@ half4 main(float2 xy) {
   // The body stays in the core family, drifting only slightly warm toward the
   // hull. Microphone energy lifts the warmth a little and nothing else.
   float3 color = mix(coreColor.rgb, coreWarmColor.rgb, smoothstep(0.0, 0.74, r));
+
+  // Still no directional light term — the centre absorbs. But the warmth is not
+  // evenly distributed around the hull: it gathers on the side the hull light
+  // comes from, which is what stops the dark body reading as a flat disc with a
+  // painted ring, and it deepens away from it.
+  float keyX = 0.55;
+  float lit = 0.5 - 0.5 * (uv.x * keyX - uv.y * 0.83) / 1.0;
   float hull = pow(1.0 - z, 2.4);
-  color = mix(color, emberColor.rgb, hull * coreWarmth * 0.75);
-  color = mix(color, emberColor.rgb, hull * energy * 0.25);
+  color = mix(color, emberColor.rgb, hull * coreWarmth * (0.55 + 0.35 * lit));
+  color = mix(color, emberColor.rgb, hull * energy * 0.28);
+
+  // Limb darkening over the last fifth of the radius. The hull pass lights the
+  // very edge, so the body darkening beneath it is what gives the object a
+  // silhouette instead of letting body and rim run together.
+  color *= mix(1.0, 0.7, smoothstep(0.8, 1.0, r));
 
   float edge = 1.0 - smoothstep(0.985, 1.0, r);
   return half4(color * edge, edge);
