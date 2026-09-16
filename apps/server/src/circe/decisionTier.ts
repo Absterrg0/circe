@@ -262,6 +262,8 @@ export const runCirceDecisionTier = (input: {
     if (firstOutcome.status === "decline") {
       return { status: "decline", reason: firstOutcome.reason };
     }
+    // Record the exact model an alias resolved to, per turn, because aliases move.
+    yield* Effect.logDebug("Circe decision resolved", { model: firstOutcome.model });
     const accepted = acceptedBoundaries(first.boundaries, firstOutcome.answers);
     const segments = segmentUtterance(input.source, accepted);
     if (segments.length >= 2) {
