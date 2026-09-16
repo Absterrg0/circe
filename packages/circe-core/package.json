@@ -16,6 +16,7 @@
     "./clarification": "./src/clarification.ts",
     "./projectChoice": "./src/projectChoice.ts",
     "./groundVoiceTurn": "./src/groundVoiceTurn.ts",
+    "./decision": "./src/decision.ts",
     "./localGrammar": "./src/localGrammar.ts",
     "./modelChoice": "./src/modelChoice.ts",
     "./spokenSummary": "./src/spokenSummary.ts",

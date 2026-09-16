@@ -177,6 +177,26 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
+  circeDecisionEnabled: Config.boolean("CIRCE_TYPESAFE_ENABLED").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
+  circeDecisionApiKey: Config.string("CIRCE_TYPESAFE_API_KEY").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
+  circeDecisionModel: Config.string("CIRCE_TYPESAFE_MODEL").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
+  circeDecisionTimeoutMs: Config.int("CIRCE_TYPESAFE_TIMEOUT_MS").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
+  circeDecisionEndpoint: Config.string("CIRCE_TYPESAFE_ENDPOINT").pipe(
+    Config.option,
+    Config.map(Option.getOrUndefined),
+  ),
 });
 
 export interface CliServerFlags {
@@ -451,6 +471,25 @@ export const resolveServerConfig = (
           }
         : undefined;
 
+    // System One decision tier: opt-in by configuring the key (or by an
+    // explicit enabled flag). Absent means no outbound request and a decline
+    // to the ordinary provider path.
+    const circeDecisionApiKey = env.circeDecisionApiKey?.trim() ?? "";
+    const circeDecisionModel = env.circeDecisionModel?.trim() ?? "";
+    const circeDecisionEndpoint = env.circeDecisionEndpoint?.trim() ?? "";
+    const circeDecisionEnabled = env.circeDecisionEnabled ?? circeDecisionApiKey.length > 0;
+    const circeDecision =
+      circeDecisionEnabled || circeDecisionApiKey.length > 0
+        ? {
+            enabled: circeDecisionEnabled,
+            apiKey: circeDecisionApiKey,
+            model: circeDecisionModel.length > 0 ? circeDecisionModel : "jev-latest",
+            timeoutMs: env.circeDecisionTimeoutMs ?? 1_500,
+            endpoint:
+              circeDecisionEndpoint.length > 0 ? circeDecisionEndpoint : "https://api.typesafe.ai",
+          }
+        : undefined;
+
     const config: ServerConfig.ServerConfig["Service"] = {
       logLevel,
       traceMinLevel: env.traceMinLevel,
@@ -471,6 +510,7 @@ export const resolveServerConfig = (
       mode,
       ...(circeNodePreset === undefined ? {} : { circeNodePreset }),
       ...(circeLocalModel === undefined ? {} : { circeLocalModel }),
+      ...(circeDecision === undefined ? {} : { circeDecision }),
       port,
       cwd,
       baseDir,

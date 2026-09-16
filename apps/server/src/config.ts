@@ -78,6 +78,20 @@ export interface CirceLocalModelRuntimeConfig {
 }
 
 /**
+ * System One decision tier runtime config. Disabled by default: absent or
+ * `enabled: false` means no outbound request and a decline to the ordinary
+ * provider path. The API key is server-side only and never reaches a client
+ * bundle.
+ */
+export interface CirceDecisionRuntimeConfig {
+  readonly enabled: boolean;
+  readonly apiKey: string;
+  readonly model: string;
+  readonly timeoutMs: number;
+  readonly endpoint: string;
+}
+
+/**
  * ServerConfig - Service tag for server runtime configuration.
  */
 export class ServerConfig extends Context.Service<
@@ -98,6 +112,8 @@ export class ServerConfig extends Context.Service<
     readonly circeNodePreset?: CirceNodePreset;
     /** Optional on-demand local extraction tier; absent means disabled. */
     readonly circeLocalModel?: CirceLocalModelRuntimeConfig | undefined;
+    /** Optional System One decision tier; absent means disabled. */
+    readonly circeDecision?: CirceDecisionRuntimeConfig | undefined;
     readonly port: number;
     readonly host: string | undefined;
     readonly cwd: string;
