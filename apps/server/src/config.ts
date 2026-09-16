@@ -62,22 +62,6 @@ export interface DeriveServerPathsOptions {
 }
 
 /**
- * On-demand local extraction runtime config. Undefined means disabled: zero
- * workers, no model load, no spawn. Enabling requires an explicit model
- * directory plus python binary and a passing evaluate.py quality report;
- * weights live outside Git and are never loaded when disabled.
- */
-export interface CirceLocalModelRuntimeConfig {
-  readonly enabled: boolean;
-  readonly modelDir: string;
-  readonly pythonBin: string;
-  readonly timeoutMs: number;
-  readonly evalReportPath?: string | undefined;
-  readonly policyPath?: string | undefined;
-  readonly inferenceScriptPath?: string | undefined;
-}
-
-/**
  * System One decision tier runtime config. Disabled by default: absent or
  * `enabled: false` means no outbound request and a decline to the ordinary
  * provider path. The API key is server-side only and never reaches a client
@@ -110,8 +94,6 @@ export class ServerConfig extends Context.Service<
     readonly mode: RuntimeMode;
     /** Optional Circe installation preset; existing installs default to full. */
     readonly circeNodePreset?: CirceNodePreset;
-    /** Optional on-demand local extraction tier; absent means disabled. */
-    readonly circeLocalModel?: CirceLocalModelRuntimeConfig | undefined;
     /** Optional System One decision tier; absent means disabled. */
     readonly circeDecision?: CirceDecisionRuntimeConfig | undefined;
     readonly port: number;

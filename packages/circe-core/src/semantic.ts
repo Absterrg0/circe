@@ -313,25 +313,6 @@ const CIRCE_SEMANTIC_PROMPT_RULES: ReadonlyArray<string> = [
   "",
 ];
 
-const CIRCE_FAST_SEMANTIC_PROMPT_RULES: ReadonlyArray<string> = [
-  "Route one Circe request to one JSON proposal. Output ONLY this JSON, no prose and no tools:",
-  '{"action":"start|continue|steer|queue|stop|status|review|reroute|focus-project|focus-task|list-projects|converse|lookup|open-website|sequence|unsupported","refs":[{"span":{"start":number,"end":number,"text":string},"role":"destination|task|subject|excluded|correction|provider|node","value":string}],"model":string|null,"effort":string|null,"answer":string|null,"lookup":{"kind":"weather|time","location":string,"day":"now|today|tomorrow"}|null,"website":string|null,"steps":[{"action":"...","refs":[],"sourceSpan":{"start":number,"end":number},"model":null,"effort":null,"answer":null}]|null}',
-  "refs cite exact UTF-16 spans of the Original transcript: text is the exact copied slice and value echoes it; the host rejects any inexact span. destination is only the full routing wrapper (for example 'in Alertify'); only destination or correction names the project. task is a work title, provider a requested runner; node is a named device from the Devices list; subject and excluded never route. At most one destination or correction, one task, one node, one provider.",
-  "Use exact catalog names; never invent internal IDs. Use null for unspecified model, effort, answer, lookup, and website; answer is required only for converse (at most 400 characters).",
-  "A single work request is start even when phrased as a question ('are there any open PRs in Alertify'). Multiple sentences describing one request are still one action. A sentence starting with or containing 'and', 'also', or 'so' is still one request. Only two genuinely separate commands ('stop auth, then create a deployment task') are action sequence with ordered steps, each a full command; the host runs them in order. A request that continues the focused task is continue; a general question unrelated to any project or task is converse with the reply in answer.",
-  "A weather or local-time question is lookup with lookup.location copied verbatim from the transcript and day now|today|tomorrow; a request to open a named site or URL is open-website with website set to it. Neither takes project or task refs.",
-  'Two genuinely separate commands use action "sequence" with a steps array of up to four complete single commands (same fields as the top level; steps never nest). Every step also carries sourceSpan {start,end}: the exact UTF-16 range of only that step\'s own words in the Original transcript, excluding the joining word; each of its refs must sit inside that range. The host validates every step and derives its instruction from its sourceSpan before dispatching any. Never use unsupported for two commands you can express as steps.',
-  "Examples:",
-  '- "Check auth in Rivvl" => start, destination ref citing "in Rivvl".',
-  '- "Check auth in Rivvl on Desktop" => start, destination ref citing "in Rivvl", node ref citing "Desktop".',
-  '- "stop authentication" => stop, task ref citing "authentication".',
-  '- "Stop auth, then create a deployment task" => sequence with steps [stop auth, start a deployment task].',
-  '- "what is new today?" with no related task => converse with the reply in answer.',
-  '- "weather in Ahmedabad" => lookup with lookup {kind: "weather", location: "Ahmedabad", day: "now"}.',
-  '- "open YouTube" => open-website with website "YouTube".',
-  "",
-];
-
 export function buildCirceSemanticPrompt(
   input: CirceCommandContext,
   prepared: Extract<PreparedCirceSemanticTurn, { status: "ready" }>,
@@ -339,20 +320,4 @@ export function buildCirceSemanticPrompt(
   return [...CIRCE_SEMANTIC_PROMPT_RULES, ...buildCirceSemanticPromptContext(input, prepared)].join(
     "\n",
   );
-}
-
-/**
- * Compact prompt for the fx supervisor. fx has no structured-output schema, so
- * this carries the proposal shape explicitly. The provider path keeps the full
- * prompt and its schema enforcement; this one exists to keep fx reasoning
- * short enough to answer in a couple of seconds.
- */
-export function buildCirceFastSemanticPrompt(
-  input: CirceCommandContext,
-  prepared: Extract<PreparedCirceSemanticTurn, { status: "ready" }>,
-): string {
-  return [
-    ...CIRCE_FAST_SEMANTIC_PROMPT_RULES,
-    ...buildCirceSemanticPromptContext(input, prepared, { tasks: 4, objectiveChars: 100 }),
-  ].join("\n");
 }

@@ -431,7 +431,27 @@ export function locateNameSpan(source: string, name: string): LocatedSpan | unde
   return undefined;
 }
 
-const WRAPPER_PREPOSITIONS = ["in", "on", "at", "to"];
+/**
+ * Closed work verbs that can open a bounded command. Small on purpose: the
+ * predicate below only decides whether a transcript is shaped like a command,
+ * never which command it is. The decision tier owns classification.
+ */
+const BOUNDED_WORK_VERB =
+  /(?:^|\s)(?:fix|add|build|create|implement|update|write|document|check|investigate|tighten|remove|run|test|examine|compare|find|locate|search|list|show|get|fetch|grab|pull|open|look|stop|cancel|focus|switch|move|reroute)\b/iu;
+
+/**
+ * Whether a transcript is shaped like a complete bounded command over a named
+ * catalog project. Used to retire a stale clarification when the user stated
+ * new work instead of answering. Pure and host-local: no model.
+ */
+export function looksLikeBoundedCommand(
+  source: string,
+  projectNames: ReadonlyArray<string>,
+): boolean {
+  if (source.trim().length === 0 || !/[\p{Letter}\p{Number}]/u.test(source)) return false;
+  if (!BOUNDED_WORK_VERB.test(source)) return false;
+  return projectNames.some((name) => locateNameSpan(source, name) !== undefined);
+}
 
 /**
  * Locate the full routing wrapper for a destination: the name plus a leading

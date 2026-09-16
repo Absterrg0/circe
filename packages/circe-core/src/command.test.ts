@@ -12,7 +12,6 @@ import {
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  buildCirceFastSemanticPrompt,
   buildCirceSemanticPrompt,
   decodeCirceSemanticProposal,
   resolveCirceInstruction,
@@ -1387,17 +1386,6 @@ describe("proposal preparation contract", () => {
     expect(prompt).toContain("Heard project mention");
     expect(prompt).toContain("Model proposes never authorizes");
     expect(prompt).not.toContain("Deterministic project route");
-  });
-
-  it("builds a compact fx prompt that states the proposal schema", () => {
-    const input = voiceContext("Check auth in Rivvl");
-    const full = buildCirceSemanticPrompt(input, ready(input));
-    const fast = buildCirceFastSemanticPrompt(input, ready(input));
-    expect(fast).toContain('"action"');
-    expect(fast).toContain('"destination|task|subject|excluded|correction|provider|node"');
-    expect(fast).toContain("Check auth in Rivvl");
-    expect(fast).toContain("Original transcript");
-    expect(fast.length).toBeLessThan(full.length / 2);
   });
 
   it("keeps the ASR original in the prepared turn with advisory mention evidence", () => {

@@ -23,7 +23,7 @@ import {
 } from "@circe/core/modelChoice";
 import { resolveCirceProjectChoice } from "@circe/core/projectChoice";
 import { projectSemanticNames } from "@circe/core/semantic";
-import { tryBoundedLocalGrammarForEvidence } from "@circe/core/localGrammar";
+import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
@@ -472,14 +472,8 @@ export function looksLikeCirceBoundedCommand(input: {
   readonly projects: ReadonlyArray<OrchestrationProjectShell>;
   readonly aliases: ReadonlyArray<CirceProjectAlias>;
 }): boolean {
-  return (
-    tryBoundedLocalGrammarForEvidence({
-      source: input.utterance,
-      projects: input.projects.map((project) => ({
-        title: project.title,
-        names: projectSemanticNames(project, input.aliases),
-      })),
-      tasks: [],
-    }).status === "proposal"
+  return looksLikeBoundedCommand(
+    input.utterance,
+    input.projects.flatMap((project) => projectSemanticNames(project, input.aliases)),
   );
 }
