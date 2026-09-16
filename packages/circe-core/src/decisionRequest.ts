@@ -444,8 +444,12 @@ export function locateDestinationWrapper(source: string, name: string): LocatedS
   const before = source.slice(0, nameSpan.start);
   const match = /(?:^|\s)(in|on|at|to)\s+(?:the\s+)?$/iu.exec(before);
   if (match === null) return nameSpan;
-  const start = match.index + (match[0].startsWith(" ") ? 1 : 0);
-  return { start, end: nameSpan.end, text: source.slice(start, nameSpan.end) };
+  // Include the separator whitespace the regex consumed and a trailing comma
+  // on the leading form (`In VPS, ...`) so deleting the wrapper leaves the
+  // instruction without a doubled space or an orphaned comma.
+  const start = match.index;
+  const end = source[nameSpan.end] === "," ? nameSpan.end + 1 : nameSpan.end;
+  return { start, end, text: source.slice(start, end) };
 }
 
 export function buildDecisionRequest(input: DecisionBuildInput): {

@@ -70,9 +70,9 @@ describe("composeDecision", () => {
     if (result.status !== "proposal") return;
     expect(result.proposal.action).toBe("start");
     const destination = result.proposal.refs.find((ref) => ref.role === "destination");
-    expect(destination?.span.text).toBe("in Rivvl");
+    expect(destination?.span.text).toBe(" in Rivvl");
     expect(destination?.value).toBe("Rivvl");
-    expect(source.slice(destination!.span.start, destination!.span.end)).toBe("in Rivvl");
+    expect(source.slice(destination!.span.start, destination!.span.end)).toBe(" in Rivvl");
   });
 
   it("turns a negated target into an excluded ref, never a route", () => {

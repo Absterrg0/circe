@@ -108,7 +108,7 @@ describe("locate is total", () => {
   it("expands a destination to its spoken wrapper", () => {
     const source = "check auth in Rivvl";
     const wrapper = locateDestinationWrapper(source, "Rivvl");
-    expect(wrapper?.text).toBe("in Rivvl");
+    expect(wrapper?.text).toBe(" in Rivvl");
   });
 });
 
