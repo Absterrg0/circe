@@ -118,9 +118,9 @@ The client-side presentation of per-node project and provider reads. Catalog ent
 
 The provider-neutral server controller that resolves a user's requested provider, model, effort, and objective before emitting ordinary orchestration commands. It is not a provider and does not run its own manager model. See [circe-controller.md][25].
 
-#### Semantic supervisor
+#### Decision tier
 
-The separately configured model that translates one natural-language Circe request into a schema-constrained semantic proposal. Codex Luna at low reasoning is the default. The proposal contains catalog names rather than internal IDs and has no dispatch or approval authority; the deterministic Circe validator resolves and authorizes it against live node state. See [circe-controller.md][25].
+The TypeSafe System One classifier behind `CirceDecision`. It answers a map of finite questions over supplied catalogs: the model only selects an element of a finite set or evaluates a boolean predicate. The host derives every span, ID, sequence, and spoken line in code, so the proposal contains catalog names rather than internal IDs and has no dispatch or approval authority. The ordinary provider proposal remains only as a decline safety net. See [circe-controller.md][25].
 
 #### Presentation event
 

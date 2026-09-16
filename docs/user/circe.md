@@ -87,15 +87,13 @@ visible stages with no filler speech while Circe waits: a silent receipt first
 (`Heard: "..."` text, truncated past 140 characters, never spoken), then
 `Heard "...", checking...` at dispatch, still silent. The target line reads
 `(provisional, not yet accepted)` until the Host answers. There is no speech
-while the semantic supervisor runs. The supervisor may propose one short
-present-progress sentence (at most 120 characters). Circe speaks it only after
-Host validation and dispatch acceptance, and only for voice turns that start
-provider work; text turns stay silent. The sentence is feedback only: it cannot
-select a task, authorize a tool, change the instruction, or claim success.
-A proposal that names a project, provider, or task outside the accepted command,
-claims completion, or runs long is replaced by a derived acceptance naming the
-accepted target, such as `Request accepted for Rivvl.` `Working on it.` is
-used only when the catalog no longer names the target.
+while Circe classifies the request. For voice turns that start provider work,
+the host composes one short present-progress acknowledgement from the accepted
+route, such as `Request accepted for Rivvl.`, and Circe speaks it only after
+Host validation and dispatch acceptance; text turns stay silent. It is feedback
+only: it cannot select a task, authorize a tool, change the instruction, or
+claim success. `Working on it.` is used only when the catalog no longer names
+the target.
 
 A submission on the wire can still be cancelled before acceptance by its exact
 request identity (`requestId` plus execution node and origin). `Cancelled`
@@ -149,7 +147,7 @@ Use Codex Sol at high effort to implement device presence.
 
 T3 resolves those names against the providers and models available in the selected environment. It asks for clarification instead of silently substituting another provider, model, or effort. If you replace a provider or change its account, select the new provider in **Default agent for new tasks** and save it; an unavailable selection is reported clearly instead of being replaced with a different agent.
 
-Circe uses a separate semantic supervisor—Codex Luna at low reasoning by default—to understand natural phrasing. That supervisor only proposes an action and visible catalog names. It runs without project access or tools. Circe Host still validates the real project, task, provider, model, effort, and any pending approval, then reloads the selected task immediately before dispatching through the ordinary T3 provider adapter. The supervisor never chooses internal IDs or authorizes tools, and changing it does not change the coding agent selected for your task.
+Circe uses a TypeSafe System One decision call to understand natural phrasing. It only picks from a closed set of actions and visible catalog names, and the host derives every source span in code. It runs without project access or tools. Circe Host still validates the real project, task, provider, model, effort, and any pending approval, then reloads the selected task immediately before dispatching through the ordinary T3 provider adapter. The classifier never chooses internal IDs or authorizes tools, and changing it does not change the coding agent selected for your task.
 
 To review one provider's output with another, open the source thread and ask:
 
@@ -171,7 +169,7 @@ A turn that includes a destructive command, such as stopping a task, inside a lo
 
 Voice is one full-duplex live conversation. Link the node to Circe Mesh, or add an OpenAI API key under its **Live conversation** settings, then press **Live conversation** in the command row or tap `Ctrl+Shift+J` (`Command+Shift+J` on macOS). The microphone stays open while Circe listens and speaks at the same time, so you can interrupt, correct yourself, and keep talking while work runs. Press **End conversation**, or tap the same shortcut again, to close the session and release the microphone.
 
-Name a project explicitly, for example **"In Rivvl, review the failing tests"**, to route through the Circe mesh to the owning node; without a name the request stays on the current target. Each utterance is submitted as its own request in speaking order, so a second utterance waits for the first without being joined to it. You can keep speaking while an earlier request is being routed, and typed edits remain in the instruction draft. There is no speech while the supervisor runs, and there is no waiting filler. The supervisor may propose one brief progress sentence, but Circe keeps it beside the command and speaks it only after validation and dispatch acceptance for a command that starts provider work, such as **"Taking a look at the auth."** That sentence is feedback only: it cannot select a task, authorize a tool, change the instruction, or claim the work succeeded. Circe asks aloud when a target or other detail is ambiguous and speaks a bounded live completion presentation when the provider finishes. If live voice reports an error, use **Retry** or speak the next request; submitted tasks remain in T3.
+Name a project explicitly, for example **"In Rivvl, review the failing tests"**, to route through the Circe mesh to the owning node; without a name the request stays on the current target. Each utterance is submitted as its own request in speaking order, so a second utterance waits for the first without being joined to it. You can keep speaking while an earlier request is being routed, and typed edits remain in the instruction draft. There is no speech while Circe classifies the request, and there is no waiting filler. For a command that starts provider work, the host composes one short acknowledgement from the accepted route, such as **"Request accepted for Rivvl."**, and speaks it only after validation and dispatch acceptance. That sentence is feedback only: it cannot select a task, authorize a tool, change the instruction, or claim the work succeeded. Circe asks aloud when a target or other detail is ambiguous and speaks a bounded live completion presentation when the provider finishes. If live voice reports an error, use **Retry** or speak the next request; submitted tasks remain in T3.
 
 If an uncommon project name still sounds like ordinary words, Circe asks before routing the task. After you confirm it, Circe remembers that pronunciation and corrects later requests.
 
@@ -185,17 +183,13 @@ Voice-originated requests are interpreted once before a task starts. One semanti
 
 If a supervised agent requests approval, the task shows a decision card with the project, a plain-language risk summary, the exact command, and **Deny**, **Allow for this task**, and **Allow once** actions. Circe also retains that exact task as the voice target, so “approve” or “deny” routes back to the pending request. A question or ambiguous reply keeps it pending.
 
-### Faster semantic supervisor with fx
+### How Circe understands a request
 
-Circe resolves each voice or typed request before any work starts. For bounded commands that resolution is deterministic and instant. For everything else it normally asks the configured semantic supervisor provider, and starting a full coding harness for one small JSON decision can take seconds.
+Circe resolves each voice or typed request before any work starts. One TypeSafe System One call classifies the turn: it selects an action, a destination, a task, a provider, a model, or a tool from the node's real catalogs, and answers a few yes/no questions such as whether a target is ruled out or whether two commands are joined. The host then turns those selections into one command with exact source spans and passes it to the same validator that has always owned routing, approvals, and dispatch. The model never writes instructions, IDs, or speech, so it cannot invent a target or dispatch work.
 
-Circe picks the semantic supervisor from the provider you are using: your Codex/Grok agent gets a GPT/Grok supervisor, an OpenCode agent gets a cheap OpenCode model, and so on. For Codex and Grok, Circe routes that supervisor call through `fx` so it does not pay the full coding-harness startup. Install `fx` from its upstream release and sign in once with the same subscription. This repo pins no fx version and checks no checksum, so read the upstream install steps before running them:
+Bounded answers that need no model stay on the host: weather, local time, task status, project lists, and opening a named site. Only an open-domain conversation reaches a coding provider, as a normal conversation thread.
 
-```
-fx login codex
-```
-
-Circe finds `fx` at `~/.fx/bin/fx` (or `CIRCE_FX_BINARY`) and serves the Codex/Grok supervisor through `fx ask` while keeping your task provider exactly as configured. OpenCode and Claude supervisors never involve fx. Without the binary or the login, Circe silently falls back to the provider supervisor.
+To use the classifier, set `CIRCE_TYPESAFE_API_KEY` on the node (only the server sees it). The model defaults to `jev-latest` and can be pinned with `CIRCE_TYPESAFE_MODEL`. Without a key, Circe declines and falls back to the ordinary provider proposal path; a timeout or a rate limit does the same, and a low-confidence classification asks you to restate rather than guessing.
 
 ### Conversations
 
