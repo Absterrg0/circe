@@ -5,7 +5,7 @@ import * as NodeFS from "node:fs";
 import { assert, it } from "@effect/vitest";
 
 import {
-  T3CODE_DESKTOP_PACKAGE_DESCRIPTION,
+  CIRCE_DESKTOP_PACKAGE_DESCRIPTION,
   resolveDesktopProductName,
 } from "./build-desktop-artifact.ts";
 import {
@@ -23,7 +23,7 @@ const readSource = (relativePath: string): string =>
 
 it("keeps Circe as the desktop product name with nightly staging", () => {
   assert.equal(desktopPackageJson.productName, "Circe");
-  assert.equal(T3CODE_DESKTOP_PACKAGE_DESCRIPTION, "Circe desktop build");
+  assert.equal(CIRCE_DESKTOP_PACKAGE_DESCRIPTION, "Circe desktop build");
   assert.equal(resolveDesktopProductName("0.0.17"), "Circe");
   assert.equal(resolveDesktopProductName("0.0.17-nightly.20260413.42"), "Circe (Nightly)");
 });

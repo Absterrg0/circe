@@ -18,7 +18,7 @@ const isForeignDatabaseError = Schema.is(ForeignDatabaseError);
 
 /**
  * A database that stopped before Circe's fork point records only migrations
- * 1-40, whose names are identical on the T3 Code and Circe lines. Without a
+ * 1-40, whose names are identical on the Circe and Circe lines. Without a
  * Circe ownership marker it must not be adopted.
  */
 layer("Unowned database", (it) => {

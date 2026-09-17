@@ -294,7 +294,7 @@ export function AddProviderInstanceDialog({
       type: "success",
       title: "Provider instance added",
       description: isAcpRegistry
-        ? `${selectedAcp?.name ?? manualAgentId} was added. Complete the agent's advertised authentication on the server; T3 Code detects it automatically.`
+        ? `${selectedAcp?.name ?? manualAgentId} was added. Complete the agent's advertised authentication on the server; Circe detects it automatically.`
         : `${driverOption.label} instance '${instanceId}' was added.`,
       ...(referenceUrl
         ? {

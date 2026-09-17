@@ -23,7 +23,7 @@ let pendingAnnouncements: string[] = [];
 const listeners = new Set<() => void>();
 
 /** Bounded queue: a burst of reports must not grow without limit. */
-export const T3CODE_LIVE_VOICE_MAX_PENDING_ANNOUNCEMENTS = 8;
+export const CIRCE_LIVE_VOICE_MAX_PENDING_ANNOUNCEMENTS = 8;
 
 const sameUiState = (left: CirceLiveVoiceUiState, right: CirceLiveVoiceUiState) =>
   left.active === right.active && left.status === right.status;
@@ -83,7 +83,7 @@ export const requestCirceLiveVoiceAnnouncement = (text: string): void => {
     return;
   }
   pendingAnnouncements = [...pendingAnnouncements, trimmed].slice(
-    -T3CODE_LIVE_VOICE_MAX_PENDING_ANNOUNCEMENTS,
+    -CIRCE_LIVE_VOICE_MAX_PENDING_ANNOUNCEMENTS,
   );
   activationReason = "announcement";
   setCirceLiveVoiceActive(true);

@@ -57,7 +57,7 @@ import { Button } from "../ui/button";
 import { Tooltip, TooltipTrigger, TooltipPopup } from "../ui/tooltip";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
-import { T3CODE_MARK_SRC } from "./CirceBrand";
+import { CIRCE_MARK_SRC } from "./CirceBrand";
 import {
   buildCirceControlCenterView,
   type CirceControlCenterDevice,
@@ -674,7 +674,7 @@ export function CirceControlCenter() {
           <WorkspaceBreadcrumb ariaLabel="Circe environment breadcrumb" className="min-w-0">
             <WorkspaceBreadcrumbItem current>
               <span className="flex items-center gap-2">
-                <img src={T3CODE_MARK_SRC} alt="" className="size-4 rounded-[2px]" />
+                <img src={CIRCE_MARK_SRC} alt="" className="size-4 rounded-[2px]" />
                 <h1 className="text-sm font-semibold tracking-tight">Circe</h1>
               </span>
             </WorkspaceBreadcrumbItem>

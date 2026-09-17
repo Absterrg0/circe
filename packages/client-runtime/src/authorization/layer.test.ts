@@ -207,7 +207,7 @@ const makeHarness = Effect.fn("TestRemoteAuthorization.makeHarness")(function* (
           ClientCapabilities.ClientPresentation,
           ClientCapabilities.ClientPresentation.of({
             metadata: {
-              label: "T3 Code Test",
+              label: "Circe Test",
               deviceType: "mobile",
               os: "test",
             },
@@ -257,7 +257,9 @@ describe("RemoteEnvironmentAuthorization", () => {
       expect(first.socketUrl).toContain("wsTicket=first-ticket");
       expect(second.socketUrl).toContain("wsTicket=second-ticket");
       expect(
-        harness.fetch.calls.filter(([url]) => String(url).endsWith("/.well-known/circe/environment")),
+        harness.fetch.calls.filter(([url]) =>
+          String(url).endsWith("/.well-known/circe/environment"),
+        ),
       ).toHaveLength(1);
       expect(
         harness.fetch.calls.filter(([url]) => String(url).endsWith("/api/auth/websocket-ticket")),
@@ -303,7 +305,9 @@ describe("RemoteEnvironmentAuthorization", () => {
         }),
       );
       expect(
-        harness.fetch.calls.filter(([url]) => String(url).endsWith("/.well-known/circe/environment")),
+        harness.fetch.calls.filter(([url]) =>
+          String(url).endsWith("/.well-known/circe/environment"),
+        ),
       ).toHaveLength(2);
     }),
   );

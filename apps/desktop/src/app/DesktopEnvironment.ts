@@ -35,7 +35,7 @@ export interface MakeDesktopEnvironmentInput {
 
 export const DESKTOP_DISTRIBUTIONS = ["unified-circe", "official-circe", "standalone"] as const;
 export type DesktopDistribution = (typeof DESKTOP_DISTRIBUTIONS)[number];
-export const T3CODE_OFFICIAL_RELEASE_MARKER_FILE = "circe-official-release.json";
+export const CIRCE_OFFICIAL_RELEASE_MARKER_FILE = "circe-official-release.json";
 
 /**
  * A unified Windows install keeps the Electron desktop payload below the
@@ -228,7 +228,7 @@ const make = Effect.fn("desktop.environment.make")(function* (
   const officialCirceMarkerExists = yield* Effect.sync(
     () =>
       input.isPackaged &&
-      NodeFS.existsSync(path.join(input.resourcesPath, T3CODE_OFFICIAL_RELEASE_MARKER_FILE)),
+      NodeFS.existsSync(path.join(input.resourcesPath, CIRCE_OFFICIAL_RELEASE_MARKER_FILE)),
   );
   const distribution = resolveDesktopDistribution({
     isPackaged: input.isPackaged,

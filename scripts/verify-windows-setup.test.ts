@@ -216,7 +216,7 @@ describe("standalone Windows setup verifier", () => {
     expect(probeStart).toBeGreaterThanOrEqual(0);
     expect(probeEnd).toBeGreaterThan(probeStart);
     expect(probe).toContain("CIRCE_HOME = (Join-Path $probeRoot 't3-home')");
-    expect(probe).toContain("T3CODE_STARTUP_PROBE_QUIT = '1'");
+    expect(probe).toContain("CIRCE_STARTUP_PROBE_QUIT = '1'");
     expect(probe).toContain("-RedirectStandardOutput $stdoutPath");
     expect(probe).toContain("-RedirectStandardError $stderrPath");
     expect(probe).toContain("if (-not $desktop.WaitForExit(30000))");
@@ -293,13 +293,13 @@ describe("standalone Windows setup verifier", () => {
     expect(uploadStart).toBeGreaterThanOrEqual(0);
     expect(uploadEnd).toBeGreaterThan(uploadStart);
     const upload = workflow.slice(uploadStart, uploadEnd);
-    expect(upload).toContain("${{ env.T3CODE_SETUP_EXE }}");
+    expect(upload).toContain("${{ env.CIRCE_SETUP_EXE }}");
     expect(upload).toContain("compression-level: 0");
-    expect(upload).not.toContain("${{ env.T3CODE_SETUP_OUTPUT_DIR }}/Circe-Setup.exe");
-    expect(upload).toContain("${{ env.T3CODE_SETUP_OUTPUT_DIR }}/*.manifest.json");
-    expect(upload).toContain("${{ env.T3CODE_SETUP_OUTPUT_DIR }}/*.provenance.json");
-    expect(upload).toContain("${{ env.T3CODE_SETUP_OUTPUT_DIR }}/*.sha256");
-    expect(upload).toContain("${{ env.T3CODE_SETUP_OUTPUT_DIR }}/verify-windows-setup.mjs");
+    expect(upload).not.toContain("${{ env.CIRCE_SETUP_OUTPUT_DIR }}/Circe-Setup.exe");
+    expect(upload).toContain("${{ env.CIRCE_SETUP_OUTPUT_DIR }}/*.manifest.json");
+    expect(upload).toContain("${{ env.CIRCE_SETUP_OUTPUT_DIR }}/*.provenance.json");
+    expect(upload).toContain("${{ env.CIRCE_SETUP_OUTPUT_DIR }}/*.sha256");
+    expect(upload).toContain("${{ env.CIRCE_SETUP_OUTPUT_DIR }}/verify-windows-setup.mjs");
     expect(upload).not.toContain("${{ env.RUNNER_TEMP }}");
   });
 
@@ -333,7 +333,7 @@ describe("standalone Windows setup verifier", () => {
       "if (Test-Path $root) { throw 'Full uninstall left the install root behind.' }",
     );
     expect(cleanJob).toContain("main-window-revealed");
-    expect(cleanJob).toContain("$receipt.version -ne $env:T3CODE_SETUP_VERSION");
+    expect(cleanJob).toContain("$receipt.version -ne $env:CIRCE_SETUP_VERSION");
     expect(cleanJob).toContain("Assert-CirceRegistration -Installed $true -InstallRoot $root");
     expect(cleanJob).toContain("Assert-CirceRegistration -Installed $false -InstallRoot $root");
     expect(cleanJob).toContain("$displayIcon = $displayIcon.Trim().Trim('\"')");

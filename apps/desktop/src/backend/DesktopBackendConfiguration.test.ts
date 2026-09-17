@@ -80,9 +80,9 @@ function makeEnvironmentLayer(
         NodeServices.layer,
         DesktopConfig.layerTest({
           CIRCE_HOME: baseDir,
-          T3CODE_PORT: "9999",
-          T3CODE_MODE: "desktop",
-          T3CODE_DESKTOP_LAN_HOST: "192.168.1.50",
+          CIRCE_PORT: "9999",
+          CIRCE_MODE: "desktop",
+          CIRCE_DESKTOP_LAN_HOST: "192.168.1.50",
           VITE_DEV_SERVER_URL: options?.devServerUrl,
         }),
       ),
@@ -234,11 +234,11 @@ describe("DesktopBackendConfiguration", () => {
         assert.equal(first.cwd, environment.backendCwd);
         assert.equal(first.captureOutput, true);
         assert.equal(first.env.ELECTRON_RUN_AS_NODE, "1");
-        assert.isUndefined(first.env.T3CODE_PORT);
-        assert.isUndefined(first.env.T3CODE_MODE);
-        assert.isUndefined(first.env.T3CODE_DESKTOP_LAN_HOST);
-        assert.isUndefined(first.env.T3CODE_NODE_PRESET);
-        assert.isUndefined(first.env.T3CODE_CODEX_LAUNCH_ARGS);
+        assert.isUndefined(first.env.CIRCE_PORT);
+        assert.isUndefined(first.env.CIRCE_MODE);
+        assert.isUndefined(first.env.CIRCE_DESKTOP_LAN_HOST);
+        assert.isUndefined(first.env.CIRCE_NODE_PRESET);
+        assert.isUndefined(first.env.CIRCE_CODEX_LAUNCH_ARGS);
 
         assert.equal(first.bootstrap.mode, "desktop");
         assert.equal(first.bootstrap.noBrowser, true);
@@ -263,8 +263,8 @@ describe("DesktopBackendConfiguration", () => {
 
   it.effect("enables the fast Codex default for a branded desktop distribution", () =>
     Effect.gen(function* () {
-      const previousLaunchArgs = process.env.T3CODE_CODEX_LAUNCH_ARGS;
-      delete process.env.T3CODE_CODEX_LAUNCH_ARGS;
+      const previousLaunchArgs = process.env.CIRCE_CODEX_LAUNCH_ARGS;
+      delete process.env.CIRCE_CODEX_LAUNCH_ARGS;
 
       try {
         const fileSystem = yield* FileSystem.FileSystem;
@@ -315,19 +315,19 @@ describe("DesktopBackendConfiguration", () => {
           ),
         );
 
-        assert.equal(config.primary.env.T3CODE_CODEX_LAUNCH_ARGS, "--disable apps");
-        assert.equal(config.wsl.env.T3CODE_CODEX_LAUNCH_ARGS, "--disable apps");
-        assert.include(config.wsl.args, "T3CODE_CODEX_LAUNCH_ARGS=--disable apps");
+        assert.equal(config.primary.env.CIRCE_CODEX_LAUNCH_ARGS, "--disable apps");
+        assert.equal(config.wsl.env.CIRCE_CODEX_LAUNCH_ARGS, "--disable apps");
+        assert.include(config.wsl.args, "CIRCE_CODEX_LAUNCH_ARGS=--disable apps");
       } finally {
-        restoreEnv("T3CODE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
+        restoreEnv("CIRCE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
       }
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
   it.effect("enables the fast Codex default for an official packaged Linux distribution", () =>
     Effect.gen(function* () {
-      const previousLaunchArgs = process.env.T3CODE_CODEX_LAUNCH_ARGS;
-      delete process.env.T3CODE_CODEX_LAUNCH_ARGS;
+      const previousLaunchArgs = process.env.CIRCE_CODEX_LAUNCH_ARGS;
+      delete process.env.CIRCE_CODEX_LAUNCH_ARGS;
 
       try {
         const fileSystem = yield* FileSystem.FileSystem;
@@ -337,7 +337,7 @@ describe("DesktopBackendConfiguration", () => {
         const resourcesPath = `${baseDir}/resources`;
         yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
         yield* fileSystem.writeFileString(
-          `${resourcesPath}/${DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE}`,
+          `${resourcesPath}/${DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE}`,
           '{"product":"Circe","distribution":"official"}\n',
         );
 
@@ -363,17 +363,17 @@ describe("DesktopBackendConfiguration", () => {
           ),
         );
 
-        assert.equal(primary.env.T3CODE_CODEX_LAUNCH_ARGS, "--disable apps");
+        assert.equal(primary.env.CIRCE_CODEX_LAUNCH_ARGS, "--disable apps");
       } finally {
-        restoreEnv("T3CODE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
+        restoreEnv("CIRCE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
       }
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
 
   it.effect("keeps an explicit Codex launch-args override on branded distributions", () =>
     Effect.gen(function* () {
-      const previousLaunchArgs = process.env.T3CODE_CODEX_LAUNCH_ARGS;
-      process.env.T3CODE_CODEX_LAUNCH_ARGS = "--strict-config";
+      const previousLaunchArgs = process.env.CIRCE_CODEX_LAUNCH_ARGS;
+      process.env.CIRCE_CODEX_LAUNCH_ARGS = "--strict-config";
 
       try {
         const fileSystem = yield* FileSystem.FileSystem;
@@ -383,7 +383,7 @@ describe("DesktopBackendConfiguration", () => {
         const resourcesPath = `${baseDir}/resources`;
         yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
         yield* fileSystem.writeFileString(
-          `${resourcesPath}/${DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE}`,
+          `${resourcesPath}/${DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE}`,
           '{"product":"Circe","distribution":"official"}\n',
         );
 
@@ -409,9 +409,9 @@ describe("DesktopBackendConfiguration", () => {
           ),
         );
 
-        assert.equal(primary.env.T3CODE_CODEX_LAUNCH_ARGS, "--strict-config");
+        assert.equal(primary.env.CIRCE_CODEX_LAUNCH_ARGS, "--strict-config");
       } finally {
-        restoreEnv("T3CODE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
+        restoreEnv("CIRCE_CODEX_LAUNCH_ARGS", previousLaunchArgs);
       }
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );
@@ -464,9 +464,9 @@ describe("DesktopBackendConfiguration", () => {
 
   it.effect("managed primary and WSL children strip an ambient node preset", () =>
     Effect.gen(function* () {
-      const previousPreset = process.env.T3CODE_NODE_PRESET;
+      const previousPreset = process.env.CIRCE_NODE_PRESET;
       try {
-        process.env.T3CODE_NODE_PRESET = "headless";
+        process.env.CIRCE_NODE_PRESET = "headless";
 
         yield* withHarness(
           Effect.gen(function* () {
@@ -474,12 +474,12 @@ describe("DesktopBackendConfiguration", () => {
             const primary = yield* configuration.resolvePrimary;
             const wsl = yield* configuration.resolveWsl({ port: 5000, distro: null });
 
-            assert.isUndefined(primary.env.T3CODE_NODE_PRESET);
-            assert.isUndefined(wsl.env.T3CODE_NODE_PRESET);
+            assert.isUndefined(primary.env.CIRCE_NODE_PRESET);
+            assert.isUndefined(wsl.env.CIRCE_NODE_PRESET);
           }),
         );
       } finally {
-        restoreEnv("T3CODE_NODE_PRESET", previousPreset);
+        restoreEnv("CIRCE_NODE_PRESET", previousPreset);
       }
     }),
   );
@@ -493,8 +493,8 @@ describe("DesktopBackendConfiguration", () => {
         const wsl = yield* configuration.resolveWsl({ port: 5000, distro: null });
 
         assert.equal(wsl.bootstrap.desktopBootstrapToken, primary.bootstrap.desktopBootstrapToken);
-        assert.isUndefined(primary.env.T3CODE_NODE_PRESET);
-        assert.isUndefined(wsl.env.T3CODE_NODE_PRESET);
+        assert.isUndefined(primary.env.CIRCE_NODE_PRESET);
+        assert.isUndefined(wsl.env.CIRCE_NODE_PRESET);
       }),
     ),
   );
@@ -1044,14 +1044,14 @@ describe("DesktopBackendConfiguration", () => {
       const previousWslEnv = process.env.WSLENV;
       const previousOpenAiKey = process.env.OPENAI_API_KEY;
       const previousAnthropicKey = process.env.ANTHROPIC_API_KEY;
-      const previousOtlpHeaders = process.env.T3CODE_OTLP_HEADERS;
-      const previousOtlpProtocol = process.env.T3CODE_OTLP_PROTOCOL;
+      const previousOtlpHeaders = process.env.CIRCE_OTLP_HEADERS;
+      const previousOtlpProtocol = process.env.CIRCE_OTLP_PROTOCOL;
       try {
         process.env.WSLENV = "GOPATH/p:OPENAI_API_KEY/u:EMPTY::AZURE_DEVOPS_EXT_PAT/u";
         process.env.OPENAI_API_KEY = "openai-key";
         process.env.ANTHROPIC_API_KEY = "anthropic-key";
-        process.env.T3CODE_OTLP_HEADERS = 'authorization="Bearer%20my-token"';
-        process.env.T3CODE_OTLP_PROTOCOL = "http/protobuf";
+        process.env.CIRCE_OTLP_HEADERS = 'authorization="Bearer%20my-token"';
+        process.env.CIRCE_OTLP_PROTOCOL = "http/protobuf";
 
         yield* Effect.gen(function* () {
           const configuration = yield* DesktopBackendConfiguration.DesktopBackendConfiguration;
@@ -1071,14 +1071,14 @@ describe("DesktopBackendConfiguration", () => {
           assert.equal(config.httpBaseUrl.href, "http://172.27.0.99:5050/");
           assert.equal(config.env.OPENAI_API_KEY, "openai-key");
           assert.equal(config.env.ANTHROPIC_API_KEY, "anthropic-key");
-          assert.equal(config.env.T3CODE_OTLP_PROTOCOL, "http/protobuf");
+          assert.equal(config.env.CIRCE_OTLP_PROTOCOL, "http/protobuf");
           // The existing WSLENV is preserved byte-for-byte (note the empty
           // "::" segment survives — WSL ignores it, so we don't normalize
           // it away) and ANTHROPIC_API_KEY is appended. OPENAI_API_KEY is
           // already declared, so it isn't forwarded twice.
           assert.equal(
             config.env.WSLENV,
-            "GOPATH/p:OPENAI_API_KEY/u:EMPTY::AZURE_DEVOPS_EXT_PAT/u:ANTHROPIC_API_KEY:T3CODE_OTLP_HEADERS:T3CODE_OTLP_PROTOCOL",
+            "GOPATH/p:OPENAI_API_KEY/u:EMPTY::AZURE_DEVOPS_EXT_PAT/u:ANTHROPIC_API_KEY:CIRCE_OTLP_HEADERS:CIRCE_OTLP_PROTOCOL",
           );
         }).pipe(
           Effect.provide(
@@ -1101,8 +1101,8 @@ describe("DesktopBackendConfiguration", () => {
         restoreEnv("WSLENV", previousWslEnv);
         restoreEnv("OPENAI_API_KEY", previousOpenAiKey);
         restoreEnv("ANTHROPIC_API_KEY", previousAnthropicKey);
-        restoreEnv("T3CODE_OTLP_HEADERS", previousOtlpHeaders);
-        restoreEnv("T3CODE_OTLP_PROTOCOL", previousOtlpProtocol);
+        restoreEnv("CIRCE_OTLP_HEADERS", previousOtlpHeaders);
+        restoreEnv("CIRCE_OTLP_PROTOCOL", previousOtlpProtocol);
       }
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );

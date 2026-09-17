@@ -319,7 +319,7 @@ export function makeCursorAgentOptions(input: {
   const mcpServers = cursorMcpServers(input.threadId);
   return {
     model: cursorSdkModelSelection(input.modelSelection),
-    name: `T3 Code ${input.threadId}`,
+    name: `Circe ${input.threadId}`,
     mode: input.runtimePolicy.interactionMode === "plan" ? "plan" : "agent",
     ...(input.apiKey === undefined ? {} : { apiKey: input.apiKey }),
     local: {

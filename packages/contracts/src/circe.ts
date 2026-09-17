@@ -819,13 +819,13 @@ export type CirceFocusTaskResult = typeof CirceFocusTaskResult.Type;
  * client can present them as a distinct, non-task row without a generic
  * thread field.
  */
-export const T3CODE_CONVERSATION_TITLE_PREFIX = "Conversation:";
+export const CIRCE_CONVERSATION_TITLE_PREFIX = "Conversation:";
 
 /**
  * Circe keeps general-question threads in one dedicated project per node so
  * they never mix into the user's coding projects.
  */
-export const T3CODE_CONVERSATIONS_PROJECT_TITLE = "Conversations";
+export const CIRCE_CONVERSATIONS_PROJECT_TITLE = "Conversations";
 
 export const CirceTaskCreatedActivityPayload = Schema.Struct({
   objective: TrimmedNonEmptyString.check(Schema.isMaxLength(16_000)),

@@ -123,7 +123,7 @@ describe("eval engine", () => {
     // vs outer 0.153.4). Live runs must pin the exact executable through the
     // normal CodexSettings binaryPath seam and record the absolute path.
     expect(source).not.toContain("codex (PATH)");
-    expect(source).toContain("T3CODE_SEMANTIC_EVAL_CODEX");
+    expect(source).toContain("CIRCE_SEMANTIC_EVAL_CODEX");
     expect(source).toContain("volta which codex");
   });
 });

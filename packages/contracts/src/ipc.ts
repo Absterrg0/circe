@@ -1305,7 +1305,7 @@ export const DesktopCirceOrbCatalogSchema = Schema.Struct({
 });
 export type DesktopCirceOrbCatalog = typeof DesktopCirceOrbCatalogSchema.Type;
 
-export const EMPTY_DESKTOP_T3CODE_ORB_CATALOG: DesktopCirceOrbCatalog = {
+export const EMPTY_DESKTOP_CIRCE_ORB_CATALOG: DesktopCirceOrbCatalog = {
   providers: [],
   selected: null,
   suggestedSelection: null,

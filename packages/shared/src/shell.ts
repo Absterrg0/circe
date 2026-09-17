@@ -224,11 +224,11 @@ export function mergePathEntries(
 }
 
 function envCaptureStart(name: string): string {
-  return `__T3CODE_ENV_${name}_START__`;
+  return `__CIRCE_ENV_${name}_START__`;
 }
 
 function envCaptureEnd(name: string): string {
-  return `__T3CODE_ENV_${name}_END__`;
+  return `__CIRCE_ENV_${name}_END__`;
 }
 
 function buildEnvironmentCaptureCommand(names: ReadonlyArray<string>): string {

@@ -5,7 +5,7 @@
 // timers, the injected WebRTC seam, and the RPC callbacks its host supplies, and
 // it is intentionally not an Effect program: the same module runs in a browser
 // renderer and in React Native, where the host owns the runtime.
-import { T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH } from "@circe/contracts";
+import { CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH } from "@circe/contracts";
 
 import {
   applyCirceLiveVoiceTranscript,
@@ -23,7 +23,7 @@ import {
  * arrives without a client delegation, the controller forwards the user's
  * last utterance to the backend so the request still runs.
  */
-const T3CODE_LIVE_VOICE_TOOL_REFUSAL =
+const CIRCE_LIVE_VOICE_TOOL_REFUSAL =
   /(?:i (?:don'?t|do not|can'?t|cannot|am not able to|do not have|don'?t have)|as an ai)[^.\n]{0,80}(?:access|fetch|retrieve|check|get|provide|real-?time|live|weather|current)/iu;
 
 export type CirceLiveVoiceStatus =
@@ -54,19 +54,19 @@ export type CirceLiveVoiceStartupStage =
  * answers. The controller holds the delegation open this long and retries
  * when the next input fragment lands.
  */
-export const T3CODE_LIVE_VOICE_DELEGATION_RETRY_MS = 2_500;
+export const CIRCE_LIVE_VOICE_DELEGATION_RETRY_MS = 2_500;
 
-export const T3CODE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS = 60_000;
+export const CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS = 60_000;
 /** 10 minutes hard cap on one billed session. */
-export const T3CODE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS = 10 * 60_000;
+export const CIRCE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS = 10 * 60_000;
 /**
  * How often the renderer renews its server-side lease. Three missed beats close
  * the session on the node, so a killed or sleeping renderer cannot leave it
  * billing on client timers alone.
  */
-export const T3CODE_LIVE_VOICE_DEFAULT_RENEW_INTERVAL_MS = 20_000;
+export const CIRCE_LIVE_VOICE_DEFAULT_RENEW_INTERVAL_MS = 20_000;
 /** Bounded startup so a stuck mic, ICE, or RPC cannot hang the button. */
-export const T3CODE_LIVE_VOICE_DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
+export const CIRCE_LIVE_VOICE_DEFAULT_STARTUP_TIMEOUT_MS = 30_000;
 
 export interface CirceLiveVoiceStartResult {
   readonly releaseRequired?: boolean;
@@ -322,10 +322,10 @@ export function createCirceLiveVoiceController(
 ): CirceLiveVoiceController {
   const browser = options.browser ?? defaultBrowser;
   const listen = options.listen ?? true;
-  const idleTimeoutMs = options.idleTimeoutMs ?? T3CODE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS;
-  const maxSessionMs = options.maxSessionMs ?? T3CODE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS;
-  const startupTimeoutMs = options.startupTimeoutMs ?? T3CODE_LIVE_VOICE_DEFAULT_STARTUP_TIMEOUT_MS;
-  const renewIntervalMs = options.renewIntervalMs ?? T3CODE_LIVE_VOICE_DEFAULT_RENEW_INTERVAL_MS;
+  const idleTimeoutMs = options.idleTimeoutMs ?? CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS;
+  const maxSessionMs = options.maxSessionMs ?? CIRCE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS;
+  const startupTimeoutMs = options.startupTimeoutMs ?? CIRCE_LIVE_VOICE_DEFAULT_STARTUP_TIMEOUT_MS;
+  const renewIntervalMs = options.renewIntervalMs ?? CIRCE_LIVE_VOICE_DEFAULT_RENEW_INTERVAL_MS;
   const now = options.now ?? Date.now;
   let status: CirceLiveVoiceStatus = "idle";
   let transcript = createCirceLiveVoiceTranscript();
@@ -800,7 +800,7 @@ export function createCirceLiveVoiceController(
           // speech model choosing to delegate — the model is only the voice.
           // A refusal is still caught the same way for everything else.
           const quickAction = utterance.length > 0 && isCirceLiveVoiceQuickAction(utterance);
-          const refusal = T3CODE_LIVE_VOICE_TOOL_REFUSAL.test(transcript.assistantText.slice(-400));
+          const refusal = CIRCE_LIVE_VOICE_TOOL_REFUSAL.test(transcript.assistantText.slice(-400));
           if (utterance.length > 0 && (quickAction || refusal)) {
             delegationHandledSinceUserSpeech = true;
             awaitingDelegation = true;
@@ -833,7 +833,7 @@ export function createCirceLiveVoiceController(
           deferralTimer = setTimeout(() => {
             deferralTimer = null;
             deferredDelegationId = null;
-          }, T3CODE_LIVE_VOICE_DELEGATION_RETRY_MS);
+          }, CIRCE_LIVE_VOICE_DELEGATION_RETRY_MS);
           break;
         }
         clearDeferral();
@@ -1146,5 +1146,5 @@ export function buildCirceLiveVoiceContext(input: {
   if (lines.length === 0) return undefined;
   // The wire contract rejects longer context: keep the bounded prefix rather
   // than failing session start over an oversized catalog line.
-  return lines.join("\n").slice(0, T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH);
+  return lines.join("\n").slice(0, CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH);
 }

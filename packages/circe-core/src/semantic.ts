@@ -270,7 +270,7 @@ function buildCirceSemanticPromptContext(
   ];
 }
 
-const T3CODE_SEMANTIC_PROMPT_RULES: ReadonlyArray<string> = [
+const CIRCE_SEMANTIC_PROMPT_RULES: ReadonlyArray<string> = [
   "Translate one Circe request into one structured semantic proposal.",
   "Model proposes never authorizes. Return only the schema fields. Never invent or return internal IDs. Never call tools, dispatch work, or answer approvals.",
   "Use exact catalog names when naming a project, task, provider, model, or effort.",
@@ -317,8 +317,7 @@ export function buildCirceSemanticPrompt(
   input: CirceCommandContext,
   prepared: Extract<PreparedCirceSemanticTurn, { status: "ready" }>,
 ): string {
-  return [
-    ...T3CODE_SEMANTIC_PROMPT_RULES,
-    ...buildCirceSemanticPromptContext(input, prepared),
-  ].join("\n");
+  return [...CIRCE_SEMANTIC_PROMPT_RULES, ...buildCirceSemanticPromptContext(input, prepared)].join(
+    "\n",
+  );
 }

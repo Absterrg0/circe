@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import type { DecisionQuestion } from "./decision.ts";
 import {
-  T3CODE_DECISION_THRESHOLDS,
+  CIRCE_DECISION_THRESHOLDS,
   buildDecisionRequest,
   buildOptionTable,
   candidateBoundaries,
@@ -147,11 +147,11 @@ describe("segmentation partition law", () => {
 
 describe("monotone safety", () => {
   it("keeps confidence thresholds non-decreasing in risk", () => {
-    expect(T3CODE_DECISION_THRESHOLDS.readOnly).toBeLessThanOrEqual(
-      T3CODE_DECISION_THRESHOLDS.mutating,
+    expect(CIRCE_DECISION_THRESHOLDS.readOnly).toBeLessThanOrEqual(
+      CIRCE_DECISION_THRESHOLDS.mutating,
     );
-    expect(T3CODE_DECISION_THRESHOLDS.mutating).toBeLessThanOrEqual(
-      T3CODE_DECISION_THRESHOLDS.destructive,
+    expect(CIRCE_DECISION_THRESHOLDS.mutating).toBeLessThanOrEqual(
+      CIRCE_DECISION_THRESHOLDS.destructive,
     );
   });
 
@@ -159,6 +159,6 @@ describe("monotone safety", () => {
     expect(riskForAction("stop")).toBe("destructive");
     expect(riskForAction("reroute")).toBe("destructive");
     expect(riskForAction("status")).toBe("read-only");
-    expect(thresholdForRisk("destructive")).toBe(T3CODE_DECISION_THRESHOLDS.destructive);
+    expect(thresholdForRisk("destructive")).toBe(CIRCE_DECISION_THRESHOLDS.destructive);
   });
 });

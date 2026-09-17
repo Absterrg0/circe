@@ -1,4 +1,4 @@
-const T3CODE_PREFERENCES_CHANGED_EVENT = "t3code:circe-preferences-changed";
+const CIRCE_PREFERENCES_CHANGED_EVENT = "t3code:circe-preferences-changed";
 const VOICE_REPORTS_ENABLED_KEY = "t3code:circe:voice-reports-enabled:v1";
 
 export function areCirceVoiceReportsEnabled(): boolean {
@@ -7,11 +7,11 @@ export function areCirceVoiceReportsEnabled(): boolean {
 
 export function setCirceVoiceReportsEnabled(enabled: boolean): void {
   localStorage.setItem(VOICE_REPORTS_ENABLED_KEY, String(enabled));
-  window.dispatchEvent(new Event(T3CODE_PREFERENCES_CHANGED_EVENT));
+  window.dispatchEvent(new Event(CIRCE_PREFERENCES_CHANGED_EVENT));
 }
 
 export function onCircePreferencesChanged(listener: () => void): () => void {
-  window.addEventListener(T3CODE_PREFERENCES_CHANGED_EVENT, listener);
+  window.addEventListener(CIRCE_PREFERENCES_CHANGED_EVENT, listener);
   // Same-tab writes dispatch the custom event above, but another tab's write
   // only fires a storage event: listen for both so every tab follows the key.
   const onStorage = (event: StorageEvent): void => {
@@ -19,7 +19,7 @@ export function onCircePreferencesChanged(listener: () => void): () => void {
   };
   window.addEventListener("storage", onStorage);
   return () => {
-    window.removeEventListener(T3CODE_PREFERENCES_CHANGED_EVENT, listener);
+    window.removeEventListener(CIRCE_PREFERENCES_CHANGED_EVENT, listener);
     window.removeEventListener("storage", onStorage);
   };
 }

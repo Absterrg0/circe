@@ -309,7 +309,7 @@ describe("acpRegistrySnapshotReadiness", () => {
         label: "Log in with Grok",
       },
       message:
-        'Complete the advertised "Log in with Grok" authentication method on the server. T3 Code will detect it automatically on the next provider refresh.',
+        'Complete the advertised "Log in with Grok" authentication method on the server. Circe will detect it automatically on the next provider refresh.',
     });
   });
 

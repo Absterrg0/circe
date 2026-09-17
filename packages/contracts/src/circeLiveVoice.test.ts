@@ -2,8 +2,8 @@ import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH,
-  T3CODE_LIVE_VOICE_MAX_SDP_LENGTH,
+  CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH,
+  CIRCE_LIVE_VOICE_MAX_SDP_LENGTH,
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceCreateResult,
   CirceLiveVoiceUnavailableError,
@@ -27,12 +27,12 @@ describe("Circe live voice contracts", () => {
   it("rejects an empty or oversized offer and oversized context", () => {
     expect(() => decodeInput({ sdpOffer: "" })).toThrow();
     expect(() =>
-      decodeInput({ sdpOffer: "A".repeat(T3CODE_LIVE_VOICE_MAX_SDP_LENGTH + 1) }),
+      decodeInput({ sdpOffer: "A".repeat(CIRCE_LIVE_VOICE_MAX_SDP_LENGTH + 1) }),
     ).toThrow();
     expect(() =>
       decodeInput({
         sdpOffer: "v=0\r\n",
-        context: "A".repeat(T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH + 1),
+        context: "A".repeat(CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH + 1),
       }),
     ).toThrow();
   });

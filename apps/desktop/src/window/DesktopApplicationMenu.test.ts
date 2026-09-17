@@ -30,7 +30,7 @@ const environmentInput = {
 
 const electronAppLayer = Layer.succeed(ElectronApp.ElectronApp, {
   metadata: Effect.die("unexpected metadata read"),
-  name: Effect.succeed("T3 Code"),
+  name: Effect.succeed("Circe"),
   systemLocale: Effect.succeed("en-US"),
   whenReady: Effect.void,
   quit: Effect.void,
@@ -135,7 +135,7 @@ describe("DesktopApplicationMenu", () => {
   it("uses Circe branding in the update dialog", () => {
     const message = DesktopApplicationMenu.formatDesktopUpToDateMessage("Circe (Nightly)", "1.2.3");
     assert.equal(message, "Circe (Nightly) 1.2.3 is currently the newest version available.");
-    assert.notInclude(message, "T3 Code");
+    assert.notInclude(message, "Circe");
   });
 
   it.effect("installs the native menu and routes Settings through DesktopWindow", () =>

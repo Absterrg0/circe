@@ -93,8 +93,8 @@ describe("Windows setup contracts", () => {
       capabilities: { execution: false, ui: true },
     });
     const launcher = renderWindowsNodeLauncherCmd();
-    expect(launcher).toContain('set "T3CODE_NODE_PRESET=headless"');
-    expect(launcher).toContain("T3CODE_NODE_STOP=%CIRCE_HOME%\\runtime\\windows-stop.marker");
+    expect(launcher).toContain('set "CIRCE_NODE_PRESET=headless"');
+    expect(launcher).toContain("CIRCE_NODE_STOP=%CIRCE_HOME%\\runtime\\windows-stop.marker");
     expect(launcher).toContain('cd /d "%~dp0"');
     expect(launcher).toContain('"%~dp0node\\node.exe" "%~dp0circe-node-supervisor.mjs"');
     expect(launcher).not.toContain("service-launcher.mjs");
@@ -115,7 +115,7 @@ describe("Windows setup contracts", () => {
       '"--mode", "web", "--no-browser", "--port", "3773", "--circe-node-preset", "headless"',
     );
     expect(supervisor).toContain("cwd: runtimeRoot");
-    expect(supervisor).toContain('T3CODE_NODE_PRESET: "headless"');
+    expect(supervisor).toContain('CIRCE_NODE_PRESET: "headless"');
     expect(supervisor).toContain("setTimeout");
     expect(supervisor).toContain("5000");
     expect(supervisor).toContain("/PID");
@@ -214,7 +214,7 @@ describe("Windows setup contracts", () => {
         `import * as fs from "node:fs/promises";
 await fs.writeFile(${JSON.stringify(`${pidFile}.tmp`)}, String(process.pid));
 await fs.rename(${JSON.stringify(`${pidFile}.tmp`)}, ${JSON.stringify(pidFile)});
-await fs.writeFile(${JSON.stringify(`${argsFile}.tmp`)}, JSON.stringify({ argv: process.argv.slice(2), preset: process.env.T3CODE_NODE_PRESET }));
+await fs.writeFile(${JSON.stringify(`${argsFile}.tmp`)}, JSON.stringify({ argv: process.argv.slice(2), preset: process.env.CIRCE_NODE_PRESET }));
 await fs.rename(${JSON.stringify(`${argsFile}.tmp`)}, ${JSON.stringify(argsFile)});
 setInterval(() => {}, 1000);
 `,
@@ -223,7 +223,7 @@ setInterval(() => {}, 1000);
       await NodeFSP.writeFile(supervisorPath, renderWindowsNodeSupervisorMjs());
       const spawnedSupervisor = NodeChildProcess.spawn(process.execPath, [supervisorPath], {
         cwd: root,
-        env: { ...process.env, T3CODE_NODE_STOP: marker, T3CODE_NODE_PRESET: "headless" },
+        env: { ...process.env, CIRCE_NODE_STOP: marker, CIRCE_NODE_PRESET: "headless" },
         stdio: "ignore",
       });
       supervisor = spawnedSupervisor;

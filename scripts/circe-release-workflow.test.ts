@@ -77,8 +77,8 @@ describe("Circe release workflow contracts", () => {
     assert.include(coordinator, "circe-desktop-mac.yml");
     assert.include(coordinator, "downloads/mac");
     assert.include(coordinator, ".dmg");
-    assert.include(coordinator, "T3CODE_RELEASE_PRERELEASE");
-    assert.include(coordinator, "T3CODE_RELEASE_MAKE_LATEST");
+    assert.include(coordinator, "CIRCE_RELEASE_PRERELEASE");
+    assert.include(coordinator, "CIRCE_RELEASE_MAKE_LATEST");
     const transaction = NodeFS.readFileSync(
       new URL("./circe-release-transaction.ts", import.meta.url),
       "utf8",
@@ -237,8 +237,8 @@ describe("Circe release workflow contracts", () => {
     assert.include(gate, "Azure Trusted Signing is only partially configured");
     assert.include(gate, "Public Circe releases require all Azure Trusted Signing secrets");
     assert.include(gate, "if (-not $publicRelease)");
-    assert.include(gate, "T3CODE_WINDOWS_SIGNING_ENABLED=false");
-    assert.include(gate, "T3CODE_WINDOWS_SIGNING_ENABLED");
+    assert.include(gate, "CIRCE_WINDOWS_SIGNING_ENABLED=false");
+    assert.include(gate, "CIRCE_WINDOWS_SIGNING_ENABLED");
     const desktopBuildStart = workflow.indexOf("      - name: Build desktop payload directory");
     const desktopBuildEnd = workflow.indexOf(
       "      - name: Stage standalone Windows runtime",
@@ -258,7 +258,7 @@ describe("Circe release workflow contracts", () => {
       assert.include(desktopBuild, name + ": ${{ secrets." + name + " }}");
     }
     assert.include(workflow, "Get-AuthenticodeSignature -LiteralPath $Path");
-    assert.include(workflow, "$env:T3CODE_EXPECTED_PUBLISHER");
+    assert.include(workflow, "$env:CIRCE_EXPECTED_PUBLISHER");
     assert.include(workflow, "installed Full Circe.exe");
     assert.include(workflow, "installed Controller Circe.exe");
     assert.include(workflow, "Status -ne 'Valid'");
@@ -294,7 +294,7 @@ describe("Circe release workflow contracts", () => {
     assert.include(workflow, "spctl --assess --type execute");
     assert.include(workflow, "xcrun stapler validate");
     assert.include(workflow, 'xcrun stapler validate "$artifact"');
-    assert.include(workflow, 'if [[ "$T3CODE_MAC_SIGNED" == "true" ]]');
+    assert.include(workflow, 'if [[ "$CIRCE_MAC_SIGNED" == "true" ]]');
     assert.include(workflow, "args+=(--signed)");
     assert.include(workflow, "passkeys=true");
     assert.include(workflow, "if: ${{ steps.signing.outputs.signed == 'true' }}");

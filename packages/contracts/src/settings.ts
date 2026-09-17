@@ -11,8 +11,8 @@ import {
 } from "./baseSchemas.ts";
 import { UsageLimitSourceId } from "./usageLimitSourceId.ts";
 import {
-  T3CODE_LIVE_VOICE_DEFAULT_MODEL,
-  T3CODE_LIVE_VOICE_DEFAULT_VOICE,
+  CIRCE_LIVE_VOICE_DEFAULT_MODEL,
+  CIRCE_LIVE_VOICE_DEFAULT_VOICE,
 } from "./circeLiveVoice.ts";
 import { EnvironmentMachineKind, ThreadEnvMode } from "./environment.ts";
 import { KeybindingShortcut } from "./keybindings.ts";
@@ -20,8 +20,8 @@ import {
   CustomModelSetting,
   DEFAULT_TEXT_GENERATION_MODEL,
   DEFAULT_TEXT_GENERATION_REASONING_EFFORT,
-  DEFAULT_T3CODE_SUPERVISOR_MODEL,
-  DEFAULT_T3CODE_SUPERVISOR_REASONING_EFFORT,
+  DEFAULT_CIRCE_SUPERVISOR_MODEL,
+  DEFAULT_CIRCE_SUPERVISOR_REASONING_EFFORT,
   ProviderOptionSelections,
 } from "./model.ts";
 import { ModelSelection } from "./modelSelection.ts";
@@ -920,7 +920,7 @@ export const OpenCodeSettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "Server URL",
-        description: "Leave blank to let T3 Code spawn the server when needed.",
+        description: "Leave blank to let Circe spawn the server when needed.",
         providerSettingsForm: {
           placeholder: "http://127.0.0.1:4096",
           clearWhenEmpty: "omit",
@@ -978,10 +978,10 @@ export type ObservabilitySettings = typeof ObservabilitySettings.Type;
  */
 export const CirceLiveVoiceSettings = Schema.Struct({
   model: TrimmedNonEmptyString.pipe(
-    Schema.withDecodingDefault(Effect.succeed(T3CODE_LIVE_VOICE_DEFAULT_MODEL)),
+    Schema.withDecodingDefault(Effect.succeed(CIRCE_LIVE_VOICE_DEFAULT_MODEL)),
   ),
   voice: TrimmedNonEmptyString.pipe(
-    Schema.withDecodingDefault(Effect.succeed(T3CODE_LIVE_VOICE_DEFAULT_VOICE)),
+    Schema.withDecodingDefault(Effect.succeed(CIRCE_LIVE_VOICE_DEFAULT_VOICE)),
   ),
   apiKey: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
 });
@@ -1284,11 +1284,11 @@ export const ServerSettings = Schema.Struct({
     Schema.withDecodingDefault(
       Effect.succeed({
         instanceId: ProviderInstanceId.make("codex"),
-        model: DEFAULT_T3CODE_SUPERVISOR_MODEL,
+        model: DEFAULT_CIRCE_SUPERVISOR_MODEL,
         options: [
           {
             id: "reasoningEffort",
-            value: DEFAULT_T3CODE_SUPERVISOR_REASONING_EFFORT,
+            value: DEFAULT_CIRCE_SUPERVISOR_REASONING_EFFORT,
           },
         ],
       }),

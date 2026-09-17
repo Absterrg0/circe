@@ -23,7 +23,7 @@ const MAX_PROCESS_STATUS_BYTES: usize = 256;
 const HISTORY_CHUNK_SNAPSHOTS: usize = 32;
 
 #[cfg(target_os = "linux")]
-const X11_T3CODE_RELEASE_MODE: &str = "--wait-for-x11-circe-release";
+const X11_CIRCE_RELEASE_MODE: &str = "--wait-for-x11-circe-release";
 
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1134,7 +1134,7 @@ mod x11_circe_release {
 
 fn main() -> io::Result<()> {
     #[cfg(target_os = "linux")]
-    if std::env::args().nth(1).as_deref() == Some(X11_T3CODE_RELEASE_MODE) {
+    if std::env::args().nth(1).as_deref() == Some(X11_CIRCE_RELEASE_MODE) {
         return x11_circe_release::wait_for_release();
     }
 

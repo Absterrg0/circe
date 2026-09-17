@@ -1174,7 +1174,7 @@ const PROVIDER_REQUIREMENT: Partial<
     missing:
       "Install Forgejo CLI (`fj` 0.6 or later) from https://codeberg.org/forgejo-contrib/forgejo-cli or Gitea CLI (`tea` 0.16 or later) from https://gitea.com/gitea/tea to browse Forgejo pull requests.",
     unauthenticated:
-      "Authenticate your Forgejo or Gitea server with `fj --host <server-url> auth add-token` on the T3 Code server. If fj is missing or unconfigured for that server, use `tea login add`. A configured fj account must be repaired with fj.",
+      "Authenticate your Forgejo or Gitea server with `fj --host <server-url> auth add-token` on the Circe server. If fj is missing or unconfigured for that server, use `tea login add`. A configured fj account must be repaired with fj.",
   },
   gitlab: {
     missing:
@@ -1188,9 +1188,9 @@ const PROVIDER_REQUIREMENT: Partial<
   },
   bitbucket: {
     missing:
-      "Bitbucket needs API credentials on the server. Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN, or T3CODE_BITBUCKET_ACCESS_TOKEN.",
+      "Bitbucket needs API credentials on the server. Set CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN, or CIRCE_BITBUCKET_ACCESS_TOKEN.",
     unauthenticated:
-      "Bitbucket rejected the configured credentials. Check T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN.",
+      "Bitbucket rejected the configured credentials. Check CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN.",
   },
 };
 

@@ -167,8 +167,8 @@ export const DEFAULT_TEXT_GENERATION_MODEL = "gpt-5.6-luna";
 /** Keep the official Antigravity session's current model. Never send this ID to ACP. */
 export const ANTIGRAVITY_DEFAULT_MODEL = "antigravity-default";
 export const DEFAULT_TEXT_GENERATION_REASONING_EFFORT = "low";
-export const DEFAULT_T3CODE_SUPERVISOR_MODEL = "gpt-5.6-luna";
-export const DEFAULT_T3CODE_SUPERVISOR_REASONING_EFFORT = "low";
+export const DEFAULT_CIRCE_SUPERVISOR_MODEL = "gpt-5.6-luna";
+export const DEFAULT_CIRCE_SUPERVISOR_REASONING_EFFORT = "low";
 
 export const DEFAULT_MODEL_BY_PROVIDER: Partial<Record<ProviderDriverKind, string>> = {
   [CODEX_DRIVER_KIND]: DEFAULT_MODEL,
@@ -200,10 +200,10 @@ export const DEFAULT_TEXT_GENERATION_MODEL_BY_PROVIDER: Partial<
  * entry are skipped instead of inventing a model id. Values mirror the
  * text-generation defaults so fallback stays on cheap low-effort models.
  */
-export const DEFAULT_T3CODE_SUPERVISOR_MODEL_BY_PROVIDER: Partial<
+export const DEFAULT_CIRCE_SUPERVISOR_MODEL_BY_PROVIDER: Partial<
   Record<ProviderDriverKind, string>
 > = {
-  [CODEX_DRIVER_KIND]: DEFAULT_T3CODE_SUPERVISOR_MODEL,
+  [CODEX_DRIVER_KIND]: DEFAULT_CIRCE_SUPERVISOR_MODEL,
   [ProviderDriverKind.make("antigravity")]: ANTIGRAVITY_DEFAULT_MODEL,
   [CLAUDE_DRIVER_KIND]: "claude-haiku-4-5",
   [CURSOR_DRIVER_KIND]: "composer-2",

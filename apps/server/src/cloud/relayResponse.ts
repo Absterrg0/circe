@@ -43,12 +43,12 @@ export const shouldRetryCloudLink = (error: unknown): boolean => !isPermanentClo
 function recoveryHint(error: RelayProtectedError): string {
   switch (error._tag) {
     case "RelayEnvironmentLinkLimitExceededError":
-      return "Unlink an unused environment in Circe Mesh, then restart T3 Code on this machine.";
+      return "Unlink an unused environment in Circe Mesh, then restart Circe on this machine.";
     case "RelayAuthInvalidError":
-      return "Run `circe connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `circe connect logout`, then run `circe connect` again. Restart T3 Code after signing in.";
+      return "Run `circe connect login` to check this machine's authorization. If the stored credential was revoked, sign out with `circe connect logout`, then run `circe connect` again. Restart Circe after signing in.";
     case "RelayEnvironmentLinkProofExpiredError":
     case "RelayEnvironmentLinkProofInvalidError":
-      return "Check this machine's date and time, update T3 Code, then restart it.";
+      return "Check this machine's date and time, update Circe, then restart it.";
     default:
       return "Retry when the relay is available. If this continues, include the trace ID when reporting it.";
   }
@@ -66,7 +66,7 @@ export const filterRelayResponse = Effect.fn("cloud.filter_relay_response")(func
   const requestId = ray && /^[a-zA-Z0-9-]{1,128}$/.test(ray) ? ` Cloudflare Ray ID: ${ray}.` : "";
   const message = Option.isSome(decoded)
     ? `Circe Mesh: ${decoded.value.message}. ${recoveryHint(decoded.value)} Trace ID: ${decoded.value.traceId}.`
-    : `Circe Mesh relay returned HTTP ${response.status} without a recognized error response. Check relay access and any proxy or firewall restrictions, then restart T3 Code.${requestId}`;
+    : `Circe Mesh relay returned HTTP ${response.status} without a recognized error response. Check relay access and any proxy or firewall restrictions, then restart Circe.${requestId}`;
 
   if (response.status === 401) return yield* new EnvironmentHttpUnauthorizedError({ message });
   if (response.status === 403) return yield* new EnvironmentHttpForbiddenError({ message });

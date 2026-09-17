@@ -465,7 +465,7 @@ it.effect("reports implemented tools separately from locally available executabl
             account: Option.none(),
             host: Option.some("bitbucket.org"),
             detail: Option.some(
-              "Set T3CODE_BITBUCKET_EMAIL and T3CODE_BITBUCKET_API_TOKEN, or T3CODE_BITBUCKET_ACCESS_TOKEN.",
+              "Set CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN, or CIRCE_BITBUCKET_ACCESS_TOKEN.",
             ),
           }),
         },

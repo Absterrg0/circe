@@ -1,4 +1,4 @@
-import { T3CODE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
+import { CIRCE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
 import { releaseComposerDraftUploads } from "../lib/composerDraftUploads";
 import { setThreadChangeRequestSnapshot } from "./ThreadStatusIndicators";
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
@@ -33,7 +33,7 @@ import {
   scopedThreadKey,
 } from "@circe/client/environment";
 import {
-  T3CODE_CONVERSATION_TITLE_PREFIX,
+  CIRCE_CONVERSATION_TITLE_PREFIX,
   type EnvironmentMachineKind,
   type ScopedThreadRef,
   type ThreadId,
@@ -1537,7 +1537,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       </span>
     ) : null;
 
-  const isConversation = thread.title.startsWith(T3CODE_CONVERSATION_TITLE_PREFIX);
+  const isConversation = thread.title.startsWith(CIRCE_CONVERSATION_TITLE_PREFIX);
   const conversationIndicator = isConversation ? (
     <span
       role="img"
@@ -2616,7 +2616,7 @@ export default function Sidebar() {
     const rest: EnvironmentThreadShell[] = [];
     for (const thread of visible) {
       const display = projectDisplayNameByKey.get(`${thread.environmentId}:${thread.projectId}`);
-      if (display !== undefined && display.trim() === T3CODE_CONVERSATIONS_PROJECT_TITLE) {
+      if (display !== undefined && display.trim() === CIRCE_CONVERSATIONS_PROJECT_TITLE) {
         conversations.push(thread);
         continue;
       }

@@ -229,12 +229,12 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       CIRCE_HOME: homeDir,
-      T3CODE_HEADLESS_HOME: homeDir,
+      CIRCE_HEADLESS_HOME: homeDir,
     };
-    delete env.T3CODE_NODE_PRESET;
-    delete env.T3CODE_PORT;
-    delete env.T3CODE_HOST;
-    delete env.T3CODE_MODE;
+    delete env.CIRCE_NODE_PRESET;
+    delete env.CIRCE_PORT;
+    delete env.CIRCE_HOST;
+    delete env.CIRCE_MODE;
     delete env.VITE_DEV_SERVER_URL;
     const spawnedChild = ChildProcess.spawn(command.executable, [...command.args], {
       cwd: absoluteRoot,
