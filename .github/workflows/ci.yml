@@ -44,7 +44,7 @@ jobs:
           run-install: true
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @t3tools/desktop ensure:electron
+        run: vp run --filter @circe/desktop ensure:electron
 
       - name: Lint Circe-owned paths
         run: >-
@@ -67,11 +67,11 @@ jobs:
         run: >-
           vp run
           --filter @absterrg0/circe
-          --filter @t3tools/web
-          --filter @t3tools/desktop
+          --filter @circe/web
+          --filter @circe/desktop
           --filter @circe/core
           --filter @circe/client-runtime
-          --filter @t3tools/scripts
+          --filter @circe/scripts
           typecheck
 
       - name: Install native build dependencies
@@ -112,13 +112,13 @@ jobs:
           run-install: true
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @t3tools/desktop ensure:electron
+        run: vp run --filter @circe/desktop ensure:electron
 
       - name: Install native build dependencies
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
 
       - name: Test
-        run: vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@t3tools/monorepo' test
+        run: vp run --parallel --concurrency-limit 4 --filter '!t3' --filter '!@circe/monorepo' test
 
   # apps/server sets `fileParallelism: false`, so its 239 files run strictly
   # one at a time. Sharding spreads them over separate runners instead of
@@ -154,7 +154,7 @@ jobs:
 
       # No Electron setup here: `t3` (apps/server) has no Electron dependency
       # and none of its tests touch the runtime. Only the non-server `test`
-      # job, which covers @t3tools/desktop, needs the download.
+      # job, which covers @circe/desktop, needs the download.
       - name: Test
         env:
           CIRCE_TRANSFER_BUDGET_REPORT_PATH: ${{ runner.temp }}/t3code-transfer-budget.md
@@ -330,7 +330,7 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@t3tools/scripts...
+              - --filter=@circe/scripts...
 
       - name: Install mobile native static analysis tools
         run: brew bundle install --file apps/mobile/Brewfile
@@ -358,7 +358,7 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@t3tools/scripts...
+              - --filter=@circe/scripts...
 
       - name: Exercise release-only workflow steps
         run: node scripts/release-smoke.ts

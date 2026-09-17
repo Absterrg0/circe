@@ -68,7 +68,7 @@ jobs:
           run-install: |
             args:
               - --filter=@absterrg0/circe...
-              - --filter=@t3tools/scripts...
+              - --filter=@circe/scripts...
 
       - name: Setup pnpm
         uses: pnpm/setup@v1
@@ -82,7 +82,7 @@ jobs:
       - name: Run focused packaging tests
         run: |
           vp test run scripts/package-headless-node.test.ts
-          vp run --filter @t3tools/scripts typecheck
+          vp run --filter @circe/scripts typecheck
 
       - name: Package headless runtime
         env:
