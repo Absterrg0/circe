@@ -1,4 +1,4 @@
-import { WS_METHODS } from "@t3tools/contracts";
+import { ORCHESTRATION_V2_WS_METHODS, WS_METHODS } from "@t3tools/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import type * as Duration from "effect/Duration";
@@ -47,6 +47,28 @@ type RpcStreamTag = {
     : never;
 }[EnvironmentRpcTag];
 
+export type EnvironmentSubscriptionRpcTag =
+  | typeof WS_METHODS.providerAuthSubscribe
+  | typeof WS_METHODS.providerInstallSubscribe
+  | typeof ORCHESTRATION_V2_WS_METHODS.subscribeShell
+  | typeof ORCHESTRATION_V2_WS_METHODS.subscribeThread
+  | typeof WS_METHODS.subscribeAuthAccess
+  | typeof WS_METHODS.subscribeServerConfig
+  | typeof WS_METHODS.subscribeServerLifecycle
+  | typeof WS_METHODS.scheduledTasksSubscribe
+  | typeof WS_METHODS.subscribeTerminalEvents
+  | typeof WS_METHODS.subscribeTerminalMetadata
+  | typeof WS_METHODS.subscribePreviewEvents
+  | typeof WS_METHODS.subscribeDiscoveredLocalServers
+  | typeof WS_METHODS.subscribeDeviceState
+  | typeof WS_METHODS.subscribeResourceTelemetry
+  | typeof WS_METHODS.pullRequestsSubscribeRefreshes
+  | typeof WS_METHODS.previewAutomationConnect
+  | typeof WS_METHODS.subscribeVcsStatus
+  | typeof WS_METHODS.subscribeWorktreeSetup
+  | typeof WS_METHODS.subscribeProjectClones
+  | typeof WS_METHODS.terminalAttach;
+
 export type EnvironmentStreamRpcTag = RpcStreamTag;
 
 /** Stream-shaped commands are finite operations, unlike durable subscriptions. */
@@ -55,11 +77,6 @@ export type EnvironmentStreamCommandRpcTag = Extract<
   | typeof WS_METHODS.cloudInstallRelayClient
   | typeof WS_METHODS.serverUpdateServerWithProgress
   | typeof WS_METHODS.gitRunStackedAction
->;
-
-export type EnvironmentSubscriptionRpcTag = Exclude<
-  EnvironmentStreamRpcTag,
-  EnvironmentStreamCommandRpcTag
 >;
 
 export type EnvironmentUnaryRpcTag = Exclude<EnvironmentRpcTag, EnvironmentStreamRpcTag>;
@@ -121,6 +138,13 @@ const currentSession = Effect.fn("EnvironmentRpc.currentSession")(function* () {
     ),
   );
 });
+
+export const getInitialServerConfig = Effect.fn("EnvironmentRpc.getInitialServerConfig")(
+  function* () {
+    const session = yield* currentSession();
+    return yield* session.initialConfig;
+  },
+);
 
 export const request = Effect.fn("EnvironmentRpc.request")(function* <
   TTag extends EnvironmentUnaryRpcTag,

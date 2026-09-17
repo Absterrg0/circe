@@ -8,7 +8,7 @@ import type {
   DesktopSnapShotEvent,
 } from "@t3tools/contracts";
 import { exposeClerkBridge } from "@clerk/electron/preload";
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webFrame, webUtils } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
 
@@ -182,6 +182,19 @@ ipcRenderer.on(IpcChannels.CIRCE_ORB_SELECT_CHANNEL, (_event, selection: unknown
   if (isCirceOrbSelection(selection)) orbSelectHub.emit(selection);
 });
 
+if (clientPlatform === "darwin") {
+  // Native window buttons do not scale with Chromium zoom. Keep their reserved
+  // space in native points, including when a zoomed page is reloaded.
+  const syncWindowControlInset = () => {
+    document.documentElement.style.setProperty(
+      "--desktop-window-controls-inset",
+      `${90 / webFrame.getZoomFactor()}px`,
+    );
+  };
+  window.addEventListener("DOMContentLoaded", syncWindowControlInset, { once: true });
+  window.addEventListener("resize", syncWindowControlInset);
+}
+
 function unwrapEnsureSshEnvironmentResult(result: unknown) {
   if (
     typeof result === "object" &&
@@ -209,7 +222,15 @@ const desktopBridge = {
     }
     return result as ReturnType<DesktopBridge["getAppBranding"]>;
   },
+  getPathForFile: (file: File) => webUtils.getPathForFile(file),
   getClientPlatform: () => clientPlatform,
+  setNotificationBadge: (badge) =>
+    ipcRenderer.invoke(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, badge),
+  onNotificationBadgeClear: (listener) => {
+    const handler = () => listener();
+    ipcRenderer.on(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(IpcChannels.SET_NOTIFICATION_BADGE_CHANNEL, handler);
+  },
   getSystemLocale: () => {
     const result = ipcRenderer.sendSync(IpcChannels.GET_SYSTEM_LOCALE_CHANNEL);
     return typeof result === "string" ? result : null;
@@ -238,6 +259,10 @@ const desktopBridge = {
   },
   getLocalEnvironmentBearerToken: () =>
     ipcRenderer.invoke(IpcChannels.GET_LOCAL_ENVIRONMENT_BEARER_TOKEN_CHANNEL),
+  getLocalEnvironmentEnabled: () =>
+    ipcRenderer.sendSync(IpcChannels.GET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL) !== false,
+  setLocalEnvironmentEnabled: (enabled) =>
+    ipcRenderer.invoke(IpcChannels.SET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL, enabled),
   getClientSettings: () => ipcRenderer.invoke(IpcChannels.GET_CLIENT_SETTINGS_CHANNEL),
   setClientSettings: (settings) =>
     ipcRenderer.invoke(IpcChannels.SET_CLIENT_SETTINGS_CHANNEL, settings),
@@ -320,9 +345,12 @@ const desktopBridge = {
       ...(position === undefined ? {} : { position }),
     }),
   openExternal: (url: string) => ipcRenderer.invoke(IpcChannels.OPEN_EXTERNAL_CHANNEL, url),
+  checkSystemPermission: (pane: string) =>
+    ipcRenderer.invoke(IpcChannels.CHECK_SYSTEM_PERMISSION_CHANNEL, pane),
   openSystemSettings: (pane: string) =>
     ipcRenderer.invoke(IpcChannels.OPEN_SYSTEM_SETTINGS_CHANNEL, pane),
   probeRemoteEditors: () => ipcRenderer.invoke(IpcChannels.PROBE_REMOTE_EDITORS_CHANNEL, undefined),
+  pasteAsText: () => ipcRenderer.invoke(IpcChannels.PASTE_AS_TEXT_CHANNEL, undefined),
   onMenuAction: (listener) => {
     return menuActionHub.subscribe(listener);
   },

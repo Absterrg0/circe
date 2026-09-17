@@ -1,17 +1,22 @@
-import type { ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { useState, type ReactNode } from "react";
+import { View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { SymbolView, type AppSymbolName } from "./AppSymbol";
+import type { AppSymbolName } from "./AppSymbol";
 import { AppText as Text } from "./AppText";
 import { CIRCE_INK, CIRCE_IVORY, CIRCE_MUTED } from "../lib/circeBrandColors";
 import { cn } from "../lib/cn";
+import { MaterialIconButton } from "./MaterialIconButton";
+import { AndroidAnchoredMenu } from "./AndroidAnchoredMenu";
+import { useScaledTextRole } from "../features/settings/appearance/useScaledTextRole";
+import { useMaterialToolbarHeight } from "./useMaterialToolbarHeight";
 
 export interface AndroidHeaderAction {
   readonly accessibilityLabel: string;
   readonly icon: AppSymbolName;
   readonly onPress: () => void;
   readonly disabled?: boolean;
+  readonly selected?: boolean;
 }
 
 export function AndroidHeaderIconButton(props: {
@@ -19,27 +24,9 @@ export function AndroidHeaderIconButton(props: {
   readonly icon: AppSymbolName;
   readonly onPress?: () => void;
   readonly disabled?: boolean;
+  readonly selected?: boolean;
 }) {
-  return (
-    <Pressable
-      accessibilityLabel={props.accessibilityLabel}
-      accessibilityRole="button"
-      disabled={props.disabled}
-      hitSlop={8}
-      onPress={props.onPress}
-      className={cn(
-        "size-11 items-center justify-center rounded-full bg-subtle",
-        props.disabled && "opacity-55",
-      )}
-    >
-      <SymbolView
-        name={props.icon}
-        size={20}
-        tintColorClassName={props.disabled ? "accent-icon-subtle" : "accent-foreground"}
-        type="monochrome"
-      />
-    </Pressable>
-  );
+  return <MaterialIconButton {...props} variant={props.selected ? "tonal" : "standard"} />;
 }
 
 /**
@@ -53,6 +40,7 @@ export function AndroidScreenHeader(props: {
   readonly title: string;
   readonly subtitle?: string | null;
   readonly actions?: ReadonlyArray<AndroidHeaderAction>;
+  readonly leading?: ReactNode;
   readonly trailing?: ReactNode;
   readonly onBack?: () => void;
   readonly embedded?: boolean;
@@ -61,63 +49,91 @@ export function AndroidScreenHeader(props: {
 }) {
   const insets = useSafeAreaInsets();
   const ivory = props.tone === "ivory";
+  const titleTypography = useScaledTextRole("title");
+  const subtitleTypography = useScaledTextRole("label");
+  const materialToolbarHeight = useMaterialToolbarHeight();
+  const [headerWidth, setHeaderWidth] = useState(0);
+  const actions = props.actions ?? [];
+  const directCount = actions.length > 2 ? (headerWidth >= 600 ? 3 : 1) : actions.length;
+  const visibleActions = actions.slice(0, directCount);
+  const overflowActions = actions.slice(directCount);
 
   return (
     <View
-      className={cn("px-3 pb-2.5", !ivory && "border-b border-header-border bg-header")}
+      onLayout={(event) => setHeaderWidth(event.nativeEvent.layout.width)}
+      className="border-b border-header-border bg-header px-2 pb-2"
       style={{
         paddingTop: props.embedded ? 8 : Math.max(insets.top, 12),
         ...(ivory ? { backgroundColor: CIRCE_IVORY } : null),
         borderBottomWidth: props.hideBottomBorder || ivory ? 0 : undefined,
       }}
     >
-      <View className="min-h-12 flex-row items-center gap-2">
+      <View
+        style={{ minHeight: materialToolbarHeight }}
+        className="min-h-14 flex-row items-center gap-1"
+      >
         {props.onBack ? (
-          <Pressable
+          <MaterialIconButton
             accessibilityLabel="Navigate up"
-            accessibilityRole="button"
-            hitSlop={8}
+            icon="arrow.left"
             onPress={props.onBack}
-            className="-mr-2 size-11 items-center justify-center"
-          >
-            <SymbolView
-              name="chevron.left"
-              size={24}
-              tintColor={ivory ? CIRCE_INK : undefined}
-              tintColorClassName={ivory ? undefined : "accent-foreground"}
-              type="monochrome"
-            />
-          </Pressable>
+          />
         ) : null}
+
+        {props.leading}
 
         <View className={cn("min-w-0 flex-1", !props.onBack && "pl-1")}>
           <Text
             numberOfLines={1}
-            className={cn("text-lg font-t3-bold", !ivory && "text-foreground")}
-            style={ivory ? { color: CIRCE_INK } : undefined}
+            style={[titleTypography, ivory ? { color: CIRCE_INK } : undefined]}
+            className="text-foreground"
           >
             {props.title}
           </Text>
           {props.subtitle ? (
             <Text
               numberOfLines={1}
-              className={cn("mt-px text-[13px] font-t3-medium", !ivory && "text-foreground-muted")}
-              style={ivory ? { color: CIRCE_MUTED } : undefined}
+              style={[subtitleTypography, ivory ? { color: CIRCE_MUTED } : undefined]}
+              className="mt-px text-[13px] font-t3-medium text-foreground-muted"
             >
               {props.subtitle}
             </Text>
           ) : null}
         </View>
 
-        {props.actions?.map((action) => (
+        {visibleActions.map((action) => (
           <AndroidHeaderIconButton
             key={action.accessibilityLabel}
             accessibilityLabel={action.accessibilityLabel}
             disabled={action.disabled}
+            selected={action.selected}
             icon={action.icon}
             onPress={action.onPress}
           />
         ))}
+        {overflowActions.length > 0 ? (
+          <AndroidAnchoredMenu
+            actions={overflowActions.map((action, index) => ({
+              id: String(index),
+              title: action.accessibilityLabel,
+              attributes: {
+                disabled: Boolean(action.disabled),
+                state: action.selected ? "on" : undefined,
+              },
+            }))}
+            onPressAction={({ nativeEvent }) =>
+              overflowActions[Number(nativeEvent.event)]?.onPress()
+            }
+          >
+            {(open) => (
+              <MaterialIconButton
+                accessibilityLabel="More actions"
+                icon="ellipsis"
+                onPress={open}
+              />
+            )}
+          </AndroidAnchoredMenu>
+        ) : null}
         {props.trailing}
       </View>
     </View>

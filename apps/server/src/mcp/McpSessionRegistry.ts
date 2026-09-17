@@ -15,10 +15,14 @@ export interface McpCredentialRequest {
   readonly threadId: ThreadId;
   readonly providerInstanceId: ProviderInstanceId;
   /**
-   * Whether the credential may drive the user's browser. The pull request
-   * toolkit is always granted: it only touches the thread's own links.
+   * When false, the credential is minted without the "preview" capability so
+   * the user's choice to withhold agent browser access holds everywhere the
+   * token is honored (#7083). Defaults to full access.
    */
-  readonly preview: boolean;
+  readonly browserToolsAvailable?: boolean;
+  readonly capabilities?: ReadonlySet<McpInvocationContext.McpCapability>;
+  /** Legacy preview toggle; equivalent to `browserToolsAvailable` inverted. */
+  readonly preview?: boolean;
 }
 
 export interface McpIssuedCredential {
@@ -129,15 +133,19 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
       const rawToken = yield* crypto.randomBytes(32).pipe(Effect.map(tokenFromBytes), Effect.orDie);
       const tokenHash = yield* hashToken(rawToken);
       const descriptor = yield* environment.getDescriptor;
+      const browserToolsAvailable = request.browserToolsAvailable ?? true;
       const scope: McpInvocationContext.McpInvocationScope = {
         environmentId,
         threadId: ThreadId.make(request.threadId),
         providerSessionId,
         providerInstanceId: ProviderInstanceId.make(request.providerInstanceId),
         capabilities: new Set<McpInvocationContext.McpCapability>([
+          "orchestration",
+          "worktree",
           "pull-requests",
-          ...(request.preview ? ["preview" as const] : []),
-          ...(descriptor.capabilities.desktopUse ? ["desktop-use" as const] : []),
+          ...(request.capabilities ??
+            (browserToolsAvailable && request.preview !== false ? (["preview"] as const) : [])),
+          ...(descriptor.capabilities.desktopUse ? (["desktop-use"] as const) : []),
         ]),
         issuedAt,
       };
@@ -154,7 +162,8 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
           providerInstanceId: scope.providerInstanceId,
           endpoint,
           authorizationHeader: `Bearer ${rawToken}`,
-          preview: request.preview,
+          browserToolsAvailable: scope.capabilities.has("preview"),
+          capabilities: scope.capabilities,
         },
       };
     },
@@ -249,10 +258,10 @@ export const issueActiveMcpCredential = (
 export const touchActiveMcpThread = (threadId: ThreadId): Effect.Effect<void> =>
   activeMcpSessionRegistry ? activeMcpSessionRegistry.touch(threadId) : Effect.void;
 
-export const revokeActiveMcpThread = (threadId: ThreadId): Effect.Effect<void> =>
+const revokeActiveMcpThread = (threadId: ThreadId): Effect.Effect<void> =>
   activeMcpSessionRegistry ? activeMcpSessionRegistry.revokeThread(threadId) : Effect.void;
 
-export const revokeAllActiveMcpCredentials = (): Effect.Effect<void> =>
+const revokeAllActiveMcpCredentials = (): Effect.Effect<void> =>
   activeMcpSessionRegistry ? activeMcpSessionRegistry.revokeAll : Effect.void;
 
 /** Exposed for tests. */

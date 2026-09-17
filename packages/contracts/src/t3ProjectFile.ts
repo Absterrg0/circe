@@ -2,7 +2,7 @@ import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
 
 import { ThreadEnvMode } from "./environment.ts";
-import { ProjectScriptIcon } from "./orchestration.ts";
+import { ProjectScriptIcon } from "./project.ts";
 
 /** File name of the checked-in T3 project file, resolved at the workspace root. */
 export const T3_PROJECT_FILE_NAME = "t3.json";
@@ -40,6 +40,12 @@ export const T3ProjectFileScript = Schema.Struct({
     Schema.Boolean.annotate({
       description:
         "When true, the script runs automatically after a worktree is created for a new thread.",
+    }),
+  ),
+  async: Schema.optionalKey(
+    Schema.Boolean.annotate({
+      description:
+        "Only for runOnWorktreeCreate scripts. When true (the default), the agent starts while the script is still running. Set false to hold the agent until the script exits.",
     }),
   ),
   previewUrl: Schema.optionalKey(

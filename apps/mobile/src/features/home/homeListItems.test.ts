@@ -1,8 +1,10 @@
-import type {
-  EnvironmentProject,
-  EnvironmentThreadShell,
+import {
+  presentThreadShell,
+  type EnvironmentProject,
+  type EnvironmentThreadShell,
 } from "@t3tools/client-runtime/state/shell";
 import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -15,6 +17,7 @@ import {
   type HomeListItem,
 } from "./homeListItems";
 import type { HomeThreadGroup } from "./homeThreadList";
+import { threadJumpTarget } from "../keyboard/threadKeyboardShortcuts";
 
 const environmentId = EnvironmentId.make("environment-1");
 
@@ -32,30 +35,41 @@ function makeProject(id: string, title: string): EnvironmentProject {
   };
 }
 
+const threadTimestamp = DateTime.makeUnsafe("2026-06-01T00:00:00.000Z");
+
 function makeThread(id: string, projectId: ProjectId): EnvironmentThreadShell {
-  return {
-    environmentId,
-    id: ThreadId.make(id),
+  const threadId = ThreadId.make(id);
+  return presentThreadShell(environmentId, {
+    id: threadId,
     projectId,
     title: `Thread ${id}`,
+    providerInstanceId: ProviderInstanceId.make("codex"),
     modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.4" },
     runtimeMode: "full-access",
     interactionMode: "default",
     branch: null,
     worktreePath: null,
-    pullRequests: [],
-    latestTurn: null,
-    createdAt: "2026-06-01T00:00:00.000Z",
-    updatedAt: "2026-06-01T00:00:00.000Z",
-    archivedAt: null,
+    activeProviderThreadId: null,
+    lineage: { rootThreadId: threadId, parentThreadId: null, relationshipToParent: null },
+    forkedFrom: null,
+    createdBy: "user",
+    creationSource: "mobile",
+    latestRunId: null,
+    activeRunId: null,
+    status: "idle",
+    pendingRuntimeRequest: null,
+    latestVisibleMessage: null,
     settledOverride: null,
     settledAt: null,
-    session: null,
     latestUserMessageAt: null,
-    hasPendingApprovals: false,
-    hasPendingUserInput: false,
     hasActionableProposedPlan: false,
-  };
+    itemCount: 0,
+    visibleItemCount: 0,
+    createdAt: threadTimestamp,
+    updatedAt: threadTimestamp,
+    archivedAt: null,
+    deletedAt: null,
+  });
 }
 
 function makeGroup(key: string, threadCount: number): HomeThreadGroup {
@@ -86,6 +100,28 @@ function displayStates(
 ): ReadonlyMap<string, HomeGroupDisplayState> {
   return new Map(Object.entries(entries));
 }
+
+describe("threadJumpTarget", () => {
+  it("numbers only displayed threads across groups, skipping collapsed groups and pagination rows", () => {
+    const layout = buildHomeListLayout({
+      groups: [makeGroup("collapsed", 3), makeGroup("alpha", 8), makeGroup("beta", 3)],
+      displayStates: displayStates({ collapsed: { collapsed: true, visibleCount: 6 } }),
+    });
+    expect(threadJumpTarget(layout.items, "thread.jump.1")?.id).toBe("alpha-thread-0");
+    expect(threadJumpTarget(layout.items, "thread.jump.7")?.id).toBe("beta-thread-0");
+    expect(threadJumpTarget(layout.items, "thread.jump.9")?.id).toBe("beta-thread-2");
+  });
+
+  it("ignores missing positions and unrelated commands", () => {
+    const layout = buildHomeListLayout({
+      groups: [makeGroup("alpha", 1)],
+      displayStates: displayStates({}),
+    });
+    expect(threadJumpTarget(layout.items, "thread.jump.2")).toBeNull();
+    expect(threadJumpTarget([], "thread.jump.1")).toBeNull();
+    expect(threadJumpTarget(layout.items, "commandPalette")).toBeNull();
+  });
+});
 
 describe("buildHomeListLayout", () => {
   it("renders a header plus all threads for a small group without a show-more row", () => {

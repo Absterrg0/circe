@@ -1,4 +1,4 @@
-import { ApprovalRequestId } from "@t3tools/contracts";
+import { RuntimeRequestId } from "@t3tools/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -8,7 +8,8 @@ describe("ComposerPendingApprovalActions", () => {
   it("uses direct choices with compact controls", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-1")}
+        requestId={RuntimeRequestId.make("approval-1")}
+        canRespond
         isResponding={false}
         onRespondToApproval={async () => undefined}
       />,
@@ -22,10 +23,11 @@ describe("ComposerPendingApprovalActions", () => {
     expect(markup).toContain("sm:text-[11px]");
   });
 
-  it("shows only the approval choices advertised by an MCP server", () => {
+  it("keeps secondary provider labels out of the compact action row", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-safari")}
+        requestId={RuntimeRequestId.make("approval-safari")}
+        canRespond
         isResponding={false}
         options={[
           { decision: "decline", label: "Decline" },
@@ -36,48 +38,28 @@ describe("ComposerPendingApprovalActions", () => {
       />,
     );
 
-    expect(markup).toContain("Always allow Safari");
+    expect(markup).not.toContain("Always allow Safari");
     expect(markup).toContain(">Approve<");
     expect(markup).not.toContain("Always allow this session");
   });
 
-  it("marks an option that carries a provider warning", () => {
+  it("preserves provider labels for the main decisions", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-1")}
+        requestId={RuntimeRequestId.make("approval-1")}
+        canRespond
         isResponding={false}
         options={[
           { decision: "accept", label: "Allow once" },
-          {
-            decision: "acceptForSession",
-            label: "Allow for this thread",
-            warning: "Untrusted files could re-run this action without asking.",
-          },
           { decision: "decline", label: "Deny" },
         ]}
         onRespondToApproval={async () => undefined}
       />,
     );
 
-    expect(markup).toContain(
-      'aria-description="Untrusted files could re-run this action without asking."',
-    );
-    expect(markup).toContain("text-warning");
-    expect(markup).toContain("Allow for this thread");
-  });
-
-  it("limits provider-supplied approval labels so narrow rows can wrap", () => {
-    const label = "Allow ".repeat(40).trim();
-    const markup = renderToStaticMarkup(
-      <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-long-label")}
-        isResponding={false}
-        options={[{ decision: "acceptAlways", label }]}
-        onRespondToApproval={async () => undefined}
-      />,
-    );
-
-    expect(markup).toContain('class="max-w-40 truncate"');
-    expect(markup).toContain(label);
+    expect(markup).toContain("Allow once");
+    expect(markup).toContain("Deny");
+    expect(markup).not.toContain(">Approve<");
+    expect(markup).not.toContain(">Decline<");
   });
 });

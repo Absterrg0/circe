@@ -12,8 +12,6 @@ import { WorkerPoolManager, type WorkerRequest, type WorkerResponse } from "@pie
 import * as NodeWorkerThreads from "node:worker_threads";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { stubAnimationFrames } from "../../test/stubAnimationFrames";
-
 type DocumentChange = NonNullable<ReturnType<TextDocument<unknown>["applyEdits"]>>;
 interface Tokenizer {
   tokenize(change: DocumentChange): Map<number, HighlightedToken[]>;
@@ -42,7 +40,7 @@ const source = "export const View = () => <div>Ready</div>;";
 let pool: WorkerPoolManager;
 let renderer: FileRenderer;
 let terminationPromises: Promise<number>[];
-let clearAnimationFrames: (() => void) | undefined;
+const pendingAnimationFrames = new Set<ReturnType<typeof setImmediate>>();
 
 class WorkerTransport {
   private readonly worker = new NodeWorkerThreads.Worker(
@@ -99,7 +97,18 @@ function firstEnter(highlighter: DiffsHighlighter, file: FileContents, language:
 
 beforeEach(async () => {
   terminationPromises = [];
-  clearAnimationFrames = stubAnimationFrames();
+  vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+    const handle = setImmediate(() => {
+      pendingAnimationFrames.delete(handle);
+      callback(0);
+    });
+    pendingAnimationFrames.add(handle);
+    return handle;
+  });
+  vi.stubGlobal("cancelAnimationFrame", (handle: ReturnType<typeof setImmediate>) => {
+    pendingAnimationFrames.delete(handle);
+    clearImmediate(handle);
+  });
   vi.stubGlobal("window", { matchMedia: () => ({ matches: true }) });
   await disposeHighlighter();
   pool = new WorkerPoolManager(
@@ -116,7 +125,10 @@ async function cleanUpFixture() {
   pool?.terminate();
   await Promise.all(terminationPromises);
   await disposeHighlighter();
-  clearAnimationFrames?.();
+  // Drain the pool's final state broadcast before removing the animation frame stubs.
+  await new Promise<void>((resolve) => setImmediate(resolve));
+  for (const handle of pendingAnimationFrames) clearImmediate(handle);
+  pendingAnimationFrames.clear();
   vi.unstubAllGlobals();
 }
 

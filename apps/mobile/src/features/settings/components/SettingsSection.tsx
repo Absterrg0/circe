@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { View } from "react-native";
+import { Platform, View } from "react-native";
 
 import { AppText as Text } from "../../../components/AppText";
 
@@ -12,16 +12,24 @@ export function SettingsSection(props: {
   return (
     <View className="gap-2">
       {props.title ? (
-        <Text className="px-2 font-mono text-3xs font-t3-bold uppercase tracking-[1.1px] text-foreground-muted">
+        <Text
+          className={
+            Platform.OS === "android"
+              ? "px-4 text-sm font-t3-medium text-primary"
+              : "px-2 text-sm font-t3-medium text-foreground-muted"
+          }
+        >
           {props.title}
         </Text>
       ) : null}
 
       <View
         className={
-          props.card
-            ? "overflow-hidden rounded border border-border bg-card"
-            : "overflow-hidden rounded border border-border bg-card android:border-transparent android:bg-transparent"
+          Platform.OS === "android"
+            ? "overflow-hidden rounded-[28px] bg-card"
+            : props.card
+              ? "overflow-hidden rounded-[24px] border-continuous bg-card"
+              : "overflow-hidden rounded-[24px] border-continuous bg-card android:bg-transparent"
         }
       >
         {props.children}

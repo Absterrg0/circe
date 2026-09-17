@@ -88,6 +88,11 @@ import Migration0063 from "./Migrations/048_ProjectionThreadBranchPullRequest.ts
 import Migration0064 from "./Migrations/049_ProjectionThreadsActiveOrderKey.ts";
 import Migration0065 from "./Migrations/050_ProjectionThreadPullRequests.ts";
 import Migration0066 from "./Migrations/066_CirceLiveVoiceSessions.ts";
+// Upstream orchestration V2 migrations register above the shipped Circe IDs
+// (67+) so the Circe 41-66 sequence is never renumbered.
+import Migration0067 from "./Migrations/051_ProjectionThreadMessageContext.ts";
+import Migration0068 from "./Migrations/052_ProjectionThreadTitleState.ts";
+import Migration0069 from "./Migrations/053_OrchestrationV2.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -99,7 +104,7 @@ import Migration0066 from "./Migrations/066_CirceLiveVoiceSessions.ts";
  * Uses Migrator.fromRecord which parses the key format and
  * returns migrations sorted by ID.
  */
-const migrationEntries = [
+export const migrationEntries = [
   [1, "OrchestrationEvents", Migration0001],
   [2, "OrchestrationCommandReceipts", Migration0002],
   [3, "CheckpointDiffBlobs", Migration0003],
@@ -166,6 +171,9 @@ const migrationEntries = [
   [64, "ProjectionThreadsActiveOrderKey", Migration0064],
   [65, "ProjectionThreadPullRequests", Migration0065],
   [66, "CirceLiveVoiceSessions", Migration0066],
+  [67, "ProjectionThreadMessageContext", Migration0067],
+  [68, "ProjectionThreadTitleState", Migration0068],
+  [69, "OrchestrationV2", Migration0069],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);
@@ -343,5 +351,30 @@ export const runMigrations = Effect.fn("runMigrations")(function* ({
   yield* migrations.length === 0
     ? Effect.logDebug("Database schema is current")
     : Effect.log("Migrations ran successfully").pipe(Effect.annotateLogs({ migrations }));
+
+  // The migrator keys on migration_id: a database that recorded a different
+  // migration under a shared id (local or fork builds) keeps that id and
+  // silently skips this build's migration at it. Surface the divergence so the
+  // skipped schema change is diagnosable.
+  const sql = yield* SqlClient.SqlClient;
+  const recorded = yield* sql<{
+    readonly migration_id: number;
+    readonly name: string;
+  }>`SELECT migration_id, name FROM effect_sql_migrations`;
+  const manifestNames = new Map<number, string>(migrationEntries.map(([id, name]) => [id, name]));
+  const divergent = recorded.flatMap((row) => {
+    const expected = manifestNames.get(row.migration_id);
+    if (expected === undefined) {
+      return [`${row.migration_id}:${row.name} (unknown to this build)`];
+    }
+    return expected === row.name
+      ? []
+      : [`${row.migration_id}:${row.name} (this build: ${expected})`];
+  });
+  if (divergent.length > 0) {
+    yield* Effect.logWarning(
+      "Database migration history diverges from this build; recorded migration ids are skipped, not reconciled by name.",
+    ).pipe(Effect.annotateLogs({ divergent }));
+  }
   return executedMigrations;
 });

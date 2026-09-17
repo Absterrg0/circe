@@ -3,7 +3,6 @@ import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Schema from "effect/Schema";
-import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import * as OpenAiStructuredOutput from "effect/unstable/ai/OpenAiStructuredOutput";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
@@ -12,6 +11,7 @@ import {
   type CodexSettings,
   DEFAULT_TEXT_GENERATION_REASONING_EFFORT,
   type ModelSelection,
+  type ServerProviderModel,
   TextGenerationError,
 } from "@t3tools/contracts";
 import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
@@ -35,7 +35,7 @@ import {
   sanitizeThreadTitle,
   toJsonSchemaObject,
 } from "./TextGenerationUtils.ts";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { codexModelFamily, getModelSelectionStringOptionValue } from "@t3tools/shared/model";
 import { getCodexServiceTierOptionValue } from "../codexModelOptions.ts";
 
 const CODEX_TIMEOUT_MS = 180_000;
@@ -47,6 +47,7 @@ const encodeJsonString = Schema.encodeEffect(Schema.fromJsonString(Schema.Unknow
 export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(function* (
   codexConfig: CodexSettings,
   environment?: NodeJS.ProcessEnv,
+  getModels: Effect.Effect<ReadonlyArray<ServerProviderModel>> = Effect.succeed([]),
 ) {
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -73,17 +74,33 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
       ),
     );
 
+  const safeUnlink = (filePath: string): Effect.Effect<void, never> =>
+    fileSystem.remove(filePath).pipe(Effect.catch(() => Effect.void));
+
+  const removeTempFileDir = (filePath: string): Effect.Effect<void, never> =>
+    fileSystem
+      .remove(path.dirname(filePath), { recursive: true })
+      .pipe(Effect.catch(() => Effect.void));
+
+  // Deliberately unscoped: text generation runs from background fibers whose
+  // ambient scope may already be closed (a closed scope reaps the temp
+  // directory the moment it is created). Each allocation removes its own
+  // directory on failure; success-path cleanup is explicit in runCodexJson.
   const writeTempFile = (
     operation: string,
     prefix: string,
     content: string,
-  ): Effect.Effect<string, TextGenerationError, Scope.Scope> =>
+  ): Effect.Effect<string, TextGenerationError> =>
     fileSystem
-      .makeTempFileScoped({
+      .makeTempFile({
         prefix: `t3code-${prefix}-${process.pid}-`,
       })
       .pipe(
-        Effect.tap((filePath) => fileSystem.writeFileString(filePath, content)),
+        Effect.tap((filePath) =>
+          fileSystem
+            .writeFileString(filePath, content)
+            .pipe(Effect.onError(() => removeTempFileDir(filePath))),
+        ),
         Effect.mapError(
           (cause) =>
             new TextGenerationError({
@@ -93,9 +110,6 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
             }),
         ),
       );
-
-  const safeUnlink = (filePath: string): Effect.Effect<void, never> =>
-    fileSystem.remove(filePath).pipe(Effect.catch(() => Effect.void));
 
   const encodeJsonForOperation = (
     operation:
@@ -180,9 +194,19 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
       providerSchema ?? toJsonSchemaObject(outputSchemaJson),
     );
     const schemaPath = yield* writeTempFile(operation, "codex-schema", schemaJson);
-    const outputPath = yield* writeTempFile(operation, "codex-output", "");
+    const outputPath = yield* writeTempFile(operation, "codex-output", "").pipe(
+      Effect.onError(() => removeTempFileDir(schemaPath)),
+    );
 
     const runCodexCommand = Effect.fn("runCodexJson.runCodexCommand")(function* () {
+      const models = yield* getModels;
+      const requestedModel = modelSelection.model;
+      const model =
+        models.find((candidate) => candidate.slug === requestedModel)?.slug ??
+        models.find(
+          (candidate) => !candidate.isCustom && codexModelFamily(candidate.slug) === requestedModel,
+        )?.slug ??
+        requestedModel;
       const launchArgs = resolveCodexLaunchArgs(codexConfig.launchArgs, resolvedEnvironment);
       const reasoningEffort =
         getModelSelectionStringOptionValue(modelSelection, "reasoningEffort") ??
@@ -242,7 +266,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
           "-s",
           "read-only",
           "--model",
-          modelSelection.model,
+          model,
           "--config",
           `model_reasoning_effort="${reasoningEffort}"`,
           ...(serviceTier ? ["--config", `service_tier="${serviceTier}"`] : []),
@@ -303,7 +327,11 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
     });
 
     const cleanup = Effect.all(
-      [schemaPath, outputPath, ...cleanupPaths].map((filePath) => safeUnlink(filePath)),
+      [
+        removeTempFileDir(schemaPath),
+        removeTempFileDir(outputPath),
+        ...cleanupPaths.map((filePath) => safeUnlink(filePath)),
+      ],
       {
         concurrency: "unbounded",
       },
@@ -445,6 +473,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
       const { prompt, outputSchema } = buildThreadTitlePrompt({
         message: input.message,
         previousTitle: input.previousTitle,
+        linkedContext: input.linkedContext,
         attachments: input.attachments,
       });
 
@@ -459,6 +488,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
 
       return {
         title: sanitizeThreadTitle(generated.title),
+        ...(generated.needsRefinement ? { needsRefinement: true } : {}),
       } satisfies TextGeneration.ThreadTitleGenerationResult;
     });
 

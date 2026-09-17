@@ -15,6 +15,7 @@ import {
   useDeferredValue,
   useEffect,
   useId,
+  useImperativeHandle,
   useLayoutEffect,
   useMemo,
   useOptimistic,
@@ -22,6 +23,7 @@ import {
   useState,
   useTransition,
   type MouseEvent as ReactMouseEvent,
+  type Ref,
 } from "react";
 
 import { useComposerDraftStore, type DraftId } from "../composerDraftStore";
@@ -36,9 +38,16 @@ import { threadEnvironment } from "../state/threads";
 import { useAtomCommand } from "../state/use-atom-command";
 import { vcsEnvironment } from "../state/vcs";
 import { cn } from "../lib/utils";
+import {
+  THREAD_DETAILS_PANEL_CHEVRON_CLASS,
+  THREAD_DETAILS_PANEL_ICON_CLASS,
+  THREAD_DETAILS_PANEL_ROW_POPUP_CLASS,
+  THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+} from "./chat/threadDetailsPanelStyles";
+import { ThreadDetailsPrRow } from "./chat/ThreadDetailsPrRow";
 import { parsePullRequestReference } from "../pullRequestReference";
 import { getSourceControlPresentation } from "../sourceControlPresentation";
-import { composerFloatingLayerProps } from "./chat/composerEventScope";
+import { useComposerMenuProps } from "./chat/composerEventScope";
 import {
   deriveLocalBranchNameFromRemoteRef,
   resolveBranchTriggerLabel,
@@ -72,8 +81,15 @@ import {
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 
+export interface BranchToolbarBranchSelectorHandle {
+  open: () => void;
+}
+
 interface BranchToolbarBranchSelectorProps {
+  forceNewWorktree?: boolean;
+  ref?: Ref<BranchToolbarBranchSelectorHandle>;
   className?: string;
+  displayMode?: "toolbar" | "panel";
   environmentId: EnvironmentId;
   threadId: ThreadId;
   draftId?: DraftId;
@@ -92,7 +108,10 @@ function toBranchActionErrorMessage(error: unknown): string {
 }
 
 export function BranchToolbarBranchSelector({
+  forceNewWorktree = false,
+  ref,
   className,
+  displayMode = "toolbar",
   environmentId,
   threadId,
   draftId,
@@ -105,6 +124,7 @@ export function BranchToolbarBranchSelector({
   onCheckoutPullRequestRequest,
   onComposerFocusRequest,
 }: BranchToolbarBranchSelectorProps) {
+  const composerFloatingLayerProps = useComposerMenuProps();
   const startFromOriginSwitchId = useId();
   const stopThreadSession = useAtomCommand(threadEnvironment.stopSession, "thread session stop");
   const updateThreadMetadata = useAtomCommand(
@@ -124,11 +144,11 @@ export function BranchToolbarBranchSelector({
     () => scopeThreadRef(environmentId, threadId),
     [environmentId, threadId],
   );
+  const serverThread = useThreadShell(threadRef);
+  const serverSession = serverThread?.runtime ?? null;
   const draftThread = useComposerDraftStore((store) =>
     draftId ? store.getDraftSession(draftId) : store.getDraftThreadByRef(threadRef),
   );
-  const serverThread = useThreadShell(threadRef);
-  const serverSession = serverThread?.session ?? null;
   const setDraftThreadContext = useComposerDraftStore((store) => store.setDraftThreadContext);
 
   const activeProjectRef = serverThread
@@ -143,7 +163,9 @@ export function BranchToolbarBranchSelector({
     activeThreadBranchOverride !== undefined
       ? activeThreadBranchOverride
       : (serverThread?.branch ?? draftThread?.branch ?? null);
-  const activeWorktreePath = serverThread?.worktreePath ?? draftThread?.worktreePath ?? null;
+  const activeWorktreePath = forceNewWorktree
+    ? null
+    : (serverThread?.worktreePath ?? draftThread?.worktreePath ?? null);
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const branchCwd = activeWorktreePath ?? activeProjectCwd;
   const hasServerThread = serverThread !== null;
@@ -535,6 +557,17 @@ export function BranchToolbarBranchSelector({
     }
   }, []);
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      open: () => {
+        if (isInitialBranchesLoadPending || isBranchActionPending) return;
+        handleOpenChange(true);
+      },
+    }),
+    [handleOpenChange, isBranchActionPending, isInitialBranchesLoadPending],
+  );
+
   const [showTopBranchScrollFade, setShowTopBranchScrollFade] = useState(false);
   const [showBottomBranchScrollFade, setShowBottomBranchScrollFade] = useState(false);
   const fetchNextBranchPage = useCallback(() => {
@@ -651,6 +684,10 @@ export function BranchToolbarBranchSelector({
   const prNumber = currentLinkedPr?.number ?? displayedPr?.number;
   const prUrl = currentLinkedPr?.url ?? displayedPr?.url;
   const openPrLink = useOpenPrLink(threadRef);
+  const panelPrLabel =
+    prNumber === undefined
+      ? ""
+      : `#${prNumber}${displayedPr?.title.trim() ? `: ${displayedPr.title}` : ""}`;
 
   function renderPickerItem(itemValue: string, index: number) {
     if (checkoutPullRequestItemValue && itemValue === checkoutPullRequestItemValue) {
@@ -750,38 +787,51 @@ export function BranchToolbarBranchSelector({
       value={resolvedActiveBranch}
     >
       <div
-        className={cn("flex min-w-0 items-center gap-1", className)}
-        data-composer-context-control
+        className={cn(
+          "flex min-w-0",
+          displayMode === "panel" ? "w-full flex-col items-stretch" : "items-center gap-1",
+          className,
+        )}
       >
-        <ThreadPullRequestBadgeControl
-          variant="ghost"
-          badge={prBadge}
-          number={prNumber}
-          url={prUrl}
-          status={displayedPrStatus}
-          onOpenStack={() => useRightPanelStore.getState().open(threadRef, "pull-requests")}
-          onOpenPullRequest={(event) => {
-            if (prUrl) openPrLink(event, prUrl);
-          }}
-        />
-        {/* Context menu lives on the wrapper: the disabled Button has
-            pointer-events-none, so the trigger itself never sees right-clicks
-            while refs are loading or a branch action is pending. */}
+        {displayMode !== "panel" ? (
+          <ThreadPullRequestBadgeControl
+            variant="ghost"
+            badge={prBadge}
+            number={prNumber}
+            url={prUrl}
+            status={displayedPrStatus}
+            onOpenStack={() => useRightPanelStore.getState().open(threadRef, "pull-requests")}
+            onOpenPullRequest={(event) => {
+              if (prUrl) openPrLink(event, prUrl);
+            }}
+          />
+        ) : null}
         <span
           className="flex min-w-0"
           onContextMenu={(event) => handleBranchContextMenu(event, resolvedActiveBranch)}
         >
           <ComboboxTrigger
-            render={<Button variant="ghost" size="xs" />}
-            // No press-scale: the popup aligns live to this trigger, so a
-            // momentary 0.97 shrink would drag the open popup ~3px sideways.
-            className="min-w-0 max-w-full font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100"
+            render={<Button variant="ghost" size={displayMode === "panel" ? "sm" : "xs"} />}
+            className={cn(
+              "min-w-0 max-w-full font-normal text-muted-foreground/70 text-xs! hover:text-foreground/80 active:scale-100",
+              displayMode === "panel" && THREAD_DETAILS_PANEL_SELECT_ROW_CLASS,
+            )}
             disabled={isInitialBranchesLoadPending || isBranchActionPending}
           >
-            <GitBranchIcon className="size-3 shrink-0 opacity-70" />
+            <GitBranchIcon
+              className={cn(
+                "size-3 shrink-0 opacity-70",
+                displayMode === "panel" && THREAD_DETAILS_PANEL_ICON_CLASS,
+              )}
+            />
             <span
               data-composer-label
-              className="min-w-0 max-w-[240px] group-data-[compact]/composer-context:max-w-0"
+              className={cn(
+                "min-w-0 max-w-[240px] truncate",
+                displayMode === "panel"
+                  ? "max-w-none flex-1 text-left"
+                  : "transition-[max-width,opacity] duration-300 ease-out group-data-[compact]/composer-context:max-w-0 group-data-[compact]/composer-context:opacity-0",
+              )}
             >
               <span
                 data-composer-label-motion
@@ -790,15 +840,38 @@ export function BranchToolbarBranchSelector({
                 {triggerLabel}
               </span>
             </span>
-            <ChevronDownIcon className="size-3 shrink-0 opacity-50" />
+            {displayMode === "panel" ? (
+              <span data-slot="select-icon">
+                <ChevronDownIcon className={THREAD_DETAILS_PANEL_CHEVRON_CLASS} />
+              </span>
+            ) : (
+              <ChevronDownIcon className="size-3 shrink-0 opacity-50" />
+            )}
           </ComboboxTrigger>
         </span>
+        {displayMode === "panel" && prNumber !== undefined && prUrl !== undefined ? (
+          <ThreadDetailsPrRow
+            environmentId={environmentId}
+            pr={displayedPr}
+            number={prNumber}
+            reference={currentLinkedPr}
+            status={displayedPrStatus}
+            project={activeProject}
+            label={panelPrLabel}
+            openAriaLabel={prUrl ?? "Open pull request"}
+            onOpen={(event) => openPrLink(event, prUrl)}
+            onActed={() => branchStatusQuery.refresh()}
+          />
+        ) : null}
       </div>
       <ComboboxPopup
-        align="end"
-        side="top"
-        className="flex w-80 flex-col"
-        {...composerFloatingLayerProps}
+        align={displayMode === "panel" ? "start" : "end"}
+        side={displayMode === "panel" ? "bottom" : "top"}
+        className={cn(
+          "flex flex-col",
+          displayMode === "panel" ? THREAD_DETAILS_PANEL_ROW_POPUP_CLASS : "w-80",
+        )}
+        {...(displayMode === "toolbar" ? composerFloatingLayerProps : {})}
       >
         <div className="shrink-0 px-3 pt-2.5">
           <div className="relative -translate-y-px border-b border-border/70 pb-1.5 transition-colors focus-within:border-ring">
