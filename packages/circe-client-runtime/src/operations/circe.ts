@@ -52,6 +52,17 @@ export const useCirceBrowser = Effect.fn("Circe.browserUse")(function* (
   return yield* request(WS_METHODS.circeBrowserUse, input);
 });
 
+/**
+ * Run one bounded desktop mission on an explicit node. The node drives its own
+ * screen through the TypeSafe step loop over grounded accessibility elements;
+ * the origin client confirms once per session before the first mission.
+ */
+export const useCirceComputer = Effect.fn("Circe.computerUse")(function* (
+  input: import("@circe/contracts").CirceComputerUseInput,
+) {
+  return yield* request(WS_METHODS.circeComputerUse, input);
+});
+
 /** Read the authenticated device's Host-owned task focus and bounded history. */
 export const getCirceTaskDesk = Effect.fn("Circe.getTaskDesk")(function* () {
   return yield* request(WS_METHODS.circeGetTaskDesk, {});

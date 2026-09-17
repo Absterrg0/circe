@@ -49,10 +49,13 @@ export const AccessibilityTree = Schema.Struct({
 export type AccessibilityTree = typeof AccessibilityTree.Type;
 
 export const decodeAccessibilityTree = Schema.decodeUnknownSync(AccessibilityTree);
+const decodeAccessibilityTreeJson = Schema.decodeUnknownSync(
+  Schema.fromJsonString(AccessibilityTree),
+);
 
 /** Parse one helper dump. Throws on malformed output so the caller can escalate. */
 export function parseAccessibilityDump(stdout: string): AccessibilityTree {
-  return decodeAccessibilityTree(JSON.parse(stdout));
+  return decodeAccessibilityTreeJson(stdout);
 }
 
 /**
@@ -146,6 +149,99 @@ main()
 export function buildAccessibilityDumpCommand(): DesktopCommand {
   return { command: "python3", args: ["-c", ATSPI_DUMP_SCRIPT] };
 }
+
+/**
+ * Embedded AT-SPI actuator. It resolves the element id produced by the dump
+ * (a "app:N/idx/idx" path) and performs one action against it: activate for a
+ * click, set-text for an editable field. It never falls back to blind
+ * coordinates itself; the caller decides whether a coordinate fallback is
+ * acceptable. Output is a bounded JSON result.
+ */
+export const ATSPI_ACTION_SCRIPT = `
+import json, sys
+import pyatspi
+
+def resolve(desktop, path):
+    head, *rest = path.split("/")
+    if not head.startswith("app:"):
+        return None
+    node = desktop.getChildAtIndex(int(head[4:]))
+    for segment in rest:
+        if node is None:
+            return None
+        node = node.getChildAtIndex(int(segment))
+    return node
+
+def activate(node):
+    try:
+        action = node.queryAction()
+    except Exception as exc:
+        return False, "no-action-interface: %s" % type(exc).__name__
+    for i in range(action.nActions):
+        name = (action.getName(i) or "").lower()
+        if name in ("click", "activate", "press", "default.activate", "action"):
+            try:
+                return bool(action.doAction(i)), None
+            except Exception as exc:
+                return False, "action-failed: %s" % type(exc).__name__
+    if action.nActions > 0:
+        try:
+            return bool(action.doAction(0)), None
+        except Exception as exc:
+            return False, "action-failed: %s" % type(exc).__name__
+    return False, "no-action"
+
+def set_text(node, text):
+    try:
+        node.queryEditableText().setTextContents(text)
+        return True, None
+    except Exception as exc:
+        return False, "not-editable: %s" % type(exc).__name__
+
+def main():
+    payload = json.loads(sys.argv[1])
+    desktop = pyatspi.Registry.getDesktop(0)
+    node = resolve(desktop, payload.get("path", ""))
+    if node is None:
+        json.dump({"ok": False, "error": "element-not-found"}, sys.stdout)
+        return
+    action = payload.get("action")
+    if action == "activate":
+        ok, error = activate(node)
+    elif action == "set-text":
+        ok, error = set_text(node, payload.get("text", ""))
+    else:
+        ok, error = False, "unknown-action"
+    json.dump({"ok": ok, "error": error}, sys.stdout)
+
+main()
+`.trim();
+
+export interface AccessibilityActionRequest {
+  readonly path: string;
+  readonly action: "activate" | "set-text";
+  readonly text?: string;
+}
+
+export function buildAccessibilityActionCommand(
+  request: AccessibilityActionRequest,
+): DesktopCommand {
+  return {
+    command: "python3",
+    args: ["-c", ATSPI_ACTION_SCRIPT, JSON.stringify(request)],
+  };
+}
+
+export const AccessibilityActionResult = Schema.Struct({
+  ok: Schema.Boolean,
+  error: Schema.optional(Schema.NullOr(Schema.String)),
+});
+export type AccessibilityActionResult = typeof AccessibilityActionResult.Type;
+
+export const decodeAccessibilityActionResult = Schema.decodeUnknownSync(AccessibilityActionResult);
+export const decodeAccessibilityActionResultJson = Schema.decodeUnknownSync(
+  Schema.fromJsonString(AccessibilityActionResult),
+);
 
 /** Grounded elements from a decoded tree, bounded and addressable by id. */
 export function accessibilityElements(
