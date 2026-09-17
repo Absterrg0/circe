@@ -24,24 +24,24 @@
  * least one UTF-8 byte, so 500 bytes hold at most 500 tokens. A character
  * count cannot promise this: 1500 CJK characters are 1500 tokens or more.
  */
-export const T3CODE_LIVE_VOICE_MAX_APPEND_BYTES = 500;
+export const CIRCE_LIVE_VOICE_MAX_APPEND_BYTES = 500;
 
 const appendEncoder = new TextEncoder();
 const ELLIPSIS_BYTES = 3; // U+2026 in UTF-8.
 
 /** Bounded transcript memory so a long session cannot grow strings forever. */
-export const T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS = 8_000;
+export const CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS = 8_000;
 
 /** Bounded fragment history for caption grouping. */
-export const T3CODE_LIVE_VOICE_MAX_FRAGMENTS = 200;
+export const CIRCE_LIVE_VOICE_MAX_FRAGMENTS = 200;
 
 /**
  * The on-screen caption shows only the tail of whoever is speaking. A live
  * session transcript grows for its whole duration, so a caption read from the
  * cumulative text would keep appending and swamp the orb.
  */
-export const T3CODE_LIVE_VOICE_MAX_CAPTION_SENTENCES = 3;
-export const T3CODE_LIVE_VOICE_MAX_CAPTION_CHARS = 220;
+export const CIRCE_LIVE_VOICE_MAX_CAPTION_SENTENCES = 3;
+export const CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS = 220;
 
 /**
  * Silence between transcript fragments that starts a new utterance. The live
@@ -50,7 +50,7 @@ export const T3CODE_LIVE_VOICE_MAX_CAPTION_CHARS = 220;
  * the small talk before it. Timing is on the session timeline, never wall
  * clock, and delivery can be uneven, so this is a grouping heuristic.
  */
-export const T3CODE_LIVE_VOICE_UTTERANCE_GAP_MS = 1_200;
+export const CIRCE_LIVE_VOICE_UTTERANCE_GAP_MS = 1_200;
 
 /**
  * Follow-up speech that only makes sense against the previous request: an
@@ -60,11 +60,11 @@ export const T3CODE_LIVE_VOICE_UTTERANCE_GAP_MS = 1_200;
  * are legitimate new requests and must not inherit the previous one. Only
  * explicit references to the earlier request are carried.
  */
-export const T3CODE_LIVE_VOICE_FOLLOW_UP =
+export const CIRCE_LIVE_VOICE_FOLLOW_UP =
   /\b(?:just|please)\s+delegate\b|\b(?:go ahead|do it|try again|check it|look it up|you can (?:check|look|try|just|delegate|ask)|i mean|actually|instead|not that|that's not what)\b/iu;
 
 /** Word budget for a follow-up; a long sentence states its own request. */
-export const T3CODE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS = 12;
+export const CIRCE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS = 12;
 
 /**
  * Deterministic quick actions: weather and local time in a named place. These
@@ -215,15 +215,15 @@ function safeJsonParse(value: string): unknown {
 }
 
 const boundTail = (value: string): string =>
-  value.length > T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS
-    ? value.slice(-T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS)
+  value.length > CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS
+    ? value.slice(-CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS)
     : value;
 
 const boundFragments = (
   fragments: ReadonlyArray<CirceLiveVoiceTranscriptFragment>,
 ): ReadonlyArray<CirceLiveVoiceTranscriptFragment> =>
-  fragments.length > T3CODE_LIVE_VOICE_MAX_FRAGMENTS
-    ? fragments.slice(-T3CODE_LIVE_VOICE_MAX_FRAGMENTS)
+  fragments.length > CIRCE_LIVE_VOICE_MAX_FRAGMENTS
+    ? fragments.slice(-CIRCE_LIVE_VOICE_MAX_FRAGMENTS)
     : fragments;
 
 export function applyCirceLiveVoiceTranscript(
@@ -275,8 +275,8 @@ export function circeLiveVoiceCaption(
   state: CirceLiveVoiceTranscriptState,
   options?: { readonly maxSentences?: number; readonly maxChars?: number },
 ): string | null {
-  const maxSentences = options?.maxSentences ?? T3CODE_LIVE_VOICE_MAX_CAPTION_SENTENCES;
-  const maxChars = options?.maxChars ?? T3CODE_LIVE_VOICE_MAX_CAPTION_CHARS;
+  const maxSentences = options?.maxSentences ?? CIRCE_LIVE_VOICE_MAX_CAPTION_SENTENCES;
+  const maxChars = options?.maxChars ?? CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS;
   const spoken = state.assistantText.trim();
   if (spoken.length === 0) return null;
   const bounded = boundCaptionChars(lastSentences(spoken, maxSentences), maxChars);
@@ -354,7 +354,7 @@ function timedUtteranceGroups(
       previous !== undefined &&
       previous.endMs !== null &&
       fragment.startMs !== null &&
-      fragment.startMs - previous.endMs > T3CODE_LIVE_VOICE_UTTERANCE_GAP_MS
+      fragment.startMs - previous.endMs > CIRCE_LIVE_VOICE_UTTERANCE_GAP_MS
     ) {
       flush(previous.endMs);
     }
@@ -433,8 +433,8 @@ export function takeCirceLiveVoiceDelegateUtterance(state: CirceLiveVoiceTranscr
   if (
     !inherited &&
     state.lastDelegatedText.length > 0 &&
-    words.length <= T3CODE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS &&
-    T3CODE_LIVE_VOICE_FOLLOW_UP.test(candidate.text)
+    words.length <= CIRCE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS &&
+    CIRCE_LIVE_VOICE_FOLLOW_UP.test(candidate.text)
   ) {
     utterance = `${state.lastDelegatedText} ${candidate.text}`.trim();
   }
@@ -466,7 +466,7 @@ export function lastCirceLiveVoiceUtterance(state: CirceLiveVoiceTranscriptState
  */
 export function circeLiveVoiceAppendText(
   text: string,
-  maxBytes = T3CODE_LIVE_VOICE_MAX_APPEND_BYTES,
+  maxBytes = CIRCE_LIVE_VOICE_MAX_APPEND_BYTES,
 ): string {
   const normalized = text.trim().replace(/\s+/g, " ");
   if (appendEncoder.encode(normalized).length <= maxBytes) return normalized;

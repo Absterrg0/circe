@@ -24,8 +24,8 @@ import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import {
   DESKTOP_PRELOAD_READY_CHANNEL,
   DESKTOP_RENDERER_READY_CHANNEL,
-  T3CODE_LIVE_VOICE_TOGGLE_CHANNEL,
-  T3CODE_ORB_SELECT_CHANNEL,
+  CIRCE_LIVE_VOICE_TOGGLE_CHANNEL,
+  CIRCE_ORB_SELECT_CHANNEL,
   MENU_ACTION_CHANNEL,
   QUIT_SHORTCUT_CHANNEL,
   SNAP_SHOT_EVENT_CHANNEL,
@@ -1356,7 +1356,7 @@ export const make = Effect.gen(function* () {
       }
       send();
     }),
-    sendLiveVoiceToggle: dispatchRendererEvent(T3CODE_LIVE_VOICE_TOGGLE_CHANNEL, undefined, {
+    sendLiveVoiceToggle: dispatchRendererEvent(CIRCE_LIVE_VOICE_TOGGLE_CHANNEL, undefined, {
       reveal: false,
     }),
     sendOrbSelection: Effect.fn("desktop.window.sendOrbSelection")(function* (
@@ -1367,7 +1367,7 @@ export const make = Effect.gen(function* () {
         model: selection.model,
         reveal: false,
       });
-      yield* dispatchRendererEvent(T3CODE_ORB_SELECT_CHANNEL, selection, { reveal: false });
+      yield* dispatchRendererEvent(CIRCE_ORB_SELECT_CHANNEL, selection, { reveal: false });
     }),
     zoomMain: Effect.fn("desktop.window.zoomMain")(function* (direction) {
       yield* Effect.annotateCurrentSpan({ direction });

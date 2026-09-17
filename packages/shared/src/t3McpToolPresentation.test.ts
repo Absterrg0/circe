@@ -59,7 +59,7 @@ describe("resolveT3McpToolPresentation", () => {
       "t3_code:delegate_task",
       "t3code/delegate_task",
       "t3-code delegate_task",
-      "T3 Code delegate_task",
+      "Circe delegate_task",
       "t3-code__delegate_task",
     ]) {
       expect(resolveT3McpToolPresentation(name)?.displayName).toBe("Delegate a child task");

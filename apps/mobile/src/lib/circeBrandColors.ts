@@ -8,6 +8,6 @@
  * them too, and a shared UI component importing from a feature folder inverts
  * the layering the app is built on.
  */
-export const T3CODE_IVORY = "#FCF9F4";
-export const T3CODE_INK = "#151311";
-export const T3CODE_MUTED = "#707177";
+export const CIRCE_IVORY = "#FCF9F4";
+export const CIRCE_INK = "#151311";
+export const CIRCE_MUTED = "#707177";

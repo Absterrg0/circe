@@ -6,7 +6,7 @@ import { CirceSemanticProposal } from "@circe/core/command";
 import { circeSemanticEvalCorpus } from "./circeSemanticEvalCorpus.ts";
 import { circeSemanticDevCorpus } from "./circeSemanticDevCorpus.ts";
 import { buildStrictCirceSemanticJsonSchema } from "./circeSemanticSchema.ts";
-import { T3CODE_SEMANTIC_THRESHOLDS, scoreProposal } from "./circeSemanticEvalEngine.ts";
+import { CIRCE_SEMANTIC_THRESHOLDS, scoreProposal } from "./circeSemanticEvalEngine.ts";
 
 const decodeProposal = Schema.decodeUnknownSync(CirceSemanticProposal);
 
@@ -167,13 +167,13 @@ describe("Circe semantic eval corpus", () => {
   });
 
   it("freezes user-approved thresholds", () => {
-    expect(T3CODE_SEMANTIC_THRESHOLDS.exclusionDispatch).toBe(0);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.textCorruption).toBe(0);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.crossNodeViolation).toBe(0);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.staleSpeech).toBe(0);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.completePassRate).toBe(0.95);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.unnecessaryClarificationRate).toBe(0.05);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.ambiguityAccuracy).toBe(0.95);
-    expect(T3CODE_SEMANTIC_THRESHOLDS.repeatConsistency).toBe(1);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.exclusionDispatch).toBe(0);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.textCorruption).toBe(0);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.crossNodeViolation).toBe(0);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.staleSpeech).toBe(0);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.completePassRate).toBe(0.95);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.unnecessaryClarificationRate).toBe(0.05);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.ambiguityAccuracy).toBe(0.95);
+    expect(CIRCE_SEMANTIC_THRESHOLDS.repeatConsistency).toBe(1);
   });
 });

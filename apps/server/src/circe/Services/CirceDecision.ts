@@ -19,7 +19,7 @@ export interface CirceDecisionConfig {
   readonly endpoint: string;
 }
 
-export const T3CODE_DECISION_DEFAULT: CirceDecisionConfig = {
+export const CIRCE_DECISION_DEFAULT: CirceDecisionConfig = {
   enabled: false,
   apiKey: "",
   model: "jev-latest",

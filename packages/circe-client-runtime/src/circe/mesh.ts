@@ -52,7 +52,7 @@ import {
 } from "@circe/client/rpc";
 
 export type CirceMeshReachability = "online" | "offline";
-export const T3CODE_MESH_REFRESH_CONCURRENCY = 4;
+export const CIRCE_MESH_REFRESH_CONCURRENCY = 4;
 export type CirceMeshCatalogErrorKind =
   | "unreachable"
   | "authentication"
@@ -785,7 +785,7 @@ export const make = Effect.gen(function* () {
     const entries = yield* SubscriptionRef.get(registry.entries);
     yield* prepareCatalog(entries);
     yield* Effect.forEach([...entries.values()], refreshEntry, {
-      concurrency: T3CODE_MESH_REFRESH_CONCURRENCY,
+      concurrency: CIRCE_MESH_REFRESH_CONCURRENCY,
       discard: true,
     });
     return yield* SubscriptionRef.get(catalogRef);

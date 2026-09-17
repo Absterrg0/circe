@@ -318,7 +318,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                T3CODE_DESKTOP_UPDATE_REPOSITORY: "Absterrg0/circe",
+                CIRCE_DESKTOP_UPDATE_REPOSITORY: "Absterrg0/circe",
               },
             }),
           ),
@@ -984,7 +984,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           Effect.provide(
             ConfigProvider.layer(
               ConfigProvider.fromEnv({
-                env: { T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true" },
+                env: { CIRCE_DESKTOP_REUSE_RESOURCE_MONITOR: "true" },
               }),
             ),
           ),
@@ -1146,7 +1146,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
                 ConfigProvider.fromEnv({
                   env: {
                     npm_config_python: pythonPath,
-                    T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true",
+                    CIRCE_DESKTOP_REUSE_RESOURCE_MONITOR: "true",
                   },
                 }),
               ),
@@ -1192,7 +1192,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
               spawner,
               ConfigProvider.layer(
                 ConfigProvider.fromEnv({
-                  env: { T3CODE_DESKTOP_REUSE_RESOURCE_MONITOR: "true" },
+                  env: { CIRCE_DESKTOP_REUSE_RESOURCE_MONITOR: "true" },
                 }),
               ),
             ),
@@ -1910,9 +1910,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("derives macOS passkey signing configuration from the Clerk publishable key", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
-      T3CODE_APPLE_TEAM_ID: "abc1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("example.clerk.accounts.dev$")}`,
+      CIRCE_APPLE_TEAM_ID: "abc1234567",
+      CIRCE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+      CIRCE_CLERK_PUBLISHABLE_KEY: `pk_test_${btoa("example.clerk.accounts.dev$")}`,
     });
 
     assert.deepStrictEqual(configuration, {
@@ -1925,9 +1925,9 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
 
   it("normalizes explicit macOS passkey RP domains and renders required entitlements", () => {
     const configuration = resolveMacPasskeySigningConfiguration({
-      T3CODE_APPLE_TEAM_ID: "ABC1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PASSKEY_RP_DOMAINS:
+      CIRCE_APPLE_TEAM_ID: "ABC1234567",
+      CIRCE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+      CIRCE_CLERK_PASSKEY_RP_DOMAINS:
         " Clerk.Example.com,example.clerk.accounts.dev,clerk.example.com ",
     });
     const entitlements = renderMacPasskeyEntitlements(configuration);
@@ -1953,21 +1953,21 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     };
 
     const missingProfileError = captureError({
-      T3CODE_APPLE_TEAM_ID: "ABC1234567",
-      T3CODE_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev",
+      CIRCE_APPLE_TEAM_ID: "ABC1234567",
+      CIRCE_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev",
     });
     assert.instanceOf(missingProfileError, MissingMacPasskeyProvisioningProfileError);
     assert.equal(
       missingProfileError.message,
-      "T3CODE_MACOS_PROVISIONING_PROFILE must point to an Associated Domains provisioning profile.",
+      "CIRCE_MACOS_PROVISIONING_PROFILE must point to an Associated Domains provisioning profile.",
     );
 
     const unsafeDomain =
       "https://domain-user:domain-secret@example.clerk.accounts.dev/path?token=query-secret";
     const invalidDomainError = captureError({
-      T3CODE_APPLE_TEAM_ID: "ABC1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PASSKEY_RP_DOMAINS: unsafeDomain,
+      CIRCE_APPLE_TEAM_ID: "ABC1234567",
+      CIRCE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+      CIRCE_CLERK_PASSKEY_RP_DOMAINS: unsafeDomain,
     });
     assert.instanceOf(invalidDomainError, InvalidMacPasskeyRpDomainError);
     assert.equal(invalidDomainError.reason, "scheme-not-allowed");
@@ -1983,20 +1983,20 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     assert.throws(
       () =>
         resolveMacPasskeySigningConfiguration({
-          T3CODE_APPLE_TEAM_ID: "ABC1234567",
-          T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-          T3CODE_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev:8443",
+          CIRCE_APPLE_TEAM_ID: "ABC1234567",
+          CIRCE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+          CIRCE_CLERK_PASSKEY_RP_DOMAINS: "example.clerk.accounts.dev:8443",
         }),
       /Invalid passkey RP domain/u,
     );
     const invalidPublishableKeyError = captureError({
-      T3CODE_APPLE_TEAM_ID: "ABC1234567",
-      T3CODE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
-      T3CODE_CLERK_PUBLISHABLE_KEY: "pk_test_%",
+      CIRCE_APPLE_TEAM_ID: "ABC1234567",
+      CIRCE_MACOS_PROVISIONING_PROFILE: "/tmp/t3code.provisionprofile",
+      CIRCE_CLERK_PUBLISHABLE_KEY: "pk_test_%",
     });
     assert.instanceOf(invalidPublishableKeyError, InvalidMacPasskeyPublishableKeyError);
     assert.ok(invalidPublishableKeyError.cause);
-    assert.equal(invalidPublishableKeyError.message, "T3CODE_CLERK_PUBLISHABLE_KEY is invalid.");
+    assert.equal(invalidPublishableKeyError.message, "CIRCE_CLERK_PUBLISHABLE_KEY is invalid.");
     assert.notProperty(invalidPublishableKeyError, "publishableKey");
     assert.notInclude(invalidPublishableKeyError.message, "pk_test_%");
   });
@@ -2384,7 +2384,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
     assert.notInclude(workflow, '"$app" --ozone-platform=x11 --no-sandbox');
     assert.include(workflow, "ELECTRON_ENABLE_LOGGING=1");
-    assert.include(workflow, "T3CODE_STARTUP_PROBE_FILE");
+    assert.include(workflow, "CIRCE_STARTUP_PROBE_FILE");
     assert.include(workflow, "inotifywait");
     const startupGate = workflow.slice(
       workflow.indexOf("# Arm the watcher before launching the app."),
@@ -2664,11 +2664,11 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           ConfigProvider.layer(
             ConfigProvider.fromEnv({
               env: {
-                T3CODE_DESKTOP_SKIP_BUILD: "true",
-                T3CODE_DESKTOP_KEEP_STAGE: "true",
-                T3CODE_DESKTOP_SIGNED: "true",
-                T3CODE_DESKTOP_VERBOSE: "true",
-                T3CODE_DESKTOP_MOCK_UPDATES: "true",
+                CIRCE_DESKTOP_SKIP_BUILD: "true",
+                CIRCE_DESKTOP_KEEP_STAGE: "true",
+                CIRCE_DESKTOP_SIGNED: "true",
+                CIRCE_DESKTOP_VERBOSE: "true",
+                CIRCE_DESKTOP_MOCK_UPDATES: "true",
               },
             }),
           ),

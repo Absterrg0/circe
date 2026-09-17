@@ -12,7 +12,7 @@ Circe is the product name and the only name used across visible copy, code, pack
 - Data: `~/.circe`, `~/.circe-headless`, `.circe` config paths, `CIRCE_*` environment variables, `circe-resources`, `circe-official-release.json`, `official-circe` and `unified-circe`.
 - Release endpoints `https://github.com/Absterrg0/Circe/releases` with artifacts `Circe-${version}-${arch}.${ext}`.
 - Migrations keep numeric IDs 41 through 58 and their `Circe*` names.
-- Relay resources, Clerk audience, and OTLP variables are Circe-named (`circe-relay`, `T3CODE_RELAY_URL`).
+- Relay resources, Clerk audience, and OTLP variables are Circe-named (`circe-relay`, `CIRCE_RELAY_URL`).
 
 ## Legacy T3 names being renamed
 

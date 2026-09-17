@@ -75,34 +75,34 @@ const emptyBackendObservabilitySettings: BackendObservabilitySettings = {
 };
 
 const DESKTOP_BACKEND_ENV_NAMES = [
-  "T3CODE_PORT",
-  "T3CODE_MODE",
-  "T3CODE_NO_BROWSER",
-  "T3CODE_HOST",
-  "T3CODE_DESKTOP_WS_URL",
-  "T3CODE_DESKTOP_LAN_ACCESS",
-  "T3CODE_DESKTOP_LAN_HOST",
-  "T3CODE_DESKTOP_HTTPS_ENDPOINTS",
-  "T3CODE_TAILSCALE_SERVE",
-  "T3CODE_TAILSCALE_SERVE_PORT",
-  "T3CODE_NODE_PRESET",
+  "CIRCE_PORT",
+  "CIRCE_MODE",
+  "CIRCE_NO_BROWSER",
+  "CIRCE_HOST",
+  "CIRCE_DESKTOP_WS_URL",
+  "CIRCE_DESKTOP_LAN_ACCESS",
+  "CIRCE_DESKTOP_LAN_HOST",
+  "CIRCE_DESKTOP_HTTPS_ENDPOINTS",
+  "CIRCE_TAILSCALE_SERVE",
+  "CIRCE_TAILSCALE_SERVE_PORT",
+  "CIRCE_NODE_PRESET",
 ] as const;
 
-const T3CODE_CODEX_LAUNCH_ARGS_ENV = "T3CODE_CODEX_LAUNCH_ARGS";
-const T3CODE_CODEX_DEFAULT_LAUNCH_ARGS = "--disable apps";
+const CIRCE_CODEX_LAUNCH_ARGS_ENV = "CIRCE_CODEX_LAUNCH_ARGS";
+const CIRCE_CODEX_DEFAULT_LAUNCH_ARGS = "--disable apps";
 
 const resolveCirceCodexDefaultLaunchArgs = (
   distribution: DesktopEnvironment.DesktopDistribution,
 ): string | undefined =>
   distribution === "unified-circe" || distribution === "official-circe"
-    ? process.env[T3CODE_CODEX_LAUNCH_ARGS_ENV]?.trim() || T3CODE_CODEX_DEFAULT_LAUNCH_ARGS
+    ? process.env[CIRCE_CODEX_LAUNCH_ARGS_ENV]?.trim() || CIRCE_CODEX_DEFAULT_LAUNCH_ARGS
     : undefined;
 
 const resolveCirceCodexDefaultEnvironment = (
   distribution: DesktopEnvironment.DesktopDistribution,
 ): Record<string, string> => {
   const launchArgs = resolveCirceCodexDefaultLaunchArgs(distribution);
-  return launchArgs === undefined ? {} : { [T3CODE_CODEX_LAUNCH_ARGS_ENV]: launchArgs };
+  return launchArgs === undefined ? {} : { [CIRCE_CODEX_LAUNCH_ARGS_ENV]: launchArgs };
 };
 
 // Sensitive env vars that the WSL backend needs but Windows process.env won't
@@ -112,8 +112,8 @@ const resolveCirceCodexDefaultEnvironment = (
 const WSL_FORWARDED_ENV_NAMES = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
-  "T3CODE_OTLP_HEADERS",
-  "T3CODE_OTLP_PROTOCOL",
+  "CIRCE_OTLP_HEADERS",
+  "CIRCE_OTLP_PROTOCOL",
 ] as const;
 
 const WSL_SERVER_SYSTEM_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
@@ -788,7 +788,7 @@ const resolveWslStartConfig = Effect.fn("desktop.backendConfiguration.resolveWsl
   const codexDefaultEnvArgs =
     codexDefaultLaunchArgs === undefined
       ? []
-      : [`${T3CODE_CODEX_LAUNCH_ARGS_ENV}=${codexDefaultLaunchArgs}`];
+      : [`${CIRCE_CODEX_LAUNCH_ARGS_ENV}=${codexDefaultLaunchArgs}`];
 
   return {
     ...baseConfig,

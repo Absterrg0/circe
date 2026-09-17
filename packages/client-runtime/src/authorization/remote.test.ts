@@ -148,7 +148,7 @@ describe("remote environment authorization", () => {
         credential: "one-time-credential",
         dpopProof: "token-proof",
         clientMetadata: {
-          label: "T3 Code Mobile",
+          label: "Circe Mobile",
           deviceType: "mobile",
           os: "iOS",
         },
@@ -196,7 +196,7 @@ describe("remote environment authorization", () => {
         httpBaseUrl: "https://remote.example.com/",
         credential: "pairing-token",
         clientMetadata: {
-          label: "T3 Code Mobile",
+          label: "Circe Mobile",
           deviceType: "mobile",
           os: "iOS",
         },
@@ -230,7 +230,7 @@ describe("remote environment authorization", () => {
           httpBaseUrl: "https://remote.example.com/",
           credential: "pairing-token",
           clientMetadata: {
-            label: "T3 Code Web",
+            label: "Circe Web",
             deviceType: "desktop",
             os,
           },

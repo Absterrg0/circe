@@ -26,10 +26,10 @@ export const GET_APP_BRANDING_CHANNEL = "desktop:get-app-branding";
 /** Internal preload lifecycle marker; not exposed through the renderer bridge. */
 export const DESKTOP_PRELOAD_READY_CHANNEL = "desktop:preload-ready";
 export const DESKTOP_RENDERER_READY_CHANNEL = "desktop:renderer-ready";
-export const T3CODE_LIVE_VOICE_STATE_CHANNEL = "desktop:circe-live-voice-state";
-export const T3CODE_LIVE_VOICE_TOGGLE_CHANNEL = "desktop:circe-live-voice-toggle";
-export const T3CODE_ORB_CATALOG_CHANNEL = "desktop:circe-orb-catalog";
-export const T3CODE_ORB_SELECT_CHANNEL = "desktop:circe-orb-select";
+export const CIRCE_LIVE_VOICE_STATE_CHANNEL = "desktop:circe-live-voice-state";
+export const CIRCE_LIVE_VOICE_TOGGLE_CHANNEL = "desktop:circe-live-voice-toggle";
+export const CIRCE_ORB_CATALOG_CHANNEL = "desktop:circe-orb-catalog";
+export const CIRCE_ORB_SELECT_CHANNEL = "desktop:circe-orb-select";
 export const GET_SYSTEM_LOCALE_CHANNEL = "desktop:get-system-locale";
 export const GET_LOCAL_ENVIRONMENT_BOOTSTRAPS_CHANNEL = "desktop:get-local-environment-bootstraps";
 export const GET_LOCAL_ENVIRONMENT_ENABLED_CHANNEL = "desktop:get-local-environment-enabled";

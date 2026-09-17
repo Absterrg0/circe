@@ -68,7 +68,7 @@ import { getDriverOption } from "../settings/providerDriverMeta";
 import { TerminalViewport } from "../ThreadTerminalDrawer";
 import { CloudEnvironmentConnectRows } from "../cloud/CloudEnvironmentConnectList";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
-import { T3CODE_BRAND_NAME, T3CODE_MARK_SRC } from "../circe/CirceBrand";
+import { CIRCE_BRAND_NAME, CIRCE_MARK_SRC } from "../circe/CirceBrand";
 import {
   describeCirceOnboardingLabelSaveError,
   circeOnboardingDeviceNameHint,
@@ -201,17 +201,17 @@ export function WelcomeWizard({
         initialFocus={() => document.getElementById("onboarding-pairing-url") ?? true}
       >
         <WizardHeader
-          title={`Set up ${T3CODE_BRAND_NAME}`}
+          title={`Set up ${CIRCE_BRAND_NAME}`}
           identity={
-            <div className="flex items-center gap-2" role="img" aria-label={T3CODE_BRAND_NAME}>
+            <div className="flex items-center gap-2" role="img" aria-label={CIRCE_BRAND_NAME}>
               <img
-                src={T3CODE_MARK_SRC}
+                src={CIRCE_MARK_SRC}
                 alt=""
                 aria-hidden
                 className="size-5 shrink-0 rounded-[3px] object-cover"
               />
               <span className="text-[1.4rem] font-medium tracking-tight text-muted-foreground">
-                {T3CODE_BRAND_NAME}
+                {CIRCE_BRAND_NAME}
               </span>
             </div>
           }
@@ -672,7 +672,7 @@ function ConnectAccountOption({
             ) : null}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">
-            Keep {T3CODE_BRAND_NAME} running while you set up the computers you selected.
+            Keep {CIRCE_BRAND_NAME} running while you set up the computers you selected.
           </p>
           <Collapsible className="mt-3 rounded-lg border border-border bg-background">
             <CollapsibleTrigger
@@ -689,7 +689,7 @@ function ConnectAccountOption({
             <CollapsiblePanel>
               <div className="px-3 pb-3">
                 <p className="text-xs text-muted-foreground">
-                  Run this on a computer without the {T3CODE_BRAND_NAME} desktop app.
+                  Run this on a computer without the {CIRCE_BRAND_NAME} desktop app.
                 </p>
                 <CommandBlock command="npx @absterrg0/circe connect" className="mt-2" />
               </div>
@@ -810,7 +810,7 @@ function PairingForm({
             </p>
             <CommandBlock command="npx @absterrg0/circe pair" className="mt-2" />
             <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-              Start {T3CODE_BRAND_NAME} first, or run{" "}
+              Start {CIRCE_BRAND_NAME} first, or run{" "}
               <code className="font-mono">npx @absterrg0/circe serve</code>. Add{" "}
               <code className="font-mono">--tailscale</code> to use your tailnet.
             </p>

@@ -1300,7 +1300,7 @@ function codexReplayPreamble(input: {
         id: 1,
         method: "initialize",
         params: {
-          clientInfo: { name: "t3code_desktop", title: "T3 Code Desktop", version: "0.1.0" },
+          clientInfo: { name: "t3code_desktop", title: "Circe Desktop", version: "0.1.0" },
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],

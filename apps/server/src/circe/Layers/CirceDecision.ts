@@ -12,7 +12,7 @@ import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstab
 
 import * as ServerConfig from "../../config.ts";
 import {
-  T3CODE_DECISION_DEFAULT,
+  CIRCE_DECISION_DEFAULT,
   CirceDecision,
   type CirceDecisionConfig,
 } from "../Services/CirceDecision.ts";
@@ -27,19 +27,19 @@ type DeclineReason = Extract<CirceDecisionOutcome, { status: "decline" }>["reaso
 
 const readConfig = (server: ServerConfig.ServerConfig["Service"]): CirceDecisionConfig => {
   const configured = server.circeDecision;
-  if (configured === undefined) return T3CODE_DECISION_DEFAULT;
+  if (configured === undefined) return CIRCE_DECISION_DEFAULT;
   return {
     enabled: configured.enabled === true,
     apiKey: configured.apiKey ?? "",
     model:
       configured.model !== undefined && configured.model.trim().length > 0
         ? configured.model
-        : T3CODE_DECISION_DEFAULT.model,
-    timeoutMs: configured.timeoutMs ?? T3CODE_DECISION_DEFAULT.timeoutMs,
+        : CIRCE_DECISION_DEFAULT.model,
+    timeoutMs: configured.timeoutMs ?? CIRCE_DECISION_DEFAULT.timeoutMs,
     endpoint:
       configured.endpoint !== undefined && configured.endpoint.trim().length > 0
         ? configured.endpoint.replace(/\/+$/u, "")
-        : T3CODE_DECISION_DEFAULT.endpoint,
+        : CIRCE_DECISION_DEFAULT.endpoint,
   };
 };
 

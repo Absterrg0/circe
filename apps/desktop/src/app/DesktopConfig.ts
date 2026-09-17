@@ -39,24 +39,24 @@ export const DesktopConfig = Config.all({
   xdgDataHome: trimmedString("XDG_DATA_HOME"),
   t3Home: trimmedString("CIRCE_HOME"),
   devServerUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option),
-  appUserModelIdOverride: trimmedString("T3CODE_DESKTOP_APP_USER_MODEL_ID"),
-  devRemoteT3ServerEntryPath: trimmedString("T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
-  configuredBackendPort: Config.port("T3CODE_PORT").pipe(Config.option),
-  commitHashOverride: trimmedString("T3CODE_COMMIT_HASH"),
-  desktopLanHostOverride: trimmedString("T3CODE_DESKTOP_LAN_HOST"),
-  desktopHttpsEndpointUrls: commaSeparatedStrings("T3CODE_DESKTOP_HTTPS_ENDPOINTS"),
-  otlpTracesUrl: trimmedString("T3CODE_OTLP_TRACES_URL"),
-  otlpExportIntervalMs: Config.int("T3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
+  appUserModelIdOverride: trimmedString("CIRCE_DESKTOP_APP_USER_MODEL_ID"),
+  devRemoteT3ServerEntryPath: trimmedString("CIRCE_DEV_REMOTE_T3_SERVER_ENTRY_PATH"),
+  configuredBackendPort: Config.port("CIRCE_PORT").pipe(Config.option),
+  commitHashOverride: trimmedString("CIRCE_COMMIT_HASH"),
+  desktopLanHostOverride: trimmedString("CIRCE_DESKTOP_LAN_HOST"),
+  desktopHttpsEndpointUrls: commaSeparatedStrings("CIRCE_DESKTOP_HTTPS_ENDPOINTS"),
+  otlpTracesUrl: trimmedString("CIRCE_OTLP_TRACES_URL"),
+  otlpExportIntervalMs: Config.int("CIRCE_OTLP_EXPORT_INTERVAL_MS").pipe(
     Config.withDefault(10_000),
   ),
-  otlpHeaders: Config.schema(OtlpHeadersFromString, "T3CODE_OTLP_HEADERS").pipe(Config.option),
-  otlpProtocol: Config.schema(OtlpProtocol, "T3CODE_OTLP_PROTOCOL").pipe(
+  otlpHeaders: Config.schema(OtlpHeadersFromString, "CIRCE_OTLP_HEADERS").pipe(Config.option),
+  otlpProtocol: Config.schema(OtlpProtocol, "CIRCE_OTLP_PROTOCOL").pipe(
     Config.withDefault("http/json"),
   ),
   appImagePath: trimmedString("APPIMAGE"),
-  disableAutoUpdate: optionalBoolean("T3CODE_DISABLE_AUTO_UPDATE"),
-  mockUpdates: optionalBoolean("T3CODE_DESKTOP_MOCK_UPDATES"),
-  mockUpdateServerPort: Config.port("T3CODE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
+  disableAutoUpdate: optionalBoolean("CIRCE_DISABLE_AUTO_UPDATE"),
+  mockUpdates: optionalBoolean("CIRCE_DESKTOP_MOCK_UPDATES"),
+  mockUpdateServerPort: Config.port("CIRCE_DESKTOP_MOCK_UPDATE_SERVER_PORT").pipe(
     Config.withDefault(3000),
   ),
 });

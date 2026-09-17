@@ -39,7 +39,7 @@ import {
 const BOOT_SERVICE_NAME = "circe";
 const BOOT_SERVICE_UNIT_FILE = `${BOOT_SERVICE_NAME}.service`;
 // The label and unit name are Circe-owned. They must not match the separate
-// T3 Code product (circe.service / com.t3tools.circe.service), or installing
+// Circe product (circe.service / com.t3tools.circe.service), or installing
 // Circe would overwrite the other product's service.
 const BOOT_SERVICE_LAUNCHD_LABEL = "com.abstergo.circe.service";
 const BOOT_SERVICE_PLIST_FILE = `${BOOT_SERVICE_LAUNCHD_LABEL}.plist`;

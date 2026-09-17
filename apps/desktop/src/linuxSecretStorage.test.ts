@@ -132,7 +132,7 @@ describe("linuxSecretStorage", () => {
       env: { XDG_CURRENT_DESKTOP: "niri" },
     });
     expect(message).toContain("GNOME Keyring");
-    expect(message).not.toContain("T3 Code");
+    expect(message).not.toContain("Circe");
   });
 
   it("prefers explicit libsecret selection over KDE desktop heuristics", () => {

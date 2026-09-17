@@ -8,7 +8,7 @@ import * as NodePath from "node:path";
 import { vi } from "vite-plus/test";
 
 import {
-  T3CODE_GLOBAL_SHORTCUT,
+  CIRCE_GLOBAL_SHORTCUT,
   createDesktopCirceRendererVoiceActions,
   createDesktopCirceShell,
   desktopCirceOverlaySurface,
@@ -449,7 +449,7 @@ describe("DesktopCirceShell", () => {
       "overlay-hide",
       "tray-destroy",
     ]);
-    expect(T3CODE_GLOBAL_SHORTCUT).toBe("CommandOrControl+Shift+J");
+    expect(CIRCE_GLOBAL_SHORTCUT).toBe("CommandOrControl+Shift+J");
   });
 
   it("creates the Wayland helper profile under the injected directory", () => {

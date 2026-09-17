@@ -229,7 +229,7 @@ const makeDesktopEnvironmentLayer = (input: DesktopEnvironment.MakeDesktopEnviro
       Layer.mergeAll(
         NodeServices.layer,
         DesktopConfig.layerTest({
-          T3CODE_PORT: "3773",
+          CIRCE_PORT: "3773",
           VITE_DEV_SERVER_URL: "http://127.0.0.1:5733",
         }),
       ),
@@ -1003,7 +1003,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-trigger-"),
       );
       vi.stubEnv(
-        "T3CODE_STARTUP_PROBE_FILE",
+        "CIRCE_STARTUP_PROBE_FILE",
         NodePath.join(receiptDirectory, "startup-receipt.json"),
       );
       const layer = makeTestLayer({
@@ -1139,7 +1139,7 @@ describe("DesktopWindow", () => {
         mainWindow,
         environment: { ...environmentInput, platform: "linux" },
       });
-      vi.stubEnv("T3CODE_STARTUP_PROBE_FILE", NodePath.join(receiptDirectory, "receipt.json"));
+      vi.stubEnv("CIRCE_STARTUP_PROBE_FILE", NodePath.join(receiptDirectory, "receipt.json"));
 
       try {
         yield* Effect.gen(function* () {
@@ -1226,7 +1226,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-"),
       );
       const receiptPath = NodePath.join(receiptDirectory, "startup-receipt.json");
-      vi.stubEnv("T3CODE_STARTUP_PROBE_FILE", receiptPath);
+      vi.stubEnv("CIRCE_STARTUP_PROBE_FILE", receiptPath);
       const layer = makeTestLayer({
         window: fakeWindow.window,
         createCount,
@@ -1297,7 +1297,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-failure-"),
       );
       vi.stubEnv(
-        "T3CODE_STARTUP_PROBE_FILE",
+        "CIRCE_STARTUP_PROBE_FILE",
         NodePath.join(receiptDirectory, "startup-receipt.json"),
       );
       const layer = makeTestLayer({
@@ -1953,7 +1953,7 @@ describe("DesktopWindow", () => {
         createCount,
         mainWindow,
         onReveal: () => {
-          foreground = "T3 Code";
+          foreground = "Circe";
           operations.push("reveal");
         },
       });
@@ -1962,7 +1962,7 @@ describe("DesktopWindow", () => {
         const desktopWindow = yield* DesktopWindow.DesktopWindow;
         yield* desktopWindow.handleBackendReady(new URL("http://127.0.0.1:3773"));
         yield* desktopWindow.dispatchSnapShotEvent({ type: "started", id: captureOne });
-        assert.equal(foreground, "T3 Code");
+        assert.equal(foreground, "Circe");
         foreground = "Explorer";
         yield* desktopWindow.dispatchSnapShotEvent({ type: "ready", id: captureOne });
         yield* desktopWindow.dispatchSnapShotEvent({ type: "failed", id: captureTwo });

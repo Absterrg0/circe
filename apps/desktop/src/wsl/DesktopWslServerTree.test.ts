@@ -38,7 +38,7 @@ const environmentLayer = (input: {
         NodeServices.layer,
         DesktopConfig.layerTest({
           CIRCE_HOME: input.baseDir,
-          T3CODE_MODE: "desktop",
+          CIRCE_MODE: "desktop",
         }),
       ),
     ),

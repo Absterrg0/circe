@@ -20,7 +20,7 @@ export interface DesktopOrbCatalogInput {
  * of a full model list. Ids, names, and slugs pass through verbatim; nothing
  * is invented. Unavailable providers stay listed with their honest flag.
  */
-export const DESKTOP_T3CODE_ORB_SHORTLIST_LIMIT = 6;
+export const DESKTOP_CIRCE_ORB_SHORTLIST_LIMIT = 6;
 
 /**
  * Effective orb selection when no default is saved: the first available
@@ -54,7 +54,7 @@ export function buildDesktopCirceOrbCatalog(input: DesktopOrbCatalogInput): Desk
   const shortlist: Array<DesktopCirceOrbCatalog["providers"][number]> = [];
   for (const provider of input.providers) {
     if (provider.nodeId !== input.nodeId) continue;
-    if (shortlist.length >= DESKTOP_T3CODE_ORB_SHORTLIST_LIMIT) break;
+    if (shortlist.length >= DESKTOP_CIRCE_ORB_SHORTLIST_LIMIT) break;
     const models = provider.snapshot.models ?? [];
     if (models.length === 0) continue;
     const preferred = models.find((model) => model.isDefault === true) ?? models[0];

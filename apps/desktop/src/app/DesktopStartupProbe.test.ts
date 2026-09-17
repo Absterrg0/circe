@@ -18,7 +18,7 @@ describe("DesktopStartupProbe", () => {
     assert.equal(resolveStartupProbePath({ env: {}, argv: [] }), null);
     assert.equal(
       resolveStartupProbePath({
-        env: { T3CODE_STARTUP_PROBE_FILE: " /tmp/circe-startup.json " },
+        env: { CIRCE_STARTUP_PROBE_FILE: " /tmp/circe-startup.json " },
         argv: ["--circe-startup-probe=/tmp/ignored.json"],
       }),
       "/tmp/circe-startup.json",
@@ -43,9 +43,9 @@ describe("DesktopStartupProbe", () => {
 
   it("requests graceful quit only for an explicit probe flag", () => {
     assert.isFalse(resolveStartupProbeQuit({ env: {} }));
-    assert.isFalse(resolveStartupProbeQuit({ env: { T3CODE_STARTUP_PROBE_QUIT: "0" } }));
-    assert.isTrue(resolveStartupProbeQuit({ env: { T3CODE_STARTUP_PROBE_QUIT: "1" } }));
-    assert.isTrue(resolveStartupProbeQuit({ env: { T3CODE_STARTUP_PROBE_QUIT: "true" } }));
+    assert.isFalse(resolveStartupProbeQuit({ env: { CIRCE_STARTUP_PROBE_QUIT: "0" } }));
+    assert.isTrue(resolveStartupProbeQuit({ env: { CIRCE_STARTUP_PROBE_QUIT: "1" } }));
+    assert.isTrue(resolveStartupProbeQuit({ env: { CIRCE_STARTUP_PROBE_QUIT: "true" } }));
   });
 
   it("writes one structured receipt through an atomic rename", () => {

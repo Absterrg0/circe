@@ -174,11 +174,11 @@ ipcRenderer.on(IpcChannels.MENU_ACTION_CHANNEL, (_event, action: unknown) => {
   if (typeof action === "string") menuActionHub.emit(action);
 });
 
-ipcRenderer.on(IpcChannels.T3CODE_LIVE_VOICE_TOGGLE_CHANNEL, () => {
+ipcRenderer.on(IpcChannels.CIRCE_LIVE_VOICE_TOGGLE_CHANNEL, () => {
   liveVoiceToggleHub.emit();
 });
 
-ipcRenderer.on(IpcChannels.T3CODE_ORB_SELECT_CHANNEL, (_event, selection: unknown) => {
+ipcRenderer.on(IpcChannels.CIRCE_ORB_SELECT_CHANNEL, (_event, selection: unknown) => {
   if (isCirceOrbSelection(selection)) orbSelectHub.emit(selection);
 });
 
@@ -239,14 +239,14 @@ const desktopBridge = {
     // Fire-and-forget: the tray and global shortcut read the latest reported
     // state; a dropped report is corrected by the next one.
     report: (state) => {
-      ipcRenderer.send(IpcChannels.T3CODE_LIVE_VOICE_STATE_CHANNEL, state);
+      ipcRenderer.send(IpcChannels.CIRCE_LIVE_VOICE_STATE_CHANNEL, state);
     },
     onToggle: (listener) => liveVoiceToggleHub.subscribe(listener),
   },
   circeOrb: {
     // Fire-and-forget catalog push; the overlay renders the latest it got.
     reportCatalog: (catalog: DesktopCirceOrbCatalog) => {
-      ipcRenderer.send(IpcChannels.T3CODE_ORB_CATALOG_CHANNEL, catalog);
+      ipcRenderer.send(IpcChannels.CIRCE_ORB_CATALOG_CHANNEL, catalog);
     },
     onSelect: (listener) => orbSelectHub.subscribe(listener),
   },

@@ -52,9 +52,9 @@ describe("T3 orchestration provider instructions", () => {
       state: { interactionMode: "default", hasT3Mcp: true },
     });
 
-    assert.include(injected, "T3 Code interaction mode: Default");
-    assert.include(injected, "T3 Code collaborative browser");
-    assert.include(injected, "T3 Code orchestration");
+    assert.include(injected, "Circe interaction mode: Default");
+    assert.include(injected, "Circe collaborative browser");
+    assert.include(injected, "Circe orchestration");
     assert.include(injected, "<user_request>\nInspect the repository.\n</user_request>");
   });
 
@@ -72,14 +72,14 @@ describe("T3 orchestration provider instructions", () => {
         state: { ...defaultState, interactionMode: "plan" },
         previousState: defaultState,
       }),
-      "T3 Code interaction mode: Plan",
+      "Circe interaction mode: Plan",
     );
     const withoutMcp = t3AcpPromptWithInstructions({
       prompt,
       state: { interactionMode: "default", hasT3Mcp: false },
     });
-    assert.include(withoutMcp, "T3 Code interaction mode: Default");
-    assert.notInclude(withoutMcp, "T3 Code collaborative browser");
-    assert.notInclude(withoutMcp, "T3 Code orchestration");
+    assert.include(withoutMcp, "Circe interaction mode: Default");
+    assert.notInclude(withoutMcp, "Circe collaborative browser");
+    assert.notInclude(withoutMcp, "Circe orchestration");
   });
 });

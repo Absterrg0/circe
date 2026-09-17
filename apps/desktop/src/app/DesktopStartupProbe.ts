@@ -35,7 +35,7 @@ function nonEmpty(value: string | undefined): string | null {
 
 export function resolveStartupProbePath(input: DesktopStartupProbeInput = {}): string | null {
   const envPath = nonEmpty(
-    input.env?.T3CODE_STARTUP_PROBE_FILE ?? process.env.T3CODE_STARTUP_PROBE_FILE,
+    input.env?.CIRCE_STARTUP_PROBE_FILE ?? process.env.CIRCE_STARTUP_PROBE_FILE,
   );
   if (envPath !== null) return envPath;
 
@@ -59,7 +59,7 @@ export function resolveStartupProbePath(input: DesktopStartupProbeInput = {}): s
  */
 export function resolveStartupProbeQuit(input: DesktopStartupProbeInput = {}): boolean {
   const value = nonEmpty(
-    input.env?.T3CODE_STARTUP_PROBE_QUIT ?? process.env.T3CODE_STARTUP_PROBE_QUIT,
+    input.env?.CIRCE_STARTUP_PROBE_QUIT ?? process.env.CIRCE_STARTUP_PROBE_QUIT,
   );
   return value === "1" || value?.toLowerCase() === "true";
 }

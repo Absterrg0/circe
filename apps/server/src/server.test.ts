@@ -2414,7 +2414,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         },
         scope: "orchestration:read orchestration:operate terminal:operate review:write",
         clientMetadata: {
-          label: "T3 Code Mobile",
+          label: "Circe Mobile",
           deviceType: "mobile",
           os: "iOS",
         },
@@ -2441,7 +2441,7 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
       assert.equal(response.status, 200);
       assert.equal(clientsResponse.status, 200);
       assert.deepInclude(mobileClient?.client, {
-        label: "T3 Code Mobile",
+        label: "Circe Mobile",
         deviceType: "mobile",
         os: "iOS",
         ipAddress: "127.0.0.1",
@@ -12118,14 +12118,14 @@ it.live(
 
       const report = formatTransferBudgetReport(runs);
       yield* Effect.logInfo(`\n${report}`);
-      const reportPath = yield* Config.string("T3CODE_TRANSFER_BUDGET_REPORT_PATH").pipe(
+      const reportPath = yield* Config.string("CIRCE_TRANSFER_BUDGET_REPORT_PATH").pipe(
         Config.option,
       );
       if (Option.isSome(reportPath)) {
         const fileSystem = yield* FileSystem.FileSystem;
         yield* fileSystem.writeFileString(reportPath.value, report);
       }
-      const resultPath = yield* Config.string("T3CODE_TRANSFER_BUDGET_RESULT_PATH").pipe(
+      const resultPath = yield* Config.string("CIRCE_TRANSFER_BUDGET_RESULT_PATH").pipe(
         Config.option,
       );
       if (Option.isSome(resultPath)) {

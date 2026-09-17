@@ -26,7 +26,7 @@ export interface CirceTool {
   readonly parameters: ReadonlyArray<CirceToolParameterKind>;
 }
 
-export const T3CODE_TOOLS: ReadonlyArray<CirceTool> = [
+export const CIRCE_TOOLS: ReadonlyArray<CirceTool> = [
   {
     name: "weather",
     action: "lookup",
@@ -83,12 +83,12 @@ export const T3CODE_TOOLS: ReadonlyArray<CirceTool> = [
 export const NONE_OPTION = "none";
 
 export const findCirceTool = (name: string): CirceTool | undefined =>
-  T3CODE_TOOLS.find((tool) => tool.name === name);
+  CIRCE_TOOLS.find((tool) => tool.name === name);
 
 /** Choice question over every registered tool plus an explicit `none`. */
 export function buildToolChoiceQuestion(): DecisionChoiceQuestion {
   const criteria: Record<string, string | null> = {};
-  for (const tool of T3CODE_TOOLS) criteria[tool.name] = tool.description;
+  for (const tool of CIRCE_TOOLS) criteria[tool.name] = tool.description;
   criteria[NONE_OPTION] = "No tool; this is project or task work, or conversation.";
   return {
     type: "choice",

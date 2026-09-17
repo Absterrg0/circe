@@ -197,8 +197,8 @@ export function renderHeadlessSystemdUnit(paths: HeadlessServicePaths): string {
     "Type=simple",
     `WorkingDirectory=${systemdQuote(paths.installRoot)}`,
     `Environment=CIRCE_HOME=${systemdQuote(paths.installRoot)}`,
-    "Environment=T3CODE_NODE_PRESET=headless",
-    "Environment=T3CODE_NO_BROWSER=true",
+    "Environment=CIRCE_NODE_PRESET=headless",
+    "Environment=CIRCE_NO_BROWSER=true",
     `ExecStart=${systemdQuote(paths.nodePath)} ${systemdQuote(paths.launcherPath)}`,
     "KillMode=mixed",
     "OOMPolicy=continue",
@@ -218,7 +218,7 @@ export function renderHeadlessInstallScript(): string {
 set -eu
 
 archive_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit_path="\$HOME/.config/systemd/user/circe-headless.service"
 
 die() {
@@ -379,8 +379,8 @@ StartLimitBurst=5
 Type=simple
 WorkingDirectory=\$unit_install_root
 Environment=CIRCE_HOME=\$unit_install_root
-Environment=T3CODE_NODE_PRESET=headless
-Environment=T3CODE_NO_BROWSER=true
+Environment=CIRCE_NODE_PRESET=headless
+Environment=CIRCE_NO_BROWSER=true
 ExecStart=\$unit_node \$unit_launcher
 KillMode=mixed
 OOMPolicy=continue
@@ -406,7 +406,7 @@ export function renderHeadlessStatusScript(): string {
   return `#!/bin/sh
 set -u
 
-install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit=circe-headless.service
 echo "Circe Headless Node"
 echo "  Install: \$install_root"
@@ -428,7 +428,7 @@ export function renderHeadlessUninstallScript(): string {
   return `#!/bin/sh
 set -eu
 
-install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit_path="\$HOME/.config/systemd/user/circe-headless.service"
 purge=false
 if test "\${1:-}" = "--purge-data"; then

@@ -59,7 +59,7 @@ const CODEX_REPLAY_PLAN_MODE_DEVELOPER_INSTRUCTIONS =
   "You are in Plan mode. Prefer request_user_input for clarifying questions. When presenting a complete plan, wrap it in <proposed_plan> and </proposed_plan>.";
 const CODEX_CLIENT_INFO = {
   name: "t3code_desktop",
-  title: "T3 Code Desktop",
+  title: "Circe Desktop",
   version: "0.1.0",
 } as const;
 const CODEX_CLIENT_CAPABILITIES = {

@@ -2,7 +2,7 @@ import type { CirceSemanticProposalAction } from "./semanticEvidence.ts";
 import { normalizeDestinationPhrase, stripDestinationQuotes } from "./destinationSpan.ts";
 import type { DecisionQuestion, DecisionRequest } from "./decision.ts";
 import {
-  T3CODE_TOOLS,
+  CIRCE_TOOLS,
   NONE_OPTION,
   buildToolArgumentQuestions,
   buildToolChoiceQuestion,
@@ -107,7 +107,7 @@ export interface BoundaryCandidate {
  * highest confidence and always add host confirmation; read-only selections
  * may act at the lowest. Non-decreasing in risk, checked by test.
  */
-export const T3CODE_DECISION_THRESHOLDS = {
+export const CIRCE_DECISION_THRESHOLDS = {
   predicate: 0.5,
   boundary: 0.6,
   clarification: 0.5,
@@ -138,11 +138,11 @@ export function riskForAction(action: CirceSemanticProposalAction): CirceDecisio
 export function thresholdForRisk(risk: CirceDecisionRisk): number {
   switch (risk) {
     case "read-only":
-      return T3CODE_DECISION_THRESHOLDS.readOnly;
+      return CIRCE_DECISION_THRESHOLDS.readOnly;
     case "mutating":
-      return T3CODE_DECISION_THRESHOLDS.mutating;
+      return CIRCE_DECISION_THRESHOLDS.mutating;
     case "destructive":
-      return T3CODE_DECISION_THRESHOLDS.destructive;
+      return CIRCE_DECISION_THRESHOLDS.destructive;
   }
 }
 
@@ -165,7 +165,7 @@ const ACTION_CRITERIA: Readonly<Record<CirceSemanticProposalAction, string>> = {
   sequence: "Two or more genuinely independent commands in one turn.",
 };
 
-export const T3CODE_DECISION_ACTIONS: ReadonlyArray<CirceSemanticProposalAction> = [
+export const CIRCE_DECISION_ACTIONS: ReadonlyArray<CirceSemanticProposalAction> = [
   "start",
   "continue",
   "steer",
@@ -192,7 +192,7 @@ export type CirceResponseStrategy =
   | "conversation_thread"
   | "refuse";
 
-export const T3CODE_RESPONSE_STRATEGIES: ReadonlyArray<CirceResponseStrategy> = [
+export const CIRCE_RESPONSE_STRATEGIES: ReadonlyArray<CirceResponseStrategy> = [
   "act",
   "tool",
   "status_report",
@@ -211,7 +211,7 @@ const RESPONSE_STRATEGY_CRITERIA: Readonly<Record<CirceResponseStrategy, string>
   refuse: "The request cannot be done as one action.",
 };
 
-export const T3CODE_MAX_SEGMENTS = 4;
+export const CIRCE_MAX_SEGMENTS = 4;
 const MAX_PROJECTS = 32;
 const MAX_TASKS = 16;
 const MAX_PROVIDERS = 16;
@@ -379,7 +379,7 @@ export function segmentUtterance(
     if (text.length === 0) continue;
     segments.push({ start, end: start + text.length, text });
   }
-  if (segments.length < 2 || segments.length > T3CODE_MAX_SEGMENTS) {
+  if (segments.length < 2 || segments.length > CIRCE_MAX_SEGMENTS) {
     const text = source.trim();
     if (text.length === 0) return [];
     const start = source.indexOf(text);
@@ -497,10 +497,10 @@ export function buildDecisionRequest(input: DecisionBuildInput): {
   for (const effort of table.efforts) effortCriteria[effort.key] = null;
 
   const actionCriteria: Record<string, string | null> = {};
-  for (const action of T3CODE_DECISION_ACTIONS) actionCriteria[action] = ACTION_CRITERIA[action];
+  for (const action of CIRCE_DECISION_ACTIONS) actionCriteria[action] = ACTION_CRITERIA[action];
 
   const strategyCriteria: Record<string, string | null> = {};
-  for (const strategy of T3CODE_RESPONSE_STRATEGIES) {
+  for (const strategy of CIRCE_RESPONSE_STRATEGIES) {
     strategyCriteria[strategy] = RESPONSE_STRATEGY_CRITERIA[strategy];
   }
 
@@ -567,7 +567,7 @@ export function buildDecisionRequest(input: DecisionBuildInput): {
     };
   }
 
-  for (const tool of T3CODE_TOOLS) {
+  for (const tool of CIRCE_TOOLS) {
     Object.assign(
       questions,
       buildToolArgumentQuestions(tool, {

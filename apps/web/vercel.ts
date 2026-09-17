@@ -2,7 +2,7 @@ import { matchers, routes, type Transform, type VercelConfig } from "@vercel/con
 
 /**
  * Hosted-web routing is operator-owned. The release workflow supplies
- * `T3CODE_WEB_ROUTER_URL` and the channel domains for a deployment; the T3
+ * `CIRCE_WEB_ROUTER_URL` and the channel domains for a deployment; the T3
  * defaults keep upstream builds pointing at their existing domains.
  */
 function hostFrom(value: string | undefined, fallbackHost: string): string {
@@ -15,10 +15,10 @@ function hostFrom(value: string | undefined, fallbackHost: string): string {
   }
 }
 
-const ROUTER_HOST = hostFrom(process.env.T3CODE_WEB_ROUTER_URL, "app.t3.codes");
+const ROUTER_HOST = hostFrom(process.env.CIRCE_WEB_ROUTER_URL, "app.t3.codes");
 const HOSTED_WEB_CHANNEL_COOKIE = "t3code_web_channel";
-const LATEST_ORIGIN = `https://${hostFrom(process.env.T3CODE_WEB_LATEST_DOMAIN, "latest.app.t3.codes")}`;
-const NIGHTLY_ORIGIN = `https://${hostFrom(process.env.T3CODE_WEB_NIGHTLY_DOMAIN, "nightly.app.t3.codes")}`;
+const LATEST_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_LATEST_DOMAIN, "latest.app.t3.codes")}`;
+const NIGHTLY_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_NIGHTLY_DOMAIN, "nightly.app.t3.codes")}`;
 const CLEAN_CHANNEL_QUERY_TRANSFORMS = [
   {
     type: "request.query",

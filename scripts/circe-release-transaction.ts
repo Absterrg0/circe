@@ -935,10 +935,10 @@ const parseBooleanEnvironment = (name: string, fallback: boolean): boolean => {
 };
 
 const parseMakeLatestEnvironment = (): "true" | "false" | "legacy" => {
-  const value = process.env.T3CODE_RELEASE_MAKE_LATEST?.trim().toLowerCase();
+  const value = process.env.CIRCE_RELEASE_MAKE_LATEST?.trim().toLowerCase();
   if (value === undefined || value === "") return "true";
   if (value === "true" || value === "false" || value === "legacy") return value;
-  throw new Error(`T3CODE_RELEASE_MAKE_LATEST must be true, false, or legacy, received '${value}'`);
+  throw new Error(`CIRCE_RELEASE_MAKE_LATEST must be true, false, or legacy, received '${value}'`);
 };
 
 /** Match fetched PR JSON against the preview label in TypeScript. Exported for tests. */
@@ -956,7 +956,7 @@ export function previewPrMatchesLabel(prJson: string, label: string): boolean {
 }
 
 const previewEligibilityViaGh = async (repository: string, prNumber: string): Promise<boolean> => {
-  const label = process.env.T3CODE_PREVIEW_LABEL?.trim() || "preview:mac";
+  const label = process.env.CIRCE_PREVIEW_LABEL?.trim() || "preview:mac";
   // The label is environment-derived: never interpolate it into a jq filter.
   // Fetch the JSON and match state plus labels in TypeScript instead.
   const viewed = NodeChildProcess.spawnSync(
@@ -972,12 +972,12 @@ const runPreviewCli = async (mode: "preview-publish" | "preview-cleanup"): Promi
   const [assetPath] = process.argv.slice(3);
   const repository = process.env.GITHUB_REPOSITORY;
   const token = process.env.GH_TOKEN ?? process.env.GITHUB_TOKEN;
-  const prNumber = process.env.T3CODE_PREVIEW_PR_NUMBER?.trim();
-  const tag = process.env.T3CODE_PREVIEW_TAG?.trim() || "desktop-preview";
+  const prNumber = process.env.CIRCE_PREVIEW_PR_NUMBER?.trim();
+  const tag = process.env.CIRCE_PREVIEW_TAG?.trim() || "desktop-preview";
   if (!repository || !token) {
     throw new Error("preview release needs GITHUB_REPOSITORY and GH_TOKEN");
   }
-  if (!prNumber) throw new Error("preview release needs T3CODE_PREVIEW_PR_NUMBER");
+  if (!prNumber) throw new Error("preview release needs CIRCE_PREVIEW_PR_NUMBER");
   const transport = createGitHubReleaseTransport({ repository, token });
   const isEligible = (): Promise<boolean> => previewEligibilityViaGh(repository, prNumber);
   if (mode === "preview-cleanup") {
@@ -985,13 +985,13 @@ const runPreviewCli = async (mode: "preview-publish" | "preview-cleanup"): Promi
     process.stdout.write(`${JSON.stringify(result)}\n`);
     return;
   }
-  const target = process.env.T3CODE_PREVIEW_TARGET?.trim();
+  const target = process.env.CIRCE_PREVIEW_TARGET?.trim();
   if (!assetPath) {
     throw new Error(
-      "usage: node scripts/circe-release-transaction.ts preview-publish <asset-path> (with GITHUB_REPOSITORY, GH_TOKEN, T3CODE_PREVIEW_PR_NUMBER, T3CODE_PREVIEW_TARGET)",
+      "usage: node scripts/circe-release-transaction.ts preview-publish <asset-path> (with GITHUB_REPOSITORY, GH_TOKEN, CIRCE_PREVIEW_PR_NUMBER, CIRCE_PREVIEW_TARGET)",
     );
   }
-  if (!target) throw new Error("preview publish needs T3CODE_PREVIEW_TARGET");
+  if (!target) throw new Error("preview publish needs CIRCE_PREVIEW_TARGET");
   const result = await runPreviewPublish(transport, {
     repository,
     tag,
@@ -1021,10 +1021,10 @@ const runCli = async (): Promise<void> => {
     );
   }
   const transport = createGitHubReleaseTransport({ repository, token });
-  const prerelease = parseBooleanEnvironment("T3CODE_RELEASE_PRERELEASE", false);
+  const prerelease = parseBooleanEnvironment("CIRCE_RELEASE_PRERELEASE", false);
   const makeLatest = parseMakeLatestEnvironment();
-  const tagName = process.env.T3CODE_RELEASE_TAG?.trim() || `v${version}`;
-  const channel = process.env.T3CODE_RELEASE_CHANNEL?.trim().toLowerCase();
+  const tagName = process.env.CIRCE_RELEASE_TAG?.trim() || `v${version}`;
+  const channel = process.env.CIRCE_RELEASE_CHANNEL?.trim().toLowerCase();
   const releaseChannel: "preview" | "stable" =
     prerelease || channel === "preview" ? "preview" : "stable";
   const releaseOptions = {

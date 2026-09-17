@@ -16,9 +16,9 @@ const defaultInput = {
   platform: "darwin",
   processArch: "arm64",
   appVersion: "0.0.22",
-  appPath: "/Applications/T3 Code.app/Contents/Resources/app.asar",
+  appPath: "/Applications/Circe.app/Contents/Resources/app.asar",
   isPackaged: false,
-  resourcesPath: "/Applications/T3 Code.app/Contents/Resources",
+  resourcesPath: "/Applications/Circe.app/Contents/Resources",
   runningUnderArm64Translation: false,
 } satisfies DesktopEnvironment.MakeDesktopEnvironmentInput;
 
@@ -139,7 +139,7 @@ describe("DesktopEnvironment", () => {
       const resourcesPath = path.join(installRoot, "resources");
       yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
       yield* fileSystem.writeFileString(
-        path.join(resourcesPath, DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE),
+        path.join(resourcesPath, DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE),
         '{"product":"Circe","distribution":"official"}\n',
       );
 
@@ -160,14 +160,14 @@ describe("DesktopEnvironment", () => {
         {},
         {
           CIRCE_HOME: " /tmp/t3 ",
-          T3CODE_COMMIT_HASH: " 0123456789abcdef ",
-          T3CODE_PORT: "4949",
+          CIRCE_COMMIT_HASH: " 0123456789abcdef ",
+          CIRCE_PORT: "4949",
           VITE_DEV_SERVER_URL: "http://localhost:5173",
-          T3CODE_DEV_REMOTE_T3_SERVER_ENTRY_PATH: " /remote/server.mjs ",
-          T3CODE_OTLP_TRACES_URL: " http://127.0.0.1:4318/v1/traces ",
-          T3CODE_OTLP_EXPORT_INTERVAL_MS: "2500",
-          T3CODE_OTLP_HEADERS: "authorization=Basic%20abc%3D%3D,x-tenant=t3",
-          T3CODE_OTLP_PROTOCOL: "http/protobuf",
+          CIRCE_DEV_REMOTE_T3_SERVER_ENTRY_PATH: " /remote/server.mjs ",
+          CIRCE_OTLP_TRACES_URL: " http://127.0.0.1:4318/v1/traces ",
+          CIRCE_OTLP_EXPORT_INTERVAL_MS: "2500",
+          CIRCE_OTLP_HEADERS: "authorization=Basic%20abc%3D%3D,x-tenant=t3",
+          CIRCE_OTLP_PROTOCOL: "http/protobuf",
         },
       );
 
@@ -234,7 +234,7 @@ describe("DesktopEnvironment", () => {
       assert.equal(environment.browserArtifactsDir, "/tmp/t3/userdata/browser-artifacts");
       assert.equal(environment.serverSettingsPath, "/tmp/t3/userdata/settings.json");
       assert.equal(environment.userDataDirName, "t3code");
-      assert.equal(environment.legacyUserDataDirName, "T3 Code (Alpha)");
+      assert.equal(environment.legacyUserDataDirName, "Circe (Alpha)");
       assert.equal(environment.otlpProtocol, "http/json");
     }),
   );
@@ -292,7 +292,7 @@ describe("DesktopEnvironment", () => {
       const environment = yield* makeEnvironment(
         {},
         {
-          T3CODE_DESKTOP_APP_USER_MODEL_ID: " com.abstergo.circe.dev.local ",
+          CIRCE_DESKTOP_APP_USER_MODEL_ID: " com.abstergo.circe.dev.local ",
           VITE_DEV_SERVER_URL: "http://localhost:5173",
         },
       );

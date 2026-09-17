@@ -6,7 +6,7 @@ import {
   isAtomCommandInterrupted,
   type AtomCommandResult,
 } from "@circe/client/state/runtime";
-import { T3CODE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
+import { CIRCE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
 import type { ContextMenuItem } from "@circe/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@circe/contracts/settings";
 import type { AsyncResult } from "effect/unstable/reactivity";
@@ -1252,7 +1252,7 @@ function pinCirceConversationsProjectFirst<T extends { readonly title: string }>
   projects: readonly T[],
 ): T[] {
   const index = projects.findIndex(
-    (project) => project.title === T3CODE_CONVERSATIONS_PROJECT_TITLE,
+    (project) => project.title === CIRCE_CONVERSATIONS_PROJECT_TITLE,
   );
   if (index <= 0) return [...projects];
   const ordered = [...projects];

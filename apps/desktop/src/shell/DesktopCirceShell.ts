@@ -22,11 +22,11 @@ import {
   type DesktopCirceOrbCatalog,
   type DesktopCirceOrbSelection,
 } from "@circe/contracts";
-import { T3CODE_ORB_CATALOG_CHANNEL } from "../ipc/channels.ts";
+import { CIRCE_ORB_CATALOG_CHANNEL } from "../ipc/channels.ts";
 import { createDesktopCirceLiveVoiceStateBridge } from "./DesktopCirceLiveVoiceState.ts";
 import {
-  DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT,
-  DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH,
+  DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT,
+  DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH,
   desktopCirceOrbCatalogScript,
   desktopCirceOrbStateScript,
   desktopCirceOverlayDataUrl,
@@ -38,14 +38,14 @@ import {
   type DesktopCirceOrbDragEvent,
 } from "./DesktopCirceOverlay.ts";
 export { resolveDesktopCirceOverlayBounds } from "./DesktopCirceOverlay.ts";
-import { DESKTOP_T3CODE_OVERLAY_HELPER_FLAG } from "./DesktopCirceOverlayHelper.ts";
+import { DESKTOP_CIRCE_OVERLAY_HELPER_FLAG } from "./DesktopCirceOverlayHelper.ts";
 import { attachDesktopPushToTalkHook, type DesktopPushToTalkHook } from "./DesktopPushToTalk.ts";
 import {
   attachDesktopPortalGlobalShortcuts,
   type DesktopPortalGlobalShortcutsHandle,
 } from "./DesktopPortalGlobalShortcuts.ts";
 
-export const T3CODE_GLOBAL_SHORTCUT = "CommandOrControl+Shift+J";
+export const CIRCE_GLOBAL_SHORTCUT = "CommandOrControl+Shift+J";
 
 export function shouldStartDesktopCirceShell(
   distribution: DesktopEnvironment.DesktopDistribution,
@@ -87,7 +87,7 @@ type DesktopCirceOverlayHelper = {
   readonly onStdoutLine?: (listener: (line: string) => void) => () => void;
 };
 
-const DESKTOP_T3CODE_OVERLAY_HELPER_SHUTDOWN_GRACE_MS = 2_000;
+const DESKTOP_CIRCE_OVERLAY_HELPER_SHUTDOWN_GRACE_MS = 2_000;
 
 function createDesktopCirceOverlayHelper(
   profileDir: string,
@@ -162,7 +162,7 @@ function createDesktopCirceOverlayHelper(
           } catch {
             // The child already exited; nothing left to stop.
           }
-        }, DESKTOP_T3CODE_OVERLAY_HELPER_SHUTDOWN_GRACE_MS);
+        }, DESKTOP_CIRCE_OVERLAY_HELPER_SHUTDOWN_GRACE_MS);
         killTimer.unref?.();
       },
     };
@@ -176,7 +176,7 @@ export function desktopCirceOverlayHelperArgs(userDataDir: string): ReadonlyArra
     "--no-sandbox",
     "--ozone-platform=x11",
     `--user-data-dir=${userDataDir}`,
-    DESKTOP_T3CODE_OVERLAY_HELPER_FLAG,
+    DESKTOP_CIRCE_OVERLAY_HELPER_FLAG,
   ];
 }
 
@@ -289,7 +289,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
   const clearElectronTapShortcut = (): void => {
     if (!shortcutRegistered) return;
     try {
-      shortcut.unregister(T3CODE_GLOBAL_SHORTCUT);
+      shortcut.unregister(CIRCE_GLOBAL_SHORTCUT);
     } catch {
       // Electron may already have released the accelerator during teardown.
     }
@@ -299,7 +299,7 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
   const installElectronTapShortcut = (): void => {
     if (stopped || shortcutRegistered) return;
     try {
-      shortcutRegistered = shortcut.register(T3CODE_GLOBAL_SHORTCUT, activateTapShortcut);
+      shortcutRegistered = shortcut.register(CIRCE_GLOBAL_SHORTCUT, activateTapShortcut);
     } catch {
       shortcutRegistered = false;
     }
@@ -481,8 +481,8 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
     if (input.createOverlay === undefined) {
       try {
         overlay = new Electron.BrowserWindow({
-          width: DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH,
-          height: DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT,
+          width: DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH,
+          height: DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT,
           resizable: false,
           minimizable: false,
           maximizable: false,
@@ -892,7 +892,7 @@ export const layer = Layer.effect(
     let runtime: DesktopCirceShellRuntime | null = null;
     // Renderer-owned provider catalog for the orb picker. Invalid reports
     // leave the last known catalog alone; the orb never invents providers.
-    Electron.ipcMain.on(T3CODE_ORB_CATALOG_CHANNEL, (_event: unknown, raw: unknown) => {
+    Electron.ipcMain.on(CIRCE_ORB_CATALOG_CHANNEL, (_event: unknown, raw: unknown) => {
       const decoded = decodeOrbCatalog(raw);
       if (Option.isNone(decoded)) return;
       runtime?.pushOrbCatalog(decoded.value);

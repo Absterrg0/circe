@@ -189,7 +189,7 @@ Circe resolves each voice or typed request before any work starts. One TypeSafe 
 
 Bounded answers that need no model stay on the host: weather, local time, task status, project lists, and opening a named site. Only an open-domain conversation reaches a coding provider, as a normal conversation thread.
 
-To use the classifier, set `T3CODE_TYPESAFE_API_KEY` on the node (only the server sees it). The model defaults to `jev-latest` and can be pinned with `T3CODE_TYPESAFE_MODEL`. Without a key, Circe declines and falls back to the ordinary provider proposal path; a timeout or a rate limit does the same, and a low-confidence classification asks you to restate rather than guessing.
+To use the classifier, set `CIRCE_TYPESAFE_API_KEY` on the node (only the server sees it). The model defaults to `jev-latest` and can be pinned with `CIRCE_TYPESAFE_MODEL`. Without a key, Circe declines and falls back to the ordinary provider proposal path; a timeout or a rate limit does the same, and a low-confidence classification asks you to restate rather than guessing.
 
 ### Conversations
 

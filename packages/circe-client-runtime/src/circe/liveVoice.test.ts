@@ -3,10 +3,10 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   applyCirceLiveVoiceTranscript,
   createCirceLiveVoiceTranscript,
-  T3CODE_LIVE_VOICE_MAX_APPEND_BYTES,
-  T3CODE_LIVE_VOICE_MAX_CAPTION_CHARS,
-  T3CODE_LIVE_VOICE_MAX_FRAGMENTS,
-  T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS,
+  CIRCE_LIVE_VOICE_MAX_APPEND_BYTES,
+  CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS,
+  CIRCE_LIVE_VOICE_MAX_FRAGMENTS,
+  CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS,
   circeLiveVoiceAppendCommand,
   circeLiveVoiceAppendText,
   circeLiveVoiceCaption,
@@ -267,7 +267,7 @@ describe("Circe live voice session reduction", () => {
     });
     const caption = circeLiveVoiceCaption(state);
     expect(caption).not.toBeNull();
-    expect(caption?.length ?? 0).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_CAPTION_CHARS);
+    expect(caption?.length ?? 0).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS);
     // A suffix of whole words: nothing is cut mid-word and the newest words win.
     expect(spoken.endsWith(caption ?? "")).toBe(true);
     for (const word of (caption ?? "").split(" ")) {
@@ -387,9 +387,9 @@ describe("Circe live voice session reduction", () => {
         endMs: null,
       });
     }
-    expect(state.userText.length).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS);
-    expect(state.pendingUserText.length).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS);
-    expect(state.userFragments.length).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_FRAGMENTS);
+    expect(state.userText.length).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS);
+    expect(state.pendingUserText.length).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS);
+    expect(state.userFragments.length).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_FRAGMENTS);
     // Keeps the recent tail, not the stale head.
     expect(state.userText.endsWith(chunk)).toBe(true);
   });
@@ -398,11 +398,11 @@ describe("Circe live voice session reduction", () => {
     expect(circeLiveVoiceAppendText("  task   finished  ")).toBe("task finished");
     // Byte bound, not char bound: 500 UTF-8 bytes hold at most 500 tokens
     // because one token spans at least one byte.
-    expect(T3CODE_LIVE_VOICE_MAX_APPEND_BYTES).toBe(500);
-    const long = "a".repeat(T3CODE_LIVE_VOICE_MAX_APPEND_BYTES + 50);
+    expect(CIRCE_LIVE_VOICE_MAX_APPEND_BYTES).toBe(500);
+    const long = "a".repeat(CIRCE_LIVE_VOICE_MAX_APPEND_BYTES + 50);
     const bounded = circeLiveVoiceAppendText(long);
     expect(new TextEncoder().encode(bounded).length).toBeLessThanOrEqual(
-      T3CODE_LIVE_VOICE_MAX_APPEND_BYTES,
+      CIRCE_LIVE_VOICE_MAX_APPEND_BYTES,
     );
     expect(bounded.endsWith("\u2026")).toBe(true);
 
@@ -426,11 +426,11 @@ describe("Circe live voice session reduction", () => {
   it("truncates multi-byte text without splitting characters", () => {
     const encode = (value: string) => new TextEncoder().encode(value).length;
     const accented = circeLiveVoiceAppendText("é".repeat(400));
-    expect(encode(accented)).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_APPEND_BYTES);
+    expect(encode(accented)).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_APPEND_BYTES);
     expect(accented.endsWith("\u2026")).toBe(true);
     expect(() => encodeURIComponent(accented)).not.toThrow();
     const emoji = circeLiveVoiceAppendText("😀".repeat(200));
-    expect(encode(emoji)).toBeLessThanOrEqual(T3CODE_LIVE_VOICE_MAX_APPEND_BYTES);
+    expect(encode(emoji)).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_APPEND_BYTES);
     expect(emoji.endsWith("\u2026")).toBe(true);
     expect(Array.from(emoji)).not.toContain("�");
     // Short unicode passes through untouched.
