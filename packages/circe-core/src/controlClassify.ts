@@ -6,12 +6,7 @@ import {
   type CirceToolArguments,
   type CirceToolParameter,
 } from "./controlTools.ts";
-import {
-  choiceAnswer,
-  noulHolds,
-  type DecisionAnswers,
-  type DecisionRequest,
-} from "./decision.ts";
+import { choiceAnswer, noulHolds, type DecisionAnswers, type DecisionRequest } from "./decision.ts";
 import {
   buildDecisionRequest,
   locateNameSpan,
@@ -55,6 +50,10 @@ export interface CirceOfferInput {
   readonly clientTools: ReadonlyArray<string>;
   readonly locationCandidates?: ReadonlyArray<string>;
   readonly websiteCandidates?: ReadonlyArray<string>;
+  /** Installed-app names the origin client can launch; client-supplied. */
+  readonly appCandidates?: ReadonlyArray<string>;
+  /** Media targets the origin client can address; client-supplied. */
+  readonly mediaCandidates?: ReadonlyArray<string>;
 }
 
 /**
@@ -63,25 +62,30 @@ export interface CirceOfferInput {
  * written for it and free-text tool arguments are forbidden.
  */
 export function offeredCirceTools(input: CirceOfferInput): ReadonlyArray<CirceTool> {
-  const locationCandidates = input.locationCandidates ?? [];
-  const websiteCandidates = input.websiteCandidates ?? [];
+  const candidateSets = {
+    locationCandidates: input.locationCandidates ?? [],
+    websiteCandidates: input.websiteCandidates ?? [],
+    appCandidates: input.appCandidates ?? [],
+    mediaCandidates: input.mediaCandidates ?? [],
+  };
   return availableCirceTools({
     nodeTools: input.nodeTools,
     clientTools: input.clientTools,
   }).filter((tool) =>
-    tool.parameters.every((parameter) => parameterIsOfferable(parameter, {
-      locationCandidates,
-      websiteCandidates,
-    })),
+    tool.parameters.every((parameter) => parameterIsOfferable(parameter, candidateSets)),
   );
 }
 
+type CirceCandidateSets = {
+  readonly locationCandidates: ReadonlyArray<string>;
+  readonly websiteCandidates: ReadonlyArray<string>;
+  readonly appCandidates: ReadonlyArray<string>;
+  readonly mediaCandidates: ReadonlyArray<string>;
+};
+
 function parameterIsOfferable(
   parameter: CirceToolParameter,
-  candidates: {
-    readonly locationCandidates: ReadonlyArray<string>;
-    readonly websiteCandidates: ReadonlyArray<string>;
-  },
+  candidates: CirceCandidateSets,
 ): boolean {
   if (parameter.kind !== "text" || !parameter.required) return true;
   switch (parameter.candidates.kind) {
@@ -90,7 +94,9 @@ function parameterIsOfferable(
     case "website":
       return candidates.websiteCandidates.length > 0;
     case "app":
+      return candidates.appCandidates.length > 0;
     case "media-target":
+      return candidates.mediaCandidates.length > 0;
     case "residual":
       return false;
   }
@@ -107,7 +113,9 @@ function candidatesFor(
     case "website":
       return input.websiteCandidates ?? [];
     case "app":
+      return input.appCandidates ?? [];
     case "media-target":
+      return input.mediaCandidates ?? [];
     case "residual":
       return [];
   }
@@ -167,14 +175,18 @@ export interface CirceOutcomeRequest {
  * are reused unchanged so the deterministic composer keeps sole authority over
  * spans, destinations, tasks, providers, models, and effort.
  */
-export function buildCirceOutcomeRequest(input: BuildCirceOutcomeRequestInput): CirceOutcomeRequest {
+export function buildCirceOutcomeRequest(
+  input: BuildCirceOutcomeRequestInput,
+): CirceOutcomeRequest {
   const base = buildDecisionRequest({
     state: input.state,
     catalog: input.catalog,
     ...(input.locationCandidates === undefined
       ? {}
       : { locationCandidates: input.locationCandidates }),
-    ...(input.websiteCandidates === undefined ? {} : { websiteCandidates: input.websiteCandidates }),
+    ...(input.websiteCandidates === undefined
+      ? {}
+      : { websiteCandidates: input.websiteCandidates }),
   });
   const tools = offeredCirceTools(input);
   const outcomeCriteria: Record<string, string | null> = { ...OUTCOME_CRITERIA };
@@ -221,13 +233,11 @@ export interface ComposeCirceOutcomeInput {
   readonly work: (proposal: CirceSemanticProposal) => CirceWorkResolution;
 }
 
-const asArguments = (entries: ReadonlyArray<readonly [string, string | boolean]>): CirceToolArguments =>
-  Object.fromEntries(entries);
+const asArguments = (
+  entries: ReadonlyArray<readonly [string, string | boolean]>,
+): CirceToolArguments => Object.fromEntries(entries);
 
-function readEnumArgument(
-  answers: DecisionAnswers,
-  id: string,
-): string | undefined {
+function readEnumArgument(answers: DecisionAnswers, id: string): string | undefined {
   const answer = choiceAnswer(answers, id);
   if (answer === undefined || answer.choice === NONE_OPTION) return undefined;
   if (answer.confidence < OUTCOME_FLOOR) return undefined;
@@ -282,10 +292,7 @@ function toolArgumentClarification(
   };
 }
 
-function composeToolOutcome(
-  input: ComposeCirceOutcomeInput,
-  tool: CirceTool,
-): CirceOutcome {
+function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): CirceOutcome {
   const entries: Array<readonly [string, string | boolean]> = [];
   for (const parameter of tool.parameters) {
     const id = `tool_${tool.name}_${parameter.name}`;
@@ -302,13 +309,17 @@ function composeToolOutcome(
       continue;
     }
     if (parameter.kind === "boolean") {
-      if (noulHolds(input.answers, id, OUTCOME_FLOOR) === true) entries.push([parameter.name, true]);
+      if (noulHolds(input.answers, id, OUTCOME_FLOOR) === true)
+        entries.push([parameter.name, true]);
       continue;
     }
     const text = readTextArgument(input.answers, id, input.source);
     if ("missing" in text) {
       if (!parameter.required) continue;
-      return { kind: "clarification", clarification: toolArgumentClarification(tool, parameter, input) };
+      return {
+        kind: "clarification",
+        clarification: toolArgumentClarification(tool, parameter, input),
+      };
     }
     entries.push([parameter.name, text.value]);
   }
@@ -362,7 +373,11 @@ function composeWorkOutcome(input: ComposeCirceOutcomeInput): CirceOutcome {
   if (composed.status === "needs-input") {
     return {
       kind: "clarification",
-      clarification: clarificationFromNeedsInput(composed.prompt, composed.projectClarification, composed.taskClarification),
+      clarification: clarificationFromNeedsInput(
+        composed.prompt,
+        composed.projectClarification,
+        composed.taskClarification,
+      ),
     };
   }
   const resolution = input.work(composed.proposal);
@@ -377,8 +392,12 @@ function composeWorkOutcome(input: ComposeCirceOutcomeInput): CirceOutcome {
 
 function clarificationFromNeedsInput(
   prompt: string,
-  projectClarification: { readonly candidates: ReadonlyArray<{ readonly projectId: string; readonly label: string }> } | undefined,
-  taskClarification: { readonly candidates: ReadonlyArray<{ readonly threadId: string; readonly label: string }> } | undefined,
+  projectClarification:
+    | { readonly candidates: ReadonlyArray<{ readonly projectId: string; readonly label: string }> }
+    | undefined,
+  taskClarification:
+    | { readonly candidates: ReadonlyArray<{ readonly threadId: string; readonly label: string }> }
+    | undefined,
 ): CirceClarification {
   if (projectClarification !== undefined) {
     return { kind: "project", prompt, candidates: projectClarification.candidates };

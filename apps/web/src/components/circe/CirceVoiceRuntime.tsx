@@ -29,6 +29,11 @@ import {
   resolveCirceRouteCoverageConfirm,
 } from "@circe/client-runtime/circe/routeGrounding";
 import {
+  circeClientActionSpeech,
+  runCirceClientAction,
+} from "@circe/client-runtime/circe/clientActions";
+import { circeClientActionCapabilities, circeClientActionExecutors } from "./circeClientActions";
+import {
   answerCirceModelChoice,
   isCirceModelClarificationReason,
   type CirceModelDraft,
@@ -2451,6 +2456,9 @@ export function CirceVoiceRuntime({
             // inference. Verbatim source preserves span offsets.
             ...(meshProposal === undefined ? {} : { semanticProposal: meshProposal }),
             ...(meshProposal === undefined ? {} : { sourceUtterance: meshSource.slice(0, 16_000) }),
+            // Advertise the tools this client can actually run so the node
+            // offers the classifier only executable actions.
+            clientTools: circeClientActionCapabilities().tools,
             utterance: instruction,
           };
           // A dispatch binds the full request, including an unknown/null pin.
@@ -2541,6 +2549,49 @@ export function CirceVoiceRuntime({
             // correction that superseded it.
             speak: false,
           });
+          syncPending();
+          return;
+        }
+        if (result.status === "client-action") {
+          // A bounded action the origin client owns. The node authorized it
+          // and spoke the acceptance; the client performs it and reports the
+          // real result. A missing executor can only be a wiring bug.
+          voiceSubmissionSnapshotsRef.current.delete(voiceSubmission.captureId);
+          if (pendingVoiceClarification?.captureId !== undefined) {
+            voiceSubmissionSnapshotsRef.current.delete(pendingVoiceClarification.captureId);
+          }
+          if (pendingVoiceClarification !== null) voiceClarificationRef.current = null;
+          const actionResult = await runCirceClientAction({
+            tool: result.tool,
+            args: result.args,
+            executors: circeClientActionExecutors,
+          });
+          emitFeedback({
+            text: circeClientActionSpeech({ acceptance: result.speech, result: actionResult }),
+            kind: actionResult.status === "ok" ? "done" : "error",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            requestId,
+          });
+          onTargetConsumed();
+          syncPending();
+          return;
+        }
+        if (result.status === "tool-answer") {
+          // A bounded node tool ran and its grounded result is the outcome.
+          voiceSubmissionSnapshotsRef.current.delete(voiceSubmission.captureId);
+          if (pendingVoiceClarification?.captureId !== undefined) {
+            voiceSubmissionSnapshotsRef.current.delete(pendingVoiceClarification.captureId);
+          }
+          if (pendingVoiceClarification !== null) voiceClarificationRef.current = null;
+          emitFeedback({
+            text: result.speech,
+            kind: "done",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            requestId,
+          });
+          onTargetConsumed();
           syncPending();
           return;
         }

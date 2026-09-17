@@ -1314,7 +1314,7 @@ function interpretCirceCommandProposal(
     return {
       status: "needs-input",
       reason: "unsupported-command",
-      prompt: "I couldn't complete that on this device. Try again.",
+      prompt: "I couldn't run that bounded action. Try again.",
       choices: [],
     };
   }
