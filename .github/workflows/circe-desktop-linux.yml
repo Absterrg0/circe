@@ -59,12 +59,12 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@t3tools/desktop...
+              - --filter=@circe/desktop...
               - --filter=@absterrg0/circe...
-              - --filter=@t3tools/scripts...
+              - --filter=@circe/scripts...
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @t3tools/desktop ensure:electron
+        run: vp run --filter @circe/desktop ensure:electron
 
       - name: Run focused Circe desktop tests
         run: |
@@ -74,7 +74,7 @@ jobs:
             apps/desktop/src/shell/DesktopCirceShell.test.ts \
             apps/desktop/src/shell/DesktopCirceOverlay.test.ts \
             scripts/circe-release-workflow.test.ts
-          vp run --filter @t3tools/desktop typecheck
+          vp run --filter @circe/desktop typecheck
 
       - name: Install Linux packaging and startup-smoke dependencies
         run: sudo apt-get update && sudo apt-get install -y dbus-x11 gnome-keyring inotify-tools libsecret-1-0 libasound2-dev libx11-dev libxrandr-dev libxtst-dev libxt-dev openbox x11-utils xvfb imagemagick

@@ -465,8 +465,8 @@ jobs:
               }
               if (payload.id === 'runtime-win' && path.posix.basename(file.path) === 'package.json') {
                 const packageJson = JSON.parse(bytes.toString('utf8'));
-                if (packageJson.name === '@t3tools/web') {
-                  throw new Error(`Forbidden @t3tools/web package in runtime payload: ${file.path}`);
+                if (packageJson.name === '@circe/web') {
+                  throw new Error(`Forbidden @circe/web package in runtime payload: ${file.path}`);
                 }
                 if (packageJson.name === 't3') {
                   t3PackageRoots.push(path.posix.dirname(file.path));
@@ -520,8 +520,8 @@ jobs:
               ForEach-Object { $_.path }
           )
           $forbiddenRuntimePaths = @($runtimePaths | Where-Object {
-            $_ -match '(^|[\\/])@t3tools[\\/]web([\\/]|$)' -or
-            $_ -match '(^|[\\/])@t3tools[+]web([\\/]|@|$)' -or
+            $_ -match '(^|[\\/])@circe[\\/]web([\\/]|$)' -or
+            $_ -match '(^|[\\/])@circe[+]web([\\/]|@|$)' -or
             $_ -match '(^|[\\/])t3[\\/]dist[\\/]client([\\/]|$)' -or
             $_ -match '(^|[\\/])t3[\\/]src([\\/]|$)' -or
             $_ -match '(^|[\\/])t3[\\/]dist[\\/].*[.]map$' -or
