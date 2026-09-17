@@ -15,10 +15,10 @@ function hostFrom(value: string | undefined, fallbackHost: string): string {
   }
 }
 
-const ROUTER_HOST = hostFrom(process.env.CIRCE_WEB_ROUTER_URL, "app.t3.codes");
+const ROUTER_HOST = hostFrom(process.env.CIRCE_WEB_ROUTER_URL, "app.heycirce.com");
 const HOSTED_WEB_CHANNEL_COOKIE = "t3code_web_channel";
-const LATEST_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_LATEST_DOMAIN, "latest.app.t3.codes")}`;
-const NIGHTLY_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_NIGHTLY_DOMAIN, "nightly.app.t3.codes")}`;
+const LATEST_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_LATEST_DOMAIN, "latest.app.heycirce.com")}`;
+const NIGHTLY_ORIGIN = `https://${hostFrom(process.env.CIRCE_WEB_NIGHTLY_DOMAIN, "nightly.app.heycirce.com")}`;
 const CLEAN_CHANNEL_QUERY_TRANSFORMS = [
   {
     type: "request.query",

@@ -15,7 +15,7 @@ rename on real infrastructure.
 - Releases are fetched from `github.com/Absterrg0/circe`.
 - Environment discovery endpoint `/.well-known/circe/environment`.
 - Data directory `~/.circe`, overridden by `CIRCE_HOME`.
-- Environment variables `T3CODE_*` are now `CIRCE_*`.
+- Environment variables `CIRCE_*` are now `CIRCE_*`.
 - Installer interface: `CIRCE_HOME`, `CIRCE_CHANNEL`, `CIRCE_VERSION`,
   `CIRCE_INSTALL_BIN_DIR`, `CIRCE_RELEASE_BASE_URL`.
 
@@ -26,7 +26,7 @@ them, and the rename does not migrate them.
 
 ### 1. CI and environment secrets
 
-Every secret or variable named `T3CODE_*` must be recreated as `CIRCE_*` in the
+Every secret or variable named `CIRCE_*` must be recreated as `CIRCE_*` in the
 GitHub repository and any other CI provider, then the old name removed. The code
 reads the new names.
 
@@ -48,18 +48,20 @@ Secret or configured values observed in workflows and scripts:
   `CIRCE_DESKTOP_*`, `CIRCE_MOBILE_*`, `CIRCE_TAILSCALE_*`, `CIRCE_CLOUDFLARED_PATH`,
   `CIRCE_CURSOR_ENABLED`, `CIRCE_DISABLE_AUTO_UPDATE`, `CIRCE_LICENSES_STRICT`.
 
-Short-lived test and replay variables still use the `T3_` prefix
-(`T3_ACP_*`, `T3_FAKE_*`, `T3_CODEX_REPLAY_*`, and similar). They are fixture
-inputs, not deployment secrets, and are safe to rename in a later sweep.
+Short-lived test and replay variables now use the `CIRCE_` prefix
+(`CIRCE_ACP_*`, `CIRCE_FAKE_*`, `CIRCE_CODEX_REPLAY_*`, and similar). They are
+fixture inputs, not deployment secrets.
 
 ### 2. Domains
 
-- `https://app.t3.codes` is `https://app.heycirce.com/`.
-- Install headers and the project-file schema URL still reference `t3.codes`
-  (108 occurrences). Point them at the Circe domain once it serves install
-  scripts and the schema.
-- The `T3_PROJECT_FILE_SCHEMA_URL` value and any CDN cache for the schema must
-  move together.
+- The repository now uses `https://heycirce.com` and
+  `https://app.heycirce.com/`. Install headers point at
+  `https://heycirce.com/install.sh` and `https://heycirce.com/install.ps1`; the
+  project-file schema URL is `https://heycirce.com/schema/t3.json`.
+- The `CIRCE_PROJECT_FILE_SCHEMA_URL` value and any CDN cache for the schema
+  must move together.
+- The GNOME extension UUID stays `snap-shot@t3.codes`. GNOME only discovers a
+  newly installed extension under the UUID it was installed with.
 
 ### 3. npm
 
@@ -78,9 +80,10 @@ inputs, not deployment secrets, and are safe to rename in a later sweep.
 
 ### 5. Native helper and packaging
 
-- The Rust crate `t3-resource-monitor` (34 references) needs a coordinated
-  rename to `circe-resource-monitor` across Cargo manifests, the signing
-  filter, desktop packaging, and `CIRCE_RESOURCE_MONITOR_PATH`.
+- The Rust crate is `circe-resource-monitor`; Cargo manifests, the signing
+  filter, desktop packaging, and `CIRCE_RESOURCE_MONITOR_PATH` use the new
+  binary name. The `native/resource-monitor` directory and the
+  `resource-monitor/` archive path are unchanged.
 - Desktop application id, bundle name, and macOS permission helper copy must all
   say Circe, including the packaged app path used by the permission wizard.
 

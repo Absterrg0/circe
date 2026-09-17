@@ -22,9 +22,9 @@ async function runRuntimeExit(status: "success" | "error" | "cancelled") {
   const child = NodeChildProcess.spawn(process.execPath, args, {
     env: {
       ...process.env,
-      T3_ACP_REPLAY_STATUS_PATH: statusPath,
-      T3_ACP_REPLAY_TRANSCRIPT: Buffer.from(JSON.stringify(transcript), "utf8").toString("base64"),
-      T3_ACP_REPLAY_WORKSPACE: scratch,
+      CIRCE_ACP_REPLAY_STATUS_PATH: statusPath,
+      CIRCE_ACP_REPLAY_TRANSCRIPT: Buffer.from(JSON.stringify(transcript), "utf8").toString("base64"),
+      CIRCE_ACP_REPLAY_WORKSPACE: scratch,
     },
     stdio: ["pipe", "pipe", "pipe"],
   });

@@ -385,7 +385,7 @@ function makeMockRuntime(input: {
             args: [input.mockAgentPath],
             cwd: runtimeInput.cwd,
             env: {
-              T3_ACP_SESSION_LIFECYCLE: "1",
+              CIRCE_ACP_SESSION_LIFECYCLE: "1",
               ...(typeof input.environment === "function"
                 ? input.environment(runtimeOrdinal)
                 : input.environment),
@@ -1016,7 +1016,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_V2_FIDELITY: "1" },
+            environment: { CIRCE_ACP_EMIT_V2_FIDELITY: "1" },
             wrapRuntime: (runtime) => ({
               ...runtime,
               handleSessionUpdate: (handler) =>
@@ -1247,7 +1247,7 @@ describe("AcpAdapterV2", () => {
             mockAgentPath,
             protocolEvents,
             environment: (runtimeOrdinal) =>
-              runtimeOrdinal === 1 ? { T3_ACP_FAIL_LOAD_SESSION: "1" } : {},
+              runtimeOrdinal === 1 ? { CIRCE_ACP_FAIL_LOAD_SESSION: "1" } : {},
           }),
         },
         fileSystem,
@@ -1480,10 +1480,10 @@ describe("AcpAdapterV2", () => {
             ownDetachedProcessGroup: true,
             processGroupTerminationGrace: 0,
             environment: {
-              T3_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
-              T3_ACP_EXIT_AFTER_RUNNING_COMMAND_LAUNCH: "1",
-              T3_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
-              T3_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
+              CIRCE_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
+              CIRCE_ACP_EXIT_AFTER_RUNNING_COMMAND_LAUNCH: "1",
+              CIRCE_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
+              CIRCE_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
             },
           }),
         },
@@ -1800,8 +1800,8 @@ describe("AcpAdapterV2", () => {
             ],
             env: [
               { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-              { name: "T3_ACP_MCP_ENDPOINT", value: "http://127.0.0.1:43123/mcp" },
-              { name: "T3_ACP_MCP_AUTHORIZATION", value: "Bearer target-thread-token" },
+              { name: "CIRCE_ACP_MCP_ENDPOINT", value: "http://127.0.0.1:43123/mcp" },
+              { name: "CIRCE_ACP_MCP_AUTHORIZATION", value: "Bearer target-thread-token" },
             ],
           },
         ],
@@ -1824,7 +1824,7 @@ describe("AcpAdapterV2", () => {
         {
           sessionId: "mock-child-session-without-credential-scope",
           command: process.execPath,
-          args: ["-e", "process.stdout.write(process.env.T3_ACP_MCP_AUTHORIZATION ?? '')"],
+          args: ["-e", "process.stdout.write(process.env.CIRCE_ACP_MCP_AUTHORIZATION ?? '')"],
         },
         { requestId: "test-unknown-terminal-create", method: "terminal/create" },
       );
@@ -1848,7 +1848,7 @@ describe("AcpAdapterV2", () => {
         {
           sessionId: "mock-session-1-fork",
           command: process.execPath,
-          args: ["-e", "process.stdout.write(process.env.T3_ACP_MCP_AUTHORIZATION ?? '')"],
+          args: ["-e", "process.stdout.write(process.env.CIRCE_ACP_MCP_AUTHORIZATION ?? '')"],
         },
         { requestId: "test-terminal-create", method: "terminal/create" },
       );
@@ -2031,7 +2031,7 @@ describe("AcpAdapterV2", () => {
       const makeRuntime = makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
-        environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+        environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
         wrapRuntime: (runtime) => ({
           ...runtime,
           handleRequestPermission: (handler) =>
@@ -2237,7 +2237,7 @@ describe("AcpAdapterV2", () => {
       const makeRuntime = makeMockRuntime({
         childProcessSpawner,
         mockAgentPath,
-        environment: { T3_ACP_PROMPT_DELAY_MS: "100" },
+        environment: { CIRCE_ACP_PROMPT_DELAY_MS: "100" },
       });
       const adapter = makeAcpAdapterV2({
         crypto: yield* Crypto.Crypto,
@@ -2325,7 +2325,7 @@ describe("AcpAdapterV2", () => {
       assert.isString(rolledBack.providerThread.nativeThreadRef?.nativeId);
       assert.deepEqual(rolledBack.providerTurns, []);
       assert.equal(
-        runtimeInputs[1]?.processEnvironment?.T3_ACP_MCP_AUTHORIZATION,
+        runtimeInputs[1]?.processEnvironment?.CIRCE_ACP_MCP_AUTHORIZATION,
         "Bearer rollback-target-token",
       );
       const replacementMcpServer = runtimeInputs[1]?.mcpServers[0];
@@ -2336,7 +2336,7 @@ describe("AcpAdapterV2", () => {
           ? replacementMcpServer.env
           : undefined;
       assert.equal(
-        replacementMcpEnvironment?.find((variable) => variable.name === "T3_ACP_MCP_AUTHORIZATION")
+        replacementMcpEnvironment?.find((variable) => variable.name === "CIRCE_ACP_MCP_AUTHORIZATION")
           ?.value,
         "Bearer rollback-target-token",
       );
@@ -2998,7 +2998,7 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             environment: (runtimeOrdinal) =>
-              runtimeOrdinal === 1 ? { T3_ACP_EMIT_EMPTY_SUCCESSFUL_BASH_THEN_HANG: "1" } : {},
+              runtimeOrdinal === 1 ? { CIRCE_ACP_EMIT_EMPTY_SUCCESSFUL_BASH_THEN_HANG: "1" } : {},
             ownDetachedProcessGroup: true,
             protocolEvents,
           }),
@@ -3142,7 +3142,7 @@ describe("AcpAdapterV2", () => {
             mockAgentPath: yield* path.fromFileUrl(
               new URL("../../../scripts/acp-mock-agent.ts", import.meta.url),
             ),
-            environment: { T3_ACP_COMPLETE_FIRST_PROMPT_ON_CANCEL: "1" },
+            environment: { CIRCE_ACP_COMPLETE_FIRST_PROMPT_ON_CANCEL: "1" },
             protocolEvents,
             cancelBehavior: "wait-for-prompt",
             wrapRuntime: (runtime) => {
@@ -3254,7 +3254,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
             wrapCancel: (cancel) => Deferred.await(releaseCancel).pipe(Effect.andThen(cancel)),
           }),
         },
@@ -3354,7 +3354,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
             wrapOutgoingResponse: (onOutgoingResponse) => (requestId) =>
               Deferred.succeed(responseEnqueued, undefined).pipe(
                 Effect.andThen(Deferred.await(releaseResponseAcknowledgement)),
@@ -3451,7 +3451,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_ELICITATION: "1" },
+            environment: { CIRCE_ACP_EMIT_ELICITATION: "1" },
             wrapOutgoingResponse: (onOutgoingResponse) => (requestId) =>
               Deferred.succeed(responseWritten, undefined).pipe(
                 Effect.andThen(Deferred.await(releaseResponseAcknowledgement)),
@@ -3536,7 +3536,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_MCP_TOOL_APPROVAL_ELICITATION: "1" },
+            environment: { CIRCE_ACP_EMIT_MCP_TOOL_APPROVAL_ELICITATION: "1" },
           }),
         },
         fileSystem,
@@ -3605,7 +3605,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
             wrapOutgoingResponse: (onOutgoingResponse) => (requestId) =>
               Deferred.succeed(responseWritten, undefined).pipe(
                 Effect.andThen(Deferred.await(releaseResponseAcknowledgement)),
@@ -3713,7 +3713,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
           }),
         },
         fileSystem,
@@ -3827,8 +3827,8 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             environment: {
-              T3_ACP_EMIT_TOOL_CALLS: "1",
-              T3_ACP_HANG_AFTER_PERMISSION: "1",
+              CIRCE_ACP_EMIT_TOOL_CALLS: "1",
+              CIRCE_ACP_HANG_AFTER_PERMISSION: "1",
             },
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
@@ -3964,8 +3964,8 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             environment: {
-              T3_ACP_EMIT_TOOL_CALLS: "1",
-              T3_ACP_HANG_AFTER_PERMISSION: "1",
+              CIRCE_ACP_EMIT_TOOL_CALLS: "1",
+              CIRCE_ACP_HANG_AFTER_PERMISSION: "1",
             },
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
@@ -4083,7 +4083,7 @@ describe("AcpAdapterV2", () => {
               makeRuntime: makeMockRuntime({
                 childProcessSpawner,
                 mockAgentPath,
-                environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+                environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
                 ownDetachedProcessGroup: true,
                 processGroupPlatform: "win32",
                 windowsProcessTreeTerminator: (pid) =>
@@ -4180,7 +4180,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_URL_ELICITATION: "1" },
+            environment: { CIRCE_ACP_EMIT_URL_ELICITATION: "1" },
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
             windowsProcessTreeTerminator: (pid) =>
@@ -4271,7 +4271,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
             windowsProcessTreeTerminator: (pid) =>
@@ -4362,7 +4362,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_ELICITATION: "1" },
+            environment: { CIRCE_ACP_EMIT_ELICITATION: "1" },
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
             windowsProcessTreeTerminator: (pid) =>
@@ -4470,7 +4470,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_PROMPT_DELAY_MS: "5000" },
+            environment: { CIRCE_ACP_PROMPT_DELAY_MS: "5000" },
             protocolEvents,
           }),
         },
@@ -4575,7 +4575,7 @@ describe("AcpAdapterV2", () => {
             childProcessSpawner,
             mockAgentPath,
             ownDetachedProcessGroup: true,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -4680,7 +4680,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             protocolEvents,
           }),
         },
@@ -4800,7 +4800,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
             }),
           },
@@ -4956,7 +4956,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
             }),
           },
@@ -5119,7 +5119,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -5390,7 +5390,7 @@ describe("AcpAdapterV2", () => {
               makeRuntime: makeMockRuntime({
                 childProcessSpawner,
                 mockAgentPath,
-                environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+                environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
                 protocolEvents,
                 wrapRuntime: (runtime) => ({
                   ...runtime,
@@ -5593,7 +5593,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -5821,7 +5821,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -6070,7 +6070,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -6371,7 +6371,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -6620,7 +6620,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -6847,7 +6847,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -7127,7 +7127,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -7389,7 +7389,7 @@ describe("AcpAdapterV2", () => {
               mockAgentPath,
               environment: (runtimeOrdinal) => {
                 runtimeOrdinalSeen = Math.max(runtimeOrdinalSeen, runtimeOrdinal);
-                return { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
+                return { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
               },
               protocolEvents,
               wrapCancel: (cancel) =>
@@ -7546,7 +7546,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -7643,8 +7643,8 @@ describe("AcpAdapterV2", () => {
               environment: (runtimeOrdinal) => {
                 runtimeOrdinalSeen = Math.max(runtimeOrdinalSeen, runtimeOrdinal);
                 return {
-                  T3_ACP_EMIT_RUNNING_COMMAND_THEN_HANG_FIRST_PROMPT: "1",
-                  T3_ACP_EMIT_TASK_BACKGROUNDED_AFTER_CANCEL: "1",
+                  CIRCE_ACP_EMIT_RUNNING_COMMAND_THEN_HANG_FIRST_PROMPT: "1",
+                  CIRCE_ACP_EMIT_TASK_BACKGROUNDED_AFTER_CANCEL: "1",
                 };
               },
               protocolEvents,
@@ -7833,7 +7833,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             ownDetachedProcessGroup: true,
             protocolEvents,
           }),
@@ -7976,7 +7976,7 @@ describe("AcpAdapterV2", () => {
             // complete normally so startTurn / session-load assertions can finish.
             environment: (runtimeOrdinal) => {
               runtimeOrdinalSeen = Math.max(runtimeOrdinalSeen, runtimeOrdinal);
-              return runtimeOrdinal === 1 ? { T3_ACP_HANG_PROMPT_FOREVER: "1" } : {};
+              return runtimeOrdinal === 1 ? { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" } : {};
             },
             ownDetachedProcessGroup: true,
             protocolEvents,
@@ -8127,7 +8127,7 @@ describe("AcpAdapterV2", () => {
               mockAgentPath,
               environment: (runtimeOrdinal) => {
                 runtimeOrdinalSeen = Math.max(runtimeOrdinalSeen, runtimeOrdinal);
-                return { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
+                return { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" };
               },
               ownDetachedProcessGroup: true,
               protocolEvents,
@@ -8429,7 +8429,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+            environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
             ownDetachedProcessGroup: true,
             protocolEvents,
             wrapRuntime: (runtime) => ({
@@ -8629,7 +8629,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
               wrapCancel: (cancel) =>
                 Effect.sync(() => {
@@ -8776,7 +8776,7 @@ describe("AcpAdapterV2", () => {
               childProcessSpawner,
               mockAgentPath,
               environment: {
-                T3_ACP_EMIT_IN_TURN_TASKOUTPUT_THEN_LATE_DUPLICATE: "1",
+                CIRCE_ACP_EMIT_IN_TURN_TASKOUTPUT_THEN_LATE_DUPLICATE: "1",
               },
               protocolEvents,
             }),
@@ -9235,8 +9235,8 @@ describe("AcpAdapterV2", () => {
               childProcessSpawner,
               mockAgentPath,
               environment: {
-                T3_ACP_EMIT_POST_SETTLE_MONITOR_FLOW: "1",
-                T3_ACP_INJECTED_REPORT_TRIGGER_PATH: triggerPath,
+                CIRCE_ACP_EMIT_POST_SETTLE_MONITOR_FLOW: "1",
+                CIRCE_ACP_INJECTED_REPORT_TRIGGER_PATH: triggerPath,
               },
               protocolEvents,
             }),
@@ -9414,8 +9414,8 @@ describe("AcpAdapterV2", () => {
               childProcessSpawner,
               mockAgentPath,
               environment: {
-                T3_ACP_EMIT_POST_SETTLE_MONITOR_FLOW: "1",
-                T3_ACP_INJECTED_REPORT_TRIGGER_PATH: triggerPath,
+                CIRCE_ACP_EMIT_POST_SETTLE_MONITOR_FLOW: "1",
+                CIRCE_ACP_INJECTED_REPORT_TRIGGER_PATH: triggerPath,
               },
               protocolEvents,
             }),
@@ -9604,7 +9604,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -9849,7 +9849,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -10070,7 +10070,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -10300,7 +10300,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -10651,7 +10651,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -10966,7 +10966,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+              environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
               protocolEvents,
               wrapRuntime: (runtime) => ({
                 ...runtime,
@@ -11155,7 +11155,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -11395,7 +11395,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
             wrapRuntime: (runtime) => ({
               ...runtime,
@@ -11660,7 +11660,7 @@ describe("AcpAdapterV2", () => {
             command: process.execPath,
             args: [mockAgentPath],
             cwd: process.cwd(),
-            env: { T3_ACP_SESSION_LIFECYCLE: "1" },
+            env: { CIRCE_ACP_SESSION_LIFECYCLE: "1" },
           },
           cwd: process.cwd(),
           clientInfo: { name: "t3-acp-test", version: "0.0.0" },
@@ -11828,10 +11828,10 @@ describe("AcpAdapterV2", () => {
                 return yield* Effect.die("mock taskkill defect");
               }),
             environment: {
-              T3_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
-              T3_ACP_RESIDUAL_CALLBACK_RESPONSE_LOG_PATH: residualCallbackResponseLogPath,
-              T3_ACP_RESIDUAL_CALLBACK_TRIGGER_PATH: residualCallbackTriggerPath,
-              T3_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
+              CIRCE_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
+              CIRCE_ACP_RESIDUAL_CALLBACK_RESPONSE_LOG_PATH: residualCallbackResponseLogPath,
+              CIRCE_ACP_RESIDUAL_CALLBACK_TRIGGER_PATH: residualCallbackTriggerPath,
+              CIRCE_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
             },
             protocolEvents,
           }),
@@ -12023,7 +12023,7 @@ describe("AcpAdapterV2", () => {
           makeRuntime: makeMockRuntime({
             childProcessSpawner,
             mockAgentPath,
-            environment: { T3_ACP_HANG_PROMPT_FOREVER: "1" },
+            environment: { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" },
             protocolEvents,
           }),
         },
@@ -12122,7 +12122,7 @@ describe("AcpAdapterV2", () => {
               ),
             environment: (runtimeOrdinal) => {
               runtimeOrdinalSeen = runtimeOrdinal;
-              return runtimeOrdinal === 1 ? { T3_ACP_HANG_PROMPT_FOREVER: "1" } : {};
+              return runtimeOrdinal === 1 ? { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" } : {};
             },
             protocolEvents,
           }),
@@ -12234,7 +12234,7 @@ describe("AcpAdapterV2", () => {
         windowsProcessTreeTerminator: () => Effect.void,
         environment: (runtimeOrdinal) => {
           runtimeOrdinalSeen = runtimeOrdinal;
-          return { T3_ACP_HANG_PROMPT_FOREVER: "1" };
+          return { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" };
         },
         protocolEvents,
         wrapRuntime: (runtime, runtimeOrdinal) => {
@@ -12584,7 +12584,7 @@ describe("AcpAdapterV2", () => {
             ownDetachedProcessGroup: true,
             processGroupPlatform: "win32",
             windowsProcessTreeTerminator: () => Effect.void,
-            environment: { T3_ACP_EMIT_TOOL_CALLS: "1" },
+            environment: { CIRCE_ACP_EMIT_TOOL_CALLS: "1" },
             protocolEvents,
           }),
         },
@@ -12716,7 +12716,7 @@ describe("AcpAdapterV2", () => {
               ),
             environment: (runtimeOrdinal) => {
               runtimeOrdinalSeen = runtimeOrdinal;
-              return runtimeOrdinal === 1 ? { T3_ACP_HANG_PROMPT_FOREVER: "1" } : {};
+              return runtimeOrdinal === 1 ? { CIRCE_ACP_HANG_PROMPT_FOREVER: "1" } : {};
             },
             protocolEvents,
           }),
@@ -12856,11 +12856,11 @@ describe("AcpAdapterV2", () => {
             environment: (runtimeOrdinal) =>
               runtimeOrdinal === 1
                 ? {
-                    T3_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
-                    T3_ACP_EMIT_LATE_UPDATE_AFTER_CANCEL: "1",
-                    T3_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
-                    T3_ACP_RUNNING_COMMAND_IGNORE_TERM: "1",
-                    T3_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
+                    CIRCE_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
+                    CIRCE_ACP_EMIT_LATE_UPDATE_AFTER_CANCEL: "1",
+                    CIRCE_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
+                    CIRCE_ACP_RUNNING_COMMAND_IGNORE_TERM: "1",
+                    CIRCE_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
                   }
                 : {},
             protocolEvents,
@@ -13134,7 +13134,7 @@ describe("AcpAdapterV2", () => {
             makeRuntime: makeMockRuntime({
               childProcessSpawner,
               mockAgentPath,
-              environment: { T3_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
+              environment: { CIRCE_ACP_EMIT_GENERIC_TOOL_PLACEHOLDERS: "1" },
               protocolEvents,
             }),
           },
@@ -13289,11 +13289,11 @@ describe("AcpAdapterV2", () => {
             environment: (runtimeOrdinal) =>
               runtimeOrdinal === 1
                 ? {
-                    T3_ACP_EXIT_ON_CANCEL: "1",
-                    T3_ACP_EMIT_LATE_UPDATE_AFTER_CANCEL: "1",
-                    T3_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
-                    T3_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
-                    T3_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
+                    CIRCE_ACP_EXIT_ON_CANCEL: "1",
+                    CIRCE_ACP_EMIT_LATE_UPDATE_AFTER_CANCEL: "1",
+                    CIRCE_ACP_EMIT_RUNNING_COMMAND_THEN_HANG: "1",
+                    CIRCE_ACP_RUNNING_COMMAND_PID_PATH: commandPidPath,
+                    CIRCE_ACP_RUNNING_COMMAND_SEPARATE_SESSION: "1",
                   }
                 : {},
             protocolEvents,

@@ -291,8 +291,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
         const env = yield* createDevRunnerEnv({
           mode: "dev",
           baseEnv: {
-            T3_SERVICE_LAUNCHER_CONTEXT: '{"childVersion":"9.9.9"}',
-            T3_BOOT_SERVICE_UNIT: "circe.service",
+            CIRCE_SERVICE_LAUNCHER_CONTEXT: '{"childVersion":"9.9.9"}',
+            CIRCE_BOOT_SERVICE_UNIT: "circe.service",
           },
           serverOffset: 0,
           webOffset: 0,
@@ -305,8 +305,8 @@ it.layer(NodeServices.layer)("dev-runner", (it) => {
           devUrl: undefined,
         });
 
-        assert.equal(env.T3_SERVICE_LAUNCHER_CONTEXT, undefined);
-        assert.equal(env.T3_BOOT_SERVICE_UNIT, undefined);
+        assert.equal(env.CIRCE_SERVICE_LAUNCHER_CONTEXT, undefined);
+        assert.equal(env.CIRCE_BOOT_SERVICE_UNIT, undefined);
       }),
     );
 

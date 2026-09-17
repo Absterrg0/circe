@@ -1,6 +1,6 @@
 import {
   BUILT_IN_THEMES,
-  T3_CHAT_THEME,
+  CIRCE_CHAT_THEME,
   getThemeColorsForAppearance,
 } from "@circe/shared/themePalettes";
 
@@ -109,7 +109,7 @@ export function getMobileTerminalTheme(
   const base = getPierreTerminalTheme(scheme);
   if (themeId === "t3-code" || themeId === "material-you") return base;
 
-  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? T3_CHAT_THEME;
+  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? CIRCE_CHAT_THEME;
   const palette = getThemeColorsForAppearance(theme, scheme) ?? theme.colors;
   const colors = getMobileThemeVariables(themeId, scheme);
   const background = themeColorToNativeColor(palette.terminalBackground);

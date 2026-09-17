@@ -126,7 +126,7 @@ export function resolveResourceMonitorRustTargets(
 }
 
 export function resourceMonitorExecutableName(platform: typeof BuildPlatform.Type): string {
-  return platform === "win" ? "t3-resource-monitor.exe" : "t3-resource-monitor";
+  return platform === "win" ? "circe-resource-monitor.exe" : "circe-resource-monitor";
 }
 
 const PLATFORM_CONFIG: Record<typeof BuildPlatform.Type, PlatformConfig> = {
@@ -3366,7 +3366,7 @@ function windowsPayloadAllowedPaths(input: {
     // into the packaged payload.
     windowsPayloadResourcePath("app-update.yml"),
     windowsPayloadResourcePath("elevate.exe"),
-    windowsPayloadResourcePath("resource-monitor/t3-resource-monitor.exe"),
+    windowsPayloadResourcePath("resource-monitor/circe-resource-monitor.exe"),
     // The WSL sidecar ships loose in resources/ when bundled; the validator
     // below enforces its presence, hash, and members, so the generic
     // unexpected-files gate must let it through instead of failing first.
@@ -3666,7 +3666,7 @@ export const validateWindowsPackagedPayload = Effect.fn(
     return yield* new WindowsPackagedPayloadValidationError({
       reason: "resource-monitor-missing",
       packagedAppDir,
-      missingFiles: ["resource-monitor/t3-resource-monitor.exe"],
+      missingFiles: ["resource-monitor/circe-resource-monitor.exe"],
     });
   }
 

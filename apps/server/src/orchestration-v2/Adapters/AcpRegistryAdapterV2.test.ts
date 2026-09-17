@@ -125,8 +125,8 @@ describe("AcpRegistryAdapterV2", () => {
         instanceId,
         settings,
         environment: {
-          T3_ACP_SESSION_LIFECYCLE: "1",
-          T3_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "750",
+          CIRCE_ACP_SESSION_LIFECYCLE: "1",
+          CIRCE_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "750",
         },
         childProcessSpawner,
         fileSystem,

@@ -274,7 +274,7 @@ export function wrapCommandForLinuxCgroup(
         "  if (actual !== process.argv[2]) process.exit(126);",
         "  const env = { ...process.env };",
         "  delete env.ELECTRON_RUN_AS_NODE;",
-        "  delete env.T3_ACP_CGROUP_WRAPPER;",
+        "  delete env.CIRCE_ACP_CGROUP_WRAPPER;",
         "  process.execve(process.argv[3], process.argv.slice(3), env);",
         "} catch { process.exit(125); }",
       ].join("\n"),
@@ -1533,7 +1533,7 @@ export const make = (
         : {
             ...options.spawn.env,
             ELECTRON_RUN_AS_NODE: "1",
-            T3_ACP_CGROUP_WRAPPER: "1",
+            CIRCE_ACP_CGROUP_WRAPPER: "1",
           };
     const child = yield* spawner
       .spawn(

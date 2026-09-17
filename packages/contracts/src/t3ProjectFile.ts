@@ -5,13 +5,13 @@ import { ThreadEnvMode } from "./environment.ts";
 import { ProjectScriptIcon } from "./project.ts";
 
 /** File name of the checked-in T3 project file, resolved at the workspace root. */
-export const T3_PROJECT_FILE_NAME = "t3.json";
+export const CIRCE_PROJECT_FILE_NAME = "t3.json";
 
 /** Public URL of the published JSON Schema for {@link T3ProjectFile}. */
-export const T3_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/t3.json";
+export const CIRCE_PROJECT_FILE_SCHEMA_URL = "https://heycirce.com/schema/t3.json";
 
-const T3_PROJECT_FILE_PATH_MAX_LENGTH = 512;
-const T3_PROJECT_FILE_MAX_SCRIPTS = 50;
+const CIRCE_PROJECT_FILE_PATH_MAX_LENGTH = 512;
+const CIRCE_PROJECT_FILE_MAX_SCRIPTS = 50;
 
 // Annotations go on the encoded (string) side so they survive into the
 // published JSON Schema; decoding still trims and re-validates non-emptiness.
@@ -68,7 +68,7 @@ export type T3ProjectFileScript = typeof T3ProjectFileScript.Type;
 export const T3ProjectFile = Schema.Struct({
   $schema: Schema.optionalKey(
     Schema.String.annotate({
-      description: `URL of the JSON Schema for this file, typically "${T3_PROJECT_FILE_SCHEMA_URL}".`,
+      description: `URL of the JSON Schema for this file, typically "${CIRCE_PROJECT_FILE_SCHEMA_URL}".`,
     }),
   ),
   iconPath: Schema.optionalKey(
@@ -77,7 +77,7 @@ export const T3ProjectFile = Schema.Struct({
         description:
           'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before Circe\'s built-in icon locations.',
       },
-      T3_PROJECT_FILE_PATH_MAX_LENGTH,
+      CIRCE_PROJECT_FILE_PATH_MAX_LENGTH,
     ),
   ),
   defaultThreadEnvMode: Schema.optionalKey(
@@ -91,11 +91,11 @@ export const T3ProjectFile = Schema.Struct({
       .annotate({
         description: "Project scripts shared with everyone who opens this repository in Circe.",
       })
-      .check(Schema.isMaxLength(T3_PROJECT_FILE_MAX_SCRIPTS)),
+      .check(Schema.isMaxLength(CIRCE_PROJECT_FILE_MAX_SCRIPTS)),
   ),
 }).annotate({
   title: "T3 project file",
   description:
-    "Checked-in project configuration for Circe (t3.json at the repository root). See https://t3.codes for documentation.",
+    "Checked-in project configuration for Circe (t3.json at the repository root). See https://heycirce.com for documentation.",
 });
 export type T3ProjectFile = typeof T3ProjectFile.Type;

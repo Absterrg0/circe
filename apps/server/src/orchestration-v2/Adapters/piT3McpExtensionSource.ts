@@ -8,13 +8,13 @@
  * Do not import t3code modules from the string body. The Pi process resolves
  * `@earendil-works/pi-coding-agent` and `typebox` from the user's pi install.
  */
-import { T3_CODE_ORCHESTRATION_INSTRUCTIONS } from "../../provider/T3OrchestrationInstructions.ts";
+import { CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS } from "../../provider/T3OrchestrationInstructions.ts";
 
 export const PI_T3_MCP_EXTENSION_FILENAME = "pi-t3-mcp-extension.ts";
 
-export const T3_MCP_URL_ENV = "T3_MCP_URL";
-export const T3_MCP_BEARER_ENV = "T3_MCP_BEARER_TOKEN";
-export const T3_PI_RUNTIME_MODE_ENV = "T3_PI_RUNTIME_MODE";
+export const CIRCE_MCP_URL_ENV = "CIRCE_MCP_URL";
+export const CIRCE_MCP_BEARER_ENV = "CIRCE_MCP_BEARER_TOKEN";
+export const CIRCE_PI_RUNTIME_MODE_ENV = "CIRCE_PI_RUNTIME_MODE";
 
 /**
  * Pi tools whose confirmations the bridge raises as file-change approvals.
@@ -26,10 +26,10 @@ export const PI_T3_MCP_EXTENSION_SOURCE = `\
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { Type } from "typebox";
 
-const URL_ENV = ${JSON.stringify(T3_MCP_URL_ENV)};
-const TOKEN_ENV = ${JSON.stringify(T3_MCP_BEARER_ENV)};
-const RUNTIME_MODE_ENV = ${JSON.stringify(T3_PI_RUNTIME_MODE_ENV)};
-const ORCHESTRATION_INSTRUCTIONS = ${JSON.stringify(T3_CODE_ORCHESTRATION_INSTRUCTIONS.trim())};
+const URL_ENV = ${JSON.stringify(CIRCE_MCP_URL_ENV)};
+const TOKEN_ENV = ${JSON.stringify(CIRCE_MCP_BEARER_ENV)};
+const RUNTIME_MODE_ENV = ${JSON.stringify(CIRCE_PI_RUNTIME_MODE_ENV)};
+const ORCHESTRATION_INSTRUCTIONS = ${JSON.stringify(CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim())};
 const PROTOCOL = "2025-06-18";
 const READ_ONLY_TOOLS = new Set(["read", "grep", "find", "ls"]);
 const FILE_CHANGE_TOOLS = new Set(${JSON.stringify(PI_FILE_CHANGE_TOOLS)});
@@ -251,7 +251,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
   if (endpoint === undefined || token === undefined) {
     pi.on("session_start", async (_event, ctx) => {
       ctx.ui.notify(
-        "t3-code MCP unavailable: T3_MCP_URL or T3_MCP_BEARER_TOKEN is missing.",
+        "t3-code MCP unavailable: CIRCE_MCP_URL or CIRCE_MCP_BEARER_TOKEN is missing.",
         "warning",
       );
     });

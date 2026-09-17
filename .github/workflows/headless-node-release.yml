@@ -169,9 +169,9 @@ jobs:
           test -x "$bundled_node"
           test -f "$t3_bin"
           node scripts/smoke-headless-node-runtime.ts "$extracted"
-          T3CODE_HOME="$smoke_home" CIRCE_HEADLESS_HOME="$smoke_home" \
+          CIRCE_HOME="$smoke_home" CIRCE_HEADLESS_HOME="$smoke_home" \
             "$bundled_node" "$t3_bin" --version
-          T3CODE_HOME="$smoke_home" CIRCE_HEADLESS_HOME="$smoke_home" \
+          CIRCE_HOME="$smoke_home" CIRCE_HEADLESS_HOME="$smoke_home" \
             "$bundled_node" "$t3_bin" --help >/dev/null
 
           cat > "$fake_bin/systemctl" <<'SH'
