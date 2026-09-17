@@ -23,6 +23,7 @@
     "./controlTools": "./src/controlTools.ts",
     "./controlOutcome": "./src/controlOutcome.ts",
     "./controlDispatch": "./src/controlDispatch.ts",
+    "./controlClassify": "./src/controlClassify.ts",
     "./modelChoice": "./src/modelChoice.ts",
     "./spokenSummary": "./src/spokenSummary.ts",
     "./timing": "./src/timing.ts",
