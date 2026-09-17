@@ -5,6 +5,7 @@ import {
   estimateMemoryTokens,
   memoryIsLive,
   memoryMayBeFact,
+  renderMemoryIndex,
   type CirceMemoryView,
 } from "./projectMemory.ts";
 
@@ -76,6 +77,17 @@ describe("memory index", () => {
     );
     expect(entries).toHaveLength(1);
     expect(totalTokens).toBe(estimateMemoryTokens(body));
+  });
+
+  it("renders a map with a fetch instruction and nothing when empty", () => {
+    expect(renderMemoryIndex({ entries: [], totalTokens: 0 })).toBe("");
+    const { entries, totalTokens } = buildMemoryIndex([entry({ id: "f1", kind: "fact" })], {
+      nowMs: 10,
+    });
+    const block = renderMemoryIndex({ entries, totalTokens });
+    expect(block).toContain("[fact/agent]");
+    expect(block).toContain("id f1");
+    expect(block).toContain("Fetch a body by id");
   });
 
   it("omits retired and expired entries", () => {

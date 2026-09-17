@@ -91,3 +91,25 @@ export function buildMemoryIndex(
   }
   return { entries: index, totalTokens };
 }
+
+/**
+ * The pinned block a thread sees. It is a map, not the memory: titles with a
+ * cost and an id, plus one instruction to fetch a body on demand. Kept short
+ * on purpose so the stable prefix stays cacheable and the window stays for the
+ * task. Empty memory renders nothing at all.
+ */
+export function renderMemoryIndex(input: {
+  readonly entries: ReadonlyArray<CirceMemoryIndexView>;
+  readonly totalTokens: number;
+}): string {
+  if (input.entries.length === 0) return "";
+  const lines = input.entries.map(
+    (entry) =>
+      `- [${entry.kind}/${entry.source}] ${entry.title} (${entry.tokens} tokens, id ${entry.id})`,
+  );
+  return [
+    `Project memory index (${input.entries.length} entries, ~${input.totalTokens} tokens of bodies):`,
+    ...lines,
+    "This is a map, not the content. Fetch a body by id when it matters to the task.",
+  ].join("\n");
+}
