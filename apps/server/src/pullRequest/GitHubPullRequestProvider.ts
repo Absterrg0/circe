@@ -268,6 +268,7 @@ export const make = Effect.gen(function* () {
         ).pipe(
           Effect.map((workflowApprovals) => ({
             ...pullRequest,
+            author: withAvatar(pullRequest.author, new Map(), input.host),
             checks: withWorkflowApprovals(
               pullRequest.checks,
               workflowApprovals.runs,
