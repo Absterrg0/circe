@@ -1,4 +1,4 @@
-import { ProjectId, type OrchestrationProjectShell } from "@t3tools/contracts";
+import { ProjectId, type OrchestrationProjectShell } from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";

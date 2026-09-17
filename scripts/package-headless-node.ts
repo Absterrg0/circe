@@ -196,7 +196,7 @@ export function renderHeadlessSystemdUnit(paths: HeadlessServicePaths): string {
     "[Service]",
     "Type=simple",
     `WorkingDirectory=${systemdQuote(paths.installRoot)}`,
-    `Environment=T3CODE_HOME=${systemdQuote(paths.installRoot)}`,
+    `Environment=CIRCE_HOME=${systemdQuote(paths.installRoot)}`,
     "Environment=CIRCE_NODE_PRESET=headless",
     "Environment=T3CODE_NO_BROWSER=true",
     `ExecStart=${systemdQuote(paths.nodePath)} ${systemdQuote(paths.launcherPath)}`,
@@ -378,7 +378,7 @@ StartLimitBurst=5
 [Service]
 Type=simple
 WorkingDirectory=\$unit_install_root
-Environment=T3CODE_HOME=\$unit_install_root
+Environment=CIRCE_HOME=\$unit_install_root
 Environment=CIRCE_NODE_PRESET=headless
 Environment=T3CODE_NO_BROWSER=true
 ExecStart=\$unit_node \$unit_launcher

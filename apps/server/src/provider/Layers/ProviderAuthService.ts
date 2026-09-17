@@ -2,7 +2,7 @@ import {
   ProviderSetupError,
   type ProviderInstanceId,
   type ProviderSessionId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";

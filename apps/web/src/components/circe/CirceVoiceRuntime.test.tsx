@@ -5,7 +5,7 @@ import {
   ThreadId,
   ProviderInstanceId,
   ProviderDriverKind,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { DependencyList, EffectCallback } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 import { reactHookHarness as hooks } from "../../test/reactHookHarness";

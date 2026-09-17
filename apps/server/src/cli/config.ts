@@ -1,7 +1,7 @@
-import * as NetService from "@t3tools/shared/Net";
-import { OtlpHeadersFromString, OtlpProtocol } from "@t3tools/shared/observability";
-import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
-import { DesktopBackendBootstrap, CirceNodePreset, PortSchema } from "@t3tools/contracts";
+import * as NetService from "@circe/shared/Net";
+import { OtlpHeadersFromString, OtlpProtocol } from "@circe/shared/observability";
+import { parsePersistedServerObservabilitySettings } from "@circe/shared/serverSettings";
+import { DesktopBackendBootstrap, CirceNodePreset, PortSchema } from "@circe/contracts";
 import * as Config from "effect/Config";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -40,7 +40,7 @@ const hostFlag = Flag.string("host").pipe(
 );
 export const baseDirFlag = Flag.string("base-dir").pipe(
   Flag.withDescription(
-    "Explicit Circe data directory; runtime state is stored under userdata (equivalent to T3CODE_HOME).",
+    "Explicit Circe data directory; runtime state is stored under userdata (equivalent to CIRCE_HOME).",
   ),
   Flag.optional,
 );
@@ -123,7 +123,7 @@ const EnvServerConfig = Config.all({
   ),
   port: Config.port("T3CODE_PORT").pipe(Config.option, Config.map(Option.getOrUndefined)),
   host: Config.string("T3CODE_HOST").pipe(Config.option, Config.map(Option.getOrUndefined)),
-  t3Home: Config.string("T3CODE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
+  t3Home: Config.string("CIRCE_HOME").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devUrl: Config.url("VITE_DEV_SERVER_URL").pipe(Config.option, Config.map(Option.getOrUndefined)),
   devAllowedOrigins: Config.string("T3CODE_DEV_ALLOWED_ORIGINS").pipe(
     Config.withDefault(""),

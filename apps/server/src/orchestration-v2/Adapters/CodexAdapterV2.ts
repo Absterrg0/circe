@@ -11,10 +11,10 @@ import {
 } from "../../provider/CodexTurnTokenUsage.ts";
 import type { ServerProviderShape } from "../../provider/Services/ServerProvider.ts";
 import { codexRateLimitsToUpdate } from "../../provider/Layers/codexUsageLimits.ts";
-import { CodexSettings, defaultInstanceIdForDriver, ProviderDriverKind } from "@t3tools/contracts";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { CodexSettings, defaultInstanceIdForDriver, ProviderDriverKind } from "@circe/contracts";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
+import { getModelSelectionStringOptionValue } from "@circe/shared/model";
+import { resolveSpawnCommand } from "@circe/shared/shell";
 import type {
   ChatAttachment,
   OrchestrationV2AppThread,
@@ -41,7 +41,7 @@ import type {
   RuntimeMode,
   RuntimeRequestId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as CodexClient from "effect-codex-app-server/client";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as CodexSchema from "effect-codex-app-server/schema";

@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
-import type { ProviderReplayTranscript } from "@t3tools/contracts";
+import type { ProviderReplayTranscript } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
 import { classifyClaudeNativeTool } from "../Adapters/ClaudeAdapterV2.ts";

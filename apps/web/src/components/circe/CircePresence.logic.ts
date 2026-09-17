@@ -1,4 +1,4 @@
-import type { CirceTaskDeskTaskView } from "@t3tools/contracts";
+import type { CirceTaskDeskTaskView } from "@circe/contracts";
 import type { CircePresenceMode } from "@circe/client-runtime/presence";
 
 export type { CircePresenceMode } from "@circe/client-runtime/presence";

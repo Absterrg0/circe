@@ -9,7 +9,7 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThread,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   decodeCirceSemanticProposal,
   interpretCirceCommand,

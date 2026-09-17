@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentAuthorizationError, ServerEnvironmentLabelError } from "@t3tools/contracts";
+import { EnvironmentAuthorizationError, ServerEnvironmentLabelError } from "@circe/contracts";
 
 import {
   describeCirceOnboardingLabelSaveError,

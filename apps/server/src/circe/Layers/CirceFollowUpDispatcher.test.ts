@@ -5,7 +5,7 @@ import {
   ThreadId,
   type OrchestrationCommand,
   type OrchestrationThread,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";

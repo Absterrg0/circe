@@ -21,7 +21,7 @@ import {
   type DesktopCirceLiveVoiceState,
   type DesktopCirceOrbCatalog,
   type DesktopCirceOrbSelection,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { CIRCE_ORB_CATALOG_CHANNEL } from "../ipc/channels.ts";
 import { createDesktopCirceLiveVoiceStateBridge } from "./DesktopCirceLiveVoiceState.ts";
 import {
@@ -870,7 +870,7 @@ export class DesktopCirceShell extends Context.Service<
     readonly start: Effect.Effect<void>;
     readonly stop: Effect.Effect<void>;
   }
->()("@t3tools/desktop/shell/DesktopCirceShell") {}
+>()("@circe/desktop/shell/DesktopCirceShell") {}
 
 export const layer = Layer.effect(
   DesktopCirceShell,

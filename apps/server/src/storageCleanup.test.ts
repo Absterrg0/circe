@@ -5,7 +5,7 @@ import {
   RunId,
   ThreadId,
   type OrchestrationV2ThreadShell,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import { storageCleanupActivityAt, storageCleanupThreadIdle } from "./storageCleanup.ts";
 

@@ -16,9 +16,9 @@ import * as Path from "effect/Path";
 import type * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 
-import type { CirceNodePreset } from "@t3tools/contracts";
+import type { CirceNodePreset } from "@circe/contracts";
 import { sweepStalePendingAttachments } from "./attachmentStore.ts";
-import { OtlpProtocol } from "@t3tools/shared/observability";
+import { OtlpProtocol } from "@circe/shared/observability";
 
 export const DEFAULT_PORT = 3773;
 

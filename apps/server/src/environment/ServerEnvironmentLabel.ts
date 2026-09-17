@@ -1,5 +1,5 @@
-import { HostProcessHostname, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { SERVER_ENVIRONMENT_LABEL_MAX_LENGTH } from "@t3tools/contracts";
+import { HostProcessHostname, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { SERVER_ENVIRONMENT_LABEL_MAX_LENGTH } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";

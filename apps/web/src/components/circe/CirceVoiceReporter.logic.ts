@@ -5,7 +5,7 @@ import {
   type CirceTaskRef,
   type ThreadId,
   type TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { selectSpokenSummary } from "@circe/core/spokenSummary";
 
 /** Local speech delivery result. Live sessions report played without a lane. */

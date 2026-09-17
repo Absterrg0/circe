@@ -1,5 +1,5 @@
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
-import { EnvironmentId, ThreadId, TurnId } from "@t3tools/contracts";
+import { EnvironmentId, ThreadId, TurnId } from "@circe/contracts";
 
 import { createCirceInteractionSpeech, matchesCirceSpeechTerminal } from "./CirceInteractionSpeech";
 import {

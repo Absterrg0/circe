@@ -3,7 +3,7 @@ import {
   throwIfVoiceTranscriptionAborted,
   type VoiceTranscriber,
   type VoiceTranscriptionOptions,
-} from "@t3tools/client-runtime/voice-input";
+} from "@circe/client/voice-input";
 
 import { getCirceLocalAsrModule, isCirceLocalAsrAvailable } from "./circeLocalAsr";
 

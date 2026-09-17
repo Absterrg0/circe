@@ -20,7 +20,7 @@ import {
   type ServerProvider,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -2192,7 +2192,7 @@ describe("CirceController", () => {
   });
 
   it.effect("focuses the real project matched from grounded project identity", () => {
-    let aliases: ReadonlyArray<import("@t3tools/contracts").CirceProjectAlias> = [];
+    let aliases: ReadonlyArray<import("@circe/contracts").CirceProjectAlias> = [];
     const rivvlProject = {
       ...project,
       id: ProjectId.make("project-rivvl"),

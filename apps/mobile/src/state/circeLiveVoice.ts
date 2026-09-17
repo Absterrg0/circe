@@ -3,12 +3,12 @@ import {
   renewCirceVoiceLiveSession,
   startCirceVoiceLiveSession,
 } from "@circe/client-runtime/operations/circeLiveVoice";
-import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
+import { createEnvironmentCommand } from "@circe/client/state/runtime";
 import type {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
   CirceLiveVoiceRenewInput,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

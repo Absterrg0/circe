@@ -40,12 +40,12 @@ function channelCookie(channel: "latest" | "nightly"): string {
 
 export const config: VercelConfig = {
   buildCommand:
-    'vp run --filter @t3tools/web build && node ../../scripts/apply-web-brand-assets.ts --channel "${VITE_HOSTED_APP_CHANNEL:-latest}"',
+    'vp run --filter @circe/web build && node ../../scripts/apply-web-brand-assets.ts --channel "${VITE_HOSTED_APP_CHANNEL:-latest}"',
   git: {
     deploymentEnabled: false,
   },
   installCommand:
-    "npm install -g vite-plus && vp install --ignore-scripts --filter '@t3tools/scripts...' --filter '@t3tools/web...'",
+    "npm install -g vite-plus && vp install --ignore-scripts --filter '@circe/scripts...' --filter '@circe/web...'",
   routes: [
     {
       src: "/__t3code/channel",

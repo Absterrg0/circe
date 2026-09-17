@@ -1,14 +1,14 @@
 import type * as EffectAcpSchema from "effect-acp/compat";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { type GrokSettings, ProviderDriverKind, type RuntimeMode } from "@t3tools/contracts";
+import { type GrokSettings, ProviderDriverKind, type RuntimeMode } from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Scope from "effect/Scope";
 import * as ChildProcessSpawner from "effect/unstable/process/ChildProcessSpawner";
 import * as EffectAcpErrors from "effect-acp/errors";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { normalizeModelSlug } from "@t3tools/shared/model";
+import { HostProcessPlatform } from "@circe/shared/hostProcess";
+import { normalizeModelSlug } from "@circe/shared/model";
 
 import * as AcpSessionRuntime from "./AcpSessionRuntime.ts";
 import { makeXAiPromptCompletionRuntime } from "./XAiAcpExtension.ts";

@@ -1,5 +1,5 @@
 // @effect-diagnostics nodeBuiltinImport:off - Drives the real shell installer through a PTY and a gated HTTP fixture.
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as NodeChildProcess from "node:child_process";
 import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
@@ -61,7 +61,7 @@ describe.skipIf(HostProcessPlatform.defaultValue() !== "linux")("installer termi
           TERM: "xterm",
           NO_COLOR: "1",
           T3CODE_VERSION: version,
-          T3CODE_HOME: NodePath.join(root, "home"),
+          CIRCE_HOME: NodePath.join(root, "home"),
           T3CODE_INSTALL_BIN_DIR: NodePath.join(root, "bin"),
           T3CODE_RELEASE_BASE_URL: `http://127.0.0.1:${address.port}`,
         },

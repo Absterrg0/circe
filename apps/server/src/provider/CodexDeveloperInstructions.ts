@@ -1,4 +1,4 @@
-import type { ProviderInteractionMode } from "@t3tools/contracts";
+import type { ProviderInteractionMode } from "@circe/contracts";
 import { buildRuntimeInstructions } from "./RuntimeInstructions.ts";
 
 import {

@@ -26,8 +26,8 @@ import {
   RunId,
   ThreadId,
   type OrchestrationV2ProviderThread,
-} from "@t3tools/contracts";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+} from "@circe/contracts";
+import { HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as DateTime from "effect/DateTime";
 import * as Crypto from "effect/Crypto";
 import * as Deferred from "effect/Deferred";

@@ -3,8 +3,8 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+} from "@circe/client/state/runtime";
+import type { EnvironmentId } from "@circe/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { usePrimaryCloudLinkState } from "../../cloud/primaryCloudLinkState";

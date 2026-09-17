@@ -16,7 +16,7 @@ import {
   type RuntimeMode,
   type ServerProvider,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   getPendingCirceReplyState,
   isExpectedPendingReply,

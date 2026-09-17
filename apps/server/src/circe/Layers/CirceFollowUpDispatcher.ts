@@ -1,4 +1,4 @@
-import { CommandId, EventId, MessageId, type ThreadId } from "@t3tools/contracts";
+import { CommandId, EventId, MessageId, type ThreadId } from "@circe/contracts";
 import { deriveCirceTaskState, hasActiveCirceTurn } from "@circe/core/deriveTaskState";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";

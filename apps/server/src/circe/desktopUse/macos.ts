@@ -2,7 +2,7 @@ import type {
   DesktopUseAction,
   DesktopUseModifier,
   DesktopUseMouseButton,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 const imports =
   'ObjC.import("CoreGraphics"); ObjC.import("AppKit"); ObjC.import("ApplicationServices");';

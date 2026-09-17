@@ -1,6 +1,6 @@
-import { connectLoopbackRedirectUri, CONNECT_OAUTH_SCOPES } from "@t3tools/shared/connectAuth";
-import { clerkFrontendApiUrlFromPublishableKey } from "@t3tools/shared/relayAuth";
-import { normalizeSecureRelayUrl } from "@t3tools/shared/relayUrl";
+import { connectLoopbackRedirectUri, CONNECT_OAUTH_SCOPES } from "@circe/shared/connectAuth";
+import { clerkFrontendApiUrlFromPublishableKey } from "@circe/shared/relayAuth";
+import { normalizeSecureRelayUrl } from "@circe/shared/relayUrl";
 import * as Config from "effect/Config";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";

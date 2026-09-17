@@ -10,7 +10,7 @@ import {
   type AuthEnvironmentScope,
   WS_METHODS,
   T3WsRpcGroup,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Layer from "effect/Layer";
 import type * as RpcGroup from "effect/unstable/rpc/RpcGroup";

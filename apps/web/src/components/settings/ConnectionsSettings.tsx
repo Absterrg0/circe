@@ -41,13 +41,13 @@ import {
   type DesktopWslState,
   type EnvironmentId,
   resolveEnvironmentMachineKind,
-} from "@t3tools/contracts";
-import { normalizeHttpBaseUrl } from "@t3tools/client-runtime/environment";
-import { connectionStatusText } from "@t3tools/client-runtime/connection";
+} from "@circe/contracts";
+import { normalizeHttpBaseUrl } from "@circe/client/environment";
+import { connectionStatusText } from "@circe/client/connection";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 

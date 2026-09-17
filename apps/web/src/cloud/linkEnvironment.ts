@@ -14,15 +14,15 @@ import {
   EnvironmentHttpUnauthorizedError,
   EnvironmentId,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   type RelayEnvironmentLinkResponse,
   type RelayManagedEndpointProviderKind,
-} from "@t3tools/contracts/relay";
-import { EnvironmentRegistry } from "@t3tools/client-runtime/connection";
-import { request, runStream } from "@t3tools/client-runtime/rpc";
-import { makeEnvironmentHttpApiClient } from "@t3tools/client-runtime/rpc";
-import { ManagedRelay, relayProtectedErrorMessage } from "@t3tools/client-runtime/relay";
+} from "@circe/contracts/relay";
+import { EnvironmentRegistry } from "@circe/client/connection";
+import { request, runStream } from "@circe/client/rpc";
+import { makeEnvironmentHttpApiClient } from "@circe/client/rpc";
+import { ManagedRelay, relayProtectedErrorMessage } from "@circe/client/relay";
 
 import { APP_BASE_NAME } from "../branding";
 

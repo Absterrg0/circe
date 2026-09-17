@@ -6,7 +6,7 @@ import {
   WorktreeMcpHandoffInput,
   WorktreeMcpHandoffResult,
   WorktreeMcpStatusResult,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Schema from "effect/Schema";
 import { GitWorkflowService } from "../../../git/GitWorkflowService.ts";
 import { ProjectService } from "../../../project/ProjectService.ts";

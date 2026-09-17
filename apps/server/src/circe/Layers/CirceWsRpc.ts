@@ -30,7 +30,7 @@ import {
   circeNodeCapabilitiesForPreset,
   CirceWsRpcGroup,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import * as ServerConfig from "../../config.ts";
 import * as ProjectionSnapshotQuery from "../../orchestration/Services/ProjectionSnapshotQuery.ts";

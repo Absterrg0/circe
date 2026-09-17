@@ -1,4 +1,4 @@
-import type { ThreadId } from "@t3tools/contracts";
+import type { ThreadId } from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Layer from "effect/Layer";
 

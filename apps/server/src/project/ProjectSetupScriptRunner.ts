@@ -1,10 +1,10 @@
-import { ProjectId, type ProjectScript } from "@t3tools/contracts";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { ProjectId, type ProjectScript } from "@circe/contracts";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
 import {
   projectScriptRuntimeEnv,
   resolveProjectScripts,
   setupProjectScript,
-} from "@t3tools/shared/projectScripts";
+} from "@circe/shared/projectScripts";
 import * as NodeCrypto from "node:crypto";
 
 import * as Clock from "effect/Clock";

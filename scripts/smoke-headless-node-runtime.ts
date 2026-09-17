@@ -228,7 +228,7 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     const command = buildHeadlessRuntimeSmokeCommand({ nodePath, serverPath, homeDir, port });
     const env: NodeJS.ProcessEnv = {
       ...process.env,
-      T3CODE_HOME: homeDir,
+      CIRCE_HOME: homeDir,
       CIRCE_HEADLESS_HOME: homeDir,
     };
     delete env.CIRCE_NODE_PRESET;

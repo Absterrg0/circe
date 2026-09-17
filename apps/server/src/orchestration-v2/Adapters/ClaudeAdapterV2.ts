@@ -1,4 +1,4 @@
-import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
+import { isWorkspaceImagePreviewPath } from "@circe/shared/filePreview";
 import { normalizeClaudeTurnTokenUsage } from "../../provider/ClaudeTurnTokenUsage.ts";
 import {
   type CanUseTool,
@@ -23,13 +23,13 @@ import type {
   AskUserQuestionInput,
   WebSearchOutput,
 } from "@anthropic-ai/claude-agent-sdk/sdk-tools";
-import { parseCliArgs } from "@t3tools/shared/cliArgs";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
-import { applyClaudePromptEffortPrefix } from "@t3tools/shared/model";
+import { parseCliArgs } from "@circe/shared/cliArgs";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
+import { applyClaudePromptEffortPrefix } from "@circe/shared/model";
 import {
   CLAUDE_RESUME_COMPACTION_NEVER_ANSWER,
   formatClaudeResumeCompactionQuestion,
-} from "@t3tools/shared/claudeCompaction";
+} from "@circe/shared/claudeCompaction";
 import {
   type ChatAttachment,
   ClaudeSettings,
@@ -58,7 +58,7 @@ import {
   type ProviderUserInputAnswers,
   type ProviderThreadId,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";

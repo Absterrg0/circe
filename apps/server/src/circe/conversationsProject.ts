@@ -1,4 +1,4 @@
-import { CommandId, CIRCE_CONVERSATIONS_PROJECT_TITLE, ProjectId } from "@t3tools/contracts";
+import { CommandId, CIRCE_CONVERSATIONS_PROJECT_TITLE, ProjectId } from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

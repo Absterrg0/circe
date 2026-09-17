@@ -1,4 +1,4 @@
-import type { DesktopUseDisplay } from "@t3tools/contracts";
+import type { DesktopUseDisplay } from "@circe/contracts";
 import { PNG } from "pngjs";
 import { readPngSize } from "./parsers.ts";
 

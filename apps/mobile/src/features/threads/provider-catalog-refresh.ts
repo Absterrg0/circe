@@ -1,9 +1,9 @@
-import type { EnvironmentId } from "@t3tools/contracts";
-import type { AtomCommandResult } from "@t3tools/client-runtime/state/runtime";
+import type { EnvironmentId } from "@circe/contracts";
+import type { AtomCommandResult } from "@circe/client/state/runtime";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 
 type RefreshProvidersTarget = {
   readonly environmentId: EnvironmentId;

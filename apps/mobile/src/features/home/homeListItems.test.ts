@@ -2,8 +2,8 @@ import {
   presentThreadShell,
   type EnvironmentProject,
   type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+} from "@circe/client/state/shell";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 

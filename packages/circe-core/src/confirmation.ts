@@ -1,4 +1,4 @@
-import type { OrchestrationThreadActivity, TurnId } from "@t3tools/contracts";
+import type { OrchestrationThreadActivity, TurnId } from "@circe/contracts";
 
 import { isClosedResponseFailure } from "./buildPresentation.ts";
 

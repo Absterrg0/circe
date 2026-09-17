@@ -1,6 +1,6 @@
 import { SymbolView } from "../components/AppSymbol";
-import { imageMimeType } from "@t3tools/shared/image";
-import { videoMimeType } from "@t3tools/shared/video";
+import { imageMimeType } from "@circe/shared/image";
+import { videoMimeType } from "@circe/shared/video";
 import { useEffect, useMemo, useState } from "react";
 import { Image, Pressable, ScrollView, View } from "react-native";
 import { ARIS_PANEL_RADIUS } from "../lib/layoutMetrics";
@@ -19,7 +19,7 @@ import { type MediaActionsSource } from "../lib/mediaActions";
 import { PresentationSource } from "./NativePresentation";
 import type { FilePreviewSource } from "./FilePreviewModal";
 import { isPdfFile } from "../lib/filePreview";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 import {
   retryComposerAttachmentUpload,
   useComposerAttachmentUploadState,

@@ -38,13 +38,13 @@ import {
   ClaudeSettings,
   CodexSettings,
   ProviderInstanceId,
-} from "@t3tools/contracts";
-import { makeKeyedCoalescingWorker } from "@t3tools/shared/KeyedCoalescingWorker";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { mergePathEntries } from "@t3tools/shared/shell";
+} from "@circe/contracts";
+import { makeKeyedCoalescingWorker } from "@circe/shared/KeyedCoalescingWorker";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { mergePathEntries } from "@circe/shared/shell";
 
 import { acpRegistryManagedBinaryDirectories } from "../provider/acp/AcpRegistrySupport.ts";
-import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
+import { getTerminalLabel } from "@circe/shared/terminalLabels";
 import * as DateTime from "effect/DateTime";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";

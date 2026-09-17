@@ -2,7 +2,7 @@ import {
   type CircePresentationEvent,
   type OrchestrationEvent,
   type OrchestrationThread,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import {
   buildActivityPresentationForActivity,

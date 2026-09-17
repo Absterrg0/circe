@@ -15,7 +15,7 @@ import {
   VcsProcessSpawnError,
   VcsProcessStdinWriteError,
   VcsProcessTimeoutError,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as ProcessRunner from "../processRunner.ts";
 
 export interface VcsProcessInput {

@@ -3,7 +3,7 @@ import type {
   CirceProjectRef,
   CirceTaskRef,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 /**
  * One target transition a validated plan step implies. It mirrors exactly what

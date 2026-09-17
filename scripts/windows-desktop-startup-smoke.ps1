@@ -25,7 +25,7 @@ $desktop = Start-Process `
   -FilePath $DesktopPath `
   -ArgumentList @('--no-sandbox', "--circe-startup-probe=$probeFile") `
   -WorkingDirectory (Split-Path $DesktopPath) `
-  -Environment @{ T3CODE_HOME = (Join-Path $ProbeRoot 't3-home'); CIRCE_STARTUP_PROBE_FILE = $probeFile; CIRCE_STARTUP_PROBE_QUIT = '1' } `
+  -Environment @{ CIRCE_HOME = (Join-Path $ProbeRoot 't3-home'); CIRCE_STARTUP_PROBE_FILE = $probeFile; CIRCE_STARTUP_PROBE_QUIT = '1' } `
   -RedirectStandardOutput $stdoutPath `
   -RedirectStandardError $stderrPath `
   -PassThru

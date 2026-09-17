@@ -1,26 +1,26 @@
-import { threadPullRequestSearchTerms } from "@t3tools/shared/threadPullRequests";
+import { threadPullRequestSearchTerms } from "@circe/shared/threadPullRequests";
 import {
   buildProjectGroups,
   derivePhysicalProjectKey,
   deriveProjectGroupLabel,
-} from "@t3tools/client-runtime/state/project-grouping";
+} from "@circe/client/state/project-grouping";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import {
   getThreadSortTimestamp,
   sortThreads,
   toSortableTimestamp,
-} from "@t3tools/client-runtime/state/thread-sort";
-import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
+} from "@circe/client/state/thread-sort";
+import { threadSearchMatchKey } from "@circe/client/state/thread-search";
 import type {
   EnvironmentId,
   ScopedProjectRef,
   SidebarProjectGroupingMode,
   SidebarProjectSortOrder,
   SidebarThreadSortOrder,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Arr from "effect/Array";
 import * as Option from "effect/Option";
 import * as Order from "effect/Order";

@@ -1,10 +1,10 @@
 import { useAtomValue } from "@effect/atom-react";
-import { type EnvironmentId, type ModelSelection, ProviderInstanceId } from "@t3tools/contracts";
-import { createModelSelection } from "@t3tools/shared/model";
+import { type EnvironmentId, type ModelSelection, ProviderInstanceId } from "@circe/contracts";
+import { createModelSelection } from "@circe/shared/model";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircleIcon,

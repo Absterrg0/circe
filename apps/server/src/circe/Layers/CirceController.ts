@@ -19,7 +19,7 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThread,
   type TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -117,7 +117,7 @@ import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarifi
  */
 function buildMeshSemanticPrompt(input: {
   readonly source: string;
-  readonly evidence: import("@t3tools/contracts").CirceInterpretInput;
+  readonly evidence: import("@circe/contracts").CirceInterpretInput;
 }): string {
   const evidence = input.evidence;
   const projects = evidence.projects.slice(0, 32).map((project) => ({
@@ -189,7 +189,7 @@ const CIRCE_MAX_SEQUENCE_STEPS = 4;
 /** Ordered steps for a multi-command turn, or null when the proposal is single. */
 function decodeCirceSequenceSteps(
   proposal: unknown,
-): ReadonlyArray<import("@t3tools/contracts").CirceSemanticStep> | null {
+): ReadonlyArray<import("@circe/contracts").CirceSemanticStep> | null {
   if (proposal === undefined) return null;
   try {
     const decoded = decodeCirceSemanticProposal(proposal);
@@ -317,24 +317,24 @@ const defaultInterpreterLayer = Layer.effect(
         Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
     }));
     const readSemanticProviders: Effect.Effect<
-      ReadonlyArray<import("@t3tools/contracts").ServerProvider>
+      ReadonlyArray<import("@circe/contracts").ServerProvider>
     > = Effect.suspend(() => {
       const snapshots = (
         providerRegistry as Partial<{
           readonly getProviders: Effect.Effect<
-            ReadonlyArray<import("@t3tools/contracts").ServerProvider>
+            ReadonlyArray<import("@circe/contracts").ServerProvider>
           >;
         }>
       ).getProviders;
       if (snapshots === undefined) {
-        return Effect.succeed([] as ReadonlyArray<import("@t3tools/contracts").ServerProvider>);
+        return Effect.succeed([] as ReadonlyArray<import("@circe/contracts").ServerProvider>);
       }
       return snapshots;
     }).pipe(
       Effect.catchCause((cause) =>
         Cause.hasInterruptsOnly(cause)
           ? Effect.failCause(cause)
-          : Effect.succeed([] as ReadonlyArray<import("@t3tools/contracts").ServerProvider>),
+          : Effect.succeed([] as ReadonlyArray<import("@circe/contracts").ServerProvider>),
       ),
     );
     const runSemanticCandidate = (
@@ -2285,8 +2285,8 @@ export const makeCirceControllerLive = <R>(
         });
 
       const interpret = Effect.fn("CirceController.interpret")(function* (
-        input: import("@t3tools/contracts").CirceInterpretInput & {
-          readonly executionNodeId?: import("@t3tools/contracts").EnvironmentId | undefined;
+        input: import("@circe/contracts").CirceInterpretInput & {
+          readonly executionNodeId?: import("@circe/contracts").EnvironmentId | undefined;
           readonly acceptanceKey?: string | undefined;
         },
       ) {
@@ -2310,7 +2310,7 @@ export const makeCirceControllerLive = <R>(
           input.acceptanceKey ??
           circeRequestAcceptanceKey({
             executionNodeId: (
-              input as { readonly executionNodeId?: import("@t3tools/contracts").EnvironmentId }
+              input as { readonly executionNodeId?: import("@circe/contracts").EnvironmentId }
             ).executionNodeId,
             requestMetadata: input.requestMetadata,
           });

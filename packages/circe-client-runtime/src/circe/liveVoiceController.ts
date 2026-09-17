@@ -5,7 +5,7 @@
 // timers, the injected WebRTC seam, and the RPC callbacks its host supplies, and
 // it is intentionally not an Effect program: the same module runs in a browser
 // renderer and in React Native, where the host owns the runtime.
-import { CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH } from "@t3tools/contracts";
+import { CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH } from "@circe/contracts";
 
 import {
   applyCirceLiveVoiceTranscript,
