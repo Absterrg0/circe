@@ -63,6 +63,7 @@ jobs:
           APNS_PRIVATE_KEY: ${{ secrets.APNS_PRIVATE_KEY }}
           FCM_SERVICE_ACCOUNT: ${{ secrets.FCM_SERVICE_ACCOUNT }}
           OPENAI_LIVE_API_KEY: ${{ secrets.OPENAI_LIVE_API_KEY }}
+          TYPESAFE_API_KEY: ${{ secrets.TYPESAFE_API_KEY }}
 
       - name: Publish relay deploy commit status
         uses: actions/github-script@v8

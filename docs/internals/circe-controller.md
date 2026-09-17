@@ -140,6 +140,33 @@ decision tier replaced them. The ordinary provider proposal path remains only
 as the decline safety net; open-domain conversation stays a durable provider
 thread through the Director's `flow: "conversation"`.
 
+#### Managed decision tier over the relay
+
+A node with no local `CIRCE_TYPESAFE_API_KEY` uses the relay when it is linked
+to Circe Mesh. `Layers/CirceDecision.ts` reads the link's URL and environment
+credential, then sends the same System One request to
+`POST /v1/environments/:environmentId/typesafe/systemone`. The relay holds the
+deployment key (`TYPESAFE_API_KEY`) and calls TypeSafe; the node never sees the
+key and the relay never interprets the decision.
+
+The relay is a pass-through and must stay one. Request and response bodies cross
+it in memory only:
+
+- no database, KV, queue, or filesystem write on the decision path;
+- no request or response body in logs or OTLP span attributes; only method,
+  route, status, and timing are observable;
+- the `Authorization` header is never logged;
+- the upstream response is decoded into `RelayTypeSafeDecisionResponse` before
+  returning, so unexpected upstream fields never reach the node.
+
+This is the whole reason the managed path is acceptable: users can say anything
+and the operator cannot later read it. The relay persists agent-activity state
+for notifications, so the decision route is deliberately kept out of every
+persistence service. `infra/relay/src/decision/TypeSafeUpstream.test.ts` runs
+the upstream with only an `HttpClient` in its requirements, which is the
+mechanical proof that no persistence service is involved; the route itself is
+covered in `infra/relay/src/http/Api.test.ts`.
+
 Exact task focus and named-task resolution are specified separately in [Circe task desk](./circe-task-desk.md). The desk keeps only qualified recent identity and one pending interaction; T3 supplies live task state.
 
 ## Request path

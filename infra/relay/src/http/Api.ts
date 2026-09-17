@@ -53,6 +53,8 @@ import {
   RelayLiveVoiceUpstreamError,
   RelayLiveVoiceEnvironmentDisabledError,
   RelayLiveVoiceUsageLimitError,
+  RelayTypeSafeNotConfiguredError,
+  RelayTypeSafeUpstreamError,
   type RelayEnvironmentConnectRequest,
   type RelayDpopAccessTokenScope,
   RelayInternalError,
@@ -79,6 +81,7 @@ import * as ManagedEndpointAllocations from "../environments/ManagedEndpointAllo
 import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublishSignatures.ts";
 import * as MobileRegistrations from "../agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "../voice/LiveVoiceSessions.ts";
+import * as TypeSafeUpstream from "../decision/TypeSafeUpstream.ts";
 import { withSpanAttributes } from "../observability.ts";
 import * as RelayDb from "../db.ts";
 
@@ -938,6 +941,7 @@ export const serverApi = HttpApiBuilder.group(
     const publisher = yield* AgentActivityPublisher.AgentActivityPublisher;
     const publishSignatures = yield* EnvironmentPublishSignatures.EnvironmentPublishSignatures;
     const liveVoice = yield* LiveVoiceSessions.LiveVoiceSessions;
+    const typesafeUpstream = yield* TypeSafeUpstream.TypeSafeUpstream;
     return handlers
       .handle(
         "publishAgentActivity",
@@ -1199,6 +1203,42 @@ export const serverApi = HttpApiBuilder.group(
                 reason: "persistence_failed",
                 traceId,
               }),
+          }),
+          mapRelayCommonApiErrors("not_authorized"),
+        ),
+      )
+      .handle(
+        "runTypeSafeDecision",
+        Effect.fn("relay.api.server.runTypeSafeDecision")(
+          function* (args) {
+            const { params, payload } = args;
+            const principal = yield* RelayEnvironmentPrincipal;
+            if (principal.environmentId !== params.environmentId) {
+              return yield* new HttpApiError.Unauthorized({});
+            }
+            // The relay carries state and questions in memory only. It never
+            // persists, logs, or traces the body or the answer.
+            const config = yield* RelayConfiguration.RelayConfiguration;
+            const typesafe = config.typesafe;
+            if (typesafe === undefined || typesafe.apiKey === null) {
+              return yield* new RelayTypeSafeNotConfiguredError({
+                code: "typesafe_not_configured",
+                traceId: yield* currentTraceId,
+              });
+            }
+            return yield* typesafeUpstream.run({
+              apiKey: typesafe.apiKey,
+              baseUrl: typesafe.baseUrl,
+              body: {
+                state: payload.state,
+                model: payload.model,
+                questions: payload.questions,
+              },
+            });
+          },
+          mapErrorTags({
+            TypeSafeUpstreamFailed: (_error, traceId) =>
+              new RelayTypeSafeUpstreamError({ code: "typesafe_upstream_failed", traceId }),
           }),
           mapRelayCommonApiErrors("not_authorized"),
         ),
