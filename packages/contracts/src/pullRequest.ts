@@ -1190,7 +1190,7 @@ const PROVIDER_REQUIREMENT: Partial<
     missing:
       "Bitbucket needs API credentials on the server. Set CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN, or CIRCE_BITBUCKET_ACCESS_TOKEN.",
     unauthenticated:
-      "Bitbucket rejected the configured credentials. Check CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN.",
+      "Bitbucket rejected the configured credentials. Check CIRCE_BITBUCKET_EMAIL and CIRCE_BITBUCKET_API_TOKEN, or CIRCE_BITBUCKET_ACCESS_TOKEN.",
   },
 };
 
