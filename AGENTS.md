@@ -99,7 +99,8 @@ Before calling user-facing work done, check what the change touches:
 ## Dev servers
 
 - `vp i` installs dependencies. Worktree setup normally runs it for you.
-- `vp run dev` starts server and web with worktree-local `.t3` state. Read the actual ports and pairing URL from the `[dev-runner]` output.
+- `vp run dev` starts server and web with worktree-local `.circe` state. Read the actual ports and pairing URL from the `[dev-runner]` output.
+- Circe's data directory is `~/.circe`, overridden by `CIRCE_HOME`. `T3CODE_HOME` is a deprecated alias that still resolves to Circe state during the rename; `~/.t3` and `~/.jarvis` are never read or written.
 - `vp run dev --share` exposes the development instance over the tailnet. Hand the user the full `pairingUrl`, including its token. Do not configure `tailscale serve` manually.
 - If a pairing token was consumed, mint another with `node apps/server/src/bin.ts pair`.
 - Stop only processes you started and tracked.
@@ -108,7 +109,7 @@ Before calling user-facing work done, check what the change touches:
 
 An empty database is weak test data. Copy a consistent snapshot into the worktree instead of pointing development at live state.
 
-Use SQLite `VACUUM INTO` against the live database in read-only mode. Put the result under `<worktree>/.t3/userdata`. A plain copy of a live SQLite file is unsafe unless its WAL and SHM files are copied consistently too. Copy state into the sandbox; never symlink the sandbox back to live state.
+Use SQLite `VACUUM INTO` against the live database in read-only mode. Put the result under `<worktree>/.circe/userdata`. A plain copy of a live SQLite file is unsafe unless its WAL and SHM files are copied consistently too. Copy state into the sandbox; never symlink the sandbox back to live state.
 
 Bring secrets or settings only when the flow under test needs them.
 
