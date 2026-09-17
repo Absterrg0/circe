@@ -150,6 +150,40 @@ describe("composeDecision", () => {
     expect(result.proposal.lookup).toEqual({ kind: "weather", location: "Ahmedabad", day: "now" });
   });
 
+  it("marks a lookup missing its place as a lookup refinement", () => {
+    const source = "what's the weather";
+    const result = composeDecision({
+      source,
+      table,
+      boundaries: [],
+      state: { ...state, utterance: source },
+      answers: answers("", {
+        response_strategy: choice("tool"),
+        tool: choice("weather"),
+      }),
+    });
+    expect(result.status).toBe("needs-input");
+    if (result.status !== "needs-input") return;
+    expect(result.refinement).toEqual({ kind: "lookup", lookupKind: "weather" });
+  });
+
+  it("marks a launch missing its site as a website refinement", () => {
+    const source = "open it";
+    const result = composeDecision({
+      source,
+      table,
+      boundaries: [],
+      state: { ...state, utterance: source },
+      answers: answers("", {
+        response_strategy: choice("tool"),
+        tool: choice("open-website"),
+      }),
+    });
+    expect(result.status).toBe("needs-input");
+    if (result.status !== "needs-input") return;
+    expect(result.refinement).toEqual({ kind: "website" });
+  });
+
   it("never grants an approval from the classifier", () => {
     const source = "yes allow it";
     const result = composeDecision({

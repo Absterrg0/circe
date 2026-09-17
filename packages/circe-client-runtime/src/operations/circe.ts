@@ -1,6 +1,7 @@
 import {
   WS_METHODS,
   type CirceBrowserUseInput,
+  type CirceCancelMissionInput,
   type CirceCancelRequestInput,
   type CirceMemoryFetchInput,
   type CirceMemoryIndexInput,
@@ -8,6 +9,9 @@ import {
   type CirceFocusTaskInput,
   type CirceInterpretInput,
   type CirceManageProjectAliasInput,
+  type CirceCoordinateInput,
+  type CirceProjectGoalInput,
+  type CirceProjectRef,
 } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
@@ -41,6 +45,17 @@ export const cancelCirceRequest = Effect.fn("Circe.cancelRequest")(function* (
   input: CirceCancelRequestInput,
 ) {
   return yield* request(WS_METHODS.circeCancelRequest, input);
+});
+
+/**
+ * Stop one running surface mission on its node by the mission's request id.
+ * `cancelled` is true when a live mission held the id and will halt at its
+ * next step boundary; false means it had already settled.
+ */
+export const cancelCirceMission = Effect.fn("Circe.cancelMission")(function* (
+  input: CirceCancelMissionInput,
+) {
+  return yield* request(WS_METHODS.circeCancelMission, input);
 });
 
 /**
@@ -98,4 +113,25 @@ export const manageCirceProjectAlias = Effect.fn("Circe.manageProjectAlias")(fun
   input: CirceManageProjectAliasInput,
 ) {
   return yield* request(WS_METHODS.circeManageProjectAlias, input);
+});
+
+/** Read one project's goal and pinned context without writing anything. */
+export const getCirceProjectContext = Effect.fn("Circe.getProjectContext")(function* (
+  input: CirceProjectRef,
+) {
+  return yield* request(WS_METHODS.circeGetProjectContext, input);
+});
+
+/** Set one project's goal and refresh the pinned workspace context. */
+export const setCirceProjectGoal = Effect.fn("Circe.setProjectGoal")(function* (
+  input: CirceProjectGoalInput,
+) {
+  return yield* request(WS_METHODS.circeSetProjectGoal, input);
+});
+
+/** Route one instruction through the project coordinator to a thread turn. */
+export const coordinateCirceProject = Effect.fn("Circe.coordinate")(function* (
+  input: CirceCoordinateInput,
+) {
+  return yield* request(WS_METHODS.circeCoordinate, input);
 });

@@ -308,10 +308,61 @@ export const CirceInterpretInput = Schema.Struct({
    * derivation as execute; untracked when absent for legacy callers.
    */
   requestMetadata: Schema.optional(CirceRequestMetadata),
+  /**
+   * Binds an answer to the exact lookup or website frame it replies to. When
+   * the live frame matches, the node resumes that refinement deterministically
+   * instead of re-running the classifier; a missing or replaced frame is
+   * rejected.
+   */
+  clarificationFrameId: Schema.optional(TrimmedNonEmptyString),
 });
 export type CirceInterpretInput = typeof CirceInterpretInput.Type;
 
-export const CirceInterpretResult = CirceSemanticProposal;
+export const CirceNeedsInputReason = Schema.Literals([
+  "provider-unavailable",
+  "provider-not-found",
+  "model-unavailable",
+  "effort-missing",
+  "effort-unavailable",
+  "selection-unavailable",
+  "objective-missing",
+  "context-thread-required",
+  "context-project-mismatch",
+  "source-output-unavailable",
+  "control-target-required",
+  "unsupported-command",
+]);
+export type CirceNeedsInputReason = typeof CirceNeedsInputReason.Type;
+
+/**
+ * The classifier asked for one missing target before it could act. The node
+ * stores this as a durable pending frame; the origin client speaks the prompt,
+ * keeps `frameId`, and returns it on the answer. A clarification is not a
+ * proposal: it carries no refs, model, or dispatch authority.
+ */
+export const CirceInterpretClarification = Schema.Struct({
+  status: Schema.Literal("needs-input"),
+  /** Present on a live refinement; absent on a stale-frame rejection. */
+  kind: Schema.optional(Schema.Literals(["lookup", "website"])),
+  reason: CirceNeedsInputReason,
+  prompt: TrimmedNonEmptyString,
+  choices: Schema.Array(TrimmedNonEmptyString),
+  /** Targets the node itself derived from the source; never model inventions. */
+  candidates: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(8)),
+  /** Present for a lookup frame so the resume keeps the same tool. */
+  lookupKind: Schema.optional(Schema.Literals(["weather", "time"])),
+  /** Present for a lookup frame so the resume keeps the same day. */
+  day: Schema.optional(Schema.Literals(["now", "today", "tomorrow"])),
+  /** The durable frame this question belongs to; absent on a stale rejection. */
+  frameId: Schema.optional(TrimmedNonEmptyString),
+  expectedReply: Schema.optional(CirceExpectedReply),
+});
+export type CirceInterpretClarification = typeof CirceInterpretClarification.Type;
+
+export const CirceInterpretResult = Schema.Union([
+  CirceSemanticProposal,
+  CirceInterpretClarification,
+]);
 export type CirceInterpretResult = typeof CirceInterpretResult.Type;
 
 /**
@@ -413,22 +464,6 @@ export const CirceExecuteInput = Schema.Union([
   }),
 ]);
 export type CirceExecuteInput = typeof CirceExecuteInput.Type;
-
-export const CirceNeedsInputReason = Schema.Literals([
-  "provider-unavailable",
-  "provider-not-found",
-  "model-unavailable",
-  "effort-missing",
-  "effort-unavailable",
-  "selection-unavailable",
-  "objective-missing",
-  "context-thread-required",
-  "context-project-mismatch",
-  "source-output-unavailable",
-  "control-target-required",
-  "unsupported-command",
-]);
-export type CirceNeedsInputReason = typeof CirceNeedsInputReason.Type;
 
 /** Partial provider/model selection carried between typed clarification steps. */
 export const CirceModelDraft = Schema.Struct({
@@ -627,6 +662,22 @@ export const CirceCancelRequestResult = Schema.Union([
 ]);
 export type CirceCancelRequestResult = typeof CirceCancelRequestResult.Type;
 
+/**
+ * A stop request for one running node surface mission (browser or computer
+ * use). The stop lands at the loop's next step boundary, so `cancelled` means
+ * a live mission held the id and will halt; false means it had already settled
+ * and no stop was recorded.
+ */
+export const CirceCancelMissionInput = Schema.Struct({
+  requestId: TrimmedNonEmptyString,
+});
+export type CirceCancelMissionInput = typeof CirceCancelMissionInput.Type;
+
+export const CirceCancelMissionResult = Schema.Struct({
+  cancelled: Schema.Boolean,
+});
+export type CirceCancelMissionResult = typeof CirceCancelMissionResult.Type;
+
 export const CirceTaskState = Schema.Literals([
   "running",
   "waiting-for-input",
@@ -811,6 +862,55 @@ export const CircePlanClarificationFrame = Schema.Struct({
 });
 export type CircePlanClarificationFrame = typeof CircePlanClarificationFrame.Type;
 
+/**
+ * A durable lookup refinement. The classifier knew the kind (weather or time)
+ * but could not ground a place, so the node asks once and stores the question.
+ * The answer names the place; the node resumes the lookup deterministically
+ * from the stored kind and day, never by re-running the model.
+ */
+export const CirceLookupClarificationFrame = Schema.Struct({
+  frameId: Schema.optional(TrimmedNonEmptyString),
+  originalUtterance: TrimmedNonEmptyString,
+  lookupKind: Schema.Literals(["weather", "time"]),
+  day: Schema.Literals(["now", "today", "tomorrow"]),
+  /** Places the node itself derived from the source, never model inventions. */
+  locationCandidates: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(6)),
+  /** The exact question the user is answering, retained for the resumed turn. */
+  previousPrompt: TrimmedNonEmptyString,
+  contextThreadId: Schema.optional(ThreadId),
+  referenceThreadId: Schema.optional(ThreadId),
+  continueContext: Schema.optional(Schema.Boolean),
+  modelSelection: Schema.optional(ModelSelection),
+  requestMetadata: Schema.optional(CirceRequestMetadata),
+  expectedReply: Schema.optional(Schema.NullOr(CirceExpectedReply)),
+  createdAt: Schema.DateTimeUtcFromString,
+  expiresAt: Schema.DateTimeUtcFromString,
+});
+export type CirceLookupClarificationFrame = typeof CirceLookupClarificationFrame.Type;
+
+/**
+ * A durable website-target refinement. The classifier chose a launch but could
+ * not ground a site or address in the utterance, so the node asks once and
+ * stores the question. The answer is grounded by the ordinary launcher check
+ * on resume.
+ */
+export const CirceWebsiteClarificationFrame = Schema.Struct({
+  frameId: Schema.optional(TrimmedNonEmptyString),
+  originalUtterance: TrimmedNonEmptyString,
+  /** Sites the node itself derived from the source, allowlist-checked. */
+  websiteCandidates: Schema.Array(TrimmedNonEmptyString).check(Schema.isMaxLength(8)),
+  previousPrompt: TrimmedNonEmptyString,
+  contextThreadId: Schema.optional(ThreadId),
+  referenceThreadId: Schema.optional(ThreadId),
+  continueContext: Schema.optional(Schema.Boolean),
+  modelSelection: Schema.optional(ModelSelection),
+  requestMetadata: Schema.optional(CirceRequestMetadata),
+  expectedReply: Schema.optional(Schema.NullOr(CirceExpectedReply)),
+  createdAt: Schema.DateTimeUtcFromString,
+  expiresAt: Schema.DateTimeUtcFromString,
+});
+export type CirceWebsiteClarificationFrame = typeof CirceWebsiteClarificationFrame.Type;
+
 /** The one blocking interaction a session may have at a time. */
 export const CircePendingInteraction = Schema.Union([
   Schema.Struct({
@@ -824,6 +924,14 @@ export const CircePendingInteraction = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("plan"),
     frame: CircePlanClarificationFrame,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("lookup"),
+    frame: CirceLookupClarificationFrame,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("website"),
+    frame: CirceWebsiteClarificationFrame,
   }),
 ]);
 export type CircePendingInteraction = typeof CircePendingInteraction.Type;
@@ -1067,3 +1175,39 @@ export class CirceExecutionError extends Schema.TaggedError<CirceExecutionError>
     message: TrimmedNonEmptyString,
   },
 ) {}
+
+/**
+ * The coordinator owns a project's goal and pinned context. The goal is a
+ * short, stable statement of what the project is for; the pinned context the
+ * coordinator writes into the workspace is what a thread reads before working.
+ */
+export const CirceProjectGoalInput = Schema.Struct({
+  projectRef: CirceProjectRef,
+  goal: TrimmedNonEmptyString.check(Schema.isMaxLength(2_000)),
+});
+export type CirceProjectGoalInput = typeof CirceProjectGoalInput.Type;
+
+export const CirceProjectContext = Schema.Struct({
+  projectRef: CirceProjectRef,
+  /** Null until a goal is set. */
+  goal: Schema.NullOr(TrimmedNonEmptyString.check(Schema.isMaxLength(2_000))),
+  /** The pinned map written to the project workspace; may be empty. */
+  pinnedContext: Schema.String,
+});
+export type CirceProjectContext = typeof CirceProjectContext.Type;
+
+/**
+ * One coordinator turn: the project goal and pinned context are refreshed, the
+ * instruction routes to a new or existing thread, and the outcome is the
+ * ordinary execution result.
+ */
+export const CirceCoordinateInput = Schema.Struct({
+  projectRef: CirceProjectRef,
+  utterance: CirceUtterance,
+  requestMetadata: Schema.optional(CirceRequestMetadata),
+  modelSelection: Schema.optional(ModelSelection),
+});
+export type CirceCoordinateInput = typeof CirceCoordinateInput.Type;
+
+export const CirceCoordinateResult = CirceExecutionResult;
+export type CirceCoordinateResult = typeof CirceCoordinateResult.Type;

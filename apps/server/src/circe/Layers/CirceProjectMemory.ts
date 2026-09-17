@@ -3,98 +3,136 @@ import { buildMemoryIndex, memoryMayBeFact, type CirceMemoryView } from "@circe/
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
-import * as Ref from "effect/Ref";
+import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 
+import * as ProjectionSnapshotQuery from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
+import {
+  CIRCE_DIR,
+  INDEX_FILE,
+  MEMORY_DIR,
+  RETIRED_DIR,
+  parseMemoryFile,
+  renderMemoryFile,
+} from "../projectMemory/memoryFiles.ts";
 import {
   CirceMemoryPromotionError,
+  CirceMemoryStoreError,
   CirceProjectMemory,
   type CirceProjectMemoryShape,
 } from "../Services/CirceProjectMemory.ts";
+import { renderMemoryIndex } from "@circe/core/projectMemory";
 
 /**
- * In-process project memory adapter. The interface is the contract; the durable
- * event-sourced projection that survives restart is the next backing. Upsert
- * dedupes by kind plus normalized title, so a repeated claim corroborates the
- * existing entry instead of duplicating it, and a fact is promoted only when
- * policy allows it.
+ * File-backed project memory. Every entry is a markdown file under
+ * `<workspaceRoot>/.circe/memory/` with a machine-readable header; retired
+ * entries move to `retired/` so provenance is never destroyed. The same
+ * `AGENTS.md` that providers already read carries a managed map.
  */
 const FACT_TTL_DAYS = 90;
 
 const normalizeTitle = (title: string): string => title.trim().toLowerCase().replace(/\s+/gu, " ");
 
 export const make = Effect.gen(function* () {
+  const fs = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
   const crypto = yield* Crypto.Crypto;
-  const store = yield* Ref.make<ReadonlyMap<string, CirceMemoryEntry>>(new Map());
+  const projections = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
 
-  const remember: CirceProjectMemoryShape["remember"] = Effect.fn("CirceProjectMemory.remember")(
-    function* (input: CirceMemoryUpsertInput) {
-      const now = yield* DateTime.now;
-      const current = yield* Ref.get(store);
-      const wanted = normalizeTitle(input.title);
-      const existing = [...current.values()].find(
-        (entry) =>
-          entry.projectId === input.projectId &&
-          entry.kind === input.kind &&
-          entry.status === "active" &&
-          normalizeTitle(entry.title) === wanted,
-      );
-      const corroborationCount = existing === undefined ? 0 : existing.corroborationCount + 1;
-      if (
-        input.kind === "fact" &&
-        !memoryMayBeFact({
-          source: input.source,
-          corroborationCount,
-          confirmed: input.confirmed === true,
-        })
-      ) {
-        return yield* Effect.fail(
-          new CirceMemoryPromotionError({ projectId: input.projectId, title: input.title }),
-        );
-      }
-      const id = existing?.id ?? `mem_${yield* crypto.randomUUIDv4.pipe(Effect.orDie)}`;
-      const entry: CirceMemoryEntry = {
-        id,
-        projectId: input.projectId,
-        kind: input.kind,
-        source: input.source,
-        title: input.title,
-        body: input.body,
-        tags: input.tags === undefined ? [] : [...input.tags],
-        corroborationCount,
-        status: "active",
-        createdAt: existing?.createdAt ?? now,
-        updatedAt: now,
-        expiresAt: input.kind === "fact" ? DateTime.add(now, { days: FACT_TTL_DAYS }) : null,
-      };
-      yield* Ref.update(store, (map) => {
-        const next = new Map(map);
-        next.set(id, entry);
-        return next;
-      });
-      return entry;
-    },
-  );
+  const storeError = (projectId: string, operation: string, cause?: unknown) =>
+    new CirceMemoryStoreError({
+      projectId: projectId as CirceMemoryEntry["projectId"],
+      operation,
+      ...(cause === undefined ? {} : { cause }),
+    });
 
-  const list: CirceProjectMemoryShape["list"] = (projectId) =>
-    Ref.get(store).pipe(
-      Effect.map((map) =>
-        [...map.values()]
-          .filter((entry) => entry.projectId === projectId)
-          .sort(
-            (left, right) =>
-              DateTime.toEpochMillis(right.updatedAt) - DateTime.toEpochMillis(left.updatedAt),
-          ),
+  const workspaceRoot = (projectId: string) =>
+    projections.getProjectShellById(projectId as CirceMemoryEntry["projectId"]).pipe(
+      Effect.mapError((cause) => storeError(projectId, "resolve the project workspace", cause)),
+      Effect.flatMap(
+        Option.match({
+          onNone: () => Effect.fail(storeError(projectId, "resolve the project workspace")),
+          onSome: (project) => Effect.succeed(project.workspaceRoot),
+        }),
       ),
     );
 
-  const get: CirceProjectMemoryShape["get"] = (projectId, entryId) =>
-    Ref.get(store).pipe(
-      Effect.map((map) => {
-        const entry = map.get(entryId);
-        return entry !== undefined && entry.projectId === projectId ? entry : null;
-      }),
+  const memoryDir = (root: string) => path.join(root, CIRCE_DIR, MEMORY_DIR);
+  const retiredDir = (root: string) => path.join(memoryDir(root), RETIRED_DIR);
+
+  const readFolder = (dir: string, skipIndex: boolean) =>
+    Effect.gen(function* () {
+      const names = yield* fs.readDirectory(dir).pipe(Effect.orElseSucceed(() => [] as string[]));
+      const entries: Array<CirceMemoryEntry> = [];
+      for (const name of names) {
+        if (!name.endsWith(".md") || (skipIndex && name === INDEX_FILE)) continue;
+        const text = yield* fs
+          .readFileString(path.join(dir, name))
+          .pipe(Effect.orElseSucceed(() => ""));
+        const entry = parseMemoryFile(text);
+        if (entry !== null) entries.push(entry);
+      }
+      return entries;
+    });
+
+  const readEntries = (projectId: string, root: string) =>
+    readFolder(memoryDir(root), true).pipe(
+      Effect.map((entries) => entries.filter((entry) => entry.projectId === projectId)),
     );
+
+  const writeIndex = (projectId: string, root: string, entries: ReadonlyArray<CirceMemoryEntry>) =>
+    Effect.gen(function* () {
+      const now = yield* DateTime.now;
+      const block = renderMemoryIndex(
+        buildMemoryIndex(
+          entries.map((entry) => ({
+            id: entry.id,
+            kind: entry.kind,
+            source: entry.source,
+            title: entry.title,
+            body: entry.body,
+            tags: entry.tags,
+            status: entry.status,
+            updatedAtMs: DateTime.toEpochMillis(entry.updatedAt),
+            expiresAtMs:
+              entry.expiresAt === undefined || entry.expiresAt === null
+                ? null
+                : DateTime.toEpochMillis(entry.expiresAt),
+          })),
+          { nowMs: DateTime.toEpochMillis(now) },
+        ),
+      );
+      yield* fs
+        .makeDirectory(memoryDir(root), { recursive: true })
+        .pipe(
+          Effect.mapError((cause) => storeError(projectId, "create the memory directory", cause)),
+        );
+      yield* fs
+        .writeFileString(path.join(memoryDir(root), INDEX_FILE), block)
+        .pipe(Effect.mapError((cause) => storeError(projectId, "write the memory index", cause)));
+    });
+
+  const list: CirceProjectMemoryShape["list"] = (projectId) =>
+    Effect.gen(function* () {
+      const root = yield* workspaceRoot(projectId);
+      const entries = yield* readEntries(projectId, root);
+      return entries.sort(
+        (left, right) =>
+          DateTime.toEpochMillis(right.updatedAt) - DateTime.toEpochMillis(left.updatedAt),
+      );
+    });
+
+  const get: CirceProjectMemoryShape["get"] = (projectId, entryId) =>
+    Effect.gen(function* () {
+      const root = yield* workspaceRoot(projectId);
+      const active = yield* readEntries(projectId, root);
+      const found = active.find((entry) => entry.id === entryId);
+      if (found !== undefined) return found;
+      const retired = yield* readFolder(retiredDir(root), false);
+      return retired.find((entry) => entry.id === entryId && entry.projectId === projectId) ?? null;
+    });
 
   const index: CirceProjectMemoryShape["index"] = Effect.fn("CirceProjectMemory.index")(
     function* (projectId) {
@@ -133,23 +171,98 @@ export const make = Effect.gen(function* () {
     },
   );
 
+  const remember: CirceProjectMemoryShape["remember"] = Effect.fn("CirceProjectMemory.remember")(
+    function* (input: CirceMemoryUpsertInput) {
+      const root = yield* workspaceRoot(input.projectId);
+      const now = yield* DateTime.now;
+      const titleKey = normalizeTitle(input.title);
+      const entries = yield* readEntries(input.projectId, root);
+      const existing = entries.find(
+        (entry) =>
+          entry.kind === input.kind &&
+          entry.status === "active" &&
+          normalizeTitle(entry.title) === titleKey,
+      );
+      const corroborationCount = existing === undefined ? 0 : existing.corroborationCount + 1;
+      if (
+        input.kind === "fact" &&
+        !memoryMayBeFact({
+          source: input.source,
+          corroborationCount,
+          confirmed: input.confirmed === true,
+        })
+      ) {
+        return yield* Effect.fail(
+          new CirceMemoryPromotionError({ projectId: input.projectId, title: input.title }),
+        );
+      }
+      const id = existing?.id ?? `mem_${yield* crypto.randomUUIDv4.pipe(Effect.orDie)}`;
+      const entry: CirceMemoryEntry = {
+        id,
+        projectId: input.projectId,
+        kind: input.kind,
+        source: input.source,
+        title: input.title,
+        body: input.body,
+        tags: input.tags === undefined ? [] : [...input.tags],
+        corroborationCount,
+        status: "active",
+        createdAt: existing?.createdAt ?? now,
+        updatedAt: now,
+        expiresAt: input.kind === "fact" ? DateTime.add(now, { days: FACT_TTL_DAYS }) : null,
+      };
+      yield* fs
+        .makeDirectory(memoryDir(root), { recursive: true })
+        .pipe(
+          Effect.mapError((cause) =>
+            storeError(input.projectId, "create the memory directory", cause),
+          ),
+        );
+      yield* fs
+        .writeFileString(path.join(memoryDir(root), `${id}.md`), renderMemoryFile(entry))
+        .pipe(
+          Effect.mapError((cause) => storeError(input.projectId, "write the memory entry", cause)),
+        );
+      yield* writeIndex(
+        input.projectId,
+        root,
+        entries.filter((candidate) => candidate.id !== id).concat(entry),
+      );
+      return entry;
+    },
+  );
+
   const forget: CirceProjectMemoryShape["forget"] = Effect.fn("CirceProjectMemory.forget")(
     function* (input) {
-      const current = yield* Ref.get(store);
-      const entry = current.get(input.entryId);
-      if (entry === undefined || entry.projectId !== input.projectId) {
-        return { forgotten: false };
-      }
+      const root = yield* workspaceRoot(input.projectId);
+      const entries = yield* readEntries(input.projectId, root);
+      const current = entries.find((entry) => entry.id === input.entryId);
+      if (current === undefined) return { forgotten: false };
       const retired: CirceMemoryEntry = {
-        ...entry,
+        ...current,
         status: "retired",
         updatedAt: yield* DateTime.now,
       };
-      yield* Ref.update(store, (map) => {
-        const next = new Map(map);
-        next.set(entry.id, retired);
-        return next;
-      });
+      yield* fs
+        .makeDirectory(retiredDir(root), { recursive: true })
+        .pipe(
+          Effect.mapError((cause) =>
+            storeError(input.projectId, "create the retired directory", cause),
+          ),
+        );
+      yield* fs
+        .writeFileString(path.join(retiredDir(root), `${retired.id}.md`), renderMemoryFile(retired))
+        .pipe(
+          Effect.mapError((cause) => storeError(input.projectId, "retire the memory entry", cause)),
+        );
+      yield* fs
+        .remove(path.join(memoryDir(root), `${retired.id}.md`))
+        .pipe(Effect.orElseSucceed(() => undefined));
+      yield* writeIndex(
+        input.projectId,
+        root,
+        entries.filter((entry) => entry.id !== input.entryId),
+      );
       return { forgotten: true };
     },
   );

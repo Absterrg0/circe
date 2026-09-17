@@ -6,7 +6,9 @@ import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../desktopUse/DesktopUse.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { make } from "./CirceComputerUse.ts";
+import { CirceMissionCancellationLive } from "./CirceMissionCancellation.ts";
 
 const dump = JSON.stringify({
   elements: [
@@ -44,6 +46,7 @@ const testLayer = (input: {
   readonly decisions: ReadonlyArray<string>;
   readonly operations: Array<string>;
   readonly actResult?: string;
+  readonly cancellation?: Layer.Layer<CirceMissionCancellation>;
 }) => {
   let index = 0;
   return Layer.effect(CirceComputerUse, make({ backend: "linux-x11" })).pipe(
@@ -78,11 +81,16 @@ const testLayer = (input: {
         },
       }),
     ),
+    Layer.provide(input.cancellation ?? CirceMissionCancellationLive),
   );
 };
 
 const run = (
-  input: { readonly goal: string; readonly confirmed?: boolean },
+  input: {
+    readonly goal: string;
+    readonly confirmed?: boolean;
+    readonly requestMetadata?: { readonly requestId: string };
+  },
   layer: Layer.Layer<CirceComputerUse>,
 ) =>
   Effect.runSync(
@@ -91,6 +99,7 @@ const run = (
       return yield* computerUse.run({
         goal: input.goal,
         ...(input.confirmed === undefined ? {} : { confirmed: input.confirmed }),
+        ...(input.requestMetadata === undefined ? {} : { requestMetadata: input.requestMetadata }),
       });
     }).pipe(Effect.provide(layer)),
   );
@@ -133,5 +142,32 @@ describe("Circe computer use", () => {
     });
     // No coordinate fallback fired against the captured bounds.
     expect(operations).toEqual([]);
+  });
+
+  it("registers a mission, honors a stop, and clears it when done", () => {
+    const operations: Array<string> = [];
+    const calls: Array<string> = [];
+    const cancellation = Layer.mock(CirceMissionCancellation)({
+      register: (requestId) =>
+        Effect.sync(() => {
+          calls.push(`register:${requestId}`);
+        }),
+      isCancelled: () => Effect.succeed(true),
+      clear: (requestId) =>
+        Effect.sync(() => {
+          calls.push(`clear:${requestId}`);
+        }),
+    });
+    const result = run(
+      {
+        goal: "save the document",
+        confirmed: true,
+        requestMetadata: { requestId: "mission-stop-2" },
+      },
+      testLayer({ decisions: ["click", "done"], operations, cancellation }),
+    );
+    expect(result).toEqual({ status: "cancelled", message: "Stopped.", steps: 0 });
+    expect(operations).toEqual([]);
+    expect(calls).toEqual(["register:mission-stop-2", "clear:mission-stop-2"]);
   });
 });

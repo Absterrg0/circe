@@ -1,5 +1,6 @@
 import { lookupCirceQuickAnswer } from "@circe/client-runtime/operations/circeLiveVoice";
 import {
+  cancelCirceMission,
   executeCirceInstruction,
   useCirceBrowser,
   useCirceComputer,
@@ -30,6 +31,11 @@ export const circeEnvironment = {
   computerUse: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:computer-use",
     execute: (input: import("@circe/contracts").CirceComputerUseInput) => useCirceComputer(input),
+  }),
+  cancelMission: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:cancel-mission",
+    execute: (input: import("@circe/contracts").CirceCancelMissionInput) =>
+      cancelCirceMission(input),
   }),
   presentations: createEnvironmentRpcSubscriptionAtomFamily(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:presentation-stream",

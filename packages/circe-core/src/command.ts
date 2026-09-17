@@ -206,6 +206,14 @@ export type CirceCommandNeedsInput = {
       readonly label: string;
     }>;
   };
+  /**
+   * A bounded assistant action the classifier chose but could not ground: a
+   * lookup missing its place, or a launch missing its site. The node turns this
+   * into a durable pending frame and resumes deterministically on the answer.
+   */
+  readonly refinement?:
+    | { readonly kind: "lookup"; readonly lookupKind: "weather" | "time" }
+    | { readonly kind: "website" };
 };
 
 export type CirceCommandInterpretation =

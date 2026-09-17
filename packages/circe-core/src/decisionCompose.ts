@@ -44,11 +44,15 @@ interface SingleCommand {
   readonly website?: CirceSemanticProposal["website"];
 }
 
-const clarify = (prompt: string): DecisionComposition => ({
+const clarify = (
+  prompt: string,
+  refinement?: NonNullable<CirceCommandNeedsInput["refinement"]>,
+): DecisionComposition => ({
   status: "needs-input",
   reason: "unsupported-command",
   prompt,
   choices: [],
+  ...(refinement === undefined ? {} : { refinement }),
 });
 
 const needsTarget = (prompt: string): DecisionComposition => ({
@@ -265,12 +269,19 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
       return clarify("I couldn't tell which lookup you wanted. Say it again.");
     }
     if (tool.action === "lookup") {
+      const lookupKind = tool.name === "weather" ? "weather" : "time";
       const location = choice(`tool_${tool.name}_location`, CIRCE_DECISION_THRESHOLDS.readOnly);
       if (location === undefined || location.choice === NONE_OPTION) {
-        return clarify("I couldn't tell which place you meant. Name the city.");
+        return clarify("I couldn't tell which place you meant. Name the city.", {
+          kind: "lookup",
+          lookupKind,
+        });
       }
       if (locateNameSpan(source, location.choice) === undefined) {
-        return clarify("I couldn't match that place to what you said. Name the city again.");
+        return clarify("I couldn't match that place to what you said. Name the city again.", {
+          kind: "lookup",
+          lookupKind,
+        });
       }
       const day = choice(`tool_${tool.name}_day`, CIRCE_DECISION_THRESHOLDS.predicate)?.choice;
       return {
@@ -280,7 +291,7 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
         effort: null,
         answer: null,
         lookup: {
-          kind: tool.name === "weather" ? "weather" : "time",
+          kind: lookupKind,
           location: location.choice,
           day: asDay(day),
         },
@@ -289,10 +300,14 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
     if (tool.action === "open-website") {
       const website = choice("tool_open-website_website", CIRCE_DECISION_THRESHOLDS.readOnly);
       if (website === undefined || website.choice === NONE_OPTION) {
-        return clarify("I couldn't tell which site you wanted. Say the site or address.");
+        return clarify("I couldn't tell which site you wanted. Say the site or address.", {
+          kind: "website",
+        });
       }
       if (locateNameSpan(source, website.choice) === undefined) {
-        return clarify("I couldn't match that site to what you said. Say it again.");
+        return clarify("I couldn't match that site to what you said. Say it again.", {
+          kind: "website",
+        });
       }
       return {
         action: "open-website",

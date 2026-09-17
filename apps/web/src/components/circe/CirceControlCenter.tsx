@@ -2,12 +2,17 @@ import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
   type EnvironmentId,
   type CirceProjectRef,
+  type CirceTaskDeskView,
   type CirceTaskPendingReply,
   type CirceTaskRef,
   type CirceTaskState,
   type ThreadId,
 } from "@circe/contracts";
 import type { CirceMeshCatalog, CirceMeshNode } from "@circe/client-runtime/circe/mesh";
+import {
+  buildCirceNeedsAttention,
+  circeNeedsAttentionIsEmpty,
+} from "@circe/client-runtime/circe/overview";
 import { useNavigate } from "@tanstack/react-router";
 import {
   MicIcon,
@@ -259,16 +264,9 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
   );
   const [commandState, setCommandState] = useState(getCirceCommandState);
   const { pending: commandPending, busy: commandBusy, awaitingAnswer, canRetry } = commandState;
-  const [tasks, setTasks] = useState<
-    ReadonlyArray<{
-      threadId: ThreadId;
-      title: string;
-      state: CirceTaskState;
-      projectRef: CirceProjectRef;
-      taskRef?: CirceTaskRef;
-      pendingReply?: CirceTaskPendingReply | null;
-    }>
-  >([]);
+  // The full desk (not only its recent rows) so the overview can project the
+  // session's blocking frame and every task waiting on a person.
+  const [desk, setDesk] = useState<CirceTaskDeskView | null>(null);
   const [liveVoice, setLiveVoice] = useState(getCirceLiveVoiceUiState);
   const getTaskDesk = useAtomCommand(circeMeshEnvironment.getTaskDesk, {
     reportFailure: false,
@@ -289,30 +287,46 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
   useEffect(() => {
     // Drop rows the moment the selected node changes so a stale row from
     // another node can never be picked; failures clear them the same way.
-    setTasks([]);
+    setDesk(null);
     if (selectedNodeId === null) return;
     let active = true;
     void getTaskDesk({ nodeId: selectedNodeId }).then((result) => {
       if (!active) return;
       if (result._tag !== "Success") {
-        setTasks([]);
+        setDesk(null);
         return;
       }
-      setTasks(
-        result.value.recentTasks.map((task) => ({
-          threadId: task.threadId,
-          title: task.title,
-          state: task.state,
-          projectRef: task.projectRef,
-          taskRef: task.taskRef,
-          ...(task.pendingReply === undefined ? {} : { pendingReply: task.pendingReply }),
-        })),
-      );
+      setDesk(result.value);
     });
     return () => {
       active = false;
     };
   }, [getTaskDesk, selectedNodeId, targetSnapshot?.contextThreadId]);
+
+  const tasks = useMemo<
+    ReadonlyArray<{
+      threadId: ThreadId;
+      title: string;
+      state: CirceTaskState;
+      projectRef: CirceProjectRef;
+      taskRef?: CirceTaskRef;
+      pendingReply?: CirceTaskPendingReply | null;
+    }>
+  >(
+    () =>
+      desk === null
+        ? []
+        : desk.recentTasks.map((task) => ({
+            threadId: task.threadId,
+            title: task.title,
+            state: task.state,
+            projectRef: task.projectRef,
+            taskRef: task.taskRef,
+            ...(task.pendingReply === undefined ? {} : { pendingReply: task.pendingReply }),
+          })),
+    [desk],
+  );
+  const attention = useMemo(() => (desk === null ? null : buildCirceNeedsAttention(desk)), [desk]);
 
   // Busy means a submission is on the wire; waiting means the runtime owns
   // paused or queued work and the answer goes through Send. Selectors stay
@@ -332,6 +346,24 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
     }
     setDraft("");
   }, [commandPending, canRetry]);
+
+  const focusAttentionTask = useCallback(
+    (threadId: ThreadId) => {
+      const task =
+        desk?.recentTasks.find((candidate) => candidate.threadId === threadId) ??
+        (desk?.focusedTask?.threadId === threadId ? desk.focusedTask : undefined);
+      if (task === undefined) return;
+      requestCirceTarget({
+        type: "select-task",
+        projectRef: task.projectRef,
+        threadId: task.threadId,
+        title: task.title,
+        ...(task.taskRef === undefined ? {} : { taskRef: task.taskRef }),
+        ...(task.pendingReply === undefined ? {} : { pendingReply: task.pendingReply }),
+      });
+    },
+    [desk],
+  );
 
   const projects = catalog?.projects ?? [];
   const targetProject = projects.find(
@@ -389,6 +421,34 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
           }
         </span>
       </header>
+      {attention !== null && !circeNeedsAttentionIsEmpty(attention) ? (
+        <div className="circe-attention" role="status" aria-live="polite">
+          <div className="circe-attention-head">
+            <CircleAlertIcon className="size-3.5" aria-hidden />
+            <span>Needs attention</span>
+          </div>
+          {attention.frame !== null ? (
+            <p className="circe-attention-frame">{attention.frame.prompt}</p>
+          ) : null}
+          {attention.tasks.map((entry) => (
+            <button
+              key={entry.threadId}
+              type="button"
+              className="circe-attention-row"
+              onClick={() => focusAttentionTask(entry.threadId)}
+            >
+              <span className="circe-attention-title">{entry.title}</span>
+              <span className="circe-attention-reason" data-reason={entry.reason}>
+                {entry.reason === "approval"
+                  ? "Approval"
+                  : entry.reason === "input"
+                    ? "Input"
+                    : "Failed"}
+              </span>
+            </button>
+          ))}
+        </div>
+      ) : null}
       <div className="circe-agent-tabs" aria-label="Task views">
         <button
           type="button"

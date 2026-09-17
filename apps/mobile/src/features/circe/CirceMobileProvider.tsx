@@ -88,6 +88,11 @@ import {
   type MobileCircePendingRoute,
 } from "./mobileCirceRouting";
 
+/** A durable refinement is not a proposal; it carries no action or dispatch. */
+const isCirceInterpretClarification = (
+  value: import("@circe/contracts").CirceInterpretResult,
+): value is import("@circe/contracts").CirceInterpretClarification => "status" in value;
+
 export type MobileCircePresentation = {
   readonly event: CircePresentationEvent;
   readonly executionNodeId: EnvironmentId;
@@ -170,6 +175,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportDefect: false,
   });
   const computerUse = useMobileAtomCommand(circeEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const cancelMissionCommand = useMobileAtomCommand(circeEnvironment.cancelMission, {
     reportFailure: false,
     reportDefect: false,
   });
@@ -302,6 +311,15 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     readonly nodeId: EnvironmentId;
     readonly originInteractionId: string;
   } | null>(null);
+  // The running browser or computer mission, addressed by the request id its
+  // loop polls for a stop. Cleared when the mission settles.
+  const activeMissionRef = useRef<{
+    readonly requestId: string;
+    readonly nodeId: EnvironmentId;
+  } | null>(null);
+  // The durable lookup or website question the user is answering, so the next
+  // submission binds its answer to that exact frame. Cleared when sent.
+  const pendingRefinementRef = useRef<{ readonly frameId: string } | null>(null);
   // Additional inputs arriving while one turn submits queue behind it by
   // default. Only an explicit cancel (button or typed cancel) plus a new
   // instruction replaces; a new capture never auto-cancels in-flight work.
@@ -726,6 +744,18 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   const cancelInflightRequest = useCallback(async (): Promise<
     "cancelled" | "already-accepted" | "unknown" | "failed" | "idle"
   > => {
+    // A running surface mission is stopped by request id on its node; the loop
+    // halts at its next step boundary and reports cancelled.
+    const activeMission = activeMissionRef.current;
+    if (activeMission !== null) {
+      const stop = await cancelMissionCommand({
+        environmentId: activeMission.nodeId,
+        input: { requestId: activeMission.requestId },
+      }).catch(() => null);
+      const cancelled = stop !== null && stop._tag === "Success" && stop.value.cancelled;
+      setMessage(cancelled ? "Stopping the mission…" : "That mission already finished.");
+      return cancelled ? "cancelled" : "idle";
+    }
     const activeInterpret = activeInterpretRef.current;
     if (activeInterpret !== null) {
       const interpretOutcome = await cancelRequestCommand({
@@ -787,7 +817,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     }
     setMessage("Couldn't confirm cancellation. Waiting for the request to answer.");
     return "unknown";
-  }, [cancelRequestCommand]);
+  }, [cancelMissionCommand, cancelRequestCommand]);
 
   const createTextTurn = useCallback((): MobileCirceDraft => {
     return createMobileCirceTurn({
@@ -1098,8 +1128,9 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   const startSurfaceMission = useCallback(
     async (surface: "browser" | "computer", goal: string, nodeId: EnvironmentId) => {
       surfaceConfirmedRef.current = true;
+      const requestId = uuidv4();
       const requestMetadata = {
-        requestId: uuidv4(),
+        requestId,
         origin: { originInteractionId: nextOriginInteractionId() },
       };
       setMessage(
@@ -1107,6 +1138,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           ? `Working on the browser: ${goal}`
           : `Working on the computer: ${goal}`,
       );
+      activeMissionRef.current = { requestId, nodeId };
       const result =
         surface === "browser"
           ? await browserUse({
@@ -1117,6 +1149,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
               environmentId: nodeId,
               input: { goal, confirmed: true, requestMetadata },
             }).catch(() => null);
+      activeMissionRef.current = null;
       const value = result !== null && result._tag === "Success" ? result.value : null;
       setMessage(value?.message ?? "I couldn't run that mission.");
     },
@@ -1501,6 +1534,9 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         inputMode: draft.inputMode,
         ...(pendingHint === undefined ? {} : { pendingHint }),
         tasks: evidenceTasks,
+        ...(pendingRefinementRef.current === null
+          ? {}
+          : { clarificationFrameId: pendingRefinementRef.current.frameId }),
         requestMetadata: {
           requestId: turnRequestId,
           origin: { originInteractionId: interpretOrigin },
@@ -1529,6 +1565,19 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         return;
       }
       const executionProposal = interpreted.value;
+      // A bound answer was consumed; the node owns the frame from here on.
+      if (pendingRefinementRef.current !== null) pendingRefinementRef.current = null;
+      if (isCirceInterpretClarification(executionProposal)) {
+        // The classifier chose a lookup or launch but could not ground its
+        // target. The node stored a durable question; show it and keep the
+        // frame so the next submission binds its answer to it.
+        if (executionProposal.frameId !== undefined) {
+          pendingRefinementRef.current = { frameId: executionProposal.frameId };
+        }
+        setMessage(executionProposal.prompt);
+        drainQueuedInput();
+        return;
+      }
       // A lookup or website launch is a bounded assistant action with no
       // project, task, provider, or thread. The model proposed it; a node runs
       // the lookup and this phone opens the site.

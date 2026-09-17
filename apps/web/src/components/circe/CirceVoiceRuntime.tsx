@@ -105,6 +105,11 @@ import {
   resolveCirceVoiceProjectChoice,
 } from "./CirceManager.logic";
 
+/** A durable refinement is not a proposal; it carries no action or dispatch. */
+const isCirceInterpretClarification = (
+  value: import("@circe/contracts").CirceInterpretResult,
+): value is import("@circe/contracts").CirceInterpretClarification => "status" in value;
+
 interface CirceVoiceRuntimeProps {
   readonly routeTarget: CirceCommandTarget | null;
   readonly onTargetConsumed: () => void;
@@ -276,6 +281,10 @@ export function CirceVoiceRuntime({
     reportFailure: false,
     reportDefect: false,
   });
+  const cancelMission = useAtomCommand(circeLiveVoiceEnvironment.cancelMission, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const executeInstruction = useAtomCommand(circeMeshEnvironment.execute, {
     reportFailure: false,
     reportDefect: false,
@@ -312,6 +321,15 @@ export function CirceVoiceRuntime({
     readonly nodeId: EnvironmentId;
     readonly origin?: CirceRequestMetadata["origin"];
   } | null>(null);
+  // The one running surface mission, addressed by the request id its loop
+  // polls for a stop. Cleared when the mission settles.
+  const activeMissionRef = useRef<{
+    readonly requestId: string;
+    readonly nodeId: EnvironmentId;
+  } | null>(null);
+  // The durable lookup or website question the user is answering, so the next
+  // submission binds its answer to that exact frame. Cleared when sent.
+  const pendingRefinementRef = useRef<{ readonly frameId: string } | null>(null);
   // Repeated conversational turns reuse their answer instead of paying the
   // supervisor round trip again; command proposals are never cached.
   const conversationCacheRef = useRef(createCirceConversationAnswerCache());
@@ -1165,6 +1183,27 @@ export function CirceVoiceRuntime({
         syncPending();
         return;
       }
+      // A running surface mission is stopped by request id on its node; the
+      // loop halts at its next step boundary and reports cancelled.
+      const activeMission = activeMissionRef.current;
+      if (activeMission !== null) {
+        emitFeedback({
+          inputMode: action.inputMode,
+          kind: "working",
+          text: "Stopping the mission…",
+          speak: false,
+        });
+        syncPending();
+        try {
+          await cancelMission({
+            environmentId: activeMission.nodeId,
+            input: { requestId: activeMission.requestId },
+          });
+        } catch {
+          // Best-effort: a mission that already settled stays settled.
+        }
+        return;
+      }
       emitFeedback({
         inputMode: action.inputMode,
         kind: "done",
@@ -1177,7 +1216,14 @@ export function CirceVoiceRuntime({
       });
       syncPending();
     },
-    [cancelInteractionSpeech, cancelPendingClarification, cancelRequest, emitFeedback, syncPending],
+    [
+      cancelInteractionSpeech,
+      cancelMission,
+      cancelPendingClarification,
+      cancelRequest,
+      emitFeedback,
+      syncPending,
+    ],
   );
   useEffect(
     () =>
@@ -1332,6 +1378,7 @@ export function CirceVoiceRuntime({
         requestId,
         origin: { originInteractionId: circeReporterIdentity() },
       };
+      activeMissionRef.current = { requestId, nodeId };
       const result =
         surface === "browser"
           ? await browserUse({
@@ -1342,6 +1389,7 @@ export function CirceVoiceRuntime({
               environmentId: nodeId,
               input: { goal, confirmed: true, requestMetadata },
             }).catch(() => null);
+      activeMissionRef.current = null;
       const value = result !== null && result._tag === "Success" ? result.value : null;
       emitFeedback({
         text: value?.message ?? "I couldn't run that mission.",
@@ -1806,6 +1854,9 @@ export function CirceVoiceRuntime({
               : { pendingHint: pendingHintForEvidence }),
             inputMode,
             tasks: evidenceTasks,
+            ...(pendingRefinementRef.current === null
+              ? {}
+              : { clarificationFrameId: pendingRefinementRef.current.frameId }),
             requestMetadata: {
               requestId: turnRequestId,
               origin: { originInteractionId: turnOrigin },
@@ -1850,6 +1901,28 @@ export function CirceVoiceRuntime({
             (interpreted !== null && interpreted._tag === "Success"
               ? interpreted.value
               : undefined);
+          // A bound answer was consumed; the node owns the frame from here on.
+          if (pendingRefinementRef.current !== null) pendingRefinementRef.current = null;
+          if (
+            interpretedProposal !== undefined &&
+            isCirceInterpretClarification(interpretedProposal)
+          ) {
+            // The classifier chose a lookup or launch but could not ground its
+            // target. The node stored a durable question; speak it and keep the
+            // frame so the next submission binds its answer to it.
+            if (interpretedProposal.frameId !== undefined) {
+              pendingRefinementRef.current = { frameId: interpretedProposal.frameId };
+            }
+            emitFeedback({
+              text: interpretedProposal.prompt,
+              kind: "needs-input",
+              inputMode,
+              captureId: voiceSubmission.captureId,
+              requestId: turnRequestId,
+            });
+            syncPending();
+            return;
+          }
           if (interpretedProposal !== undefined) {
             meshProposal = interpretedProposal;
             conversationCacheRef.current.set(conversationCacheKey, interpretedProposal);

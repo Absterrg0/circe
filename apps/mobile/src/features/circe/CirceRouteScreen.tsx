@@ -37,6 +37,7 @@ import type { AppSymbolName } from "../../components/AppSymbol";
 import { CirceOrb } from "../../components/circe-orb/CirceOrb";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
 import { CirceTabBar } from "./CirceTabBar";
+import { CirceNeedsAttention } from "./CirceNeedsAttention";
 import { ListeningChrome } from "./ListeningChrome";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
@@ -502,6 +503,24 @@ export function CirceRouteScreen() {
             onPress={() => enterVoice("dictation")}
             onLayout={onOrbLayout}
           />
+
+          <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+            <CirceNeedsAttention
+              desk={controller.desk}
+              onFocusTask={(threadId) => {
+                const task =
+                  controller.desk === null
+                    ? undefined
+                    : [
+                        ...(controller.desk.focusedTask === null
+                          ? []
+                          : [controller.desk.focusedTask]),
+                        ...controller.desk.recentTasks,
+                      ].find((candidate) => candidate.threadId === threadId);
+                if (task !== undefined) void controller.focusTask(task);
+              }}
+            />
+          </Animated.View>
 
           {devicesConnecting ? (
             // The environment registry is the honest source for "still coming
