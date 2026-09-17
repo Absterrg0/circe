@@ -146,6 +146,7 @@ export const CirceSemanticProposalAction = Schema.Literals([
   "lookup",
   "open-website",
   "browse",
+  "computer",
   "unsupported",
   "sequence",
 ]);
@@ -209,6 +210,14 @@ export const CirceSemanticProposal = Schema.Struct({
    * per session and the node grounds every step.
    */
   browserGoal: Schema.optional(
+    Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
+  ),
+  /**
+   * Present only when action is computer: the bounded desktop mission goal in
+   * the user's own words. Nonauthoritative; the origin client confirms once
+   * per session and the node grounds every step.
+   */
+  computerGoal: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),
   /**

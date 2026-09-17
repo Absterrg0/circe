@@ -22,6 +22,7 @@ import type {
   ThreadId,
 } from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
+import { resolveVoiceConfirmation } from "@circe/core/confirmation";
 import {
   answerCirceModelChoice,
   isCirceModelClarificationReason,
@@ -164,6 +165,14 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportFailure: false,
     reportDefect: false,
   });
+  const browserUse = useMobileAtomCommand(circeEnvironment.browserUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const computerUse = useMobileAtomCommand(circeEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const refreshMesh = useMobileAtomCommand(circeMeshEnvironment.refresh, {
@@ -262,6 +271,15 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     readonly sourceUtterance?: string;
     readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
     readonly modelSelection?: ModelSelection;
+  } | null>(null);
+  // Once a surface mission is confirmed, later missions in the same app session
+  // skip the prompt. The node treats `confirmed` as a client assertion, so this
+  // is user-facing consent, not authorization.
+  const surfaceConfirmedRef = useRef(false);
+  const pendingSurfaceRef = useRef<{
+    readonly surface: "browser" | "computer";
+    readonly goal: string;
+    readonly nodeId: EnvironmentId;
   } | null>(null);
   // A project/task switch must await its server-frame cancel before the new
   // selection commits; otherwise the next command races the old frame and is
@@ -1072,6 +1090,39 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     [adoptExplicitFocus, catalog, execute, refreshTaskDesk, removeActiveTurn, replaceActiveTurn],
   );
 
+  /**
+   * Runs one confirmed surface mission on the target node. `confirmed` is the
+   * client's assertion that the user consented; the first mission parks for a
+   * spoken yes before it reaches here.
+   */
+  const startSurfaceMission = useCallback(
+    async (surface: "browser" | "computer", goal: string, nodeId: EnvironmentId) => {
+      surfaceConfirmedRef.current = true;
+      const requestMetadata = {
+        requestId: uuidv4(),
+        origin: { originInteractionId: nextOriginInteractionId() },
+      };
+      setMessage(
+        surface === "browser"
+          ? `Working on the browser: ${goal}`
+          : `Working on the computer: ${goal}`,
+      );
+      const result =
+        surface === "browser"
+          ? await browserUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null)
+          : await computerUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null);
+      const value = result !== null && result._tag === "Success" ? result.value : null;
+      setMessage(value?.message ?? "I couldn't run that mission.");
+    },
+    [browserUse, computerUse, nextOriginInteractionId, setMessage],
+  );
+
   const runInstruction = useCallback(
     async (draft: MobileCirceDraft, text: string) => {
       // Verbatim source preserved for span authority; utterance checks trim
@@ -1089,6 +1140,27 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         void runInstruction(next.draft, next.text);
       };
       if (utterance.length === 0) return;
+      // A parked surface mission waits for one spoken yes. Anything else is a
+      // fresh instruction that supersedes the prompt.
+      const pendingSurface = pendingSurfaceRef.current;
+      if (pendingSurface !== null) {
+        pendingSurfaceRef.current = null;
+        const verdict = resolveVoiceConfirmation(utterance);
+        if (verdict === "accept") {
+          await startSurfaceMission(
+            pendingSurface.surface,
+            pendingSurface.goal,
+            pendingSurface.nodeId,
+          );
+          drainQueuedInput();
+          return;
+        }
+        if (verdict === "decline") {
+          setMessage("Okay, I won't control it.");
+          drainQueuedInput();
+          return;
+        }
+      }
       // Additional input queues by default; only an explicit cancel replaces.
       // Never auto-cancel in-flight interpret or execute on a new capture.
       if (submittingRef.current || activeInterpretRef.current !== null) {
@@ -1518,6 +1590,38 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         }
         return;
       }
+      // A multi-step surface mission runs on the target node, not on the
+      // phone. The first mission in an app session parks for a spoken yes; the
+      // node grounds every step.
+      const surfaceGoal =
+        executionProposal.action === "browse" && typeof executionProposal.browserGoal === "string"
+          ? { surface: "browser" as const, goal: executionProposal.browserGoal }
+          : executionProposal.action === "computer" &&
+              typeof executionProposal.computerGoal === "string"
+            ? { surface: "computer" as const, goal: executionProposal.computerGoal }
+            : null;
+      if (surfaceGoal !== null) {
+        const nodeId = semanticNode.nodeId;
+        if (!surfaceConfirmedRef.current) {
+          pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
+          setPreparedOriginInteractionId(nextOriginInteractionId());
+          setMessage(
+            `I'll control the ${surfaceGoal.surface === "browser" ? "browser" : "computer"} in this session to ${surfaceGoal.goal}. Reply yes to start.`,
+          );
+          drainQueuedInput();
+          return;
+        }
+        submittingRef.current = true;
+        setSubmitting(true);
+        try {
+          await startSurfaceMission(surfaceGoal.surface, surfaceGoal.goal, nodeId);
+        } finally {
+          submittingRef.current = false;
+          setSubmitting(false);
+          drainQueuedInput();
+        }
+        return;
+      }
       // Converse is model-decided, never regex-shortcut before inference. Run
       // it project-free on the semantic node with the same request identity
       // so an explicit cancel aborts it; answers stay best-effort.
@@ -1822,6 +1926,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     [
       cancelServerFrame,
       quickLookup,
+      startSurfaceMission,
       connectedEnvironments,
       catalog,
       catalog?.nodes,

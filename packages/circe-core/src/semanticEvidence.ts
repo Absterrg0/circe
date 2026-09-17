@@ -89,6 +89,12 @@ export const CirceSemanticProposalAction = Schema.Literals([
    */
   "browse",
   /**
+   * Operate the desktop toward a goal over several grounded accessibility
+   * steps. The goal is the user's own instruction; the origin client confirms
+   * once per session and the node runs the TypeSafe loop on its own screen.
+   */
+  "computer",
+  /**
    * Explicit refusal to act as one turn: compounds naming two independent
    * controls, and anything that needs no project or task work beyond a
    * clarification. The host always answers it with needs-input, so the
@@ -177,6 +183,10 @@ export const CirceSemanticProposal = Schema.Struct({
   ),
   /** Present only when action is browse: the bounded mission goal. */
   browserGoal: Schema.optional(
+    Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
+  ),
+  /** Present only when action is computer: the bounded desktop mission goal. */
+  computerGoal: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),
   /**

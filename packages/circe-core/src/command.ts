@@ -1313,7 +1313,8 @@ function interpretCirceCommandProposal(
   if (
     proposal.action === "lookup" ||
     proposal.action === "open-website" ||
-    proposal.action === "browse"
+    proposal.action === "browse" ||
+    proposal.action === "computer"
   ) {
     // The origin client intercepts these bounded actions before execute; a
     // proposal that reaches the Director without that path is refused rather
