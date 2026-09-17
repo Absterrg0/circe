@@ -39,6 +39,7 @@ import {
   type CirceModelDraft,
 } from "@circe/core/modelChoice";
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
+import { resolveVoiceConfirmation } from "@circe/core/confirmation";
 import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
 import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import type {
@@ -267,6 +268,14 @@ export function CirceVoiceRuntime({
     reportFailure: false,
     reportDefect: false,
   });
+  const browserUse = useAtomCommand(circeLiveVoiceEnvironment.browserUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const computerUse = useAtomCommand(circeLiveVoiceEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const executeInstruction = useAtomCommand(circeMeshEnvironment.execute, {
     reportFailure: false,
     reportDefect: false,
@@ -441,6 +450,15 @@ export function CirceVoiceRuntime({
     [speakFeedbackText],
   );
   const voiceClarificationRef = useRef<CircePendingClarification | null>(null);
+  // Desktop-only: the first surface mission of a session parks for one spoken
+  // yes. Confirmation is client consent, not authorization; the node treats
+  // `confirmed` as an assertion.
+  const surfaceConfirmedRef = useRef(false);
+  const pendingSurfaceRef = useRef<{
+    readonly surface: "browser" | "computer";
+    readonly goal: string;
+    readonly nodeId: EnvironmentId;
+  } | null>(null);
   const voiceSubmissionReadyRef = useRef(false);
   const submitVoiceInstructionRef = useRef<
     (submission: CirceVoiceSubmission) => Promise<void | "complete" | "pause">
@@ -1285,6 +1303,58 @@ export function CirceVoiceRuntime({
   };
 
   /**
+   * Desktop-only: runs one confirmed surface mission on the target node. The
+   * first mission of a session parks for a spoken yes before this is reached.
+   */
+  const startSurfaceMission = useCallback(
+    async (
+      surface: "browser" | "computer",
+      goal: string,
+      nodeId: EnvironmentId,
+      inputMode: SubmissionInputMode,
+    ) => {
+      surfaceConfirmedRef.current = true;
+      const requestId = randomUUID();
+      const captureId = `circe-surface-${requestId}`;
+      emitFeedback({
+        text:
+          surface === "browser"
+            ? `Working on the browser: ${goal}`
+            : `Working on the computer: ${goal}`,
+        kind: "working",
+        inputMode,
+        captureId,
+        requestId,
+        speak: false,
+      });
+      const requestMetadata = {
+        requestId,
+        origin: { originInteractionId: circeReporterIdentity() },
+      };
+      const result =
+        surface === "browser"
+          ? await browserUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null)
+          : await computerUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null);
+      const value = result !== null && result._tag === "Success" ? result.value : null;
+      emitFeedback({
+        text: value?.message ?? "I couldn't run that mission.",
+        kind: value === null ? "error" : "done",
+        inputMode,
+        captureId,
+        requestId,
+      });
+      syncPending();
+    },
+    [browserUse, computerUse, emitFeedback, syncPending],
+  );
+
+  /**
    * The single entry point for every submission: native transcripts, browser
    * speech results, and composer text share one cancel and resume policy.
    */
@@ -1299,6 +1369,31 @@ export function CirceVoiceRuntime({
   ): void => {
     const trimmed = text.trim();
     if (trimmed.length === 0) return;
+    // A parked surface mission waits for one spoken yes. Anything else is a
+    // fresh instruction that supersedes the prompt.
+    const pendingSurface = pendingSurfaceRef.current;
+    if (pendingSurface !== null) {
+      pendingSurfaceRef.current = null;
+      const verdict = resolveVoiceConfirmation(trimmed);
+      if (verdict === "accept") {
+        void startSurfaceMission(
+          pendingSurface.surface,
+          pendingSurface.goal,
+          pendingSurface.nodeId,
+          options.inputMode,
+        );
+        return;
+      }
+      if (verdict === "decline") {
+        emitFeedback({
+          text: "Okay, I won't control it.",
+          kind: "done",
+          inputMode: options.inputMode,
+          captureId: options.captureId,
+        });
+        return;
+      }
+    }
     const pendingClarification = voiceClarificationRef.current;
     if (pendingClarification !== null) {
       if (isCirceVoiceClarificationDiscard(trimmed)) {
@@ -1782,6 +1877,36 @@ export function CirceVoiceRuntime({
               });
               syncPending();
               return;
+            }
+            // A multi-step surface mission runs on the target node, not in the
+            // browser tab. It is a desktop capability: the Electron app owns
+            // the orb, tray, hotkey, and screen, so a plain web tab skips it.
+            if (window.desktopBridge !== undefined) {
+              const surfaceGoal =
+                interpretedProposal.action === "browse" &&
+                typeof interpretedProposal.browserGoal === "string"
+                  ? { surface: "browser" as const, goal: interpretedProposal.browserGoal }
+                  : interpretedProposal.action === "computer" &&
+                      typeof interpretedProposal.computerGoal === "string"
+                    ? { surface: "computer" as const, goal: interpretedProposal.computerGoal }
+                    : null;
+              if (surfaceGoal !== null) {
+                const nodeId = semanticNode.nodeId;
+                if (!surfaceConfirmedRef.current) {
+                  pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
+                  emitFeedback({
+                    text: `I'll control the ${surfaceGoal.surface === "browser" ? "browser" : "computer"} in this session to ${surfaceGoal.goal}. Say yes to start.`,
+                    kind: "needs-input",
+                    inputMode,
+                    captureId: voiceSubmission.captureId,
+                    requestId: turnRequestId,
+                  });
+                  syncPending();
+                  return;
+                }
+                await startSurfaceMission(surfaceGoal.surface, surfaceGoal.goal, nodeId, inputMode);
+                return;
+              }
             }
             // Converse is model-decided, never a pre-inference shortcut. Run
             // it project-free on the semantic node with the same request
@@ -2838,6 +2963,7 @@ export function CirceVoiceRuntime({
       catalogPending,
       catalogReady,
       quickLookup,
+      startSurfaceMission,
       converseInstruction,
       executeInstruction,
       interpretInstruction,
