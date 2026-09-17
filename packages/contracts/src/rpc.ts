@@ -1,6 +1,12 @@
 import { CirceQuickLookupInput, CirceQuickLookupResult } from "./circeQuickActions.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
+import {
+  CirceMemoryFetchInput,
+  CirceMemoryFetchResult,
+  CirceMemoryIndex,
+  CirceMemoryIndexInput,
+} from "./projectMemory.ts";
 import { OrchestrationDispatchCommandError } from "./orchestration.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -380,6 +386,8 @@ export const WS_METHODS = {
   circeQuickLookup: "circe.quickLookup",
   circeBrowserUse: "circe.browserUse",
   circeComputerUse: "circe.computerUse",
+  circeMemoryIndex: "circe.memoryIndex",
+  circeMemoryFetch: "circe.memoryFetch",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
@@ -661,6 +669,18 @@ const WsCirceBrowserUseRpc = Rpc.make(WS_METHODS.circeBrowserUse, {
 const WsCirceComputerUseRpc = Rpc.make(WS_METHODS.circeComputerUse, {
   payload: CirceComputerUseInput,
   success: CirceComputerUseResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCirceMemoryIndexRpc = Rpc.make(WS_METHODS.circeMemoryIndex, {
+  payload: CirceMemoryIndexInput,
+  success: CirceMemoryIndex,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCirceMemoryFetchRpc = Rpc.make(WS_METHODS.circeMemoryFetch, {
+  payload: CirceMemoryFetchInput,
+  success: CirceMemoryFetchResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1825,6 +1845,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -1842,6 +1864,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2031,6 +2055,8 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2051,6 +2077,8 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeQuickLookup,
   WS_METHODS.circeBrowserUse,
   WS_METHODS.circeComputerUse,
+  WS_METHODS.circeMemoryIndex,
+  WS_METHODS.circeMemoryFetch,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,

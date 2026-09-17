@@ -2,6 +2,8 @@ import {
   WS_METHODS,
   type CirceBrowserUseInput,
   type CirceCancelRequestInput,
+  type CirceMemoryFetchInput,
+  type CirceMemoryIndexInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
   type CirceInterpretInput,
@@ -61,6 +63,20 @@ export const useCirceComputer = Effect.fn("Circe.computerUse")(function* (
   input: import("@circe/contracts").CirceComputerUseInput,
 ) {
   return yield* request(WS_METHODS.circeComputerUse, input);
+});
+
+/** The compact project memory index: titles and costs, not bodies. */
+export const getCirceMemoryIndex = Effect.fn("Circe.memoryIndex")(function* (
+  input: CirceMemoryIndexInput,
+) {
+  return yield* request(WS_METHODS.circeMemoryIndex, input);
+});
+
+/** One memory body, returned already labeled with its provenance. */
+export const fetchCirceMemory = Effect.fn("Circe.memoryFetch")(function* (
+  input: CirceMemoryFetchInput,
+) {
+  return yield* request(WS_METHODS.circeMemoryFetch, input);
 });
 
 /** Read the authenticated device's Host-owned task focus and bounded history. */

@@ -3,6 +3,7 @@ import { runCirceQuickLookup } from "../Services/CirceQuickLookup.ts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
+import { renderMemoryBody } from "@circe/core/projectMemory";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -45,6 +46,7 @@ import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
+import { CirceProjectMemory } from "../Services/CirceProjectMemory.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
@@ -290,6 +292,8 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeMemoryIndex]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeMemoryFetch]: AuthOrchestrationReadScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -307,6 +311,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const circe = yield* CirceController.CirceController;
     const browserUse = yield* CirceBrowserUse;
     const computerUse = yield* CirceComputerUse;
+    const projectMemory = yield* CirceProjectMemory;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
     const projectLexicon = yield* CirceProjectLexicon;
@@ -446,6 +451,37 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                     })
                   : computerUse.run(input),
                 { "rpc.aggregate": "circe.computer" },
+              ),
+            // The memory surface is read-only on the wire: the model lists the
+            // index and fetches bodies on demand. Writes go through the
+            // coordinator so promotion policy is never bypassed by a tool.
+            [WS_METHODS.circeMemoryIndex]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryIndex,
+                projectMemory.index(input.projectId),
+                {
+                  "rpc.aggregate": "circe.memory",
+                },
+              ),
+            [WS_METHODS.circeMemoryFetch]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryFetch,
+                Effect.gen(function* () {
+                  const entry = yield* projectMemory.get(input.projectId, input.entryId);
+                  if (entry === null) return { found: false as const };
+                  return {
+                    found: true as const,
+                    text: renderMemoryBody({
+                      id: entry.id,
+                      kind: entry.kind,
+                      source: entry.source,
+                      title: entry.title,
+                      body: entry.body,
+                      updatedAt: DateTime.formatIso(entry.updatedAt),
+                    }),
+                  };
+                }),
+                { "rpc.aggregate": "circe.memory" },
               ),
             // Release is intentionally not gated on presetOffersVoice like start
             // is: it is a cleanup path, and a session minted before a preset

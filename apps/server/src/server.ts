@@ -136,6 +136,7 @@ import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
+import { CirceProjectMemoryLive } from "./circe/Layers/CirceProjectMemory.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
@@ -650,6 +651,8 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CirceBrowserUseLive),
         // Desktop missions run on this node's own screen.
         Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
+        // Project memory is node-local, so coordinator turns and workers share one store.
+        Layer.provide(CirceProjectMemoryLive),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),
