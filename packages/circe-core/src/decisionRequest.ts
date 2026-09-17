@@ -161,6 +161,8 @@ const ACTION_CRITERIA: Readonly<Record<CirceSemanticProposalAction, string>> = {
   converse: "Answer a general question unrelated to any task or project.",
   lookup: "Answer weather or local time in a named place. No project or task.",
   "open-website": "Open a named site or web address on the user's device.",
+  browse:
+    "Operate a website toward a goal over several grounded steps; the origin client confirms first.",
   unsupported: "A request Circe cannot do as one action.",
   sequence: "Two or more genuinely independent commands in one turn.",
 };

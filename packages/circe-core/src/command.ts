@@ -1310,7 +1310,14 @@ function interpretCirceCommandProposal(
   // or task. The originating client runs it through the quick-action endpoint
   // or its own launcher, so a proposal that reaches the Director without that
   // path is refused rather than misread as a new task.
-  if (proposal.action === "lookup" || proposal.action === "open-website") {
+  if (
+    proposal.action === "lookup" ||
+    proposal.action === "open-website" ||
+    proposal.action === "browse"
+  ) {
+    // The origin client intercepts these bounded actions before execute; a
+    // proposal that reaches the Director without that path is refused rather
+    // than misread as new task work.
     return {
       status: "needs-input",
       reason: "unsupported-command",

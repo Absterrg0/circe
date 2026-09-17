@@ -145,6 +145,7 @@ export const CirceSemanticProposalAction = Schema.Literals([
   "converse",
   "lookup",
   "open-website",
+  "browse",
   "unsupported",
   "sequence",
 ]);
@@ -201,6 +202,14 @@ export const CirceSemanticProposal = Schema.Struct({
   /** Present only when action is open-website: a named site or web URL. */
   website: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
+  ),
+  /**
+   * Present only when action is browse: the bounded browser mission goal in
+   * the user's own words. Nonauthoritative; the origin client confirms once
+   * per session and the node grounds every step.
+   */
+  browserGoal: Schema.optional(
+    Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),
   /**
    * Ordered, independent commands for one turn. Present only for `sequence`,
