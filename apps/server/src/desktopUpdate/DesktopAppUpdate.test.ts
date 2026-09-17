@@ -66,7 +66,7 @@ const makeHarness = Effect.fn("test.make_desktop_app_update_harness")(function* 
   options: HarnessOptions = {},
 ) {
   const fs = yield* FileSystem.FileSystem;
-  const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "t3-desktop-app-update-test-" });
+  const baseDir = yield* fs.makeTempDirectoryScoped({ prefix: "circe-desktop-app-update-test-" });
   const requestIdDeferred = yield* Deferred.make<string>();
   const baseConfig = yield* ServerConfig.ServerConfig.pipe(
     Effect.provide(ServerConfig.layerTest(process.cwd(), baseDir)),
@@ -114,7 +114,7 @@ it.layer(NodeServices.layer)("desktop app update", (it) => {
       const noFd = yield* makeHarness({ controlFd: undefined });
       expect(noFd.service.available).toBe(false);
       expect((yield* noFd.service.run(() => Effect.void).pipe(Effect.flip)).reason).toContain(
-        "not started by the T3 Code desktop app",
+        "not started by the Circe desktop app",
       );
       const desktop = yield* makeHarness();
       expect(desktop.service.available).toBe(true);
@@ -162,7 +162,7 @@ it.layer(NodeServices.layer)("desktop app update", (it) => {
         ],
       });
       expect((yield* upToDate.service.run(() => Effect.void).pipe(Effect.flip)).reason).toBe(
-        "The T3 Code desktop app on this machine is already up to date on 1.2.3.",
+        "The Circe desktop app on this machine is already up to date on 1.2.3.",
       );
 
       const failed = yield* makeHarness({
