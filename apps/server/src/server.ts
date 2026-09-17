@@ -132,10 +132,7 @@ import * as UsageLimitSources from "./usage/UsageLimitSources.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
-import { CirceLocalModelLive } from "./circe/Layers/CirceLocalModel.ts";
-import { CirceCodexSupervisorLive } from "./circe/Layers/CirceCodexSupervisor.ts";
-import { CirceOpencodeSupervisorLive } from "./circe/Layers/CirceOpencodeSupervisor.ts";
-import { CirceGrokSupervisorLive } from "./circe/Layers/CirceGrokSupervisor.ts";
+import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import {
   CirceWsRpcHandlerExtensionLive,
   circeRpcScopeExtension,
@@ -554,10 +551,7 @@ const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
 );
 
 const RuntimeDependenciesLive = CirceControllerLive.pipe(
-  Layer.provideMerge(CirceLocalModelLive),
-  Layer.provideMerge(CirceCodexSupervisorLive),
-  Layer.provideMerge(CirceOpencodeSupervisorLive),
-  Layer.provideMerge(CirceGrokSupervisorLive),
+  Layer.provideMerge(CirceDecisionLive),
   Layer.provideMerge(OrchestrationCommandReceiptRepositoryLive),
   Layer.provideMerge(RuntimeCoreDependenciesLive),
   // Misc.

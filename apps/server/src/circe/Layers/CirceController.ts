@@ -46,7 +46,6 @@ import { CirceFollowUpDispatcherLive } from "./CirceFollowUpDispatcher.ts";
 import { CirceFollowUpDispatcher } from "../Services/CirceFollowUpDispatcher.ts";
 import { CirceTaskDesk } from "../Services/CirceTaskDesk.ts";
 import {
-  buildCirceFastSemanticPrompt,
   buildCirceSemanticPrompt,
   circeCommandIsDestructive,
   decodeCirceSemanticProposal,
@@ -63,24 +62,16 @@ import {
   type CirceCommandTask,
   type CircePlanStepBinding,
 } from "@circe/core/command";
+import { CirceDecision } from "../Services/CirceDecision.ts";
+import { CirceDecisionDisabledLive } from "./CirceDecision.ts";
 import {
-  tryBoundedLocalGrammar,
-  tryBoundedLocalGrammarForEvidence,
-} from "@circe/core/localGrammar";
-import { CirceLocalModel } from "../Services/CirceLocalModel.ts";
-import {
-  CirceCodexSupervisor,
-  type CirceCodexSupervisorAvailability,
-} from "../Services/CirceCodexSupervisor.ts";
-import {
-  CirceOpencodeSupervisor,
-  type CirceOpencodeSupervisorAvailability,
-} from "../Services/CirceOpencodeSupervisor.ts";
-import {
-  CirceGrokSupervisor,
-  type CirceGrokSupervisorAvailability,
-} from "../Services/CirceGrokSupervisor.ts";
-import { CirceLocalModelDisabledLive } from "./CirceLocalModel.ts";
+  decisionCatalogFromContext,
+  decisionCatalogFromEvidence,
+  decisionStateFromContext,
+  decisionStateFromEvidence,
+  runCirceDecisionTier,
+} from "../decisionTier.ts";
+import type { DecisionRequest } from "@circe/core/decision";
 import { getPendingCirceReplyState, isExpectedPendingReply } from "@circe/core/confirmation";
 import { deriveCirceTaskState, hasActiveCirceTurn } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
@@ -191,20 +182,6 @@ function buildMeshSemanticPrompt(input: {
     `Providers: ${JSON.stringify(providers)}`,
     `Devices: ${JSON.stringify(nodes)}`,
   ].join("\n");
-}
-
-/**
- * The provider family the active selection resolves to. Direct supervisor tiers
- * are used only for their own family, so a user is always supervised on the
- * subscription they actually run instead of another provider's quota.
- */
-function resolveCirceActiveDriver(
-  plan: { readonly provider: { readonly instanceId: unknown } } | null,
-  providers: ReadonlyArray<import("@t3tools/contracts").ServerProvider>,
-): string | null {
-  if (plan === null) return null;
-  const match = providers.find((provider) => provider.instanceId === plan.provider.instanceId);
-  return match === undefined ? null : String(match.driver);
 }
 
 const CIRCE_MAX_SEQUENCE_STEPS = 4;
@@ -332,44 +309,12 @@ const defaultInterpreterLayer = Layer.effect(
     const providerRegistry = yield* ProviderRegistry;
     const fileSystem = yield* FileSystem.FileSystem;
     const serverSettings = yield* ServerSettingsService;
-    // Optional so existing compositions without the tier keep working as
-    // disabled (zero workers, decline to the one provider call). Production
-    // provides CirceLocalModelLive; tests pass an explicit fake.
-    const localModelOpt = yield* Effect.serviceOption(CirceLocalModel);
-    const localModel = Option.getOrElse(localModelOpt, () => ({
-      infer: (_input: { readonly source: string }) =>
-        Effect.succeed({ status: "decline", reason: "local-model-disabled" } as const),
-    }));
-    // Optional fast supervisor (fx using the user's own subscription login).
-    // Absent means decline: the provider cascade below is unchanged.
-    // Optional direct Codex supervisor (ChatGPT subscription Responses API).
-    // Ahead of fx because it can send reasoning.effort=none. Absent is a decline.
-    const codexSupervisorOpt = yield* Effect.serviceOption(CirceCodexSupervisor);
-    const codexSupervisor = Option.getOrElse(codexSupervisorOpt, () => ({
-      availability: Effect.succeed({
-        available: false,
-      } satisfies CirceCodexSupervisorAvailability),
-      interpret: (_input: { readonly prompt: string }) =>
-        Effect.succeed({ status: "decline", reason: "codex-supervisor-disabled" } as const),
-    }));
-    // Optional direct OpenCode supervisor. Provider-based: an OpenCode user
-    // supervises on the OpenCode subscription, never another provider's.
-    const opencodeSupervisorOpt = yield* Effect.serviceOption(CirceOpencodeSupervisor);
-    const opencodeSupervisor = Option.getOrElse(opencodeSupervisorOpt, () => ({
-      availability: Effect.succeed({
-        available: false,
-      } satisfies CirceOpencodeSupervisorAvailability),
-      interpret: (_input: { readonly prompt: string }) =>
-        Effect.succeed({ status: "decline", reason: "opencode-supervisor-disabled" } as const),
-    }));
-    // Optional direct Grok supervisor (xAI CLI proxy). Provider-based.
-    const grokSupervisorOpt = yield* Effect.serviceOption(CirceGrokSupervisor);
-    const grokSupervisor = Option.getOrElse(grokSupervisorOpt, () => ({
-      availability: Effect.succeed({
-        available: false,
-      } satisfies CirceGrokSupervisorAvailability),
-      interpret: (_input: { readonly prompt: string }) =>
-        Effect.succeed({ status: "decline", reason: "grok-supervisor-disabled" } as const),
+    // Optional System One decision tier. Absent means disabled: the request
+    // is never sent and the provider safety net below is unchanged.
+    const decisionOpt = yield* Effect.serviceOption(CirceDecision);
+    const decision = Option.getOrElse(decisionOpt, () => ({
+      decide: (_request: DecisionRequest) =>
+        Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
     }));
     const readSemanticProviders: Effect.Effect<
       ReadonlyArray<import("@t3tools/contracts").ServerProvider>
@@ -481,105 +426,31 @@ const defaultInterpreterLayer = Layer.effect(
       };
       return attempt(candidates);
     };
-    /**
-     * Try the fx supervisor for the resolved plan. Any decline falls through
-     * to the provider selection the same plan chose, so fx can only remove
-     * latency, never change which model family supervises.
-     */
-    /**
-     * Try the direct ChatGPT Codex supervisor. Any decline falls through to
-     * fx and then the provider selection, so this tier can only remove
-     * latency, never change which family finally supervises.
-     */
-    const tryCodexSupervisor = (
-      prompt: string,
-    ): Effect.Effect<import("@circe/core/command").CirceSemanticProposal | null> =>
-      Effect.gen(function* () {
-        const availability = yield* codexSupervisor.availability;
-        if (!availability.available) return null;
-        const outcome = yield* codexSupervisor.interpret({ prompt });
-        if (outcome.status === "decline") {
-          yield* Effect.logDebug(`Circe codex supervisor declined: ${outcome.reason}`);
-          return null;
-        }
-        return outcome.proposal;
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause as Cause.Cause<never>)
-            : Effect.succeed(null),
-        ),
-      );
-
-    /**
-     * Try the direct OpenCode supervisor on the user's own OpenCode gateway.
-     * The active model slug decides Go versus Zen; decline falls through.
-     */
-    const tryOpencodeSupervisor = (
-      prompt: string,
-      model: string | undefined,
-    ): Effect.Effect<import("@circe/core/command").CirceSemanticProposal | null> =>
-      Effect.gen(function* () {
-        const availability = yield* opencodeSupervisor.availability;
-        if (!availability.available) return null;
-        const outcome = yield* opencodeSupervisor.interpret({
-          prompt,
-          ...(model === undefined ? {} : { model }),
-        });
-        if (outcome.status === "decline") {
-          yield* Effect.logDebug(`Circe opencode supervisor declined: ${outcome.reason}`);
-          return null;
-        }
-        return outcome.proposal;
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause as Cause.Cause<never>)
-            : Effect.succeed(null),
-        ),
-      );
-
-    /** Direct Grok supervisor on the user's own xAI subscription. */
-    const tryGrokSupervisor = (
-      prompt: string,
-    ): Effect.Effect<import("@circe/core/command").CirceSemanticProposal | null> =>
-      Effect.gen(function* () {
-        const availability = yield* grokSupervisor.availability;
-        if (!availability.available) return null;
-        const outcome = yield* grokSupervisor.interpret({ prompt });
-        if (outcome.status === "decline") {
-          yield* Effect.logDebug(`Circe grok supervisor declined: ${outcome.reason}`);
-          return null;
-        }
-        return outcome.proposal;
-      }).pipe(
-        Effect.catchCause((cause) =>
-          Cause.hasInterruptsOnly(cause)
-            ? Effect.failCause(cause as Cause.Cause<never>)
-            : Effect.succeed(null),
-        ),
-      );
-
     return CirceControllerInterpreter.of({
       interpret: (input) => {
         const prepared = prepareCirceSemanticTurn(input);
         if (prepared.status === "needs-input") return Effect.succeed(prepared);
-        // Cascade: bounded parser, then on-demand local extraction, then one
-        // provider call, then one shared Director. The local tier spawns the
-        // roles-v1 INT8 inference only when explicitly enabled with a passing
-        // quality report; otherwise it declines and the provider runs once.
-        const grammar = tryBoundedLocalGrammar({
-          source: prepared.sourceUtterance,
-          context: input,
-        });
-        if (grammar.status === "proposal") {
-          return Effect.succeed(interpretCirceCommand(input, prepared, grammar.proposal));
-        }
         return Effect.gen(function* () {
+          // System One decision tier: one or two finite requests, composed in
+          // code, then the ordinary Director. A composed needs-input is a
+          // deliberate Clarify and never falls through; only a decline (no
+          // key, timeout, 429, or network failure) reaches the provider net.
+          const tier = yield* runCirceDecisionTier({
+            source: prepared.sourceUtterance,
+            state: decisionStateFromContext(input, prepared.sourceUtterance),
+            catalog: decisionCatalogFromContext(input),
+            decide: decision.decide,
+          });
+          if (tier.status === "proposal") {
+            return interpretCirceCommand(input, prepared, tier.proposal);
+          }
+          if (tier.status === "needs-input") {
+            return tier.needsInput;
+          }
+          // The decision tier declined (no key, timeout, 429, or network).
+          // Fall back to one ordinary provider proposal as a safety net; the
+          // shared Director still owns all authority.
           const prompt = buildCirceSemanticPrompt(input, prepared);
-          // fx has no structured-output schema, so it gets the compact prompt
-          // that states the proposal shape and keeps reasoning short.
-          const fastPrompt = buildCirceFastSemanticPrompt(input, prepared);
           // Settings are advisory here: an unreadable settings store must not
           // fail interpretation, it only disables the provider-derived plan.
           const settings = yield* serverSettings.getSettings.pipe(
@@ -594,48 +465,6 @@ const defaultInterpreterLayer = Layer.effect(
               input.supervisorModelSelection,
             providers,
           });
-          // Direct supervisor on the active provider's own subscription. Only
-          // the matching family runs, so an OpenCode user never spends Codex
-          // quota and vice versa.
-          const activeDriver = resolveCirceActiveDriver(plan, providers);
-          if (activeDriver === "codex") {
-            const codexProposal = yield* tryCodexSupervisor(fastPrompt);
-            if (codexProposal !== null) {
-              return interpretCirceCommand(input, prepared, codexProposal);
-            }
-          }
-          if (activeDriver === "opencode") {
-            const opencodeProposal = yield* tryOpencodeSupervisor(fastPrompt, plan?.provider.model);
-            if (opencodeProposal !== null) {
-              return interpretCirceCommand(input, prepared, opencodeProposal);
-            }
-          }
-          if (activeDriver === "grok") {
-            const grokProposal = yield* tryGrokSupervisor(fastPrompt);
-            if (grokProposal !== null) {
-              return interpretCirceCommand(input, prepared, grokProposal);
-            }
-          }
-          const local = yield* localModel
-            .infer({ source: prepared.sourceUtterance })
-            .pipe(
-              Effect.orElseSucceed(
-                () => ({ status: "decline", reason: "local-model-error" }) as const,
-              ),
-            );
-          if (local.status === "proposal") {
-            return interpretCirceCommand(input, prepared, local.proposal);
-          }
-          if (local.status === "rejected") {
-            // Authority rejection (for example NODE routing) is fail-closed:
-            // answer needs-input with no provider fallback and no dispatch.
-            return {
-              status: "needs-input" as const,
-              reason: "unsupported-command" as const,
-              prompt: local.prompt,
-              choices: [],
-            };
-          }
           const modelSelection = plan?.provider ?? input.supervisorModelSelection;
           const candidates = selectCirceSemanticCandidates({
             configured: modelSelection,
@@ -671,50 +500,19 @@ const defaultInterpreterLayer = Layer.effect(
               answer: null,
             };
           }
-          // Mesh propose cascade: bounded grammar over untrusted names, then
-          // on-demand local extraction, then one provider call. No Director
-          // here; the execution node revalidates authoritatively. A local
-          // rejection returns unsupported with no provider fallback.
-          const grammar = tryBoundedLocalGrammarForEvidence({
+          // Decision tier over untrusted evidence. No Director here; the
+          // execution node revalidates. A composed needs-input becomes
+          // unsupported, and only a decline reaches the provider net.
+          const tier = yield* runCirceDecisionTier({
             source,
-            projects: input.projects,
-            tasks: input.tasks,
+            state: decisionStateFromEvidence(input),
+            catalog: decisionCatalogFromEvidence(input),
+            decide: decision.decide,
           });
-          if (grammar.status === "proposal") {
-            return grammar.proposal;
+          if (tier.status === "proposal") {
+            return tier.proposal;
           }
-          const prompt = buildMeshSemanticPrompt({ source, evidence: input });
-          const settings = yield* serverSettings.getSettings;
-          const providers = yield* readSemanticProviders;
-          const plan = resolveCirceSupervisorPlan({
-            activeSelection:
-              settings.circeDefaultModelSelection ?? settings.circeSupervisorModelSelection,
-            providers,
-          });
-          const activeDriver = resolveCirceActiveDriver(plan, providers);
-          if (activeDriver === "codex") {
-            const codexProposal = yield* tryCodexSupervisor(prompt);
-            if (codexProposal !== null) return codexProposal;
-          }
-          if (activeDriver === "opencode") {
-            const opencodeProposal = yield* tryOpencodeSupervisor(prompt, plan?.provider.model);
-            if (opencodeProposal !== null) return opencodeProposal;
-          }
-          if (activeDriver === "grok") {
-            const grokProposal = yield* tryGrokSupervisor(prompt);
-            if (grokProposal !== null) return grokProposal;
-          }
-          const local = yield* localModel
-            .infer({ source })
-            .pipe(
-              Effect.orElseSucceed(
-                () => ({ status: "decline", reason: "local-model-error" }) as const,
-              ),
-            );
-          if (local.status === "proposal") {
-            return local.proposal;
-          }
-          if (local.status === "rejected") {
+          if (tier.status === "needs-input") {
             return {
               action: "unsupported" as const,
               refs: [],
@@ -723,6 +521,16 @@ const defaultInterpreterLayer = Layer.effect(
               answer: null,
             };
           }
+          // Decision tier declined: one ordinary provider proposal as a
+          // safety net. The execution node still revalidates.
+          const prompt = buildMeshSemanticPrompt({ source, evidence: input });
+          const settings = yield* serverSettings.getSettings;
+          const providers = yield* readSemanticProviders;
+          const plan = resolveCirceSupervisorPlan({
+            activeSelection:
+              settings.circeDefaultModelSelection ?? settings.circeSupervisorModelSelection,
+            providers,
+          });
           const modelSelection = plan?.provider ?? settings.circeSupervisorModelSelection;
           const candidates = selectCirceSemanticCandidates({
             configured: modelSelection,
@@ -749,12 +557,9 @@ const defaultInterpreterLayer = Layer.effect(
 
 export const makeCirceControllerInterpreterLive = <R2 = never, E2 = never>(
   providerRegistryLayer: Layer.Layer<ProviderRegistry>,
-  localModelLayer: Layer.Layer<CirceLocalModel, E2, R2> = CirceLocalModelDisabledLive,
+  decisionLayer: Layer.Layer<CirceDecision, E2, R2> = CirceDecisionDisabledLive,
 ) =>
-  defaultInterpreterLayer.pipe(
-    Layer.provide(providerRegistryLayer),
-    Layer.provide(localModelLayer),
-  );
+  defaultInterpreterLayer.pipe(Layer.provide(providerRegistryLayer), Layer.provide(decisionLayer));
 
 /**
  * The pre-accept cancellation key for one execute input. Mirrors the

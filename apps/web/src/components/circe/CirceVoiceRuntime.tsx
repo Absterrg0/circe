@@ -34,7 +34,7 @@ import {
   type CirceModelDraft,
 } from "@circe/core/modelChoice";
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
-import { tryBoundedLocalGrammarForEvidence } from "@circe/core/localGrammar";
+import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
 import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
 import type {
   EnvironmentId,
@@ -127,19 +127,16 @@ function isFreshRequestDuringClarification(input: {
       matchedText: input.matchedText,
     });
   }
-  return (
-    tryBoundedLocalGrammarForEvidence({
-      source: input.answer,
-      projects: (input.projects ?? []).map((project) => ({
-        title: project.title,
-        names: [
-          project.workspaceRoot.trim().split(/[\\/]/u).at(-1) ?? "",
-          ...project.repositoryNames,
-          ...project.aliases,
-        ].filter((name) => name.trim().length > 0),
-      })),
-      tasks: [],
-    }).status === "proposal"
+  return looksLikeBoundedCommand(
+    input.answer,
+    (input.projects ?? []).flatMap((project) =>
+      [
+        project.title,
+        project.workspaceRoot.trim().split(/[\\/]/u).at(-1) ?? "",
+        ...project.repositoryNames,
+        ...project.aliases,
+      ].filter((name) => name.trim().length > 0),
+    ),
   );
 }
 
@@ -1584,29 +1581,9 @@ export function CirceVoiceRuntime({
               taskDesks,
             }) ?? undefined;
         }
-        // Deterministic fast path: a bounded full-turn command over the real
-        // catalog never needs a model call. The execution node revalidates the
-        // proposal, so this removes inference latency without moving authority.
-        if (meshSource.trim().length > 0) {
-          const grammar = tryBoundedLocalGrammarForEvidence({
-            source: meshSource,
-            projects: submissionCatalog.projects.map((project) => ({
-              title: project.title,
-              names: [
-                project.workspaceRoot.trim().split(/[\\/]/u).at(-1) ?? "",
-                ...project.repositoryNames,
-                ...project.aliases,
-              ].filter((name) => name.trim().length > 0),
-            })),
-            tasks: taskDesks
-              .flatMap((deskEntry) => deskEntry.tasks)
-              .slice(0, 8)
-              .map((task) => ({ title: task.title })),
-          });
-          if (grammar.status === "proposal") {
-            meshProposal = grammar.proposal;
-          }
-        }
+        // Classification always runs on the semantic node through its System
+        // One decision tier; the execution node revalidates the proposal. No
+        // client-side grammar decides what a turn means.
         const semanticNode = selectCirceSemanticNode(
           submissionCatalog,
           routeCurrent?.projectRef.nodeId,

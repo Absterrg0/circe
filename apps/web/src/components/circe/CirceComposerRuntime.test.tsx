@@ -629,17 +629,37 @@ describe("Circe composer to runtime boundary", () => {
     });
   });
 
-  it("dispatches a bounded command without any model call", async () => {
+  it("routes a command through one classify call and the deterministic composer", async () => {
     await ready();
+    const source = "check pull requests in Local";
+    const wrapperAt = source.indexOf("in Local");
+    // The decision tier returns a destination ref citing the spoken wrapper;
+    // the host derives the span and route from it.
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: {
+        action: "start",
+        refs: [
+          {
+            span: { start: wrapperAt, end: wrapperAt + "in Local".length, text: "in Local" },
+            role: "destination",
+            value: "Local",
+          },
+        ],
+        model: null,
+        effort: null,
+        answer: null,
+      },
+    });
     submitCirceComposerCommand({
-      text: "check pull requests in Local",
+      text: source,
       inputMode: "text",
       captureId: "gram-1",
     });
     await finished.promise;
-    // The deterministic grammar already produced the proposal: the supervisor
-    // provider must never be spawned for a routine command.
-    expect(state.interpret).not.toHaveBeenCalled();
+    // One classify call runs on the semantic node; the client grounds and
+    // dispatches without a second inference.
+    expect(state.interpret).toHaveBeenCalledTimes(1);
     expect(state.execute).toHaveBeenCalledTimes(1);
     expect(state.execute.mock.calls[0]?.[0]).toMatchObject({
       projectRef: { nodeId: localNode, projectId: localProject },

@@ -16,11 +16,13 @@
     "./clarification": "./src/clarification.ts",
     "./projectChoice": "./src/projectChoice.ts",
     "./groundVoiceTurn": "./src/groundVoiceTurn.ts",
-    "./localGrammar": "./src/localGrammar.ts",
+    "./decision": "./src/decision.ts",
+    "./decisionRequest": "./src/decisionRequest.ts",
+    "./decisionCompose": "./src/decisionCompose.ts",
+    "./toolRegistry": "./src/toolRegistry.ts",
     "./modelChoice": "./src/modelChoice.ts",
     "./spokenSummary": "./src/spokenSummary.ts",
     "./timing": "./src/timing.ts",
-    "./extraction": "./src/extraction.ts",
     "./website": "./src/website.ts"
   },
   "scripts": {

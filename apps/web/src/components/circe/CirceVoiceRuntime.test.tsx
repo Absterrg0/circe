@@ -855,9 +855,9 @@ describe("Circe voice runtime", () => {
           projectRef: { nodeId: laptopNode, projectId: rivvlLaptop },
           utterance: "Check PRs in Rivvl",
         });
-        // Deterministic fast path: the bounded grammar already owns this
-        // explicit wrapper, so no supervisor call happens at all.
-        expect(state.interpret).not.toHaveBeenCalled();
+        // Classification runs on the semantic node; the client grounds the
+        // returned proposal and dispatches it.
+        expect(state.interpret).toHaveBeenCalledTimes(1);
         expect(state.refreshNode).toHaveBeenCalledWith({ nodeId: laptopNode });
         expect(started).toHaveBeenCalledWith(laptopNode, threadId);
         // The execution carries the nonauthoritative proposal with verbatim
@@ -937,7 +937,7 @@ describe("Circe voice runtime", () => {
           utterance: "Check PRs in Rivvl",
         });
         expect(state.execute.mock.calls[0]?.[0].requestMetadata).not.toHaveProperty("inputMode");
-        expect(state.interpret).not.toHaveBeenCalled();
+        expect(state.interpret).toHaveBeenCalledTimes(1);
       } finally {
         resetCirceCommandBusForTests();
       }
@@ -966,9 +966,9 @@ describe("Circe voice runtime", () => {
           projectRef: { nodeId: laptopNode, projectId: rivvlLaptop },
           utterance: "Check PRs in Rivvl",
         });
-        // The deterministic proposal is retained: the answer reuses the
-        // original instruction with no second dispatch decision.
-        expect(state.interpret).not.toHaveBeenCalled();
+        // The parked proposal is retained: the answer reuses the original
+        // instruction with no second classification.
+        expect(state.interpret).toHaveBeenCalledTimes(1);
       } finally {
         resetCirceCommandBusForTests();
       }
@@ -1018,7 +1018,7 @@ describe("Circe voice runtime", () => {
           projectRef: { nodeId: desktopNode, projectId },
           contextThreadId: threadId,
         });
-        expect(state.interpret).not.toHaveBeenCalled();
+        expect(state.interpret).toHaveBeenCalledTimes(1);
       } finally {
         resetCirceCommandBusForTests();
       }

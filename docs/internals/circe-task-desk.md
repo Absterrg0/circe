@@ -54,7 +54,7 @@ Reports use one speech queue with one active playback and local FIFO/cancel beha
 
 On native Wayland, Electron cannot place a top-level voice dock. Full Desktop therefore keeps its main workspace on Wayland and owns one isolated XWayland helper process for the dock only. The helper has a separate Chromium profile, accepts state over stdin, and exits with the resident Desktop process. X11, Windows, and macOS continue to use the in-process overlay window.
 
-The semantic supervisor proposes a typed action plus catalog entity text for every normal command turn. The server still resolves that text against real task/project candidates, requests clarification for missing or tied targets, and authorizes the final typed command. The model never owns focus, IDs, approvals, or dispatch. Pending clarification, approval, and worker-input frames are typed state and take precedence over a conflicting model proposal.
+The decision tier selects a typed action plus catalog entity names for every normal command turn. The server still resolves that text against real task/project candidates, requests clarification for missing or tied targets, and authorizes the final typed command. The model never owns focus, IDs, approvals, or dispatch. Pending clarification, approval, and worker-input frames are typed state and take precedence over a conflicting model proposal.
 
 ## Conversation repair
 

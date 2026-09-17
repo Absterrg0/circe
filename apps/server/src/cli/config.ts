@@ -149,31 +149,23 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeLocalModelEnabled: Config.boolean("CIRCE_LOCAL_MODEL_ENABLED").pipe(
+  circeDecisionEnabled: Config.boolean("CIRCE_TYPESAFE_ENABLED").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeLocalModelDir: Config.string("CIRCE_LOCAL_MODEL_DIR").pipe(
+  circeDecisionApiKey: Config.string("CIRCE_TYPESAFE_API_KEY").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeLocalModelPython: Config.string("CIRCE_LOCAL_MODEL_PYTHON").pipe(
+  circeDecisionModel: Config.string("CIRCE_TYPESAFE_MODEL").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeLocalModelTimeoutMs: Config.int("CIRCE_LOCAL_MODEL_TIMEOUT_MS").pipe(
+  circeDecisionTimeoutMs: Config.int("CIRCE_TYPESAFE_TIMEOUT_MS").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeLocalModelEvalReport: Config.string("CIRCE_LOCAL_MODEL_EVAL_REPORT").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  circeLocalModelPolicy: Config.string("CIRCE_LOCAL_MODEL_POLICY").pipe(
-    Config.option,
-    Config.map(Option.getOrUndefined),
-  ),
-  circeLocalModelInferenceScript: Config.string("CIRCE_LOCAL_MODEL_INFERENCE_SCRIPT").pipe(
+  circeDecisionEndpoint: Config.string("CIRCE_TYPESAFE_ENDPOINT").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
@@ -425,29 +417,22 @@ export const resolveServerConfig = (
         Option.fromUndefinedOr(persistedCirceNodePreset),
       ),
     );
-    // Local extraction tier: explicit opt-in only. Absent or disabled means
-    // zero workers and no model load. Even when enabled, the tier declines
-    // unless the model directory's evaluate.py report passes the frozen gate.
-    const circeLocalModelEnabled = env.circeLocalModelEnabled ?? false;
-    const circeLocalModelDir = env.circeLocalModelDir?.trim() ?? "";
-    const circeLocalModelPython = env.circeLocalModelPython?.trim() ?? "";
-    const circeLocalModelEvalReport = env.circeLocalModelEvalReport?.trim() ?? "";
-    const circeLocalModelPolicy = env.circeLocalModelPolicy?.trim() ?? "";
-    const circeLocalModelInferenceScript = env.circeLocalModelInferenceScript?.trim() ?? "";
-    const circeLocalModel =
-      circeLocalModelEnabled && circeLocalModelDir.length > 0
+    // System One decision tier: opt-in by configuring the key (or by an
+    // explicit enabled flag). Absent means no outbound request and a decline
+    // to the ordinary provider path.
+    const circeDecisionApiKey = env.circeDecisionApiKey?.trim() ?? "";
+    const circeDecisionModel = env.circeDecisionModel?.trim() ?? "";
+    const circeDecisionEndpoint = env.circeDecisionEndpoint?.trim() ?? "";
+    const circeDecisionEnabled = env.circeDecisionEnabled ?? circeDecisionApiKey.length > 0;
+    const circeDecision =
+      circeDecisionEnabled || circeDecisionApiKey.length > 0
         ? {
-            enabled: true as const,
-            modelDir: circeLocalModelDir,
-            pythonBin: circeLocalModelPython.length > 0 ? circeLocalModelPython : "python3",
-            timeoutMs: env.circeLocalModelTimeoutMs ?? 8_000,
-            ...(circeLocalModelEvalReport.length > 0
-              ? { evalReportPath: circeLocalModelEvalReport }
-              : {}),
-            ...(circeLocalModelPolicy.length > 0 ? { policyPath: circeLocalModelPolicy } : {}),
-            ...(circeLocalModelInferenceScript.length > 0
-              ? { inferenceScriptPath: circeLocalModelInferenceScript }
-              : {}),
+            enabled: circeDecisionEnabled,
+            apiKey: circeDecisionApiKey,
+            model: circeDecisionModel.length > 0 ? circeDecisionModel : "jev-latest",
+            timeoutMs: env.circeDecisionTimeoutMs ?? 1_500,
+            endpoint:
+              circeDecisionEndpoint.length > 0 ? circeDecisionEndpoint : "https://api.typesafe.ai",
           }
         : undefined;
 
@@ -470,7 +455,7 @@ export const resolveServerConfig = (
       otlpServiceName: env.otlpServiceName,
       mode,
       ...(circeNodePreset === undefined ? {} : { circeNodePreset }),
-      ...(circeLocalModel === undefined ? {} : { circeLocalModel }),
+      ...(circeDecision === undefined ? {} : { circeDecision }),
       port,
       cwd,
       baseDir,

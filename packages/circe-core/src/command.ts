@@ -42,7 +42,6 @@ import {
 } from "./semanticEvidence.ts";
 
 export {
-  buildCirceFastSemanticPrompt,
   buildCirceSemanticPrompt,
   prepareCirceSemanticTurn,
   resolveCirceInstruction,
