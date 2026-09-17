@@ -525,7 +525,7 @@ export interface RunExecutionServiceV2Shape {
 export class RunExecutionServiceV2 extends Context.Service<
   RunExecutionServiceV2,
   RunExecutionServiceV2Shape
->()("t3/orchestration-v2/RunExecutionService/RunExecutionServiceV2") {}
+>()("@absterrg0/circe/orchestration-v2/RunExecutionService/RunExecutionServiceV2") {}
 
 /**
  * IMPLEMENTATIONS

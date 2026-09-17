@@ -33,7 +33,7 @@ export const PinnedGitHubCredential = Context.Reference<{
   readonly host: string;
   readonly token: Redacted.Redacted<string>;
   readonly credentialFingerprint: string;
-} | null>("t3/sourceControl/PinnedGitHubCredential", { defaultValue: () => null });
+} | null>("@absterrg0/circe/sourceControl/PinnedGitHubCredential", { defaultValue: () => null });
 
 export const AllowGitHubReserve = Context.Reference<boolean>(
   "t3/sourceControl/AllowGitHubReserve",

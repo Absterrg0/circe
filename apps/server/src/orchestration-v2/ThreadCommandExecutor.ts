@@ -8,6 +8,6 @@ import { makeKeyedSerialExecutor, type KeyedSerialExecutor } from "./KeyedSerial
 export class ThreadCommandExecutor extends Context.Service<
   ThreadCommandExecutor,
   KeyedSerialExecutor<ThreadId>
->()("t3/orchestration-v2/ThreadCommandExecutor") {}
+>()("@absterrg0/circe/orchestration-v2/ThreadCommandExecutor") {}
 
 export const layer = Layer.effect(ThreadCommandExecutor, makeKeyedSerialExecutor<ThreadId>());

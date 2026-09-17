@@ -99,7 +99,7 @@ export class AcpRegistryRuntimeCoordinator extends Context.Service<
       onUpdate: (action: AcpRegistryUrlAuthAction | null) => Effect.Effect<void>,
     ) => Effect.Effect<void>;
   }
->()("t3/provider/acp/AcpRegistryRuntimeCoordinator") {
+>()("@absterrg0/circe/provider/acp/AcpRegistryRuntimeCoordinator") {
   static get layer() {
     return layer;
   }

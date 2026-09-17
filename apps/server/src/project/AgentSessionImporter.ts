@@ -404,6 +404,6 @@ type AgentSessionImporterShape = Effect.Success<typeof make>;
 export class AgentSessionImporter extends Context.Service<
   AgentSessionImporter,
   AgentSessionImporterShape
->()("t3/project/AgentSessionImporter") {}
+>()("@absterrg0/circe/project/AgentSessionImporter") {}
 
 export const layer = Layer.effect(AgentSessionImporter, make);

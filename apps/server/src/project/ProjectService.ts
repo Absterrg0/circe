@@ -125,7 +125,7 @@ export class ProjectService extends Context.Service<
     ) => Effect.Effect<Option.Option<Project>, ProjectOperationError>;
     readonly snapshot: Effect.Effect<ProjectSnapshot, ProjectOperationError>;
   }
->()("t3/project/ProjectService") {}
+>()("@absterrg0/circe/project/ProjectService") {}
 
 export const make = Effect.gen(function* () {
   const engine = yield* OrchestrationEngineService;

@@ -47,7 +47,7 @@ export interface ProjectionMaintenanceV2Shape {
 export class ProjectionMaintenanceV2 extends Context.Service<
   ProjectionMaintenanceV2,
   ProjectionMaintenanceV2Shape
->()("t3/orchestration-v2/ProjectionMaintenance/ProjectionMaintenanceV2") {}
+>()("@absterrg0/circe/orchestration-v2/ProjectionMaintenance/ProjectionMaintenanceV2") {}
 
 type ProjectionMetadataRow = {
   readonly schema_version: number;

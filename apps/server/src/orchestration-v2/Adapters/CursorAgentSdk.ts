@@ -77,7 +77,7 @@ export interface CursorAgentSdkRunnerShape {
 export class CursorAgentSdkRunner extends Context.Service<
   CursorAgentSdkRunner,
   CursorAgentSdkRunnerShape
->()("t3/orchestration-v2/Adapters/CursorAgentSdk/CursorAgentSdkRunner") {}
+>()("@absterrg0/circe/orchestration-v2/Adapters/CursorAgentSdk/CursorAgentSdkRunner") {}
 
 export interface CursorAgentSdkLoggedAgentOptions {
   readonly model?: AgentOptions["model"];

@@ -127,7 +127,7 @@ export class ThreadLaunchService extends Context.Service<
       input: ThreadLaunchInput,
     ) => Effect.Effect<ThreadLaunchResult, ThreadLaunchError>;
   }
->()("t3/orchestration-v2/ThreadLaunchService") {}
+>()("@absterrg0/circe/orchestration-v2/ThreadLaunchService") {}
 
 const isThreadLaunchError = Schema.is(ThreadLaunchError);
 

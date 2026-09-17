@@ -1234,7 +1234,7 @@ export interface CodexAppServerClientFactoryShape {
 export class CodexAppServerClientFactory extends Context.Service<
   CodexAppServerClientFactory,
   CodexAppServerClientFactoryShape
->()("t3/orchestration-v2/Adapters/CodexAdapterV2/CodexAppServerClientFactory") {}
+>()("@absterrg0/circe/orchestration-v2/Adapters/CodexAdapterV2/CodexAppServerClientFactory") {}
 
 export function codexThreadRuntimeParams(input: {
   readonly threadId: ThreadId | null;

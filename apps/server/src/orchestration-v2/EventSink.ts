@@ -171,7 +171,7 @@ export interface EventSinkV2Shape {
 }
 
 export class EventSinkV2 extends Context.Service<EventSinkV2, EventSinkV2Shape>()(
-  "t3/orchestration-v2/EventSink/EventSinkV2",
+  "@absterrg0/circe/orchestration-v2/EventSink/EventSinkV2",
 ) {}
 
 /**
