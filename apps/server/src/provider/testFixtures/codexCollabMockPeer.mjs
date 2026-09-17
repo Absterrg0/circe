@@ -2,7 +2,7 @@
 // Speaks just enough of the protocol for CodexSessionRuntime to start a
 // session, using REAL captured responses (codexMultiAgentWire.json), then
 // replays a scripted multi-agent notification sequence read from the
-// T3_CODEX_COLLAB_SCRIPT env var (a JSON file path) whenever a turn starts.
+// CIRCE_CODEX_COLLAB_SCRIPT env var (a JSON file path) whenever a turn starts.
 // Runs as a plain Node process — stdlib only.
 import * as NodeFS from "node:fs";
 import * as NodeReadline from "node:readline";
@@ -50,7 +50,7 @@ const here = NodePath.dirname(NodeURL.fileURLToPath(import.meta.url));
 const fixture = JSON.parse(
   NodeFS.readFileSync(NodePath.join(here, "codexMultiAgentWire.json"), "utf8"),
 );
-const script = JSON.parse(NodeFS.readFileSync(process.env.T3_CODEX_COLLAB_SCRIPT, "utf8"));
+const script = JSON.parse(NodeFS.readFileSync(process.env.CIRCE_CODEX_COLLAB_SCRIPT, "utf8"));
 
 const write = (message) => process.stdout.write(`${JSON.stringify(message)}\n`);
 let turnStartCount = 0;
@@ -62,7 +62,7 @@ const nextTurnStartIndex = () => {
     turnStartCount += 1;
     return index;
   }
-  const countPath = `${process.env.T3_CODEX_COLLAB_SCRIPT}.turn-count`;
+  const countPath = `${process.env.CIRCE_CODEX_COLLAB_SCRIPT}.turn-count`;
   const index = NodeFS.existsSync(countPath)
     ? Number.parseInt(NodeFS.readFileSync(countPath, "utf8"), 10) || 0
     : 0;
@@ -82,7 +82,7 @@ rl.on("line", (line) => {
   const { id, method } = message;
   if (method === undefined && script.serverRequests?.some((request) => request.id === id)) {
     NodeFS.appendFileSync(
-      `${process.env.T3_CODEX_COLLAB_SCRIPT}.responses`,
+      `${process.env.CIRCE_CODEX_COLLAB_SCRIPT}.responses`,
       `${JSON.stringify({ id, result: message.result, error: message.error })}\n`,
     );
     if (script.completeTurnOnServerResponse && activeTurn) {
@@ -124,7 +124,7 @@ rl.on("line", (line) => {
   if (method === "thread/resume") {
     if (script.recordRequests) {
       NodeFS.appendFileSync(
-        `${process.env.T3_CODEX_COLLAB_SCRIPT}.requests`,
+        `${process.env.CIRCE_CODEX_COLLAB_SCRIPT}.requests`,
         `${JSON.stringify({ method, params: message.params })}\n`,
       );
     }
@@ -274,7 +274,7 @@ rl.on("line", (line) => {
     // failInterruptFor simulates a dead child whose interrupt errors.
     const target = message.params?.threadId;
     NodeFS.appendFileSync(
-      `${process.env.T3_CODEX_COLLAB_SCRIPT}.interrupts`,
+      `${process.env.CIRCE_CODEX_COLLAB_SCRIPT}.interrupts`,
       `${JSON.stringify({ threadId: target, turnId: message.params?.turnId })}\n`,
     );
     if (

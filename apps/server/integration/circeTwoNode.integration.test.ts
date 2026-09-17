@@ -182,7 +182,7 @@ const spawnServer = async (input: {
 }): Promise<ServerChild> => {
   const env = { ...process.env };
   delete env.CIRCE_HOME;
-  env.T3_CODEX_COLLAB_SCRIPT = input.scriptPath;
+  env.CIRCE_CODEX_COLLAB_SCRIPT = input.scriptPath;
   const child = NodeChildProcess.spawn(
     "node",
     [

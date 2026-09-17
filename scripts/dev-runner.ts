@@ -67,7 +67,7 @@ export function isProxiableBindHost(host: string): boolean {
   );
 }
 
-export const DEFAULT_T3_HOME = Effect.map(Effect.service(Path.Path), (path) =>
+export const DEFAULT_CIRCE_HOME = Effect.map(Effect.service(Path.Path), (path) =>
   path.join(NodeOS.homedir(), ".circe"),
 );
 
@@ -286,7 +286,7 @@ function resolveBaseDir(baseDir: string | undefined): Effect.Effect<string, neve
       return path.resolve(configured);
     }
 
-    return yield* DEFAULT_T3_HOME;
+    return yield* DEFAULT_CIRCE_HOME;
   });
 }
 
@@ -347,8 +347,8 @@ export function createDevRunnerEnv({
     // agent working inside Circe), these leak through and the child server
     // fails startup with "The service launcher started a different Circe version"
     // (serviceLauncherClient.ts resolveStartup).
-    delete output.T3_SERVICE_LAUNCHER_CONTEXT;
-    delete output.T3_BOOT_SERVICE_UNIT;
+    delete output.CIRCE_SERVICE_LAUNCHER_CONTEXT;
+    delete output.CIRCE_BOOT_SERVICE_UNIT;
 
     if (!isDesktopMode) {
       output.CIRCE_PORT = String(serverPort);
@@ -708,7 +708,7 @@ export function runDevRunnerWithInput(input: DevRunnerCliInput) {
       serverOffset !== offset || webOffset !== offset
         ? ` selectedOffset(server=${serverOffset},web=${webOffset})`
         : "";
-    const baseDir = env.CIRCE_HOME ?? (yield* DEFAULT_T3_HOME);
+    const baseDir = env.CIRCE_HOME ?? (yield* DEFAULT_CIRCE_HOME);
 
     yield* Effect.logInfo(
       `[dev-runner] mode=${input.mode} source=${source}${selectionSuffix} serverPort=${String(env.CIRCE_PORT)} webPort=${String(env.PORT)} baseDir=${baseDir}`,

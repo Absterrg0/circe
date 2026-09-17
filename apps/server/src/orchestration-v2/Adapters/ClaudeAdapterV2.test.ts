@@ -438,7 +438,7 @@ describe("ClaudeAdapterV2 runtime query policy", () => {
 });
 
 describe("ClaudeAdapterV2 MCP query overrides", () => {
-  const T3_MCP_SERVERS = {
+  const CIRCE_MCP_SERVERS = {
     "t3-code": {
       type: "http",
       url: "http://127.0.0.1:43123/mcp",
@@ -491,7 +491,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
 
       assert.deepEqual(overrides, {
         allowedTools: [CLAUDE_T3_MCP_TOOL_WILDCARD],
-        mcpServers: T3_MCP_SERVERS,
+        mcpServers: CIRCE_MCP_SERVERS,
       });
     });
   });
@@ -507,7 +507,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
 
       assert.deepEqual(overrides, {
         allowedTools: ["Read", "mcp__t3-code__*"],
-        mcpServers: T3_MCP_SERVERS,
+        mcpServers: CIRCE_MCP_SERVERS,
       });
     });
   });
@@ -523,7 +523,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
 
       assert.deepEqual(overrides, {
         allowedTools: [...CLAUDE_READ_ONLY_ALLOWED_TOOLS, ...CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS],
-        mcpServers: T3_MCP_SERVERS,
+        mcpServers: CIRCE_MCP_SERVERS,
       });
       assert.isFalse(overrides.allowedTools?.includes(CLAUDE_T3_MCP_TOOL_WILDCARD));
     });

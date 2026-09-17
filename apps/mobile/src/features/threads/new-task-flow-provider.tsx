@@ -15,7 +15,7 @@ import {
   DEFAULT_RUNTIME_MODE,
   DEFAULT_SERVER_SETTINGS,
   MessageId,
-  T3_PROJECT_FILE_NAME,
+  CIRCE_PROJECT_FILE_NAME,
   ThreadId,
 } from "@circe/contracts";
 import { resolveProjectSettings } from "@circe/shared/projectSettings";
@@ -431,7 +431,7 @@ export function NewTaskFlowProvider(props: React.PropsWithChildren) {
     selectedProject !== null && selectedProject.workspaceRoot !== ""
       ? projectEnvironment.readFile({
           environmentId: selectedProject.environmentId,
-          input: { cwd: selectedProject.workspaceRoot, relativePath: T3_PROJECT_FILE_NAME },
+          input: { cwd: selectedProject.workspaceRoot, relativePath: CIRCE_PROJECT_FILE_NAME },
         })
       : null,
   );

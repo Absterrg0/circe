@@ -344,7 +344,7 @@ jobs:
 
           setsid --wait dbus-run-session -- env \
             APPIMAGE_EXTRACT_AND_RUN=1 ELECTRON_ENABLE_LOGGING=1 CIRCE_STARTUP_PROBE_FILE="$probe_file" \
-            T3CODE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config" \
+            CIRCE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config" \
             XDG_DATA_HOME="$smoke_root/xdg-data" XDG_CACHE_HOME="$smoke_root/xdg-cache" \
             XDG_RUNTIME_DIR="$smoke_root/xdg-runtime" DISPLAY="$x_display" \
             "$appimage" --ozone-platform=x11 --no-sandbox --disable-gpu --password-store=basic --circe-startup-probe="$probe_file" >"$log_file" 2>&1 &

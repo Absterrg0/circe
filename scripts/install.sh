@@ -2,7 +2,7 @@
 # Installs the Circe CLI from a GitHub Release archive. Needs only sh, tar,
 # sha256sum or shasum, and curl or wget; no Node, npm, or compiler.
 #
-#   curl -fsSL https://t3.codes/install.sh | sh
+#   curl -fsSL https://heycirce.com/install.sh | sh
 #
 # Environment:
 #   CIRCE_CHANNEL           release train to follow: stable, nightly, or preview

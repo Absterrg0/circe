@@ -657,7 +657,7 @@ jobs:
             $stderrPath = Join-Path $probeRoot 'main.stderr.log'
             $desktopPath = Join-Path $InstallRoot 'desktop\Circe.exe'
             if (-not (Test-Path -LiteralPath $desktopPath -PathType Leaf)) { throw "$Label desktop executable missing: $desktopPath" }
-            $desktop = Start-Process -FilePath $desktopPath -ArgumentList @('--no-sandbox', "--circe-startup-probe=$probeFile") -WorkingDirectory (Split-Path $desktopPath) -Environment @{ T3CODE_HOME = (Join-Path $probeRoot 't3-home'); CIRCE_STARTUP_PROBE_FILE = $probeFile; CIRCE_STARTUP_PROBE_QUIT = '1' } -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
+            $desktop = Start-Process -FilePath $desktopPath -ArgumentList @('--no-sandbox', "--circe-startup-probe=$probeFile") -WorkingDirectory (Split-Path $desktopPath) -Environment @{ CIRCE_HOME = (Join-Path $probeRoot 't3-home'); CIRCE_STARTUP_PROBE_FILE = $probeFile; CIRCE_STARTUP_PROBE_QUIT = '1' } -RedirectStandardOutput $stdoutPath -RedirectStandardError $stderrPath -PassThru
             try {
               $deadline = (Get-Date).AddSeconds(90)
               $receipt = $null

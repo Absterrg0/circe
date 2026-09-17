@@ -632,8 +632,8 @@ function acpMcpContext(threadId: ThreadId | null): AcpMcpContext {
         args: [serverEntrypoint, "acp-mcp-bridge"],
         env: [
           { name: "ELECTRON_RUN_AS_NODE", value: "1" },
-          { name: "T3_ACP_MCP_ENDPOINT", value: session.endpoint },
-          { name: "T3_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
+          { name: "CIRCE_ACP_MCP_ENDPOINT", value: session.endpoint },
+          { name: "CIRCE_ACP_MCP_AUTHORIZATION", value: session.authorizationHeader },
         ],
       },
     ],
@@ -641,10 +641,10 @@ function acpMcpContext(threadId: ThreadId | null): AcpMcpContext {
     endpoint: session.endpoint,
     authorization: session.authorizationHeader,
     processEnvironment: {
-      T3_ACP_MCP_ENDPOINT: session.endpoint,
-      T3_ACP_MCP_AUTHORIZATION: session.authorizationHeader,
-      T3_ACP_MCP_NODE: process.execPath,
-      T3_ACP_MCP_ENTRYPOINT: serverEntrypoint,
+      CIRCE_ACP_MCP_ENDPOINT: session.endpoint,
+      CIRCE_ACP_MCP_AUTHORIZATION: session.authorizationHeader,
+      CIRCE_ACP_MCP_NODE: process.execPath,
+      CIRCE_ACP_MCP_ENTRYPOINT: serverEntrypoint,
     },
   };
 }
