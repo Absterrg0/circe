@@ -9,22 +9,25 @@ import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
 
 layer("053_OrchestrationV2", (it) => {
+  // The Circe line re-registers upstream migrations above its shipped 41-66
+  // slots, so the V2 migration lands at 69 rather than upstream's 53. The
+  // contiguous-manifest and schema checks below stay the same.
   it.effect("keeps released migrations contiguous", () =>
     Effect.sync(() => {
       assert.deepStrictEqual(
         migrationEntries.map(([id]) => id),
-        Array.from({ length: 53 }, (_, index) => index + 1),
+        Array.from({ length: 69 }, (_, index) => index + 1),
       );
     }),
   );
 
-  it.effect("upgrades released schema 52 with one complete V2 migration", () =>
+  it.effect("upgrades released schema 68 with one complete V2 migration", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
-      yield* runMigrations({ toMigrationInclusive: 52 });
+      yield* runMigrations({ toMigrationInclusive: 68 });
 
       const executed = yield* runMigrations();
-      assert.deepStrictEqual(executed, [[53, "OrchestrationV2"]]);
+      assert.deepStrictEqual(executed, [[69, "OrchestrationV2"]]);
       assert.deepStrictEqual(yield* runMigrations(), []);
 
       const migrations = yield* sql<{
@@ -33,16 +36,14 @@ layer("053_OrchestrationV2", (it) => {
       }>`
         SELECT migration_id, name
         FROM effect_sql_migrations
-        WHERE migration_id >= 48
+        WHERE migration_id >= 66
         ORDER BY migration_id
       `;
       assert.deepStrictEqual(migrations, [
-        { migration_id: 48, name: "ProjectionThreadBranchPullRequest" },
-        { migration_id: 49, name: "ProjectionThreadsActiveOrderKey" },
-        { migration_id: 50, name: "ProjectionThreadPullRequests" },
-        { migration_id: 51, name: "ProjectionThreadMessageContext" },
-        { migration_id: 52, name: "ProjectionThreadTitleState" },
-        { migration_id: 53, name: "OrchestrationV2" },
+        { migration_id: 66, name: "CirceLiveVoiceSessions" },
+        { migration_id: 67, name: "ProjectionThreadMessageContext" },
+        { migration_id: 68, name: "ProjectionThreadTitleState" },
+        { migration_id: 69, name: "OrchestrationV2" },
       ]);
 
       const tables = yield* sql<{ readonly name: string }>`
