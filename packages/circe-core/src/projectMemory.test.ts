@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   buildMemoryIndex,
+  buildProjectPinnedContext,
   estimateMemoryTokens,
   memoryIsLive,
   memoryMayBeFact,
@@ -104,6 +105,20 @@ describe("memory index", () => {
     expect(block).toContain("id f1");
     expect(block).toContain("Uses pnpm");
     expect(block).toContain("pnpm only.");
+  });
+
+  it("assembles the pinned context with only the brief and the index", () => {
+    const pinned = buildProjectPinnedContext({
+      projectTitle: "Beacon",
+      brief: "Ship the billing migration. Use pnpm.",
+      memoryIndexBlock: "Project memory index (1 entries...)\n- [fact/user] Uses pnpm",
+    });
+    expect(pinned).toContain("Project: Beacon");
+    expect(pinned).toContain("Ship the billing migration.");
+    expect(pinned).toContain("Uses pnpm");
+    expect(buildProjectPinnedContext({ projectTitle: "Beacon", memoryIndexBlock: "" })).toBe(
+      "Project: Beacon",
+    );
   });
 
   it("omits retired and expired entries", () => {

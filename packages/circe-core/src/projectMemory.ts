@@ -130,6 +130,27 @@ export interface CirceMemoryBodyView {
  * X" can override it; one told "X" treats it as a standing rule. Facts and
  * episodes carry the same label so provenance is always visible.
  */
+export interface ProjectPinnedContextInput {
+  readonly projectTitle: string;
+  /** Short, stable statement of the project's goal and conventions. */
+  readonly brief?: string;
+  /** Result of `renderMemoryIndex`; empty string when there is no memory. */
+  readonly memoryIndexBlock: string;
+}
+
+/**
+ * The whole pinned layer for a coordinator turn: identity, the brief, and the
+ * memory map. Nothing else is preloaded. Workers get this at thread creation;
+ * the coordinator keeps it for routing. Stable and short so it caches.
+ */
+export function buildProjectPinnedContext(input: ProjectPinnedContextInput): string {
+  const parts = [`Project: ${input.projectTitle}`];
+  const brief = input.brief?.trim();
+  if (brief !== undefined && brief.length > 0) parts.push(brief);
+  if (input.memoryIndexBlock.length > 0) parts.push(input.memoryIndexBlock);
+  return parts.join("\n\n");
+}
+
 export function renderMemoryBody(entry: CirceMemoryBodyView): string {
   return [
     `Recalled ${entry.kind} (source ${entry.source}, updated ${entry.updatedAt}, id ${entry.id}): ${entry.title}`,
