@@ -1711,7 +1711,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
       const threadId = ThreadId.make("runtime-layer-linked-pull-request-thread");
       const linkedPullRequest = {
         projectId: ProjectId.make("runtime-layer-linked-pull-request-project"),
-        repository: "Absterrg0/circe",
+        repository: "absterrg0/circe",
         number: 8160,
         url: "https://github.com/Absterrg0/circe/pull/8160",
       } as const;
@@ -1784,7 +1784,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
         branch: null,
         worktreePath: null,
       });
-      const key = { host: "GitHub.com", repository: "Pingdotgg/T3code" };
+      const key = { host: "GitHub.com", repository: "Absterrg0/circe" };
       for (const number of [1, 2]) {
         yield* orchestrator.dispatch({
           type: "thread.pull-request.link",
@@ -1799,7 +1799,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
       const linked = yield* orchestrator.getThreadShell(threadId);
       assert.deepEqual(
         linked?.pullRequests?.map(({ host, repository, number }) => ({ host, repository, number })),
-        [1, 2].map((number) => ({ host: "github.com", repository: "Absterrg0/circe", number })),
+        [1, 2].map((number) => ({ host: "github.com", repository: "absterrg0/circe", number })),
       );
       yield* orchestrator.dispatch({
         type: "thread.pull-request.unlink",

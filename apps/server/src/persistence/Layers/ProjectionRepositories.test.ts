@@ -593,7 +593,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       const unsynced: ProjectionThreadPullRequest = {
         threadId,
         host: "github.com",
-        repository: "Absterrg0/circe",
+        repository: "absterrg0/circe",
         number: 42,
         url: "https://github.com/Absterrg0/circe/pull/42",
         source: "manual",
@@ -604,7 +604,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       const synced: ProjectionThreadPullRequest = {
         threadId,
         host: "github.com",
-        repository: "Absterrg0/circe",
+        repository: "absterrg0/circe",
         number: 7,
         url: "https://github.com/Absterrg0/circe/pull/7",
         source: "stack",
@@ -666,7 +666,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       assert.deepStrictEqual(
         yield* pullRequests.listByPullRequest({
           host: "github.com",
-          repository: "Absterrg0/circe",
+          repository: "absterrg0/circe",
           number: 42,
         }),
         [unsynced, sharedOnOtherThread],
@@ -680,7 +680,7 @@ projectionRepositoriesLayer("Projection repositories", (it) => {
       yield* pullRequests.delete({
         threadId,
         host: "github.com",
-        repository: "Absterrg0/circe",
+        repository: "absterrg0/circe",
         number: 7,
       });
       assert.deepStrictEqual(yield* pullRequests.listByThreadId({ threadId }), [resynced]);
