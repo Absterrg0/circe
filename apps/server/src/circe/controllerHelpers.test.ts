@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@circe/contracts";
 import {
-  CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS,
+  T3CODE_SEMANTIC_FALLBACK_MAX_ATTEMPTS,
   resolveCirceSupervisorPlan,
   selectCirceSemanticCandidates,
 } from "./controllerHelpers.ts";
@@ -155,7 +155,7 @@ describe("selectCirceSemanticCandidates", () => {
       baseProvider({ instanceId: "cursor", driver: "cursor" }),
     ];
     const candidates = selectCirceSemanticCandidates({ configured, providers });
-    expect(candidates).toHaveLength(CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS);
+    expect(candidates).toHaveLength(T3CODE_SEMANTIC_FALLBACK_MAX_ATTEMPTS);
     expect(candidates[0]?.instanceId).toBe("codex");
     expect(candidates[1]?.instanceId).toBe("opencode");
   });

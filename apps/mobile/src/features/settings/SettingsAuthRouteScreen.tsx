@@ -4,7 +4,7 @@ import { StackActions, useNavigation } from "@react-navigation/native";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
 import { ActivityIndicator, StatusBar, View } from "react-native";
 
-import { CIRCE_IVORY } from "../../lib/circeBrandColors";
+import { T3CODE_IVORY } from "../../lib/circeBrandColors";
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
 import { CirceMark } from "../welcome/welcomeMarks";
 import { T3ConnectProfilePage } from "../cloud/T3ConnectProfilePage";
@@ -50,7 +50,7 @@ function ConfiguredSettingsAuthRouteScreen() {
   }, [isLoaded, isSignedIn, navigation]);
 
   return (
-    <View collapsable={false} style={{ flex: 1, backgroundColor: CIRCE_IVORY }}>
+    <View collapsable={false} style={{ flex: 1, backgroundColor: T3CODE_IVORY }}>
       <StatusBar barStyle="dark-content" />
       {isLoaded ? (
         hasBeenSignedIn.current ? (

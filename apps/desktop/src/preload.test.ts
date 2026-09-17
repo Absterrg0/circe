@@ -25,10 +25,10 @@ import type { DesktopBridge } from "@circe/contracts";
 
 import {
   DESKTOP_PRELOAD_READY_CHANNEL,
-  CIRCE_LIVE_VOICE_STATE_CHANNEL,
-  CIRCE_LIVE_VOICE_TOGGLE_CHANNEL,
-  CIRCE_ORB_CATALOG_CHANNEL,
-  CIRCE_ORB_SELECT_CHANNEL,
+  T3CODE_LIVE_VOICE_STATE_CHANNEL,
+  T3CODE_LIVE_VOICE_TOGGLE_CHANNEL,
+  T3CODE_ORB_CATALOG_CHANNEL,
+  T3CODE_ORB_SELECT_CHANNEL,
 } from "./ipc/channels.ts";
 import {
   createCirceLiveVoiceToggleHub,
@@ -39,12 +39,12 @@ import {
 } from "./preload.ts";
 
 function liveVoiceToggleHandler(): ((event: unknown) => void) | undefined {
-  const call = ipcOn.mock.calls.find(([channel]) => channel === CIRCE_LIVE_VOICE_TOGGLE_CHANNEL);
+  const call = ipcOn.mock.calls.find(([channel]) => channel === T3CODE_LIVE_VOICE_TOGGLE_CHANNEL);
   return call?.[1] as ((event: unknown) => void) | undefined;
 }
 
 function orbSelectHandler(): ((event: unknown, selection: unknown) => void) | undefined {
-  const call = ipcOn.mock.calls.find(([channel]) => channel === CIRCE_ORB_SELECT_CHANNEL);
+  const call = ipcOn.mock.calls.find(([channel]) => channel === T3CODE_ORB_SELECT_CHANNEL);
   return call?.[1] as ((event: unknown, selection: unknown) => void) | undefined;
 }
 
@@ -94,7 +94,7 @@ describe("desktop preload bridge boundary", () => {
     realBridge.circeLiveVoice?.report({ enabled: true, active: true, status: "live" });
 
     assert.deepEqual(send.mock.calls, [
-      [CIRCE_LIVE_VOICE_STATE_CHANNEL, { enabled: true, active: true, status: "live" }],
+      [T3CODE_LIVE_VOICE_STATE_CHANNEL, { enabled: true, active: true, status: "live" }],
     ]);
   });
 
@@ -176,7 +176,7 @@ describe("desktop preload bridge boundary", () => {
     });
     assert.deepEqual(send.mock.calls, [
       [
-        CIRCE_ORB_CATALOG_CHANNEL,
+        T3CODE_ORB_CATALOG_CHANNEL,
         { providers: [], selected: null, pendingSelection: null, error: null },
       ],
     ]);

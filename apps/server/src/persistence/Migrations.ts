@@ -202,9 +202,9 @@ export class ForeignDatabaseError extends Schema.TaggedError<ForeignDatabaseErro
   }
 }
 
-const CIRCE_OWNER_MARKER = "circe-product.json";
-const CIRCE_OWNED_MIN_ID = 41;
-const CIRCE_OWNED_MAX_ID = 58;
+const T3CODE_OWNER_MARKER = "circe-product.json";
+const T3CODE_OWNED_MIN_ID = 41;
+const T3CODE_OWNED_MAX_ID = 58;
 const ownerMarkerBody = `${JSON.stringify({ product: "circe", version: 1 })}\n`;
 
 interface RecordedMigration {
@@ -236,7 +236,7 @@ const hasCirceOwnedHistory = (recorded: ReadonlyArray<RecordedMigration>): boole
   recorded.some((row) => {
     const id = Number(row.migration_id);
     return (
-      id >= CIRCE_OWNED_MIN_ID && id <= CIRCE_OWNED_MAX_ID && expectedNameById.get(id) === row.name
+      id >= T3CODE_OWNED_MIN_ID && id <= T3CODE_OWNED_MAX_ID && expectedNameById.get(id) === row.name
     );
   });
 
@@ -247,7 +247,7 @@ const assertCirceDatabase = Effect.fn("Migrations.assertCirceDatabase")(function
   const trackingTable = yield* sql<{ readonly name: string }>`
     SELECT name FROM sqlite_master WHERE type = 'table' AND name = 'effect_sql_migrations'
   `;
-  const markerPath = baseDir === undefined ? undefined : NodePath.join(baseDir, CIRCE_OWNER_MARKER);
+  const markerPath = baseDir === undefined ? undefined : NodePath.join(baseDir, T3CODE_OWNER_MARKER);
 
   if (trackingTable.length === 0) {
     // A missing tracking table does not mean an empty database. Only claim a

@@ -139,7 +139,7 @@ describe("DesktopEnvironment", () => {
       const resourcesPath = path.join(installRoot, "resources");
       yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
       yield* fileSystem.writeFileString(
-        path.join(resourcesPath, DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE),
+        path.join(resourcesPath, DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE),
         '{"product":"Circe","distribution":"official"}\n',
       );
 

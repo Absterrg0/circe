@@ -16,10 +16,10 @@ cp .env.example .env
 For another deployment, set these values in the repository-root `.env` or `.env.local`:
 
 ```dotenv
-CIRCE_CLERK_PUBLISHABLE_KEY=<publishable key>
-CIRCE_CLERK_JWT_TEMPLATE=<JWT template name>
-CIRCE_CLERK_CLI_OAUTH_CLIENT_ID=<public OAuth application client ID>
-CIRCE_RELAY_URL=https://relay.example.com
+T3CODE_CLERK_PUBLISHABLE_KEY=<publishable key>
+T3CODE_CLERK_JWT_TEMPLATE=<JWT template name>
+T3CODE_CLERK_CLI_OAUTH_CLIENT_ID=<public OAuth application client ID>
+T3CODE_RELAY_URL=https://relay.example.com
 ```
 
 Process variables take precedence over `.env.local`, then `.env`. Use these canonical names;
@@ -41,9 +41,9 @@ In Clerk's OAuth applications settings:
 1. Create a public OAuth application for the T3 CLI, using authorization-code exchange with PKCE.
 2. Allow both redirect URIs: `http://127.0.0.1:34338/callback` and
    `https://app.example.com/connect/callback`. The second is `<your-hosted-app>/connect/callback`
-   from `CIRCE_HOSTED_APP_URL`. Headless and SSH authorization depend on the hosted redirect.
+   from `T3CODE_HOSTED_APP_URL`. Headless and SSH authorization depend on the hosted redirect.
 3. Enable the `openid`, `profile`, and `email` scopes.
-4. Set `CIRCE_CLERK_CLI_OAUTH_CLIENT_ID` to the generated public client ID in local and release
+4. Set `T3CODE_CLERK_CLI_OAUTH_CLIENT_ID` to the generated public client ID in local and release
    build environments.
 
 ## JWT template
@@ -54,7 +54,7 @@ Create a Clerk JWT template named `circe-relay` with claims:
 { "aud": "circe-relay" }
 ```
 
-Set `CIRCE_CLERK_JWT_TEMPLATE=circe-relay` for clients and
+Set `T3CODE_CLERK_JWT_TEMPLATE=circe-relay` for clients and
 `CLERK_JWT_AUDIENCE=circe-relay` for the relay. The audience stays the same across relay stages; the relay
 URL selects the deployment.
 
@@ -103,7 +103,7 @@ Local signed builds additionally use:
 T3CODE_APPLE_TEAM_ID=ABC1234567
 T3CODE_MACOS_PROVISIONING_PROFILE=/absolute/path/to/t3code.provisionprofile
 # Override only when the RP domain differs from the Clerk Frontend API hostname.
-CIRCE_CLERK_PASSKEY_RP_DOMAINS=example.clerk.accounts.dev,clerk.example.com
+T3CODE_CLERK_PASSKEY_RP_DOMAINS=example.clerk.accounts.dev,clerk.example.com
 ```
 
 Without the override, the build derives the RP domain from the Clerk publishable key.

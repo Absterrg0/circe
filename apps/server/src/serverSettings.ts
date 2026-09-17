@@ -158,8 +158,8 @@ function usageLimitSourceSecretName(sourceId: string): string {
  * The live voice API key follows the hub-key pattern: the settings file keeps
  * only a marker and the real value lives in the secret store.
  */
-const CIRCE_LIVE_VOICE_KEY_REDACTED = "\u2022\u2022\u2022\u2022\u2022\u2022";
-const CIRCE_LIVE_VOICE_API_KEY_SECRET = "circe-live-voice-openai-api-key";
+const T3CODE_LIVE_VOICE_KEY_REDACTED = "\u2022\u2022\u2022\u2022\u2022\u2022";
+const T3CODE_LIVE_VOICE_API_KEY_SECRET = "circe-live-voice-openai-api-key";
 
 function redactProviderEnvironmentVariable(
   variable: ProviderInstanceEnvironmentVariable,
@@ -199,7 +199,7 @@ export function redactServerSettingsForClient(settings: ServerSettings): ServerS
   );
   const circeLiveVoice = {
     ...settings.circeLiveVoice,
-    apiKey: settings.circeLiveVoice.apiKey.length > 0 ? CIRCE_LIVE_VOICE_KEY_REDACTED : "",
+    apiKey: settings.circeLiveVoice.apiKey.length > 0 ? T3CODE_LIVE_VOICE_KEY_REDACTED : "",
   };
   return { ...settings, providerInstances, usageLimitSources, circeLiveVoice };
 }
@@ -835,8 +835,8 @@ const make = Effect.gen(function* () {
         };
       }
       const circeLiveVoice =
-        settings.circeLiveVoice.apiKey === CIRCE_LIVE_VOICE_KEY_REDACTED
-          ? yield* secretStore.get(CIRCE_LIVE_VOICE_API_KEY_SECRET).pipe(
+        settings.circeLiveVoice.apiKey === T3CODE_LIVE_VOICE_KEY_REDACTED
+          ? yield* secretStore.get(T3CODE_LIVE_VOICE_API_KEY_SECRET).pipe(
               Effect.map((secret) => ({
                 ...settings.circeLiveVoice,
                 apiKey: Option.isSome(secret) ? textDecoder.decode(secret.value) : "",
@@ -1008,20 +1008,20 @@ const make = Effect.gen(function* () {
 
       const nextLiveVoiceKey = next.circeLiveVoice.apiKey;
       let circeLiveVoice = next.circeLiveVoice;
-      if (nextLiveVoiceKey !== CIRCE_LIVE_VOICE_KEY_REDACTED) {
+      if (nextLiveVoiceKey !== T3CODE_LIVE_VOICE_KEY_REDACTED) {
         if (nextLiveVoiceKey.length === 0) {
           staleSecretRemovals.push({
-            secretName: CIRCE_LIVE_VOICE_API_KEY_SECRET,
+            secretName: T3CODE_LIVE_VOICE_API_KEY_SECRET,
             operation: "remove-secret",
           });
         } else {
           secretWrites.push({
-            secretName: CIRCE_LIVE_VOICE_API_KEY_SECRET,
+            secretName: T3CODE_LIVE_VOICE_API_KEY_SECRET,
             value: textEncoder.encode(nextLiveVoiceKey),
           });
           circeLiveVoice = {
             ...next.circeLiveVoice,
-            apiKey: CIRCE_LIVE_VOICE_KEY_REDACTED,
+            apiKey: T3CODE_LIVE_VOICE_KEY_REDACTED,
           };
         }
       }

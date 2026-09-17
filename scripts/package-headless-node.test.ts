@@ -214,20 +214,20 @@ describe("headless node packaging contract", () => {
     });
     expect(unit).toContain("Description=Circe Headless Node");
     // Service, path, and artifact identities stay Circe for upgrades.
-    expect(unit).toContain("Environment=CIRCE_NODE_PRESET=headless");
+    expect(unit).toContain("Environment=T3CODE_NODE_PRESET=headless");
     expect(unit).not.toContain("Description=Jarvis Headless Node");
     expect(unit).toContain(
       "ExecStart=/home/user/.circe-headless/node/bin/node /home/user/.circe-headless/runtime/service-launcher.mjs",
     );
-    expect(unit).toContain("Environment=CIRCE_NODE_PRESET=headless");
+    expect(unit).toContain("Environment=T3CODE_NODE_PRESET=headless");
     expect(unit).toContain("Restart=always");
 
     const installScript = renderHeadlessInstallScript();
-    expect(installScript).toContain("CIRCE_HEADLESS_HOME");
+    expect(installScript).toContain("T3CODE_HEADLESS_HOME");
     expect(installScript).toContain("systemctl --user enable --now circe-headless.service");
     expect(installScript).toContain("runtime/service-state.json");
     expect(installScript).toContain("userdata, worktrees");
-    expect(installScript).toContain("CIRCE_NODE_PRESET=headless");
+    expect(installScript).toContain("T3CODE_NODE_PRESET=headless");
     // User-visible copy is Circe; service name and paths stay Circe identities.
     expect(installScript).toContain("Description=Circe Headless Node");
     expect(installScript).toContain("Circe Headless Node installed at");
@@ -323,7 +323,7 @@ describe("headless node packaging contract", () => {
       env: {
         ...process.env,
         HOME: home,
-        CIRCE_HEADLESS_HOME: installRoot,
+        T3CODE_HEADLESS_HOME: installRoot,
         PATH: `${Path.dirname(systemctl)}:${process.env.PATH ?? ""}`,
       },
       encoding: "utf8",
@@ -355,7 +355,7 @@ describe("headless node packaging contract", () => {
     const environment = {
       ...process.env,
       HOME: home,
-      CIRCE_HEADLESS_HOME: installRoot,
+      T3CODE_HEADLESS_HOME: installRoot,
       PATH: `${Path.dirname(systemctl)}:${process.env.PATH ?? ""}`,
       SYSTEMCTL_LOG: systemctlLog,
     };
@@ -391,7 +391,7 @@ describe("headless node packaging contract", () => {
         Path.join(home, ".config", "systemd", "user", "circe-headless.service"),
         "utf8",
       ),
-    ).toContain("Environment=CIRCE_NODE_PRESET=headless");
+    ).toContain("Environment=T3CODE_NODE_PRESET=headless");
     const systemctlCalls = await FileSystem.readFile(systemctlLog, "utf8");
     expect(systemctlCalls).toContain("--user enable --now circe-headless.service");
     expect(systemctlCalls).toContain("--user stop circe-headless.service");
@@ -434,7 +434,7 @@ describe("headless node packaging contract", () => {
       const environment = {
         ...process.env,
         HOME: home,
-        CIRCE_HEADLESS_HOME: installRoot,
+        T3CODE_HEADLESS_HOME: installRoot,
         PATH: `${Path.dirname(systemctl)}:${process.env.PATH ?? ""}`,
         SYSTEMCTL_LOG: systemctlLog,
         SYSTEMCTL_FAIL_ONCE: failOnce,
@@ -500,7 +500,7 @@ describe("headless node packaging contract", () => {
       const environment = {
         ...process.env,
         HOME: home,
-        CIRCE_HEADLESS_HOME: installRoot,
+        T3CODE_HEADLESS_HOME: installRoot,
         PATH: `${Path.dirname(systemctl)}:${process.env.PATH ?? ""}`,
         SYSTEMCTL_LOG: systemctlLog,
       };
@@ -692,7 +692,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
         },
@@ -764,7 +764,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
         },
@@ -836,7 +836,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
         },
@@ -913,7 +913,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
         },
@@ -994,7 +994,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
           STOP_RECEIPT: receipt,
@@ -1092,7 +1092,7 @@ describe("headless node packaging contract", () => {
         env: {
           ...process.env,
           HOME: home,
-          CIRCE_HEADLESS_HOME: installRoot,
+          T3CODE_HEADLESS_HOME: installRoot,
           PATH: `${fakeBin}:${process.env.PATH ?? ""}`,
           SYSTEMCTL_LOG: systemctlLog,
         },

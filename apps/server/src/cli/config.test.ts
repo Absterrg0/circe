@@ -209,7 +209,7 @@ it.layer(NodeServices.layer)("cli config resolution", (it) => {
                 env: {
                   T3CODE_LOG_LEVEL: "Warn",
                   T3CODE_MODE: "desktop",
-                  CIRCE_NODE_PRESET: "controller",
+                  T3CODE_NODE_PRESET: "controller",
                   T3CODE_PORT: "4001",
                   T3CODE_HOST: "0.0.0.0",
                   CIRCE_HOME: baseDir,

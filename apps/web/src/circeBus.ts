@@ -7,7 +7,7 @@ import type {
   TurnId,
 } from "@circe/contracts";
 
-const CIRCE_OPEN_EVENT = "t3code:open-circe";
+const T3CODE_OPEN_EVENT = "t3code:open-circe";
 
 export interface CirceCommandTarget {
   readonly environmentId: EnvironmentId;
@@ -293,10 +293,10 @@ export function onCirceSpeechTerminal(listener: CirceSpeechTerminalListener): ()
 }
 
 export function openCirce(): void {
-  window.dispatchEvent(new Event(CIRCE_OPEN_EVENT));
+  window.dispatchEvent(new Event(T3CODE_OPEN_EVENT));
 }
 
 export function onOpenCirce(listener: () => void): () => void {
-  window.addEventListener(CIRCE_OPEN_EVENT, listener);
-  return () => window.removeEventListener(CIRCE_OPEN_EVENT, listener);
+  window.addEventListener(T3CODE_OPEN_EVENT, listener);
+  return () => window.removeEventListener(T3CODE_OPEN_EVENT, listener);
 }

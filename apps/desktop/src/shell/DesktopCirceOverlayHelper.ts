@@ -6,7 +6,7 @@ import { app, BrowserWindow, screen } from "electron";
 import type { DesktopCirceLiveVoiceState, DesktopCirceOrbCatalog } from "@circe/contracts";
 
 import {
-  DESKTOP_CIRCE_ORB_CONSOLE_PREFIX,
+  DESKTOP_T3CODE_ORB_CONSOLE_PREFIX,
   desktopCirceOrbCatalogScript,
   desktopCirceOrbStateScript,
   desktopCirceOverlayDataUrl,
@@ -18,7 +18,7 @@ import {
   type DesktopCirceOverlayAnchor,
 } from "./DesktopCirceOverlay.ts";
 
-export const DESKTOP_CIRCE_OVERLAY_HELPER_FLAG = "--circe-overlay-helper";
+export const DESKTOP_T3CODE_OVERLAY_HELPER_FLAG = "--circe-overlay-helper";
 type OverlayCommand =
   | { readonly type: "orb-state"; readonly state: DesktopCirceLiveVoiceState }
   | { readonly type: "orb-catalog"; readonly catalog: DesktopCirceOrbCatalog }
@@ -28,7 +28,7 @@ type OverlayCommand =
   | { readonly type: "shutdown" };
 
 export function isDesktopCirceOverlayHelper(argv: ReadonlyArray<string>): boolean {
-  return argv.includes(DESKTOP_CIRCE_OVERLAY_HELPER_FLAG);
+  return argv.includes(DESKTOP_T3CODE_OVERLAY_HELPER_FLAG);
 }
 
 function isLiveVoiceState(value: unknown): value is DesktopCirceLiveVoiceState {
@@ -151,7 +151,7 @@ export async function runDesktopCirceOverlayHelper(): Promise<void> {
   // Orb picker selections leave the document as console lines. Forward them
   // on stdout so the parent relays them orb -> main -> renderer.
   window.webContents.on("console-message", (_event, _level, message) => {
-    if (typeof message !== "string" || !message.startsWith(DESKTOP_CIRCE_ORB_CONSOLE_PREFIX))
+    if (typeof message !== "string" || !message.startsWith(DESKTOP_T3CODE_ORB_CONSOLE_PREFIX))
       return;
     const parsed = parseDesktopCirceOverlayEvent(message);
     if (parsed !== null && "type" in parsed && parsed.type === "drag") {

@@ -18,7 +18,7 @@ cd circe-headless-node-<version>-linux-<arch>
 
 The installer creates a user systemd service named `circe-headless.service`, starts it, and enables
 it for future logins. It stores the node under `~/.circe-headless` by default. To choose another
-location, set `CIRCE_HEADLESS_HOME` when installing and when running the helper commands.
+location, set `T3CODE_HEADLESS_HOME` when installing and when running the helper commands.
 
 If the VPS does not keep a user session, enable user service lingering once as an administrator:
 
@@ -32,16 +32,16 @@ credentials stay on the execution node; the archive does not include provider CL
 ## Pair and check the service
 
 Run the bundled T3 pairing command on the VPS, then enter the pairing details on the controlling
-Circe device (all paths below honor `$CIRCE_HEADLESS_HOME`, default `~/.circe-headless`):
+Circe device (all paths below honor `$T3CODE_HEADLESS_HOME`, default `~/.circe-headless`):
 
 ```sh
-$CIRCE_HEADLESS_HOME/node/bin/node \
-  $CIRCE_HEADLESS_HOME/runtime/versions/*/node_modules/@absterrg0/circe/dist/bin.mjs pair
-$CIRCE_HEADLESS_HOME/bin/status.sh
+$T3CODE_HEADLESS_HOME/node/bin/node \
+  $T3CODE_HEADLESS_HOME/runtime/versions/*/node_modules/@absterrg0/circe/dist/bin.mjs pair
+$T3CODE_HEADLESS_HOME/bin/status.sh
 ```
 
-The service log is at `$CIRCE_HEADLESS_HOME/userdata/logs/boot-service.log`. Circe projects, settings,
-and other node state remain under `$CIRCE_HEADLESS_HOME/userdata`; provider credentials remain on the
+The service log is at `$T3CODE_HEADLESS_HOME/userdata/logs/boot-service.log`. Circe projects, settings,
+and other node state remain under `$T3CODE_HEADLESS_HOME/userdata`; provider credentials remain on the
 VPS in the provider's own storage.
 
 ## Update and uninstall

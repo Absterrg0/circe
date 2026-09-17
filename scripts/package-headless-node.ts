@@ -197,7 +197,7 @@ export function renderHeadlessSystemdUnit(paths: HeadlessServicePaths): string {
     "Type=simple",
     `WorkingDirectory=${systemdQuote(paths.installRoot)}`,
     `Environment=CIRCE_HOME=${systemdQuote(paths.installRoot)}`,
-    "Environment=CIRCE_NODE_PRESET=headless",
+    "Environment=T3CODE_NODE_PRESET=headless",
     "Environment=T3CODE_NO_BROWSER=true",
     `ExecStart=${systemdQuote(paths.nodePath)} ${systemdQuote(paths.launcherPath)}`,
     "KillMode=mixed",
@@ -218,7 +218,7 @@ export function renderHeadlessInstallScript(): string {
 set -eu
 
 archive_root=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit_path="\$HOME/.config/systemd/user/circe-headless.service"
 
 die() {
@@ -379,7 +379,7 @@ StartLimitBurst=5
 Type=simple
 WorkingDirectory=\$unit_install_root
 Environment=CIRCE_HOME=\$unit_install_root
-Environment=CIRCE_NODE_PRESET=headless
+Environment=T3CODE_NODE_PRESET=headless
 Environment=T3CODE_NO_BROWSER=true
 ExecStart=\$unit_node \$unit_launcher
 KillMode=mixed
@@ -406,7 +406,7 @@ export function renderHeadlessStatusScript(): string {
   return `#!/bin/sh
 set -u
 
-install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit=circe-headless.service
 echo "Circe Headless Node"
 echo "  Install: \$install_root"
@@ -428,7 +428,7 @@ export function renderHeadlessUninstallScript(): string {
   return `#!/bin/sh
 set -eu
 
-install_root=\${CIRCE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
+install_root=\${T3CODE_HEADLESS_HOME:-"\$HOME/.circe-headless"}
 unit_path="\$HOME/.config/systemd/user/circe-headless.service"
 purge=false
 if test "\${1:-}" = "--purge-data"; then
@@ -632,33 +632,36 @@ export async function stageHeadlessNode(
   );
   await FileSystem.rm(rootDir, { recursive: true, force: true });
   const runtimeVersionDir = Path.join(rootDir, "runtime", "versions", input.version);
-  const t3PackageDir = Path.join(runtimeVersionDir, "node_modules", "@absterrg0", "circe");
+  const circePackageDir = Path.join(runtimeVersionDir, "node_modules", "@absterrg0", "circe");
   await FileSystem.mkdir(Path.join(rootDir, "node", "bin"), { recursive: true });
-  await FileSystem.mkdir(t3PackageDir, { recursive: true });
+  await FileSystem.mkdir(circePackageDir, { recursive: true });
   await FileSystem.mkdir(Path.join(rootDir, "config"), { recursive: true });
 
   const nodePath = Path.join(rootDir, "node", "bin", "node");
   await FileSystem.copyFile(input.nodeExecutable, nodePath);
   await FileSystem.chmod(nodePath, 0o755);
-  await copyDeployedPackage(input.deployDir, t3PackageDir);
+  await copyDeployedPackage(input.deployDir, circePackageDir);
   // Linux Headless is a server-only artifact. The deployed package can still
   // contain the web build because it is shared with desktop packaging, but a
   // headless node must never ship or serve that UI payload.
-  await FileSystem.rm(Path.join(t3PackageDir, "dist", "client"), {
+  await FileSystem.rm(Path.join(circePackageDir, "dist", "client"), {
     recursive: true,
     force: true,
   });
   await ensureAbsent(
-    Path.join(t3PackageDir, "dist", "client", "index.html"),
+    Path.join(circePackageDir, "dist", "client", "index.html"),
     "headless web client",
   );
   // Source maps carry the original repository sources and are not needed by a
   // production headless runtime. The deploy output itself remains untouched.
-  await removeSourceMaps(t3PackageDir);
-  await FileSystem.rm(Path.join(t3PackageDir, "src"), { recursive: true, force: true });
+  await removeSourceMaps(circePackageDir);
+  await FileSystem.rm(Path.join(circePackageDir, "src"), { recursive: true, force: true });
 
   const launcherPath = Path.join(rootDir, "runtime", "service-launcher.mjs");
-  await FileSystem.copyFile(Path.join(t3PackageDir, "dist", "service-launcher.mjs"), launcherPath);
+  await FileSystem.copyFile(
+    Path.join(circePackageDir, "dist", "service-launcher.mjs"),
+    launcherPath,
+  );
   await FileSystem.writeFile(
     Path.join(runtimeVersionDir, ".install-complete"),
     `${input.version}\n`,

@@ -2,7 +2,7 @@ import {
   CommandId,
   DEFAULT_RUNTIME_MODE,
   EventId,
-  CIRCE_CONVERSATIONS_PROJECT_TITLE,
+  T3CODE_CONVERSATIONS_PROJECT_TITLE,
   MessageId,
   type EnvironmentId,
   type ModelSelection,
@@ -93,8 +93,8 @@ import {
 import {
   commandTaskFromShell,
   commandTaskFromThread,
-  CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS,
-  CIRCE_SEMANTIC_UNAVAILABLE_PROMPT,
+  T3CODE_SEMANTIC_ATTEMPT_TIMEOUT_MS,
+  T3CODE_SEMANTIC_UNAVAILABLE_PROMPT,
   looksLikeCirceBoundedCommand,
   navigationCandidateFromDesk,
   normalizeTaskDeskAnswer,
@@ -184,7 +184,7 @@ function buildMeshSemanticPrompt(input: {
   ].join("\n");
 }
 
-const CIRCE_MAX_SEQUENCE_STEPS = 4;
+const T3CODE_MAX_SEQUENCE_STEPS = 4;
 
 /** Ordered steps for a multi-command turn, or null when the proposal is single. */
 function decodeCirceSequenceSteps(
@@ -195,7 +195,7 @@ function decodeCirceSequenceSteps(
     const decoded = decodeCirceSemanticProposal(proposal);
     const steps = decoded.steps ?? undefined;
     if (steps === undefined || steps.length < 2) return null;
-    return steps.slice(0, CIRCE_MAX_SEQUENCE_STEPS);
+    return steps.slice(0, T3CODE_MAX_SEQUENCE_STEPS);
   } catch {
     return null;
   }
@@ -372,7 +372,7 @@ const defaultInterpreterLayer = Layer.effect(
         ),
         // A hung provider must not hold the turn open; timeout releases the
         // slot to the next candidate instead.
-        Effect.timeoutOption(CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS),
+        Effect.timeoutOption(T3CODE_SEMANTIC_ATTEMPT_TIMEOUT_MS),
         Effect.flatMap((result) =>
           Option.isSome(result)
             ? Effect.succeed(result.value)
@@ -481,7 +481,7 @@ const defaultInterpreterLayer = Layer.effect(
               return Effect.succeed({
                 status: "needs-input" as const,
                 reason: "unsupported-command" as const,
-                prompt: CIRCE_SEMANTIC_UNAVAILABLE_PROMPT,
+                prompt: T3CODE_SEMANTIC_UNAVAILABLE_PROMPT,
                 choices: [],
               });
             }),
@@ -1220,7 +1220,7 @@ export const makeCirceControllerLive = <R>(
         ) {
           const conversationsShell = yield* projections.getShellSnapshot();
           const conversations = conversationsShell.projects.find(
-            (candidate) => candidate.title === CIRCE_CONVERSATIONS_PROJECT_TITLE,
+            (candidate) => candidate.title === T3CODE_CONVERSATIONS_PROJECT_TITLE,
           );
           if (conversations !== undefined) {
             interpretation = {

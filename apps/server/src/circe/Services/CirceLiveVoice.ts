@@ -17,7 +17,7 @@ import {
   CirceLiveVoiceInvalidInputError,
   CirceLiveVoiceRuntimeError,
   CirceLiveVoiceUnavailableError,
-  CIRCE_LIVE_VOICE_MAX_SDP_LENGTH,
+  T3CODE_LIVE_VOICE_MAX_SDP_LENGTH,
   TrimmedNonEmptyString,
   type CirceLiveVoiceError,
   type CirceLiveVoiceSettings,
@@ -173,7 +173,7 @@ export function validateCirceLiveVoiceCreateInput(
 ): Effect.Effect<void, CirceLiveVoiceInvalidInputError> {
   if (
     input.sdpOffer.trim().length === 0 ||
-    input.sdpOffer.length > CIRCE_LIVE_VOICE_MAX_SDP_LENGTH
+    input.sdpOffer.length > T3CODE_LIVE_VOICE_MAX_SDP_LENGTH
   ) {
     return Effect.fail(
       new CirceLiveVoiceInvalidInputError({

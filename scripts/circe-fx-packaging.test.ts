@@ -2,7 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   DESKTOP_FX_EXTRA_RESOURCE,
-  CIRCE_FX_RESOURCE_DIR,
+  T3CODE_FX_RESOURCE_DIR,
   circeFxReleaseAsset,
 } from "./circe-fx-packaging.ts";
 import { bundlesCirceFxResources } from "./build-desktop-artifact.ts";
@@ -18,9 +18,9 @@ describe("circe fx packaging", () => {
 
   it("stages into the prod-resources fx directory the artifact expects", () => {
     expect(DESKTOP_FX_EXTRA_RESOURCE.from).toBe(
-      `apps/desktop/prod-resources/${CIRCE_FX_RESOURCE_DIR}`,
+      `apps/desktop/prod-resources/${T3CODE_FX_RESOURCE_DIR}`,
     );
-    expect(DESKTOP_FX_EXTRA_RESOURCE.to).toBe(CIRCE_FX_RESOURCE_DIR);
+    expect(DESKTOP_FX_EXTRA_RESOURCE.to).toBe(T3CODE_FX_RESOURCE_DIR);
   });
 
   it("bundles only where fx publishes a single binary", () => {
