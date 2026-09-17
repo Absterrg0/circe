@@ -11,7 +11,6 @@ import type { DecisionRequest } from "@circe/core/decision";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
-import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../desktopUse/DesktopUse.ts";
 import {
@@ -27,6 +26,7 @@ import {
   type DesktopScrollDirection,
 } from "../desktopUse/desktopUseRuntime.ts";
 import { detectDisplayServer, resolveBackend } from "../desktopUse/platforms.ts";
+import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
 
@@ -61,8 +61,6 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceComputerUse
         message: `I took ${result.steps} steps but couldn't finish ${goal}.`,
         steps: result.steps,
       };
-    case "clarification":
-      return { status: "needs-input", message: result.prompt };
     case "refused":
       return { status: "refused", message: refusalMessage(result.reason) };
   }
@@ -83,28 +81,47 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     const desktopUse = yield* DesktopUse;
     const commands = yield* DesktopCommands;
     const decision = yield* CirceDecision;
-    const serverEnvironment = yield* ServerEnvironment;
     const displayServer = detectDisplayServer(process.env);
     const backend =
       options.backend ?? resolveBackend({ platform: process.platform, displayServer });
 
     const runCommand: AccessibilityCommandRunner = (command, operation) =>
       commands.run(command, backend, operation, COMMAND_TIMEOUT_MS);
-
+    // A transport failure propagates; only a decoded "no action interface"
+    // (or an identity mismatch) returns false and allows the bounded coordinate
+    // fallback. A hung helper must not look like an element without an action.
     const runAtspiAction = (request: Parameters<typeof buildAccessibilityActionCommand>[0]) =>
       runCommand(buildAccessibilityActionCommand(request), "desktop.accessibility.act").pipe(
-        Effect.flatMap(({ stdout }) =>
-          Effect.try({
-            try: () => decodeAccessibilityActionResultJson(stdout).ok,
-            catch: () => false,
-          }),
-        ),
-        Effect.catch(() => Effect.succeed(false)),
+        Effect.map(({ stdout }) => {
+          try {
+            return decodeAccessibilityActionResultJson(stdout).ok;
+          } catch {
+            // A helper that emitted garbage is treated as "no action
+            // interface", which allows the grounded coordinate fallback.
+            return false;
+          }
+        }),
       );
 
+    const expectation = (element: { readonly role: string | null; readonly name: string }) => ({
+      role: element.role,
+      name: element.name,
+    });
+
     const actuator: DesktopActuator<MissionError> = {
-      activate: (elementId) => runAtspiAction({ path: elementId, action: "activate" }),
-      setText: (elementId, text) => runAtspiAction({ path: elementId, action: "set-text", text }),
+      activate: (element) =>
+        runAtspiAction({
+          path: element.id,
+          action: "activate",
+          expect: expectation(element),
+        }),
+      setText: (element, text) =>
+        runAtspiAction({
+          path: element.id,
+          action: "set-text",
+          text,
+          expect: expectation(element),
+        }),
       clickAt: (element) =>
         desktopUse
           .input({
@@ -136,20 +153,32 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
           message: "Desktop control is available on Linux for now.",
         } as const;
       }
-      yield* serverEnvironment.getEnvironmentId;
       const observe = () => observeLinuxDesktop(runCommand, { backend, title: "Desktop" });
       const select = (request: DecisionRequest) =>
         decision
           .decide(request)
-          .pipe(Effect.map((outcome) => (outcome.status === "answered" ? outcome.answers : {})));
-      return yield* runComputerUse<MissionError>({
+          .pipe(
+            Effect.flatMap((outcome) =>
+              outcome.status === "answered"
+                ? Effect.succeed(outcome.answers)
+                : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
+            ),
+          );
+      return yield* runComputerUse<MissionError | SurfaceDecisionUnavailableError>({
         model: DECISION_MODEL,
         goal: input.goal,
         ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
         ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
-        runtime: makeDesktopUseRuntime({ observe, select, actuator }),
+        runtime: makeDesktopUseRuntime<MissionError | SurfaceDecisionUnavailableError>({
+          observe,
+          select,
+          actuator,
+        }),
       }).pipe(
         Effect.map((result) => mapResult(result, input.goal)),
+        Effect.catchTag("SurfaceDecisionUnavailableError", (error) =>
+          Effect.succeed({ status: "unavailable" as const, message: error.message }),
+        ),
         Effect.catch(() =>
           Effect.succeed({
             status: "refused" as const,

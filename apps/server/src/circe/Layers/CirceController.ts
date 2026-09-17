@@ -587,11 +587,13 @@ const defaultInterpreterLayer = Layer.effect(
       readonly proposal: typeof CirceSemanticProposal.Type | undefined;
       readonly source: string;
     }): CirceClassifiedTurn => {
+      const locationCandidates = extractLocationCandidates(turn.source);
+      const websiteCandidates = extractWebsiteCandidates(turn.source);
       const offered = offeredCirceTools({
         nodeTools: nodeTools.available,
         clientTools: [],
-        locationCandidates: extractLocationCandidates(turn.source),
-        websiteCandidates: extractWebsiteCandidates(turn.source),
+        locationCandidates,
+        websiteCandidates,
       });
       const outcome: CirceOutcome =
         turn.proposal === undefined
@@ -599,6 +601,9 @@ const defaultInterpreterLayer = Layer.effect(
           : circeOutcomeFromProposal({
               proposal: turn.proposal,
               tools: offered,
+              source: turn.source,
+              locationCandidates,
+              websiteCandidates,
               work: () => resolveWorkFromInterpretation(turn.interpretation),
             });
       return { outcome, interpretation: turn.interpretation };
@@ -1278,11 +1283,13 @@ export const makeCirceControllerLive = <R>(
                 // Director refuses lookup/open-website because it cannot run
                 // them; the node and the origin client own those tools, so the
                 // proposal's tool outcome wins when the host offered it.
+                const locationCandidates = extractLocationCandidates(source);
+                const websiteCandidates = extractWebsiteCandidates(source);
                 const offered = offeredCirceTools({
                   nodeTools: nodeTools.available,
                   clientTools: input.clientTools ?? [],
-                  locationCandidates: extractLocationCandidates(source),
-                  websiteCandidates: extractWebsiteCandidates(source),
+                  locationCandidates,
+                  websiteCandidates,
                   ...(input.clientToolCandidates?.apps === undefined
                     ? {}
                     : { appCandidates: input.clientToolCandidates.apps }),
@@ -1293,7 +1300,13 @@ export const makeCirceControllerLive = <R>(
                 const toolOutcome =
                   proposal === undefined
                     ? undefined
-                    : circeOutcomeFromProposal({ proposal, tools: offered });
+                    : circeOutcomeFromProposal({
+                        proposal,
+                        tools: offered,
+                        source,
+                        locationCandidates,
+                        websiteCandidates,
+                      });
                 const outcome =
                   toolOutcome !== undefined &&
                   (toolOutcome.kind === "tool-answer" || toolOutcome.kind === "client-action")

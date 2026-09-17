@@ -39,15 +39,15 @@ const record = (): { readonly calls: Array<string>; readonly actuator: DesktopAc
   return {
     calls,
     actuator: {
-      activate: (id) =>
+      activate: (element) =>
         Effect.sync(() => {
-          calls.push(`activate:${id}`);
-          return id === "app:0/0/3";
+          calls.push(`activate:${element.id}`);
+          return element.id === "app:0/0/3";
         }),
-      setText: (id, text) =>
+      setText: (element, text) =>
         Effect.sync(() => {
-          calls.push(`setText:${id}:${text}`);
-          return id === "app:0/0/5";
+          calls.push(`setText:${element.id}:${text}`);
+          return element.id === "app:0/0/5";
         }),
       clickAt: (element) =>
         Effect.sync(() => {

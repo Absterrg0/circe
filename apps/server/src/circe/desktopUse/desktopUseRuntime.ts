@@ -17,10 +17,14 @@ import * as Effect from "effect/Effect";
 export type DesktopScrollDirection = "up" | "down" | "left" | "right";
 
 export interface DesktopActuator<E = never> {
-  /** Element activation through the accessibility action interface. */
-  readonly activate: (elementId: string) => Effect.Effect<boolean, E>;
+  /**
+   * Element activation through the accessibility action interface. Receives
+   * the grounded element so the host can re-check its identity; false means
+   * the caller may use a coordinate click at the captured bounds.
+   */
+  readonly activate: (element: ComputerElement) => Effect.Effect<boolean, E>;
   /** Set an editable element's text directly; false when it is not editable. */
-  readonly setText: (elementId: string, text: string) => Effect.Effect<boolean, E>;
+  readonly setText: (element: ComputerElement, text: string) => Effect.Effect<boolean, E>;
   /** Coordinate click at a grounded element's bounds. */
   readonly clickAt: (element: ComputerElement) => Effect.Effect<void, E>;
   readonly typeText: (text: string) => Effect.Effect<void, E>;
@@ -57,16 +61,19 @@ export const makeDesktopUseRuntime = <E = never>(
       Effect.gen(function* () {
         switch (action.kind) {
           case "click": {
-            if (yield* input.actuator.activate(action.elementId)) return;
             const element = find(action.elementId);
-            if (element !== undefined) yield* input.actuator.clickAt(element);
+            if (element === undefined) return;
+            if (yield* input.actuator.activate(element)) return;
+            yield* input.actuator.clickAt(element);
             return;
           }
           case "type": {
             if (action.elementId !== undefined) {
-              if (yield* input.actuator.setText(action.elementId, action.text)) return;
               const element = find(action.elementId);
-              if (element !== undefined) yield* input.actuator.clickAt(element);
+              if (element !== undefined) {
+                if (yield* input.actuator.setText(element, action.text)) return;
+                yield* input.actuator.clickAt(element);
+              }
             }
             yield* input.actuator.typeText(action.text);
             return;

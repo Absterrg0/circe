@@ -1,9 +1,7 @@
-import { EnvironmentId } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { describe, expect, it } from "vite-plus/test";
 
-import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../desktopUse/DesktopUse.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
@@ -74,11 +72,6 @@ const testLayer = (input: {
           index += 1;
           return Effect.succeed(choose(action));
         },
-      }),
-    ),
-    Layer.provide(
-      Layer.mock(ServerEnvironment)({
-        getEnvironmentId: Effect.succeed(EnvironmentId.make("node-1")),
       }),
     ),
   );

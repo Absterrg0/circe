@@ -7,8 +7,12 @@ import { CirceRequestMetadata } from "./circe.ts";
  * A bounded, project-free browser mission. The node runs the TypeSafe step
  * loop against its connected desktop browser host: perception is a grounded
  * snapshot, each action is a grounded selector, and the goal never authorizes
- * anything by itself. The originating client confirms once per session before
- * the first mission; subsequent missions reuse the confirmed flag.
+ * anything by itself.
+ *
+ * `confirmed` is a client assertion, not an authorization: the node trusts a
+ * paired, operate-scoped client to have obtained the user's consent, and
+ * stores no confirmation state. It exists so the origin client can prompt once
+ * per session. A node that needs a hard gate must add a typed pending frame.
  */
 export const CirceBrowserUseInput = Schema.Struct({
   goal: TrimmedNonEmptyString.check(Schema.isMaxLength(1_000)),

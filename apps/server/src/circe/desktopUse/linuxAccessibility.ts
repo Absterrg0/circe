@@ -172,6 +172,22 @@ def resolve(desktop, path):
         node = node.getChildAtIndex(int(segment))
     return node
 
+def unchanged(node, expect):
+    # Ids are positional paths. Re-resolving after an insertion or removal can
+    # land on a different element, so the host pins the role and name it
+    # captured and refuses anything else.
+    if not expect:
+        return True
+    try:
+        role = node.getRoleName()
+    except Exception:
+        role = None
+    try:
+        name = node.name or ""
+    except Exception:
+        name = ""
+    return role == expect.get("role") and name == expect.get("name")
+
 def activate(node):
     try:
         action = node.queryAction()
@@ -205,6 +221,9 @@ def main():
     if node is None:
         json.dump({"ok": False, "error": "element-not-found"}, sys.stdout)
         return
+    if not unchanged(node, payload.get("expect")):
+        json.dump({"ok": False, "error": "element-changed"}, sys.stdout)
+        return
     action = payload.get("action")
     if action == "activate":
         ok, error = activate(node)
@@ -217,10 +236,17 @@ def main():
 main()
 `.trim();
 
+export interface AccessibilityActionExpectation {
+  readonly role: string | null;
+  readonly name: string;
+}
+
 export interface AccessibilityActionRequest {
   readonly path: string;
   readonly action: "activate" | "set-text";
   readonly text?: string;
+  /** Identity captured with the path; the host refuses a mismatched node. */
+  readonly expect?: AccessibilityActionExpectation;
 }
 
 export function buildAccessibilityActionCommand(

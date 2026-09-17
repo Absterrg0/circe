@@ -1,6 +1,8 @@
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
+import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
+import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
 import {
   CirceCancelRequestInput,
   CirceCancelRequestResult,
@@ -747,5 +749,29 @@ describe("Circe plan clarification frame", () => {
         stepBindings: [{ index: 1, confirmedProjectId: "project-2" }],
       },
     });
+  });
+});
+
+describe("Circe surface missions", () => {
+  const decodeBrowserInput = Schema.decodeUnknownSync(CirceBrowserUseInput);
+  const decodeBrowserResult = Schema.decodeUnknownSync(CirceBrowserUseResult);
+  const decodeComputerInput = Schema.decodeUnknownSync(CirceComputerUseInput);
+  const decodeComputerResult = Schema.decodeUnknownSync(CirceComputerUseResult);
+
+  it("decodes a browser mission input and result", () => {
+    expect(
+      decodeBrowserInput({ goal: "open the docs", confirmed: true, typeText: "hello" }),
+    ).toMatchObject({ goal: "open the docs", confirmed: true, typeText: "hello" });
+    expect(
+      decodeBrowserResult({ status: "done", message: "Done: open the docs", steps: 2 }),
+    ).toMatchObject({ status: "done", steps: 2 });
+  });
+
+  it("shares the bounded shape with a desktop mission", () => {
+    expect(decodeComputerInput({ goal: "save the file" })).toMatchObject({ goal: "save the file" });
+    expect(decodeComputerResult({ status: "unavailable", message: "no host" })).toMatchObject({
+      status: "unavailable",
+    });
+    expect(() => decodeComputerResult({ status: "done", message: "x", steps: -1 })).toThrow();
   });
 });
