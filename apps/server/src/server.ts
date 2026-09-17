@@ -518,6 +518,13 @@ const RuntimeCoreDependenciesBaseLive = Layer.mergeAll(
   // telemetry instead of waiting for the next status probe.
   ProviderUsageLimitsIngestionLive,
   AntigravityInstallationRefreshLive,
+  // Circe-owned push subscriptions. V2 owns no reactor hook for them, so they
+  // are provided here and started from serverRuntimeStartup. Push still reads
+  // the V1 legacy event stream and snapshots, which the orchestration
+  // application layer supplies below; keeping it on this side of the
+  // composition stops those legacy requirements from leaking to every CLI
+  // command.
+  CircePushNotificationsLive.pipe(Layer.provide(CircePushRegistrationsLive)),
 ).pipe(
   // Core Services
   Layer.provideMerge(OrchestrationApplicationLayerLive),
@@ -542,9 +549,6 @@ const RuntimeCoreDependenciesBaseLive = Layer.mergeAll(
       CirceProjectLexiconLive,
       CirceFollowUpQueueLive,
       ProjectionTurnRepositoryLive,
-      // Circe-owned push subscriptions. V2 owns no reactor hook for them, so
-      // they are provided here and started from serverRuntimeStartup.
-      CircePushNotificationsLive.pipe(Layer.provide(CircePushRegistrationsLive)),
     ),
   ),
   Layer.provideMerge(ProviderRegistryLive),
