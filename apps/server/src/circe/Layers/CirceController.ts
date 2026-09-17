@@ -6,7 +6,7 @@ import {
   MessageId,
   type EnvironmentId,
   type ModelSelection,
-  ApprovalRequestId,
+  RuntimeRequestId,
   ProjectId,
   ThreadId,
   TextGenerationError,
@@ -30,7 +30,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
-import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
+import { latestActiveRun } from "../../orchestration-v2/ThreadManagementService.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { ProviderRegistry } from "../../provider/Services/ProviderRegistry.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
@@ -586,7 +587,7 @@ export const makeCirceControllerLive = <R>(
       const interpreter = yield* CirceControllerInterpreter;
       const providers = yield* ProviderRegistry;
       const projections = yield* ProjectionSnapshotQuery;
-      const orchestration = yield* OrchestrationEngineService;
+      const orchestration = yield* OrchestratorV2;
       const serverSettings = yield* ServerSettingsService;
       const projectLexicon = yield* CirceProjectLexicon;
       const followUpQueue = yield* CirceFollowUpQueue;
@@ -816,35 +817,11 @@ export const makeCirceControllerLive = <R>(
           acceptanceKey === undefined
             ? uuid()
             : Effect.succeed(`circe.${purpose}.${acceptanceKey}`);
-        const recordTurnOrigin = Effect.fn("CirceController.recordTurnOrigin")(function* (
-          thread: OrchestrationThread,
-          createdAt: string,
-          correlation: { readonly messageId?: MessageId; readonly turnId?: TurnId },
-        ) {
-          if (input.requestMetadata?.origin === undefined) return;
-          const taskRef = taskRefFor(input.executionNodeId, thread.id);
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(yield* requestScopedId("turn-origin-command")),
-            threadId: thread.id,
-            activity: {
-              id: EventId.make(yield* requestScopedId("turn-origin-activity")),
-              tone: "info",
-              kind: "circe.turn.origin",
-              summary: "Continued by Circe",
-              payload: {
-                ...(correlation.messageId === undefined
-                  ? {}
-                  : { messageId: correlation.messageId }),
-                ...(taskRef === undefined ? {} : { taskRef }),
-                requestMetadata: input.requestMetadata,
-              },
-              turnId: correlation.turnId ?? null,
-              createdAt,
-            },
-            createdAt,
-          });
-        });
+        // V2 records who created a turn through the message dispatch provenance
+        // (`createdBy`/`creationSource`) rather than a separate Circe activity.
+        // Circe is a server-side controller acting for the user, so its
+        // messages are user-created and server-sourced.
+        const circeCreation = { createdBy: "user", creationSource: "server" } as const;
 
         // The controller is the turn owner: read the desk, node catalogs, and
         // request context once before deciding which ordinary T3 command to emit.
@@ -1561,23 +1538,17 @@ export const makeCirceControllerLive = <R>(
                 choices: [],
               };
             }
-            yield* recordTurnOrigin(
-              currentThread,
-              createdAt,
-              pendingReply.turnId === undefined ? {} : { turnId: pendingReply.turnId },
-            );
             yield* orchestration.dispatch({
-              type: "thread.user-input.respond",
+              type: "runtime-request.respond",
               commandId,
               threadId: currentThread.id,
-              requestId: ApprovalRequestId.make(pendingReply.requestId),
+              requestId: RuntimeRequestId.make(pendingReply.requestId),
               answers: Object.fromEntries(
                 pendingReply.questionIds.map((questionId) => [
                   questionId,
                   groundedUtterance.trim(),
                 ]),
               ),
-              createdAt,
             });
           } else if (pendingReply?.kind === "approval") {
             const decision =
@@ -1594,37 +1565,26 @@ export const makeCirceControllerLive = <R>(
                 expectedReply: { kind: "approval" as const, requestId: pendingReply.requestId },
               };
             }
-            yield* recordTurnOrigin(
-              currentThread,
-              createdAt,
-              pendingReply.turnId === undefined ? {} : { turnId: pendingReply.turnId },
-            );
             yield* orchestration.dispatch({
-              type: "thread.approval.respond",
+              type: "runtime-request.respond",
               commandId,
               threadId: currentThread.id,
-              requestId: ApprovalRequestId.make(pendingReply.requestId),
+              requestId: RuntimeRequestId.make(pendingReply.requestId),
               decision,
-              createdAt,
             });
           } else {
             const visibleInstruction = groundedUtterance.trim();
             const messageId = MessageId.make(yield* requestScopedId("continuation-message"));
-            yield* recordTurnOrigin(currentThread, createdAt, { messageId });
             yield* orchestration.dispatch({
-              type: "thread.turn.start",
+              type: "message.dispatch",
               commandId,
               threadId: currentThread.id,
-              message: {
-                messageId,
-                role: "user",
-                text: visibleInstruction,
-                attachments: [],
-              },
+              messageId,
+              text: visibleInstruction,
+              attachments: [],
               modelSelection: currentThread.modelSelection,
-              runtimeMode: currentThread.runtimeMode,
-              interactionMode: currentThread.interactionMode,
-              createdAt,
+              dispatchMode: { type: "start_immediately" },
+              ...circeCreation,
             });
           }
           const continuationTaskRef = taskRefFor(input.executionNodeId, currentThread.id);
@@ -1672,7 +1632,6 @@ export const makeCirceControllerLive = <R>(
         let rerouteSource:
           | { readonly thread: OrchestrationThread; readonly task: CirceCommandTask }
           | undefined;
-        let rerouteInterruptTurnId: TurnId | undefined;
         if (command.type === "status") {
           const statusThread = Option.getOrThrow(selectedControlThread);
           const queuedFollowUps = yield* followUpQueue.pendingCount(statusThread.id);
@@ -1748,23 +1707,22 @@ export const makeCirceControllerLive = <R>(
             };
           }
           const steerState = deriveCirceTaskState(selectedControlThread.value);
-          const createdAt = DateTime.formatIso(yield* DateTime.now);
           const messageId = MessageId.make(yield* requestScopedId("steer-message"));
-          yield* recordTurnOrigin(selectedControlThread.value, createdAt, { messageId });
           yield* orchestration.dispatch({
-            type: "thread.turn.start",
+            type: "message.dispatch",
             commandId: CommandId.make(yield* requestScopedId("steer-command")),
             threadId: selectedControlThread.value.id,
-            message: {
-              messageId,
-              role: "user",
-              text: command.instruction,
-              attachments: [],
-            },
+            messageId,
+            text: command.instruction,
+            attachments: [],
             modelSelection: selectedControlThread.value.modelSelection,
-            runtimeMode: selectedControlThread.value.runtimeMode,
-            interactionMode: selectedControlThread.value.interactionMode,
-            createdAt,
+            // Let V2 resolve active-run steering against its serialized thread
+            // state. It becomes `steer_active` when a run is live and falls
+            // back to a fresh turn when steering is too late, which matches
+            // Circe's continuation-versus-steer decision.
+            dispatchMode: { type: "start_immediately" },
+            deliveryIntent: "steer",
+            ...circeCreation,
           });
           {
             const steeredTaskRef = taskRefFor(
@@ -1828,9 +1786,6 @@ export const makeCirceControllerLive = <R>(
               : { executionNodeId: input.executionNodeId }),
           });
           rerouteSource = { thread: sourceThread, task: sourceTask };
-          rerouteInterruptTurnId = hasActiveCirceTurn(sourceThread)
-            ? sourceThread.latestTurn?.turnId
-            : undefined;
         } else if (command.type === "continue" || command.type === "answer") {
           return {
             status: "needs-input" as const,
@@ -1885,29 +1840,15 @@ export const makeCirceControllerLive = <R>(
           };
         }
 
-        const [
-          threadUuid,
-          threadCreateCommandUuid,
-          commandUuid,
-          messageUuid,
-          sourceActivityCommandUuid,
-          sourceActivityUuid,
-          reviewActivityCommandUuid,
-          reviewActivityUuid,
-        ] = yield* Effect.all([
+        const [threadUuid, threadCreateCommandUuid, commandUuid, messageUuid] = yield* Effect.all([
           requestScopedId("thread"),
           requestScopedId("thread-create"),
           requestScopedId("turn-start"),
           requestScopedId("message"),
-          requestScopedId("source-activity-command"),
-          requestScopedId("source-activity"),
-          requestScopedId("review-activity-command"),
-          requestScopedId("review-activity"),
         ]);
         const threadId = ThreadId.make(threadUuid);
         const messageId = MessageId.make(messageUuid);
         const createdAt = DateTime.formatIso(yield* DateTime.now);
-        const isConversation = command.type === "start" && command.flow === "conversation";
         // Conversations use the raw objective as the provisional title; the
         // provider renames it asynchronously (below) into a short summary.
         // No visible "Conversation:" prefix.
@@ -1979,113 +1920,23 @@ export const makeCirceControllerLive = <R>(
           interactionMode: inheritedExecution.interactionMode,
           branch: null,
           worktreePath: null,
-          createdAt,
+          ...circeCreation,
         });
 
         // Interrupt the source before the successor's first turn so both tasks
-        // cannot keep running after a cross-project reroute.
+        // cannot keep running after a cross-project reroute. V2 addresses a
+        // concrete run, so resolve the active one from the source projection.
         if (rerouteSource !== undefined && hasActiveCirceTurn(rerouteSource.thread)) {
-          yield* orchestration.dispatch({
-            type: "thread.turn.interrupt",
-            commandId: CommandId.make(yield* requestScopedId("reroute-interrupt-command")),
-            threadId: rerouteSource.thread.id,
-            ...(rerouteInterruptTurnId === undefined ? {} : { turnId: rerouteInterruptTurnId }),
-            createdAt,
-          });
-        }
-
-        // Record Circe origin before starting the turn. The live projector
-        // routes terminal events by this marker, so starting first would let a
-        // fast result arrive before the task is recognized as managed.
-        if (isReview && Option.isSome(reviewSource)) {
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(sourceActivityCommandUuid),
-            threadId: reviewSource.value.id,
-            activity: {
-              id: EventId.make(sourceActivityUuid),
-              tone: "info",
-              kind: "circe.review.requested",
-              summary: `Review started in ${title}`,
-              payload: { reviewThreadId: threadId, modelSelection },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(reviewActivityCommandUuid),
-            threadId,
-            activity: {
-              id: EventId.make(reviewActivityUuid),
-              tone: "info",
-              kind: "circe.review.source",
-              summary: `Reviewing ${reviewSource.value.title}`,
-              payload: {
-                sourceThreadId: reviewSource.value.id,
-                objective,
-                messageId,
-                ...(taskRef === undefined ? {} : { taskRef }),
-                ...(input.requestMetadata === undefined
-                  ? {}
-                  : { requestMetadata: input.requestMetadata }),
-              },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-        } else {
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(reviewActivityCommandUuid),
-            threadId,
-            activity: {
-              id: EventId.make(reviewActivityUuid),
-              tone: "info",
-              kind: "circe.task.created",
-              summary: `${
-                availableProviders.find(
-                  (provider) => provider.instanceId === modelSelection.instanceId,
-                )?.displayName ?? modelSelection.instanceId
-              } is starting in ${project.title}`,
-              payload: {
-                modelSelection,
-                objective,
-                messageId,
-                ...(taskRef === undefined ? {} : { taskRef }),
-                ...(input.requestMetadata === undefined
-                  ? {}
-                  : { requestMetadata: input.requestMetadata }),
-                ...(rerouteSource === undefined
-                  ? {}
-                  : { reroutedFromThreadId: rerouteSource.thread.id }),
-                ...(isConversation ? { flow: "conversation" as const } : {}),
-              },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-          if (rerouteSource !== undefined) {
+          const rerouteProjection = yield* orchestration.getThreadProjection(
+            rerouteSource.thread.id,
+          );
+          const activeRun = latestActiveRun(rerouteProjection);
+          if (activeRun !== undefined) {
             yield* orchestration.dispatch({
-              type: "thread.activity.append",
-              commandId: CommandId.make(sourceActivityCommandUuid),
+              type: "run.interrupt",
+              commandId: CommandId.make(yield* requestScopedId("reroute-interrupt-command")),
               threadId: rerouteSource.thread.id,
-              activity: {
-                id: EventId.make(sourceActivityUuid),
-                tone: "info",
-                kind: "circe.task.rerouted",
-                summary: `Moved to ${project.title}`,
-                payload: {
-                  targetThreadId: threadId,
-                  targetProjectId: project.id,
-                },
-                turnId: null,
-                createdAt,
-              },
-              createdAt,
+              runId: activeRun.id,
             });
           }
         }
@@ -2094,22 +1945,18 @@ export const makeCirceControllerLive = <R>(
         // above had to succeed first; what follows is maintenance that must
         // not turn accepted work into a failed dispatch.
         yield* orchestration.dispatch({
-          type: "thread.turn.start",
+          type: "message.dispatch",
           commandId: CommandId.make(commandUuid),
           threadId,
-          message: {
-            messageId,
-            role: "user",
-            text: prompt,
-            attachments: [],
-          },
+          messageId,
+          text: prompt,
+          attachments: [],
           modelSelection,
           // Seeded so the provider renames the provisional objective into a
           // short title. That happens after the turn, never blocking the answer.
           titleSeed: title,
-          runtimeMode: inheritedExecution.runtimeMode,
-          interactionMode: inheritedExecution.interactionMode,
-          createdAt,
+          dispatchMode: { type: "start_immediately" },
+          ...circeCreation,
         });
         yield* finishCommit(requestCancellation, ownerLease, {
           threadId,

@@ -1,4 +1,4 @@
-import { CommandId, EventId, MessageId, type ThreadId } from "@t3tools/contracts";
+import { CommandId, MessageId, type ThreadId } from "@t3tools/contracts";
 import { deriveCirceTaskState, hasActiveCirceTurn } from "@circe/core/deriveTaskState";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -12,7 +12,8 @@ import * as Stream from "effect/Stream";
 import * as TxQueue from "effect/TxQueue";
 import * as TxRef from "effect/TxRef";
 
-import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
+import { latestActiveRun } from "../../orchestration-v2/ThreadManagementService.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { forkParked } from "../../serverActivation.ts";
@@ -25,7 +26,7 @@ import {
 const FOLLOW_UP_DISPATCH_CONCURRENCY = 4;
 
 export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
-  const orchestration = yield* OrchestrationEngineService;
+  const orchestration = yield* OrchestratorV2;
   const projections = yield* ProjectionSnapshotQuery;
   const queue = yield* CirceFollowUpQueue;
   const turns = yield* ProjectionTurnRepository;
@@ -97,25 +98,9 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
         const createdAt = item.enqueuedAt;
         let accepted = false;
         yield* Effect.gen(function* () {
-          if (item.requestMetadata?.origin !== undefined) {
-            yield* orchestration.dispatch({
-              type: "thread.activity.append",
-              commandId: CommandId.make(`${dispatchIdentity}:origin-command`),
-              threadId,
-              activity: {
-                id: EventId.make(`${dispatchIdentity}:origin-activity`),
-                tone: "info",
-                kind: "circe.turn.origin",
-                summary: "Continued by Circe",
-                payload: { messageId, requestMetadata: item.requestMetadata },
-                turnId: null,
-                createdAt,
-              },
-              createdAt,
-            });
-          }
-          // Origin recording yields to other command producers. Check the live
-          // task again before accepting queued work, and let waiting stops win.
+          // A queued Circe follow-up yields to other command producers. Check
+          // the live task again before accepting queued work, and let waiting
+          // stops win.
           const current = yield* projections.getThreadDetailById(threadId);
           const pendingStart = yield* turns.getPendingTurnStartByThreadId({ threadId });
           const status = yield* queue.statusOf(item.queueId);
@@ -129,14 +114,18 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
           )
             return;
           yield* orchestration.dispatch({
-            type: "thread.turn.start",
+            type: "message.dispatch",
             commandId: CommandId.make(dispatchIdentity),
             threadId,
-            message: { messageId, role: "user", text: item.instruction, attachments: [] },
+            messageId,
+            text: item.instruction,
+            attachments: [],
             modelSelection: current.value.modelSelection,
-            runtimeMode: current.value.runtimeMode,
-            interactionMode: current.value.interactionMode,
-            createdAt,
+            // A queued follow-up waits behind any run that started after the
+            // readiness check instead of creating a second live turn.
+            dispatchMode: { type: "queue_after_active" },
+            createdBy: "user",
+            creationSource: "server",
           });
           accepted = true;
           // Persistence cleanup retries independently of acceptance. Once the
@@ -189,38 +178,9 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
       Effect.catchCause((cause) =>
         Cause.hasInterruptsOnly(cause)
           ? Effect.failCause(cause)
-          : Effect.gen(function* () {
-              yield* Effect.logWarning("Circe queued follow-up could not start", {
-                threadId,
-                cause: Cause.pretty(cause),
-              });
-              const createdAt = DateTime.formatIso(yield* DateTime.now);
-              const identity = `circe:queue:deferred:${threadId}:${createdAt}`;
-              yield* orchestration
-                .dispatch({
-                  type: "thread.activity.append",
-                  commandId: CommandId.make(identity),
-                  threadId,
-                  createdAt,
-                  activity: {
-                    id: EventId.make(identity),
-                    tone: "error",
-                    kind: "circe.follow-up.deferred",
-                    summary:
-                      "Queued follow-up could not start. It remains queued and will retry when the task becomes ready or another follow-up is queued.",
-                    payload: {},
-                    turnId: null,
-                    createdAt,
-                  },
-                })
-                .pipe(
-                  Effect.catchCause((warningCause) =>
-                    Effect.logWarning("Circe follow-up failure could not be recorded", {
-                      threadId,
-                      cause: Cause.pretty(warningCause),
-                    }),
-                  ),
-                );
+          : Effect.logWarning("Circe queued follow-up could not start", {
+              threadId,
+              cause: Cause.pretty(cause),
             }),
       ),
       Effect.ensuring(
@@ -256,7 +216,18 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
         const interrupted =
           Option.isSome(pendingStart) ||
           (Option.isSome(detail) && hasActiveCirceTurn(detail.value));
-        if (interrupted) yield* orchestration.dispatch({ type: "thread.turn.interrupt", ...input });
+        if (interrupted) {
+          const projection = yield* orchestration.getThreadProjection(input.threadId);
+          const activeRun = latestActiveRun(projection);
+          if (activeRun !== undefined) {
+            yield* orchestration.dispatch({
+              type: "run.interrupt",
+              commandId: input.commandId,
+              threadId: input.threadId,
+              runId: activeRun.id,
+            });
+          }
+        }
         return { interrupted, cancelledFollowUps };
       }),
     );
@@ -276,13 +247,24 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
       ),
     );
     yield* forkParked(
-      Stream.runForEach(orchestration.streamDomainEvents, (event) =>
-        (event.type === "thread.session-set" && event.payload.session.status === "ready") ||
-        (event.type === "thread.activity-appended" &&
-          event.payload.activity.kind === "provider.session.stop.failed")
-          ? reconcileThread(event.payload.threadId)
-          : Effect.void,
-      ),
+      Stream.runForEach(orchestration.streamDomainEvents, (event) => {
+        if (event.type === "provider-session.updated" && event.payload.status === "ready") {
+          return reconcileThread(event.threadId);
+        }
+        if (event.type === "run.updated") {
+          switch (event.payload.status) {
+            case "completed":
+            case "failed":
+            case "cancelled":
+            case "interrupted":
+            case "rolled_back":
+              return reconcileThread(event.threadId);
+            default:
+              return Effect.void;
+          }
+        }
+        return Effect.void;
+      }),
     );
     const pending = yield* queue.listPendingThreadIds().pipe(
       Effect.catchCause((cause) =>

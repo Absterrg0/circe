@@ -18,7 +18,7 @@ import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 
-import type { OrchestrationDispatchError } from "../../orchestration/Errors.ts";
+import type { OrchestratorV2Error } from "../../orchestration-v2/Orchestrator.ts";
 import type { ProjectionRepositoryError } from "../../persistence/Errors.ts";
 import type {
   CirceCommandContext,
@@ -145,7 +145,7 @@ export type CirceControllerError =
   | CirceProjectNotFoundError
   | CirceRequestConflictError
   | ProjectionRepositoryError
-  | OrchestrationDispatchError
+  | OrchestratorV2Error
   | ServerSettingsError;
 
 export interface CirceControllerExecuteInput {
