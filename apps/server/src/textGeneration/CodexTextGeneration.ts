@@ -378,7 +378,7 @@ export const makeCodexTextGeneration = Effect.fn("makeCodexTextGeneration")(func
     }).pipe(Effect.ensuring(cleanup));
   });
 
-  const adaptStructuredOutput = <S extends Schema.Top>(schema: S) =>
+  const adaptStructuredOutput = <S extends Schema.Constraint>(schema: S) =>
     OpenAiStructuredOutput.toCodecOpenAI<
       S["Type"],
       S["Encoded"],
