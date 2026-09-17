@@ -113,3 +113,26 @@ export function renderMemoryIndex(input: {
     "This is a map, not the content. Fetch a body by id when it matters to the task.",
   ].join("\n");
 }
+
+export interface CirceMemoryBodyView {
+  readonly id: string;
+  readonly kind: "episode" | "fact";
+  readonly source: "user" | "agent" | "system";
+  readonly title: string;
+  readonly body: string;
+  /** Already formatted by the caller, so policy does no date math. */
+  readonly updatedAt: string;
+}
+
+/**
+ * A fetched body is labeled as recalled information with its kind, source, and
+ * timestamp, never as an instruction. A model told "the user said on this date
+ * X" can override it; one told "X" treats it as a standing rule. Facts and
+ * episodes carry the same label so provenance is always visible.
+ */
+export function renderMemoryBody(entry: CirceMemoryBodyView): string {
+  return [
+    `Recalled ${entry.kind} (source ${entry.source}, updated ${entry.updatedAt}, id ${entry.id}): ${entry.title}`,
+    entry.body,
+  ].join("\n");
+}

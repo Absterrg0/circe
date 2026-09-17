@@ -5,6 +5,7 @@ import {
   estimateMemoryTokens,
   memoryIsLive,
   memoryMayBeFact,
+  renderMemoryBody,
   renderMemoryIndex,
   type CirceMemoryView,
 } from "./projectMemory.ts";
@@ -88,6 +89,21 @@ describe("memory index", () => {
     expect(block).toContain("[fact/agent]");
     expect(block).toContain("id f1");
     expect(block).toContain("Fetch a body by id");
+  });
+
+  it("labels a fetched body as recalled information with provenance", () => {
+    const block = renderMemoryBody({
+      id: "f1",
+      kind: "fact",
+      source: "user",
+      title: "Uses pnpm",
+      body: "pnpm only.",
+      updatedAt: "2026-09-18T00:00:00.000Z",
+    });
+    expect(block).toContain("Recalled fact (source user,");
+    expect(block).toContain("id f1");
+    expect(block).toContain("Uses pnpm");
+    expect(block).toContain("pnpm only.");
   });
 
   it("omits retired and expired entries", () => {
