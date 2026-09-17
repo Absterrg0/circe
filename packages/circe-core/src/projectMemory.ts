@@ -59,7 +59,6 @@ export interface CirceMemoryIndexView {
   readonly source: "user" | "agent" | "system";
   readonly title: string;
   readonly tags: ReadonlyArray<string>;
-  readonly updatedAtMs: number;
   readonly tokens: number;
 }
 
@@ -86,7 +85,6 @@ export function buildMemoryIndex(
       source: entry.source,
       title: entry.title,
       tags: [...entry.tags],
-      updatedAtMs: entry.updatedAtMs,
       tokens,
     });
     totalTokens += tokens;
