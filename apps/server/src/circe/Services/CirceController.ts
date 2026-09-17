@@ -14,6 +14,7 @@ import {
   type ThreadId,
   type TurnId,
 } from "@t3tools/contracts";
+import type { CirceOutcome } from "@circe/core/controlOutcome";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -96,8 +97,26 @@ export type CirceExecutionResult =
   | CirceCommandNeedsInput
   | { readonly status: "cancelled"; readonly requestId: string };
 
+/**
+ * One classified turn: exactly one `CirceOutcome` plus the host's detailed
+ * interpretation. The outcome names the dispatch branch (work, tool-answer,
+ * client-action, clarification, conversation, refused); the interpretation
+ * keeps the existing Director's rich routing and pending frames so nothing
+ * about clarification and work authority is weakened by the new shape.
+ */
+export interface CirceClassifiedTurn {
+  readonly outcome: CirceOutcome;
+  readonly interpretation: CirceCommandInterpretation;
+}
+
 export interface CirceControllerInterpreterShape {
   readonly interpret: (input: CirceCommandContext) => Effect.Effect<CirceCommandInterpretation>;
+  /**
+   * The single classifier. Runs one TypeSafe decision over the offered
+   * outcomes and composes exactly one `CirceOutcome`, alongside the
+   * interpretation the dispatcher already understands.
+   */
+  readonly classify: (input: CirceCommandContext) => Effect.Effect<CirceClassifiedTurn>;
   /**
    * One proposal-only inference over untrusted mesh evidence. No dispatch,
    * no IDs, no acknowledgement: returns the typed proposal for client
