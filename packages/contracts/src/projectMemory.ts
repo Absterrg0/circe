@@ -78,6 +78,25 @@ export const CirceMemoryUpsertInput = Schema.Struct({
 });
 export type CirceMemoryUpsertInput = typeof CirceMemoryUpsertInput.Type;
 
+/** Inputs for the provider-facing memory tools. */
+export const CirceMemoryIndexInput = Schema.Struct({
+  projectId: ProjectId,
+});
+export type CirceMemoryIndexInput = typeof CirceMemoryIndexInput.Type;
+
+export const CirceMemoryFetchInput = Schema.Struct({
+  projectId: ProjectId,
+  entryId: TrimmedNonEmptyString.check(Schema.isMaxLength(128)),
+});
+export type CirceMemoryFetchInput = typeof CirceMemoryFetchInput.Type;
+
+/** A fetched body is returned as text already labeled with its provenance. */
+export const CirceMemoryFetchResult = Schema.Struct({
+  found: Schema.Boolean,
+  text: Schema.optional(TrimmedNonEmptyString),
+});
+export type CirceMemoryFetchResult = typeof CirceMemoryFetchResult.Type;
+
 export const CirceMemoryForgetInput = Schema.Struct({
   projectId: ProjectId,
   entryId: TrimmedNonEmptyString.check(Schema.isMaxLength(128)),
