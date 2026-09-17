@@ -48,8 +48,8 @@ describe("generate mobile Uniwind themes", () => {
     const css = NodeFS.readFileSync(NodePath.resolve(import.meta.dirname, "../global.css"), "utf8");
     const variables = readDefaultThemeVariables(css);
 
-    expect(variables.light["--color-screen"]).toBe("#faf7f1");
-    expect(variables.dark["--color-screen"]).toBe("#16181b");
+    expect(variables.light["--color-screen"]).toBe("#fcf9f4");
+    expect(variables.dark["--color-screen"]).toBe("#0c0d0e");
     expect(Object.keys(variables.light)).toEqual(Object.keys(variables.dark));
   });
 });

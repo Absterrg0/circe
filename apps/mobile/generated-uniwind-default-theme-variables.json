@@ -42,7 +42,7 @@
     "--color-danger-border": "rgba(220, 38, 38, 0.22)",
     "--color-danger-foreground": "#dc2626",
     "--color-input": "#fffdfa",
-    "--color-input-border": "rgba(56, 43, 35, 0.20)",
+    "--color-input-border": "rgba(56, 43, 35, 0.2)",
     "--color-sidebar-search": "#f2ebe4",
     "--color-placeholder": "#96918d",
     "--color-icon": "#24211f",
