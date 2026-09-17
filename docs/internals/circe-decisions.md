@@ -125,6 +125,55 @@ provider's durable history for that work. Projects carry shared context that
 conversations inherit. (This is the target; the current branch still carries the
 old conversation-project path in V1 code and will be replaced in the rebuild.)
 
+## Autonomous surface use
+
+### Grounding is the constraint, not the LLM
+
+Autonomous browser/desktop use is only fast and safe when each action targets
+something the host has enumerated. The browser already has that: the
+`previewAutomation` broker returns grounded `PreviewAutomationElement` records
+(role, name, selector, bounds) and accepts selector-targeted operations, so the
+model selects among known elements and coordinates are derived. Desktop
+`DesktopUse` does not, so a desktop loop today would be an LLM inventing
+coordinates. The deterministic step layer (`packages/circe-core/src/computerUse.ts`)
+therefore takes a surface element catalog as its input and never lets the model
+emit an element id, coordinate, key, or direction outside a supplied finite
+set. Typing is the one field that cannot be closed, so the provider plan
+supplies the text and the selector only chooses when and where.
+
+### Perception is separate from decision
+
+The TypeSafe decision model is not multimodal, which is not a blocker because
+decision and perception are different jobs. Perception produces a text catalog
+(role, name, bounds, visible text); the decision model selects over it and the
+host resolves the selection to a selector or coordinate. This is why a
+non-multimodal model can already drive the browser. Desktop needs the same
+catalog: the OS accessibility tree where available, OCR or a vision producer
+where it is not. A surface with no accessibility tree, such as a GL app, is
+routed to a provider that perceives and plans, but its actions still travel as
+the same typed `ComputerAction` contract and pass the same policy, approval,
+and executor. One action vocabulary, whichever planner produced it.
+
+### Computer use runs on the target node with a Circe-owned scope
+
+A request from a phone naming desktop-1 must execute on desktop-1, and the
+origin interaction receives progress and the final result. The
+`computer` tool stays catalogued as a client action for now, which is why it
+stays unoffered; the loop belongs to the execution node. The
+`previewAutomation` broker scopes every request to an MCP provider session, and
+a voice or text control turn is not one, so `circeAutomationScope` builds a
+Circe-owned equivalent with a synthetic session id that is stable for the
+control session. Host stickiness and disconnect behavior match a provider
+session. The scope grants only `preview` and `desktop-use`.
+
+### Approval is once per session
+
+Starting an autonomous surface session requires one confirmation. Actions
+inside the session run without per-action prompts, and an explicit stop is
+always available. Per-action confirmation was rejected as unusable for
+multi-step goals; a risk-tiered model can be layered on later without changing
+the session gate.
+
 ## Open for review
 
 - Whether `CIRCE_*` CI secret renaming happens in this stack or a dedicated ops
