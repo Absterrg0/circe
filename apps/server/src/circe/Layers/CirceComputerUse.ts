@@ -26,7 +26,10 @@ import {
   type DesktopScrollDirection,
 } from "../desktopUse/desktopUseRuntime.ts";
 import { detectDisplayServer, resolveBackend } from "../desktopUse/platforms.ts";
-import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
+import {
+  DesktopElementChangedError,
+  SurfaceDecisionUnavailableError,
+} from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
 
@@ -87,18 +90,25 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
 
     const runCommand: AccessibilityCommandRunner = (command, operation) =>
       commands.run(command, backend, operation, COMMAND_TIMEOUT_MS);
-    // A transport failure propagates; only a decoded "no action interface"
-    // (or an identity mismatch) returns false and allows the bounded coordinate
-    // fallback. A hung helper must not look like an element without an action.
-    const runAtspiAction = (request: Parameters<typeof buildAccessibilityActionCommand>[0]) =>
+    // A transport failure propagates. A decoded result distinguishes "no
+    // action interface", which allows the grounded coordinate fallback, from
+    // an identity change, which must refuse rather than click stale geometry.
+    const runAtspiAction = (
+      request: Parameters<typeof buildAccessibilityActionCommand>[0],
+    ): Effect.Effect<"ok" | "no-action" | "refuse", AccessibilityCommandError> =>
       runCommand(buildAccessibilityActionCommand(request), "desktop.accessibility.act").pipe(
-        Effect.map(({ stdout }) => {
+        Effect.map(({ stdout }): "ok" | "no-action" | "refuse" => {
           try {
-            return decodeAccessibilityActionResultJson(stdout).ok;
+            const result = decodeAccessibilityActionResultJson(stdout);
+            if (result.ok) return "ok";
+            if (result.error === "element-changed" || result.error === "element-not-found") {
+              return "refuse";
+            }
+            return "no-action";
           } catch {
             // A helper that emitted garbage is treated as "no action
             // interface", which allows the grounded coordinate fallback.
-            return false;
+            return "no-action";
           }
         }),
       );
@@ -108,20 +118,27 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
       name: element.name,
     });
 
-    const actuator: DesktopActuator<MissionError> = {
-      activate: (element) =>
-        runAtspiAction({
-          path: element.id,
-          action: "activate",
-          expect: expectation(element),
-        }),
-      setText: (element, text) =>
-        runAtspiAction({
-          path: element.id,
-          action: "set-text",
-          text,
-          expect: expectation(element),
-        }),
+    const runElementAction = (
+      element: { readonly id: string; readonly role: string | null; readonly name: string },
+      request:
+        | { readonly action: "activate" }
+        | { readonly action: "set-text"; readonly text: string },
+    ): Effect.Effect<boolean, MissionError | DesktopElementChangedError> =>
+      runAtspiAction({
+        path: element.id,
+        expect: expectation(element),
+        ...request,
+      }).pipe(
+        Effect.flatMap((outcome) =>
+          outcome === "refuse"
+            ? Effect.fail(new DesktopElementChangedError({ elementId: element.id }))
+            : Effect.succeed(outcome === "ok"),
+        ),
+      );
+
+    const actuator: DesktopActuator<MissionError | DesktopElementChangedError> = {
+      activate: (element) => runElementAction(element, { action: "activate" }),
+      setText: (element, text) => runElementAction(element, { action: "set-text", text }),
       clickAt: (element) =>
         desktopUse
           .input({
@@ -164,12 +181,13 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
                 : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
             ),
           );
-      return yield* runComputerUse<MissionError | SurfaceDecisionUnavailableError>({
+      type RunError = MissionError | SurfaceDecisionUnavailableError | DesktopElementChangedError;
+      return yield* runComputerUse<RunError>({
         model: DECISION_MODEL,
         goal: input.goal,
         ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
         ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
-        runtime: makeDesktopUseRuntime<MissionError | SurfaceDecisionUnavailableError>({
+        runtime: makeDesktopUseRuntime<RunError>({
           observe,
           select,
           actuator,
@@ -178,6 +196,9 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         Effect.map((result) => mapResult(result, input.goal)),
         Effect.catchTag("SurfaceDecisionUnavailableError", (error) =>
           Effect.succeed({ status: "unavailable" as const, message: error.message }),
+        ),
+        Effect.catchTag("DesktopElementChangedError", (error) =>
+          Effect.succeed({ status: "refused" as const, message: error.message }),
         ),
         Effect.catch(() =>
           Effect.succeed({

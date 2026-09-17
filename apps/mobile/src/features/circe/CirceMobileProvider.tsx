@@ -22,7 +22,7 @@ import type {
   ThreadId,
 } from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
-import { resolveVoiceConfirmation } from "@circe/core/confirmation";
+import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
 import {
   answerCirceModelChoice,
   isCirceModelClarificationReason,
@@ -1145,7 +1145,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
       const pendingSurface = pendingSurfaceRef.current;
       if (pendingSurface !== null) {
         pendingSurfaceRef.current = null;
-        const verdict = resolveVoiceConfirmation(utterance);
+        const verdict = isExplicitSpokenApprovalAnswer(utterance);
         if (verdict === "accept") {
           submittingRef.current = true;
           setSubmitting(true);
@@ -1608,7 +1608,14 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
             ? { surface: "computer" as const, goal: executionProposal.computerGoal }
             : null;
       if (surfaceGoal !== null) {
-        const nodeId = semanticNode.nodeId;
+        // Prefer a node that advertises the surface capability, the same way a
+        // lookup picks its node, so a headless semantic node never receives a
+        // mission it can only refuse.
+        const nodeId =
+          selectCirceQuickLookupNode(evidenceCatalog, [
+            taskDeskNodeIdRef.current,
+            semanticNode.nodeId,
+          ])?.nodeId ?? liveSemanticNode.nodeId;
         if (!surfaceConfirmedRef.current) {
           pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
           setPreparedOriginInteractionId(nextOriginInteractionId());

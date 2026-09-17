@@ -359,6 +359,7 @@ export const runComputerUse = <E = never>(
         model: input.model,
         goal: input.goal,
         surface,
+        maxElements,
         ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
         history,
       });

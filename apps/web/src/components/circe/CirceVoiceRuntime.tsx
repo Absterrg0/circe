@@ -39,7 +39,7 @@ import {
   type CirceModelDraft,
 } from "@circe/core/modelChoice";
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
-import { resolveVoiceConfirmation } from "@circe/core/confirmation";
+import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
 import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
 import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import type {
@@ -478,7 +478,8 @@ export function CirceVoiceRuntime({
   const syncPending = useCallback(() => {
     const queue = voiceSubmissionQueueRef.current;
     const busy = submissionBusyRef.current || (queue?.isRunning() ?? false);
-    const awaitingAnswer = voiceClarificationRef.current !== null;
+    const awaitingAnswer =
+      voiceClarificationRef.current !== null || pendingSurfaceRef.current !== null;
     const pending = busy || awaitingAnswer || (queue?.size() ?? 0) > 0;
     publishCirceCommandState({
       pending,
@@ -1374,14 +1375,19 @@ export function CirceVoiceRuntime({
     const pendingSurface = pendingSurfaceRef.current;
     if (pendingSurface !== null) {
       pendingSurfaceRef.current = null;
-      const verdict = resolveVoiceConfirmation(trimmed);
+      const verdict = isExplicitSpokenApprovalAnswer(trimmed);
       if (verdict === "accept") {
+        submissionBusyRef.current = true;
+        syncPending();
         void startSurfaceMission(
           pendingSurface.surface,
           pendingSurface.goal,
           pendingSurface.nodeId,
           options.inputMode,
-        );
+        ).finally(() => {
+          submissionBusyRef.current = false;
+          syncPending();
+        });
         return;
       }
       if (verdict === "decline") {
@@ -1532,6 +1538,35 @@ export function CirceVoiceRuntime({
       cancelInteractionSpeech();
       const capturedInstruction = voiceSubmission.transcript;
       const inputMode: SubmissionInputMode = voiceSubmission.inputMode ?? "voice";
+      // A queued utterance supersedes a parked surface confirmation. The
+      // direct path handles the common case in receiveSubmission; this covers
+      // input that was already queued behind the mission proposal.
+      const queuedSurface = pendingSurfaceRef.current;
+      if (queuedSurface !== null) {
+        pendingSurfaceRef.current = null;
+        const queuedVerdict = isExplicitSpokenApprovalAnswer(capturedInstruction.trim());
+        if (queuedVerdict === "accept") {
+          await startSurfaceMission(
+            queuedSurface.surface,
+            queuedSurface.goal,
+            queuedSurface.nodeId,
+            inputMode,
+          );
+          return;
+        }
+        if (queuedVerdict === "decline") {
+          emitFeedback({
+            text: "Okay, I won't control it.",
+            kind: "done",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            ...(voiceSubmission.requestId === undefined
+              ? {}
+              : { requestId: voiceSubmission.requestId }),
+          });
+          return;
+        }
+      }
       const pendingVoiceClarification = voiceClarificationRef.current;
       const voiceSnapshot = voiceSubmissionSnapshotsRef.current.get(voiceSubmission.captureId);
       const pendingProjectChoice =
@@ -1891,7 +1926,16 @@ export function CirceVoiceRuntime({
                     ? { surface: "computer" as const, goal: interpretedProposal.computerGoal }
                     : null;
               if (surfaceGoal !== null) {
-                const nodeId = semanticNode.nodeId;
+                // Prefer a node that advertises the surface capability, the
+                // same way a lookup picks its node, so a headless semantic
+                // node never receives a mission it can only refuse.
+                const nodeId =
+                  (submissionCatalog === null
+                    ? undefined
+                    : selectCirceQuickLookupNode(submissionCatalog, [
+                        primaryEnvironmentId,
+                        semanticNode.nodeId,
+                      ])?.nodeId) ?? semanticNode.nodeId;
                 if (!surfaceConfirmedRef.current) {
                   pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
                   emitFeedback({

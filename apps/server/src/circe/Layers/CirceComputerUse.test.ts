@@ -43,6 +43,7 @@ const choose = (action: string) => ({
 const testLayer = (input: {
   readonly decisions: ReadonlyArray<string>;
   readonly operations: Array<string>;
+  readonly actResult?: string;
 }) => {
   let index = 0;
   return Layer.effect(CirceComputerUse, make({ backend: "linux-x11" })).pipe(
@@ -59,7 +60,10 @@ const testLayer = (input: {
       Layer.mock(DesktopCommands)({
         run: (_command, _backend, operation) =>
           Effect.succeed({
-            stdout: operation === "desktop.accessibility" ? dump : JSON.stringify({ ok: true }),
+            stdout:
+              operation === "desktop.accessibility"
+                ? dump
+                : (input.actResult ?? JSON.stringify({ ok: true })),
             stderr: "",
             code: 0,
           }),
@@ -110,6 +114,24 @@ describe("Circe computer use", () => {
       testLayer({ decisions: ["click", "done"], operations }),
     );
     expect(result).toEqual({ status: "done", message: "Done: save the document", steps: 2 });
+    expect(operations).toEqual([]);
+  });
+
+  it("refuses instead of clicking stale geometry when the element shifted", () => {
+    const operations: Array<string> = [];
+    const result = run(
+      { goal: "save the document", confirmed: true },
+      testLayer({
+        decisions: ["click", "done"],
+        operations,
+        actResult: JSON.stringify({ ok: false, error: "element-changed" }),
+      }),
+    );
+    expect(result).toEqual({
+      status: "refused",
+      message: "The screen changed before I could act on it.",
+    });
+    // No coordinate fallback fired against the captured bounds.
     expect(operations).toEqual([]);
   });
 });
