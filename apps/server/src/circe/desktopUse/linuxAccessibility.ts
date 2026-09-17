@@ -1,68 +1,39 @@
-import {
-  DesktopUseBackendError,
-  DesktopUseTimeoutError,
-  type DesktopUseBackend,
-} from "@circe/contracts";
+import type { DesktopUseBackend } from "@circe/contracts";
 import * as Effect from "effect/Effect";
-import * as Schema from "effect/Schema";
 
-import type { ComputerElement, ComputerSurface } from "@circe/core/computerUse";
+import type { ComputerSurface } from "@circe/core/computerUse";
 
 import type { DesktopCommand } from "./platforms.ts";
+import {
+  observeAccessibility,
+  type AccessibilityCommandError,
+  type AccessibilityCommandRunner,
+} from "./accessibilityTree.ts";
+
+export {
+  AccessibilityElement,
+  AccessibilityTree,
+  AccessibilityActionResult,
+  accessibilityElements,
+  decodeAccessibilityTree,
+  decodeAccessibilityActionResult,
+  decodeAccessibilityActionResultJson,
+  desktopSurfaceFromAccessibility,
+  parseAccessibilityDump,
+  type AccessibilityCommandError,
+  type AccessibilityCommandRunner,
+} from "./accessibilityTree.ts";
 
 /**
- * Linux desktop grounding through AT-SPI. Screen coordinates alone force a
- * model to invent a target; the accessibility tree gives it a bounded catalog
- * of real elements with roles, names, bounds, and actions, exactly the shape
- * the TypeSafe step layer selects over. This is the desktop analog of the
- * browser snapshot, and it is why a non-multimodal decision model can drive a
- * Linux desktop without looking at pixels.
- *
- * The tree is read by a short Python helper because AT-SPI is a D-Bus
- * protocol with no Node binding in this repo. The helper is embedded and run
- * through the ordinary desktop command runner, so it needs no packaging.
+ * Linux desktop grounding through AT-SPI. AT-SPI is a D-Bus protocol with no
+ * Node binding in this repo, so a short embedded Python helper reads the tree
+ * and prints bounded JSON. The helper is embedded and run through the ordinary
+ * desktop command runner, so it needs no packaging.
  */
 
 export const ATSPI_MAX_ELEMENTS = 200;
 export const ATSPI_MAX_DEPTH = 10;
 
-const BOUNDS = Schema.Struct({
-  x: Schema.Finite,
-  y: Schema.Finite,
-  width: Schema.Finite,
-  height: Schema.Finite,
-});
-
-export const AccessibilityElement = Schema.Struct({
-  id: Schema.String,
-  role: Schema.NullOr(Schema.String),
-  name: Schema.String,
-  bounds: BOUNDS,
-  editable: Schema.Boolean,
-  actions: Schema.Array(Schema.String),
-});
-export type AccessibilityElement = typeof AccessibilityElement.Type;
-
-export const AccessibilityTree = Schema.Struct({
-  elements: Schema.Array(AccessibilityElement),
-});
-export type AccessibilityTree = typeof AccessibilityTree.Type;
-
-export const decodeAccessibilityTree = Schema.decodeUnknownSync(AccessibilityTree);
-const decodeAccessibilityTreeJson = Schema.decodeUnknownSync(
-  Schema.fromJsonString(AccessibilityTree),
-);
-
-/** Parse one helper dump. Throws on malformed output so the caller can escalate. */
-export function parseAccessibilityDump(stdout: string): AccessibilityTree {
-  return decodeAccessibilityTreeJson(stdout);
-}
-
-/**
- * Embedded AT-SPI reader. It walks the tree breadth-first, keeps only visible
- * nodes with real bounds that expose an action, edit, or focus, and prints one
- * bounded JSON object. Nothing here mutates the desktop.
- */
 export const ATSPI_DUMP_SCRIPT = `
 import json, sys
 import pyatspi
@@ -152,10 +123,9 @@ export function buildAccessibilityDumpCommand(): DesktopCommand {
 
 /**
  * Embedded AT-SPI actuator. It resolves the element id produced by the dump
- * (a "app:N/idx/idx" path) and performs one action against it: activate for a
- * click, set-text for an editable field. It never falls back to blind
- * coordinates itself; the caller decides whether a coordinate fallback is
- * acceptable. Output is a bounded JSON result.
+ * (an "app:N/idx/idx" path) and performs one action: activate for a click,
+ * set-text for an editable field. It refuses a node whose role or name no
+ * longer matches what the host captured. Output is a bounded JSON result.
  */
 export const ATSPI_ACTION_SCRIPT = `
 import json, sys
@@ -173,9 +143,6 @@ def resolve(desktop, path):
     return node
 
 def unchanged(node, expect):
-    # Ids are positional paths. Re-resolving after an insertion or removal can
-    # land on a different element, so the host pins the role and name it
-    # captured and refuses anything else.
     if not expect:
         return True
     try:
@@ -258,89 +225,14 @@ export function buildAccessibilityActionCommand(
   };
 }
 
-export const AccessibilityActionResult = Schema.Struct({
-  ok: Schema.Boolean,
-  error: Schema.optional(Schema.NullOr(Schema.String)),
-});
-export type AccessibilityActionResult = typeof AccessibilityActionResult.Type;
-
-export const decodeAccessibilityActionResult = Schema.decodeUnknownSync(AccessibilityActionResult);
-export const decodeAccessibilityActionResultJson = Schema.decodeUnknownSync(
-  Schema.fromJsonString(AccessibilityActionResult),
-);
-
-/** Grounded elements from a decoded tree, bounded and addressable by id. */
-export function accessibilityElements(
-  tree: AccessibilityTree,
-  limit = ATSPI_MAX_ELEMENTS,
-): ReadonlyArray<ComputerElement> {
-  const seen = new Set<string>();
-  const elements: Array<ComputerElement> = [];
-  for (const element of tree.elements) {
-    if (seen.has(element.id)) continue;
-    seen.add(element.id);
-    elements.push({
-      id: element.id,
-      role: element.role,
-      name: element.name,
-      bounds: {
-        x: element.bounds.x,
-        y: element.bounds.y,
-        width: element.bounds.width,
-        height: element.bounds.height,
-      },
-    });
-    if (elements.length >= limit) break;
-  }
-  return elements;
-}
-
-export type AccessibilityCommandError = DesktopUseBackendError | DesktopUseTimeoutError;
-
-/** Runs the AT-SPI helper; the server backs this with the desktop command runner. */
-export type AccessibilityCommandRunner = (
-  command: DesktopCommand,
-  operation: string,
-) => Effect.Effect<{ readonly stdout: string }, AccessibilityCommandError>;
-
 export interface ObserveLinuxDesktopOptions {
   readonly title?: string;
   readonly limit?: number;
   readonly backend?: DesktopUseBackend;
 }
 
-/**
- * One grounded desktop surface from the live accessibility tree. Malformed or
- * unavailable output fails so the caller can escalate to another observer
- * rather than act on an invented catalog.
- */
 export const observeLinuxDesktop = (
   runner: AccessibilityCommandRunner,
   options: ObserveLinuxDesktopOptions = {},
 ): Effect.Effect<ComputerSurface, AccessibilityCommandError> =>
-  runner(buildAccessibilityDumpCommand(), "desktop.accessibility").pipe(
-    Effect.flatMap(({ stdout }) =>
-      Effect.try({
-        try: () => desktopSurfaceFromAccessibility(parseAccessibilityDump(stdout), options),
-        catch: (cause) =>
-          new DesktopUseBackendError({
-            backend: options.backend ?? "linux-wayland",
-            operation: "desktop.accessibility",
-            cause,
-          }),
-      }),
-    ),
-  );
-
-/** Desktop surface for one accessibility dump, titled by the focused window if present. */
-export function desktopSurfaceFromAccessibility(
-  tree: AccessibilityTree,
-  options: { readonly title?: string; readonly limit?: number } = {},
-): ComputerSurface {
-  const bounded = options.limit === undefined ? ATSPI_MAX_ELEMENTS : options.limit;
-  return {
-    kind: "desktop",
-    title: options.title ?? "Desktop",
-    elements: accessibilityElements(tree, bounded),
-  };
-}
+  observeAccessibility(runner, buildAccessibilityDumpCommand(), "linux-wayland", options);
