@@ -39,6 +39,8 @@ import { ProviderRegistry } from "../../provider/Services/ProviderRegistry.ts";
 import * as ServerSettingsModule from "../../serverSettings.ts";
 import { TextGeneration } from "../../textGeneration/TextGeneration.ts";
 import { CirceController, CirceControllerInterpreter } from "../Services/CirceController.ts";
+import { CirceDecision } from "../Services/CirceDecision.ts";
+import { CirceQuickLookup } from "../Services/CirceQuickLookup.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { CirceFollowUpDispatcher } from "../Services/CirceFollowUpDispatcher.ts";
@@ -1933,6 +1935,98 @@ describe("CirceController", () => {
         status: "acknowledged",
         action: "conversed",
         message: "Nothing new: no provider runs are active.",
+      });
+    }).pipe(Effect.provide(layer));
+  });
+
+  it.effect("runs a bounded weather lookup on the node instead of refusing", () => {
+    const noul = (value: number) => ({ type: "noul" as const, noul: value });
+    const choice = (value: string) => ({
+      type: "choice" as const,
+      choice: value,
+      probabilities: { [value]: 1 },
+      confidence: 1,
+    });
+    const decisionLayer = Layer.succeed(CirceDecision, {
+      decide: () =>
+        Effect.succeed({
+          status: "answered" as const,
+          model: "jev-test",
+          answers: {
+            response_strategy: choice("tool"),
+            action: choice("lookup"),
+            tool: choice("weather"),
+            tool_weather_location: choice("Ahmedabad"),
+            tool_weather_day: choice("now"),
+            destination_project: choice("none"),
+            destination_negated: noul(0.02),
+            task: choice("none"),
+            provider: choice("none"),
+            model_specified: noul(0.02),
+            model: choice("none"),
+            effort_specified: noul(0.02),
+            effort: choice("none"),
+            is_compound: noul(0.02),
+            contains_approval_verdict: noul(0.02),
+            approval_verdict: choice("none"),
+            needs_clarification: noul(0.02),
+          },
+        }),
+    });
+    const lookupLayer = Layer.succeed(CirceQuickLookup, {
+      run: (input) =>
+        Effect.succeed({
+          status: "answer" as const,
+          message: `It is 31 degrees in ${input.location}.`,
+          source: "https://open-meteo.com/",
+        }),
+    });
+    const interpreterLayer = makeCirceControllerInterpreterLive(
+      Layer.mock(ProviderRegistry)({ getTextGenerationForInstance: () => Effect.die("unused") }),
+      decisionLayer,
+    ).pipe(Layer.provide(lookupLayer), Layer.provide(NodeServices.layer));
+    const layer = makeCirceControllerLive(interpreterLayer).pipe(
+      Layer.provideMerge(testFollowUpQueueLayer),
+      Layer.provideMerge(testTaskDeskLayer),
+      Layer.provideMerge(testLexiconLayer),
+      Layer.provideMerge(ServerSettingsModule.ServerSettingsService.layerTest()),
+      Layer.provideMerge(
+        Layer.mock(ProviderRegistry)({ getProviders: Effect.succeed([codexProvider]) }),
+      ),
+      Layer.provideMerge(
+        Layer.mock(ProjectionSnapshotQuery)({
+          getProjectShellById: () => Effect.succeed(Option.some(project)),
+          getShellSnapshot: () =>
+            Effect.succeed({
+              snapshotSequence: 1,
+              projects: [project],
+              threads: [],
+              updatedAt: "2026-08-12T00:02:00.000Z",
+            }),
+        }),
+      ),
+      Layer.provideMerge(
+        Layer.mock(OrchestrationEngineService)({
+          dispatch: () => Effect.die("A lookup must not dispatch a command"),
+          readEvents: () => Stream.empty,
+          streamDomainEvents: Stream.empty,
+          latestSequence: Effect.succeed(0),
+        }),
+      ),
+      Layer.provideMerge(testCryptoLayer),
+    );
+
+    return Effect.gen(function* () {
+      const manager = yield* CirceController;
+      const result = yield* manager.execute({
+        sessionId,
+        utterance: "Can you please tell me what's the weather in Ahmedabad",
+        projectId: project.id,
+      });
+      expect(result).toEqual({
+        status: "acknowledged",
+        action: "conversed",
+        message: "It is 31 degrees in Ahmedabad.",
       });
     }).pipe(Effect.provide(layer));
   });

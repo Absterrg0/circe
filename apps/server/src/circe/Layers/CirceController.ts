@@ -64,6 +64,7 @@ import {
 } from "@circe/core/command";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceDecisionDisabledLive } from "./CirceDecision.ts";
+import { CirceQuickLookup } from "../Services/CirceQuickLookup.ts";
 import {
   decisionCatalogFromContext,
   decisionCatalogFromEvidence,
@@ -316,6 +317,21 @@ const defaultInterpreterLayer = Layer.effect(
       decide: (_request: DecisionRequest) =>
         Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
     }));
+    // Optional bounded-tool execution. Absent means the node cannot run the
+    // lookup and the turn asks instead; production provides the live layer.
+    const quickLookupOpt = yield* Effect.serviceOption(CirceQuickLookup);
+    const quickLookup = Option.getOrElse(quickLookupOpt, () => ({
+      run: (_input: {
+        readonly kind: "weather" | "time";
+        readonly location: string;
+        readonly day: "now" | "today" | "tomorrow";
+        readonly sourceUtterance: string;
+      }) =>
+        Effect.succeed({
+          status: "unavailable" as const,
+          message: "Assistant lookups are unavailable on this node.",
+        }),
+    }));
     const readSemanticProviders: Effect.Effect<
       ReadonlyArray<import("@t3tools/contracts").ServerProvider>
     > = Effect.suspend(() => {
@@ -442,7 +458,36 @@ const defaultInterpreterLayer = Layer.effect(
             decide: decision.decide,
           });
           if (tier.status === "proposal") {
-            return interpretCirceCommand(input, prepared, tier.proposal);
+            const proposal = tier.proposal;
+            const lookup = proposal.action === "lookup" ? proposal.lookup : undefined;
+            if (lookup !== undefined && lookup !== null) {
+              // A bounded tool is host-executable. Run it here so every entry
+              // point (typed, voice, live delegation) answers instead of
+              // dead-ending on "not on this device".
+              const result = yield* quickLookup.run({
+                kind: lookup.kind,
+                location: lookup.location,
+                day: lookup.day,
+                sourceUtterance: prepared.sourceUtterance,
+              });
+              if (result.status === "answer") {
+                return {
+                  status: "command" as const,
+                  command: {
+                    type: "converse" as const,
+                    instruction: prepared.sourceUtterance,
+                    answer: result.message,
+                  },
+                };
+              }
+              return {
+                status: "needs-input" as const,
+                reason: "unsupported-command" as const,
+                prompt: result.message,
+                choices: [],
+              };
+            }
+            return interpretCirceCommand(input, prepared, proposal);
           }
           if (tier.status === "needs-input") {
             return tier.needsInput;

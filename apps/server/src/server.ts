@@ -133,6 +133,7 @@ import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
+import { CirceQuickLookupLive } from "./circe/Layers/CirceQuickLookup.ts";
 import {
   CirceWsRpcHandlerExtensionLive,
   circeRpcScopeExtension,
@@ -552,6 +553,7 @@ const RuntimeCoreDependenciesLive = ReactorLayerLive.pipe(
 
 const RuntimeDependenciesLive = CirceControllerLive.pipe(
   Layer.provideMerge(CirceDecisionLive),
+  Layer.provideMerge(CirceQuickLookupLive),
   Layer.provideMerge(OrchestrationCommandReceiptRepositoryLive),
   Layer.provideMerge(RuntimeCoreDependenciesLive),
   // Misc.

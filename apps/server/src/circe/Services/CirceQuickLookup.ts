@@ -1,10 +1,23 @@
 import type * as Cause from "effect/Cause";
 import type * as HttpClientError from "effect/unstable/http/HttpClientError";
 import { CirceQuickLookupInput, type CirceQuickLookupResult } from "@t3tools/contracts";
+import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
+
+/**
+ * Bounded tool execution on the node. The decision tier may classify a turn as
+ * a lookup; the host owns execution, so every entry point (typed, voice, live
+ * delegation) answers from here instead of refusing with "not on this device".
+ */
+export class CirceQuickLookup extends Context.Service<
+  CirceQuickLookup,
+  {
+    readonly run: (input: CirceQuickLookupInput) => Effect.Effect<CirceQuickLookupResult>;
+  }
+>()("@absterrg0/circe/circe/Services/CirceQuickLookup") {}
 
 const decodeLookupInput = Schema.decodeEffect(CirceQuickLookupInput);
 const Place = Schema.Struct({
