@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/web",
+  "name": "@circe/web",
   "version": "0.0.52",
   "private": true,
   "type": "module",
@@ -13,8 +13,11 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@circe/client": "workspace:*",
     "@circe/client-runtime": "workspace:*",
+    "@circe/contracts": "workspace:*",
     "@circe/core": "workspace:*",
+    "@circe/shared": "workspace:*",
     "@clerk/electron": "catalog:",
     "@clerk/react": "catalog:",
     "@daypicker/react": "^10.0.1",
@@ -28,9 +31,6 @@
     "@noble/hashes": "catalog:",
     "@pierre/diffs": "catalog:",
     "@pierre/trees": "1.0.0-beta.4",
-    "@t3tools/client-runtime": "workspace:*",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
     "@tanstack/react-pacer": "^0.19.4",
     "@tanstack/react-router": "^1.160.2",
     "@tiptap/core": "^3.31.3",

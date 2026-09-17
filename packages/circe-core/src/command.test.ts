@@ -8,7 +8,7 @@ import {
   type OrchestrationProjectShell,
   type OrchestrationThread,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

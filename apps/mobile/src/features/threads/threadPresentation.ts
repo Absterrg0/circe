@@ -1,8 +1,5 @@
 import type { StatusTone } from "../../components/StatusPill";
-import {
-  threadRuntimeIsActive,
-  type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+import { threadRuntimeIsActive, type EnvironmentThreadShell } from "@circe/client/state/shell";
 
 export type ThreadStatusKind =
   | "pending-approval"

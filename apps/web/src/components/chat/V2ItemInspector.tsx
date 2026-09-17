@@ -3,10 +3,10 @@ import type {
   OrchestrationV2ProjectedTurnItem,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { ExternalLinkIcon, GitBranchIcon, RotateCcwIcon } from "lucide-react";
 import { memo, type ReactNode } from "react";
-import { toolItemForDisplay } from "@t3tools/client-runtime/work-log/presentation";
+import { toolItemForDisplay } from "@circe/client/work-log/presentation";
 
 import { useV2ItemSupport } from "../../state/v2ItemSupport";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";

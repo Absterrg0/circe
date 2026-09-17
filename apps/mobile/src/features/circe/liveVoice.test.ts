@@ -42,10 +42,10 @@ vi.mock("expo-audio", () => ({
 }));
 vi.mock("../../state/circeLiveVoice", () => ({ circeLiveVoiceEnvironment: {} }));
 vi.mock("../../state/atom-registry", () => ({ appAtomRegistry: {} }));
-vi.mock("@t3tools/client-runtime/state/runtime", () => ({ runAtomCommand: vi.fn() }));
+vi.mock("@circe/client/state/runtime", () => ({ runAtomCommand: vi.fn() }));
 
-import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
-import { EnvironmentId } from "@t3tools/contracts";
+import { runAtomCommand } from "@circe/client/state/runtime";
+import { EnvironmentId } from "@circe/contracts";
 
 import { getLiveConversationState } from "./liveVoiceBridge";
 import {

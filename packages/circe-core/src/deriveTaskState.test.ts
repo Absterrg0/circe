@@ -1,4 +1,4 @@
-import { TurnId, ThreadId, type OrchestrationSessionStatus } from "@t3tools/contracts";
+import { TurnId, ThreadId, type OrchestrationSessionStatus } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { deriveCirceTaskState, hasActiveCirceTurn } from "./deriveTaskState.ts";

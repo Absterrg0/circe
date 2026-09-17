@@ -3,7 +3,7 @@ import type {
   DeviceServiceState,
   DeviceSummary,
   ScopedThreadRef,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   ChevronLeft,
   Home,

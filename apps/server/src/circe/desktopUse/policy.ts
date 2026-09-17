@@ -1,4 +1,4 @@
-import type { DesktopUseAction, DesktopUseDisplay, DesktopUseModifier } from "@t3tools/contracts";
+import type { DesktopUseAction, DesktopUseDisplay, DesktopUseModifier } from "@circe/contracts";
 
 /**
  * Safety limits for an agent driving a real desktop. These are intentionally

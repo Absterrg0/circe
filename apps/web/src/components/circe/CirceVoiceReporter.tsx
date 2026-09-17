@@ -1,4 +1,4 @@
-import type { EnvironmentId, CircePresentationEvent } from "@t3tools/contracts";
+import type { EnvironmentId, CircePresentationEvent } from "@circe/contracts";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useAtomValue } from "@effect/atom-react";

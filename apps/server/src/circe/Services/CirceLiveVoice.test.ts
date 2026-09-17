@@ -3,14 +3,14 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import { TestClock } from "effect/testing";
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@circe/contracts";
 import { ServerSecretStore } from "../../auth/ServerSecretStore.ts";
 import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { layerTest as settingsLayerTest } from "../../serverSettings.ts";
 import { RELAY_URL_SECRET, RELAY_ENVIRONMENT_CREDENTIAL_SECRET } from "../../cloud/config.ts";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
-import type { CirceLiveVoiceCreateInput, CirceLiveVoiceSettings } from "@t3tools/contracts";
+import type { CirceLiveVoiceCreateInput, CirceLiveVoiceSettings } from "@circe/contracts";
 import { PersistenceSqlError } from "../../persistence/Errors.ts";
 import {
   CirceLiveVoiceSessionRepository,

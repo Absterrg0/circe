@@ -1,4 +1,4 @@
-import type { CirceProjectRef } from "@t3tools/contracts";
+import type { CirceProjectRef } from "@circe/contracts";
 import type { CirceMeshProject } from "@circe/client-runtime/circe/mesh";
 
 export function sameProjectRef(left: CirceProjectRef, right: CirceProjectRef): boolean {

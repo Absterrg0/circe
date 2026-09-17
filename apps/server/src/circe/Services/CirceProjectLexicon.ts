@@ -1,4 +1,4 @@
-import type { CirceProjectAlias, ProjectId } from "@t3tools/contracts";
+import type { CirceProjectAlias, ProjectId } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 

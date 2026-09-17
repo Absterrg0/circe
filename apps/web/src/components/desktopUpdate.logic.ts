@@ -1,4 +1,4 @@
-import type { DesktopUpdateActionResult, DesktopUpdateState } from "@t3tools/contracts";
+import type { DesktopUpdateActionResult, DesktopUpdateState } from "@circe/contracts";
 
 import { APP_BASE_NAME, APP_RELEASE_TAG_BASE_URL } from "../branding";
 

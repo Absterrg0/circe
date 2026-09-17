@@ -1,10 +1,10 @@
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
 import {
   normalizeProviderAccentColor,
   resolveProviderInstanceDisplayName,
   shouldShowInstanceBadge,
-} from "@t3tools/client-runtime/state/provider-instance-display";
-import type { ProviderDriverKind } from "@t3tools/contracts";
+} from "@circe/client/state/provider-instance-display";
+import type { ProviderDriverKind } from "@circe/contracts";
 
 import type { ThreadListProvider } from "../../state/thread-list-environments";
 /** What a thread row needs to draw the provider glyph and its account badge. */

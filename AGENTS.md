@@ -67,7 +67,7 @@ terminals, connection infrastructure, coding UI) are Circe code and may be
 audited, refactored, optimized, or replaced like any other part of the product.
 A request to review the "whole app" or improve performance means everything.
 
-`T3`, `t3code`, `T3CODE_*`, `t3code:*`, and `@t3tools/*` names still found in
+`T3`, `t3code`, `T3CODE_*`, `t3code:*`, and `@circe/*` names still found in
 code, storage keys, schemes, and package names are legacy identifiers being
 renamed in phases, not a boundary. User-visible copy must say Circe. renames
 that break compat (URL schemes, storage keys, package names, D-Bus names,
@@ -100,7 +100,7 @@ Before calling user-facing work done, check what the change touches:
 
 - `vp i` installs dependencies. Worktree setup normally runs it for you.
 - `vp run dev` starts server and web with worktree-local `.circe` state. Read the actual ports and pairing URL from the `[dev-runner]` output.
-- Circe's data directory is `~/.circe`, overridden by `CIRCE_HOME`. `T3CODE_HOME` is a deprecated alias that still resolves to Circe state during the rename; `~/.t3` and `~/.jarvis` are never read or written.
+- Circe's data directory is `~/.circe`, overridden by `CIRCE_HOME`. `CIRCE_HOME` is a deprecated alias that still resolves to Circe state during the rename; `~/.t3` and `~/.jarvis` are never read or written.
 - `vp run dev --share` exposes the development instance over the tailnet. Hand the user the full `pairingUrl`, including its token. Do not configure `tailscale serve` manually.
 - If a pairing token was consumed, mint another with `node apps/server/src/bin.ts pair`.
 - Stop only processes you started and tracked.

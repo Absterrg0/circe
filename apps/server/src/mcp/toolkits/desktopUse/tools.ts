@@ -8,7 +8,7 @@ import {
   DesktopUseWindowList,
   McpCapabilityUnavailableError,
   TrimmedNonEmptyString,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Schema from "effect/Schema";
 import * as Tool from "effect/unstable/ai/Tool";
 import * as Toolkit from "effect/unstable/ai/Toolkit";

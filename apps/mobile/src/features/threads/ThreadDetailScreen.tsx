@@ -1,14 +1,11 @@
 import { useNavigation } from "@react-navigation/native";
 import type { WorktreeSetupCardProps } from "./worktree-setup-card";
 import type { ComposerTextPaste } from "../../native/T3ComposerEditor.types";
-import { type EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import type {
-  CodexFeedbackSubmission,
-  EnvironmentThreadStatus,
-} from "@t3tools/client-runtime/state/threads";
+import { type EnvironmentConnectionPhase } from "@circe/client/connection";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
+import type { CodexFeedbackSubmission, EnvironmentThreadStatus } from "@circe/client/state/threads";
 import { useKeyboardChatComposerInset, useKeyboardScrollToEnd } from "@legendapp/list/keyboard";
-import { resolveProviderSkillsForCwd } from "@t3tools/client-runtime/providerSkills";
+import { resolveProviderSkillsForCwd } from "@circe/client/providerSkills";
 import type { LegendListRef } from "@legendapp/list/react-native";
 import { HeaderHeightContext } from "@react-navigation/elements";
 import type {
@@ -22,13 +19,13 @@ import type {
   ServerConfig as T3ServerConfig,
   ThreadId,
   UsageLimitsReport,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   appendCodexArtifactTemplateUsePrompt,
   type CodexArtifactTemplate,
-} from "@t3tools/client-runtime/codex-artifact-templates";
-import type { ThreadUserInputQuestion } from "@t3tools/client-runtime/state/thread-requests";
-import { resolveSubagentPillSegment } from "@t3tools/client-runtime/state/thread-subagents";
+} from "@circe/client/codex-artifact-templates";
+import type { ThreadUserInputQuestion } from "@circe/client/state/thread-requests";
+import { resolveSubagentPillSegment } from "@circe/client/state/thread-subagents";
 import type { QueuedRunEdit } from "../../state/queued-run-edit";
 import type { FollowUpBehavior } from "../../lib/followUpBehavior";
 import * as Haptics from "expo-haptics";
@@ -69,7 +66,7 @@ import Animated, {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useWorkspaceContentWidth } from "../layout/workspace-content-width";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
-import { collectProviderUsageLimits } from "@t3tools/shared/usageLimits";
+import { collectProviderUsageLimits } from "@circe/shared/usageLimits";
 import type { ComposerEditorHandle } from "../../components/ComposerEditor";
 import type { StatusTone } from "../../components/StatusPill";
 import type { DraftComposerAttachment } from "../../lib/composerImages";

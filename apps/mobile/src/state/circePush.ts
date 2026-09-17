@@ -1,5 +1,5 @@
-import { createEnvironmentRpcCommand } from "@t3tools/client-runtime/state/runtime";
-import { WS_METHODS, type CircePushRegistrationInput } from "@t3tools/contracts";
+import { createEnvironmentRpcCommand } from "@circe/client/state/runtime";
+import { WS_METHODS, type CircePushRegistrationInput } from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

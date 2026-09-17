@@ -34,7 +34,7 @@
     "test": "vp test run"
   },
   "dependencies": {
-    "@t3tools/contracts": "workspace:*",
+    "@circe/contracts": "workspace:*",
     "effect": "catalog:"
   },
   "devDependencies": {

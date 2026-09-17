@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { EventId } from "@t3tools/contracts";
+import { EventId } from "@circe/contracts";
 import {
   getPendingCirceReplyState,
   isExpectedPendingReply,

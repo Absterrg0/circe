@@ -1,6 +1,6 @@
-import { PASTED_TEXT_ATTACHMENT_THRESHOLD_BYTES } from "@t3tools/client-runtime/text-paste";
-import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@t3tools/contracts";
-import { collectComposerInlineTokens } from "@t3tools/shared/composerInlineTokens";
+import { PASTED_TEXT_ATTACHMENT_THRESHOLD_BYTES } from "@circe/client/text-paste";
+import { PROVIDER_SEND_TURN_MAX_INPUT_CHARS } from "@circe/contracts";
+import { collectComposerInlineTokens } from "@circe/shared/composerInlineTokens";
 import { composerContextEditorTokens } from "../lib/composerContext";
 import { requireNativeView } from "expo";
 import {
@@ -15,12 +15,12 @@ import {
 import type { NativeSyntheticEvent, StyleProp, ViewProps, ViewStyle } from "react-native";
 import { Image, StyleSheet } from "react-native";
 
-import { markdownFileIconSource } from "@t3tools/mobile-markdown-text/file-icons";
+import { markdownFileIconSource } from "@circe/mobile-markdown-text/file-icons";
 import {
   composerChipSizeSuffix,
   contextChipPresentation,
-} from "@t3tools/mobile-markdown-text/markdown";
-import { resolveMarkdownFileIcon } from "@t3tools/mobile-markdown-text/links";
+} from "@circe/mobile-markdown-text/markdown";
+import { resolveMarkdownFileIcon } from "@circe/mobile-markdown-text/links";
 import { useUniwindTheme } from "../lib/useUniwindTheme";
 import { flattenThemeColor } from "../lib/mobileTheme";
 import { useFontFamily } from "../lib/useFontFamily";

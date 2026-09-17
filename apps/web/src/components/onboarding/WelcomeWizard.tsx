@@ -7,13 +7,10 @@ import type {
   ScopedProjectRef,
   ServerConfig,
   ServerProvider,
-} from "@t3tools/contracts";
-import { scopeProjectRef, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { CommandId, ProviderDriverKind, ThreadId } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { scopeProjectRef, scopeThreadRef } from "@circe/client/environment";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
+import { CommandId, ProviderDriverKind, ThreadId } from "@circe/contracts";
 import * as Schema from "effect/Schema";
 import {
   ArrowRightIcon,

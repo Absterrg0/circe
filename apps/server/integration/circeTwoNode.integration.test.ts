@@ -18,7 +18,7 @@ import {
   CircePresentationEvent,
   ProjectId,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
@@ -181,7 +181,7 @@ const spawnServer = async (input: {
   readonly scriptPath: string;
 }): Promise<ServerChild> => {
   const env = { ...process.env };
-  delete env.T3CODE_HOME;
+  delete env.CIRCE_HOME;
   env.T3_CODEX_COLLAB_SCRIPT = input.scriptPath;
   const child = NodeChildProcess.spawn(
     "node",
@@ -305,7 +305,7 @@ const runProjectAdd = async (input: {
   readonly title?: string;
 }): Promise<void> => {
   const env = { ...process.env };
-  delete env.T3CODE_HOME;
+  delete env.CIRCE_HOME;
   const child = NodeChildProcess.spawn(
     "node",
     [

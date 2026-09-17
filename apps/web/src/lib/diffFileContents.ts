@@ -1,8 +1,5 @@
 import type { FileDiffContentsLoader } from "@pierre/diffs";
-import {
-  squashAtomCommandFailure,
-  type AtomCommandResult,
-} from "@t3tools/client-runtime/state/runtime";
+import { squashAtomCommandFailure, type AtomCommandResult } from "@circe/client/state/runtime";
 import type {
   EnvironmentId,
   PullRequestDiffFileContentsInput,
@@ -11,7 +8,7 @@ import type {
   ReviewDiffFileContentsInput,
   ReviewDiffFileContentsResult,
   ReviewDiffPreviewSourceKind,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import { resolveFileDiffPath } from "./diffRendering";
 

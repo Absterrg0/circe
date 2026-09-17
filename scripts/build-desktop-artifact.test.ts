@@ -100,8 +100,8 @@ import {
   uiohookTargetDirectory,
 } from "./build-desktop-artifact.ts";
 import { BRAND_ASSET_PATHS } from "./lib/brand-assets.ts";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { symlinksSupported } from "@circe/shared/testing/symlinks";
 
 // A minimal stand-in for the staged sidecar roots packed into the WSL archive.
 const stageWslRuntimeTreeFixture = Effect.fn("stageWslRuntimeTreeFixture")(function* (
@@ -398,10 +398,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       resolveDesktopRuntimeDependencies(
         {
           "@effect/platform-node": "catalog:",
-          "@t3tools/contracts": "workspace:*",
-          "@t3tools/shared": "workspace:*",
-          "@t3tools/ssh": "workspace:*",
-          "@t3tools/tailscale": "workspace:*",
+          "@circe/contracts": "workspace:*",
+          "@circe/shared": "workspace:*",
+          "@circe/ssh": "workspace:*",
+          "@circe/tailscale": "workspace:*",
           effect: "catalog:",
           electron: "41.5.0",
         },
@@ -2370,7 +2370,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
     assert.include(
       workflow,
-      'T3CODE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config"',
+      'CIRCE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config"',
     );
     assert.include(
       workflow,

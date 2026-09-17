@@ -4,8 +4,8 @@ import {
   PROVIDER_SEND_TURN_MAX_FILE_BYTES,
   circeNodeCapabilitiesForPreset,
   type ExecutionEnvironmentDescriptor,
-} from "@t3tools/contracts";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+} from "@circe/contracts";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";

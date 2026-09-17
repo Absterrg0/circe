@@ -12,7 +12,7 @@ import {
   ThreadId,
   type OrchestrationProjectShell,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
 import {

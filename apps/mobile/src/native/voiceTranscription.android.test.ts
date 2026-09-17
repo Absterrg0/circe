@@ -8,7 +8,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";
 
-import { VoiceTranscriptionError } from "@t3tools/client-runtime/voice-input";
+import { VoiceTranscriptionError } from "@circe/client/voice-input";
 
 const mocks = vi.hoisted(() => ({
   isAvailable: vi.fn<() => boolean>(),

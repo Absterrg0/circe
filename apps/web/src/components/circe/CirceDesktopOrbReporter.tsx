@@ -1,10 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
-import { ProviderInstanceId, type DesktopCirceOrbSelection } from "@t3tools/contracts";
-import { createModelSelection } from "@t3tools/shared/model";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { ProviderInstanceId, type DesktopCirceOrbSelection } from "@circe/contracts";
+import { createModelSelection } from "@circe/shared/model";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { serverEnvironment } from "../../state/server";
@@ -17,7 +14,7 @@ import {
   isDesktopCirceOrbSelectionValid,
   selectDesktopCirceOrbFallback,
 } from "./CirceDesktopOrb.bridge";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 
 /**
  * Headless reporter behind the desktop orb. No visual UI here: the orb lives

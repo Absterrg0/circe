@@ -1,4 +1,4 @@
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
   type EnvironmentId,
   type CirceProjectRef,
@@ -6,7 +6,7 @@ import {
   type CirceTaskRef,
   type CirceTaskState,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { CirceMeshCatalog, CirceMeshNode } from "@circe/client-runtime/circe/mesh";
 import { useNavigate } from "@tanstack/react-router";
 import {

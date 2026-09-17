@@ -1,10 +1,7 @@
 import { circeLiveVoiceCaption } from "@circe/client-runtime/circe/liveVoice";
 import { useAtomValue } from "@effect/atom-react";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
+import type { EnvironmentId } from "@circe/contracts";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { usePrimaryCloudLinkState } from "../../cloud/primaryCloudLinkState";

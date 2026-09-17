@@ -8,15 +8,9 @@ import {
   type OrchestrationV2ThreadShell,
   type ScopedProjectRef,
   type ScopedThreadRef,
-} from "@t3tools/contracts";
-import {
-  presentThreadShell,
-  type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import {
-  deriveLatestThreadRun,
-  deriveThreadRuntime,
-} from "@t3tools/client-runtime/state/thread-execution";
+} from "@circe/contracts";
+import { presentThreadShell, type EnvironmentThreadShell } from "@circe/client/state/shell";
+import { deriveLatestThreadRun, deriveThreadRuntime } from "@circe/client/state/thread-execution";
 import * as Option from "effect/Option";
 
 import { scopedThreadKey } from "../lib/scopedEntities";

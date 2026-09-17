@@ -196,7 +196,7 @@ export class ForeignDatabaseError extends Schema.TaggedError<ForeignDatabaseErro
   override get message(): string {
     const base = `Refusing to migrate the database in ${this.baseDir}.`;
     if (this.reason === "unowned_database") {
-      return `${base} It has no Circe ownership marker, so it belongs to another product (T3 Code or Jarvis). Circe keeps its data in ~/.circe; point --base-dir or T3CODE_HOME at a Circe directory.`;
+      return `${base} It has no Circe ownership marker, so it belongs to another product (T3 Code or Jarvis). Circe keeps its data in ~/.circe; point --base-dir or CIRCE_HOME at a Circe directory.`;
     }
     return `${base} Its recorded history belongs to another product: ${this.detail ?? "migration history mismatch"}. Do not reuse a T3 Code or Jarvis data directory.`;
   }

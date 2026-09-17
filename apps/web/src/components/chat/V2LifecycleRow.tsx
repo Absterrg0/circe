@@ -1,14 +1,14 @@
-import { resolveHandoffEndpoints, type HandoffTimelineRun } from "@t3tools/client-runtime/handoff";
+import { resolveHandoffEndpoints, type HandoffTimelineRun } from "@circe/client/handoff";
 import { Fragment } from "react";
-import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
+import { formatSubagentDisplayTitle } from "@circe/client/state/subagent-display";
 import {
   ProviderDriverKind,
   type OrchestrationV2TurnItem,
   type ProviderInstanceId,
   type ServerProvider,
   type ThreadId,
-} from "@t3tools/contracts";
-import type { TimestampFormat } from "@t3tools/contracts/settings";
+} from "@circe/contracts";
+import type { TimestampFormat } from "@circe/contracts/settings";
 import {
   ArrowRightLeftIcon,
   ArrowRightIcon,
@@ -51,7 +51,7 @@ const TERMINAL_SUBAGENT_STATUSES = new Set<OrchestrationV2TurnItem["status"]>([
   "interrupted",
 ]);
 
-export type { HandoffTimelineRun } from "@t3tools/client-runtime/handoff";
+export type { HandoffTimelineRun } from "@circe/client/handoff";
 
 export function V2LifecycleRow(props: {
   readonly item: OrchestrationV2TurnItem;

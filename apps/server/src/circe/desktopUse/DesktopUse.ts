@@ -6,8 +6,8 @@ import type {
   DesktopUseStatus,
   DesktopUseSubscribeFramesInput,
   DesktopUseWindow,
-} from "@t3tools/contracts";
-import { DesktopUsePolicyError } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { DesktopUsePolicyError } from "@circe/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -30,23 +30,23 @@ export interface DesktopUseShape {
     input: DesktopUseCaptureInput,
   ) => Effect.Effect<
     DesktopUseFrame,
-    DesktopUsePolicyError | import("@t3tools/contracts").DesktopUseError
+    DesktopUsePolicyError | import("@circe/contracts").DesktopUseError
   >;
   readonly input: (
     request: DesktopUseInputRequest,
   ) => Effect.Effect<
     DesktopUseInputResult,
-    DesktopUsePolicyError | import("@t3tools/contracts").DesktopUseError
+    DesktopUsePolicyError | import("@circe/contracts").DesktopUseError
   >;
   readonly listWindows: () => Effect.Effect<
     ReadonlyArray<DesktopUseWindow>,
-    import("@t3tools/contracts").DesktopUseError
+    import("@circe/contracts").DesktopUseError
   >;
   readonly subscribeFrames: (
     input: DesktopUseSubscribeFramesInput,
   ) => Stream.Stream<
     DesktopUseFrame,
-    DesktopUsePolicyError | import("@t3tools/contracts").DesktopUseError
+    DesktopUsePolicyError | import("@circe/contracts").DesktopUseError
   >;
 }
 

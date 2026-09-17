@@ -1,6 +1,6 @@
 import type * as Cause from "effect/Cause";
 import type * as HttpClientError from "effect/unstable/http/HttpClientError";
-import { CirceQuickLookupInput, type CirceQuickLookupResult } from "@t3tools/contracts";
+import { CirceQuickLookupInput, type CirceQuickLookupResult } from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";

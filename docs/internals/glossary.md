@@ -66,7 +66,7 @@ The canonical product name for this fork. Circe adds deterministic voice control
 
 #### Legacy T3 names
 
-Names inherited from the foundation that are being renamed in phases: `T3CODE_*` settings, `t3code:*` storage keys, `t3code` URL schemes, and `@t3tools/*` package names. They are legacy identifiers, not a boundary. See [Circe identity](./circe-identity.md).
+Names inherited from the foundation that are being renamed in phases: `T3CODE_*` settings, `t3code:*` storage keys, `t3code` URL schemes, and `@circe/*` package names. They are legacy identifiers, not a boundary. See [Circe identity](./circe-identity.md).
 
 ### Multi-device Circe
 

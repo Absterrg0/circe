@@ -215,7 +215,7 @@ describe("standalone Windows setup verifier", () => {
     const probe = cleanJob.slice(probeStart, probeEnd);
     expect(probeStart).toBeGreaterThanOrEqual(0);
     expect(probeEnd).toBeGreaterThan(probeStart);
-    expect(probe).toContain("T3CODE_HOME = (Join-Path $probeRoot 't3-home')");
+    expect(probe).toContain("CIRCE_HOME = (Join-Path $probeRoot 't3-home')");
     expect(probe).toContain("CIRCE_STARTUP_PROBE_QUIT = '1'");
     expect(probe).toContain("-RedirectStandardOutput $stdoutPath");
     expect(probe).toContain("-RedirectStandardError $stderrPath");

@@ -1,5 +1,5 @@
 {
-  "name": "@t3tools/contracts",
+  "name": "@circe/contracts",
   "version": "0.0.52",
   "private": true,
   "files": [

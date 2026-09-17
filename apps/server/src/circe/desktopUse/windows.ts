@@ -1,8 +1,4 @@
-import type {
-  DesktopUseAction,
-  DesktopUseDisplay,
-  DesktopUseMouseButton,
-} from "@t3tools/contracts";
+import type { DesktopUseAction, DesktopUseDisplay, DesktopUseMouseButton } from "@circe/contracts";
 
 /** Each PowerShell invocation owns its DPI context and releases anything it presses. */
 const native = String.raw`

@@ -1,15 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
-import {
-  type EnvironmentConnectionPhase,
-  presentConnectionState,
-} from "@t3tools/client-runtime/connection";
+import { type EnvironmentConnectionPhase, presentConnectionState } from "@circe/client/connection";
 import {
   assetUrlStateFromResult,
   createAssetEnvironmentAtoms,
   createProjectFaviconUrlAtomFamily,
   EMPTY_ASSET_URL_ATOM,
-} from "@t3tools/client-runtime/state/assets";
-import type { AssetResource, EnvironmentId } from "@t3tools/contracts";
+} from "@circe/client/state/assets";
+import type { AssetResource, EnvironmentId } from "@circe/contracts";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 import { useCallback } from "react";

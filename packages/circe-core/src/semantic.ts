@@ -3,7 +3,7 @@ import type {
   OrchestrationProjectShell,
   OrchestrationThreadActivity,
   ProjectId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import type { CirceCommandContext, CirceCommandNeedsInput } from "./command.ts";
 import { groupCirceAliasesByProject } from "./buildProjectVocabulary.ts";

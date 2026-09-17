@@ -1,9 +1,6 @@
-import {
-  presentThreadShell,
-  type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import type { OrchestrationThread } from "@t3tools/contracts";
-import { DEFAULT_PROVIDER_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "@t3tools/contracts";
+import { presentThreadShell, type EnvironmentThreadShell } from "@circe/client/state/shell";
+import type { OrchestrationThread } from "@circe/contracts";
+import { DEFAULT_PROVIDER_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "@circe/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import * as DateTime from "effect/DateTime";
 

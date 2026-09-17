@@ -1,14 +1,11 @@
-import {
-  presentThreadShell,
-  type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+import { presentThreadShell, type EnvironmentThreadShell } from "@circe/client/state/shell";
 import {
   EnvironmentId,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
   type OrchestrationV2ThreadShell,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 
 const DEFAULT_TIMESTAMP = "2026-01-01T00:00:00.000Z";

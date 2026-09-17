@@ -3,7 +3,7 @@ import * as NodeReadline from "node:readline";
 
 import { app, BrowserWindow, screen } from "electron";
 
-import type { DesktopCirceLiveVoiceState, DesktopCirceOrbCatalog } from "@t3tools/contracts";
+import type { DesktopCirceLiveVoiceState, DesktopCirceOrbCatalog } from "@circe/contracts";
 
 import {
   DESKTOP_CIRCE_ORB_CONSOLE_PREFIX,

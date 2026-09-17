@@ -16,7 +16,7 @@ import {
   OrchestratorMcpFailure,
   SourceControlCloneRepositoryInput,
   SourceControlCloneRepositoryResult,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as FileSystem from "effect/FileSystem";
 import { ServerConfig } from "../../../config.ts";
 import { ThreadLaunchService } from "../../../orchestration-v2/ThreadLaunchService.ts";

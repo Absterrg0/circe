@@ -40,7 +40,7 @@ export class DesktopAppIdentity extends Context.Service<
     readonly resolveUserDataPath: Effect.Effect<string, DesktopUserDataPathResolutionError>;
     readonly configure: Effect.Effect<void>;
   }
->()("@t3tools/desktop/app/DesktopAppIdentity") {}
+>()("@circe/desktop/app/DesktopAppIdentity") {}
 
 export function resolveUserDataPathSync(input: {
   readonly legacyPath: string;

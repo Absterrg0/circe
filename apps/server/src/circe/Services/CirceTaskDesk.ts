@@ -4,7 +4,7 @@ import {
   type CirceFocusTaskInput,
   type CirceTaskDeskState,
   type CirceTaskDeskTask,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 

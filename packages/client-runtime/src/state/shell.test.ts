@@ -1,5 +1,5 @@
-import type { ServerConfig } from "@t3tools/contracts";
-import { EnvironmentId } from "@t3tools/contracts";
+import type { ServerConfig } from "@circe/contracts";
+import { EnvironmentId } from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Option from "effect/Option";
 import * as DateTime from "effect/DateTime";

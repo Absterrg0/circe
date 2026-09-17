@@ -8,7 +8,7 @@ import * as Schedule from "effect/Schedule";
 import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
-import { RelayLiveVoiceSessionCreateResponse } from "@t3tools/contracts/relay";
+import { RelayLiveVoiceSessionCreateResponse } from "@circe/contracts/relay";
 import {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceCreateResult,
@@ -21,7 +21,7 @@ import {
   TrimmedNonEmptyString,
   type CirceLiveVoiceError,
   type CirceLiveVoiceSettings,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import * as ServerSecretStore from "../../auth/ServerSecretStore.ts";
 import { RELAY_ENVIRONMENT_CREDENTIAL_SECRET, RELAY_URL_SECRET } from "../../cloud/config.ts";

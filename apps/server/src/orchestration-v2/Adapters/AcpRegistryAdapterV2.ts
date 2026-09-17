@@ -7,8 +7,8 @@ import {
   AcpRegistrySettings,
   defaultInstanceIdForDriver,
   ProviderDriverKind,
-} from "@t3tools/contracts";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
+} from "@circe/contracts";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

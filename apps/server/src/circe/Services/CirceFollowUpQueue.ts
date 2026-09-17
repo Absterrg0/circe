@@ -1,4 +1,4 @@
-import type { CirceRequestMetadata, MessageId, ThreadId } from "@t3tools/contracts";
+import type { CirceRequestMetadata, MessageId, ThreadId } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Option from "effect/Option";
