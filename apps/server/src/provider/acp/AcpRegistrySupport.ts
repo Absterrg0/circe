@@ -495,7 +495,7 @@ export class AcpRegistryCatalog extends Context.Service<
       isReferenced?: Effect.Effect<boolean, AcpRegistryError>,
     ) => Effect.Effect<AcpRegistryManagedBinaryUninstallResult, AcpRegistryError>;
   }
->()("t3/provider/acp/AcpRegistrySupport/AcpRegistryCatalog") {
+>()("@absterrg0/circe/provider/acp/AcpRegistrySupport/AcpRegistryCatalog") {
   static layer(options: AcpRegistryCatalogOptions) {
     return Layer.effect(AcpRegistryCatalog, makeAcpRegistryCatalog(options));
   }

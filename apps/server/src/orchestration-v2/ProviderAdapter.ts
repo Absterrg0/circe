@@ -559,5 +559,5 @@ export interface ProviderAdapterV2Shape {
 }
 
 export class ProviderAdapterV2 extends Context.Service<ProviderAdapterV2, ProviderAdapterV2Shape>()(
-  "t3/orchestration-v2/ProviderAdapter/ProviderAdapterV2",
+  "@absterrg0/circe/orchestration-v2/ProviderAdapter/ProviderAdapterV2",
 ) {}

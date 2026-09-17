@@ -156,7 +156,7 @@ export interface CheckpointServiceV2Shape {
 export class CheckpointServiceV2 extends Context.Service<
   CheckpointServiceV2,
   CheckpointServiceV2Shape
->()("t3/orchestration-v2/CheckpointService/CheckpointServiceV2") {}
+>()("@absterrg0/circe/orchestration-v2/CheckpointService/CheckpointServiceV2") {}
 
 export function checkpointRefForScopeOrdinal(input: {
   readonly scopeId: CheckpointScopeId;
