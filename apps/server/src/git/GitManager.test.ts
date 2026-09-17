@@ -4837,7 +4837,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
             headRepositoryOwnerLogin: "binbandit",
           },
           repositoryCloneUrls: {
-            "binbandit/t3code": {
+            "binbandit/circe": {
               url: forkDir,
               sshUrl: forkDir,
             },
