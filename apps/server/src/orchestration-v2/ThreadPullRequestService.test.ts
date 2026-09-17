@@ -26,22 +26,22 @@ describe("ThreadPullRequestServiceV2 project guard", () => {
         resolve: (root) => {
           resolvedRoot = root;
           return Effect.succeed({
-            canonicalKey: "github.com/pingdotgg/t3code",
+            canonicalKey: "github.com/Absterrg0/circe",
             locator: {
               source: "git-remote" as const,
               remoteName: "origin",
-              remoteUrl: "git@github.com:pingdotgg/t3code.git",
+              remoteUrl: "git@github.com:Absterrg0/circe.git",
             },
             provider: "github" as const,
-            displayName: "pingdotgg/t3code",
+            displayName: "Absterrg0/circe",
             owner: "pingdotgg",
             name: "t3code",
           });
         },
       });
       expect(resolvedRoot).toBe("/workspace/project");
-      expect(result.repository).toBe("pingdotgg/t3code");
-      expect(result.project.repositoryIdentity?.canonicalKey).toBe("github.com/pingdotgg/t3code");
+      expect(result.repository).toBe("Absterrg0/circe");
+      expect(result.project.repositoryIdentity?.canonicalKey).toBe("github.com/Absterrg0/circe");
     }),
   );
 
