@@ -28,6 +28,7 @@
     "./browserUse": "./src/browserUse.ts",
     "./browserUseRuntime": "./src/browserUseRuntime.ts",
     "./visionGrounding": "./src/visionGrounding.ts",
+    "./projectMemory": "./src/projectMemory.ts",
     "./modelChoice": "./src/modelChoice.ts",
     "./spokenSummary": "./src/spokenSummary.ts",
     "./timing": "./src/timing.ts",
