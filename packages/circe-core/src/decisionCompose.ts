@@ -1,7 +1,7 @@
 import type { CirceCommandNeedsInput } from "./command.ts";
 import { choiceAnswer, noulHolds, type DecisionAnswers } from "./decision.ts";
 import {
-  CIRCE_DECISION_THRESHOLDS,
+  T3CODE_DECISION_THRESHOLDS,
   locateDestinationWrapper,
   locateNameSpan,
   riskForAction,
@@ -108,7 +108,7 @@ function composeRefs(input: ComposeSingleInput): {
 
   // Destination. Only destination or correction maps to a route; a negated
   // target is a veto, so it is cited as excluded and never authorizes.
-  const projectKey = choice("destination_project", CIRCE_DECISION_THRESHOLDS.readOnly)?.choice;
+  const projectKey = choice("destination_project", T3CODE_DECISION_THRESHOLDS.readOnly)?.choice;
   if (projectKey !== undefined && projectKey !== NONE_OPTION) {
     const entry = table.projects.find((project) => project.key === projectKey);
     if (entry === undefined)
@@ -118,7 +118,7 @@ function composeRefs(input: ComposeSingleInput): {
         effort: null,
         error: clarify("I couldn't match that project. Which project did you mean?"),
       };
-    const negated = predicate("destination_negated", CIRCE_DECISION_THRESHOLDS.predicate);
+    const negated = predicate("destination_negated", T3CODE_DECISION_THRESHOLDS.predicate);
     if (negated) {
       const span = firstLocated(source, entry.names, locateNameSpan);
       if (span === undefined)
@@ -142,7 +142,7 @@ function composeRefs(input: ComposeSingleInput): {
     }
   }
 
-  const taskKey = choice("task", CIRCE_DECISION_THRESHOLDS.readOnly)?.choice;
+  const taskKey = choice("task", T3CODE_DECISION_THRESHOLDS.readOnly)?.choice;
   if (taskKey !== undefined && taskKey !== NONE_OPTION) {
     const entry = table.tasks.find((task) => task.key === taskKey);
     if (entry === undefined)
@@ -163,7 +163,7 @@ function composeRefs(input: ComposeSingleInput): {
     refs.push(makeRef(span, "task", entry.title));
   }
 
-  const providerKey = choice("provider", CIRCE_DECISION_THRESHOLDS.readOnly)?.choice;
+  const providerKey = choice("provider", T3CODE_DECISION_THRESHOLDS.readOnly)?.choice;
   if (providerKey !== undefined && providerKey !== NONE_OPTION) {
     const entry = table.providers.find((provider) => provider.key === providerKey);
     if (entry === undefined)
@@ -185,8 +185,8 @@ function composeRefs(input: ComposeSingleInput): {
   }
 
   let model: string | null = null;
-  if (predicate("model_specified", CIRCE_DECISION_THRESHOLDS.predicate)) {
-    const answer = choice("model", CIRCE_DECISION_THRESHOLDS.readOnly);
+  if (predicate("model_specified", T3CODE_DECISION_THRESHOLDS.predicate)) {
+    const answer = choice("model", T3CODE_DECISION_THRESHOLDS.readOnly);
     if (answer === undefined)
       return {
         refs,
@@ -201,8 +201,8 @@ function composeRefs(input: ComposeSingleInput): {
   }
 
   let effort: string | null = null;
-  if (predicate("effort_specified", CIRCE_DECISION_THRESHOLDS.predicate)) {
-    const answer = choice("effort", CIRCE_DECISION_THRESHOLDS.readOnly);
+  if (predicate("effort_specified", T3CODE_DECISION_THRESHOLDS.predicate)) {
+    const answer = choice("effort", T3CODE_DECISION_THRESHOLDS.readOnly);
     if (answer === undefined)
       return {
         refs,
@@ -228,18 +228,18 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
   const predicate = (name: string, threshold: number): boolean =>
     noulHolds(answers, id(name), threshold) ?? false;
 
-  if (predicate("needs_clarification", CIRCE_DECISION_THRESHOLDS.clarification)) {
+  if (predicate("needs_clarification", T3CODE_DECISION_THRESHOLDS.clarification)) {
     return clarify("I need a little more detail before I act. What exactly should I do?");
   }
 
   // An approval verdict is never granted by the classifier. It becomes a
   // continue so the Director binds it to typed pending state, which is the
   // only authority for allow or deny.
-  if (predicate("contains_approval_verdict", CIRCE_DECISION_THRESHOLDS.predicate)) {
+  if (predicate("contains_approval_verdict", T3CODE_DECISION_THRESHOLDS.predicate)) {
     return { action: "continue", refs: [], model: null, effort: null, answer: null };
   }
 
-  const strategy = choice("response_strategy", CIRCE_DECISION_THRESHOLDS.readOnly)?.choice;
+  const strategy = choice("response_strategy", T3CODE_DECISION_THRESHOLDS.readOnly)?.choice;
   if (strategy === undefined) {
     return clarify("I couldn't tell what you want me to do. Say the action and the target.");
   }
@@ -259,20 +259,20 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
   }
 
   if (strategy === "tool") {
-    const toolKey = choice("tool", CIRCE_DECISION_THRESHOLDS.readOnly)?.choice;
+    const toolKey = choice("tool", T3CODE_DECISION_THRESHOLDS.readOnly)?.choice;
     const tool = toolKey === undefined ? undefined : findCirceTool(toolKey);
     if (tool === undefined) {
       return clarify("I couldn't tell which lookup you wanted. Say it again.");
     }
     if (tool.action === "lookup") {
-      const location = choice(`tool_${tool.name}_location`, CIRCE_DECISION_THRESHOLDS.readOnly);
+      const location = choice(`tool_${tool.name}_location`, T3CODE_DECISION_THRESHOLDS.readOnly);
       if (location === undefined || location.choice === NONE_OPTION) {
         return clarify("I couldn't tell which place you meant. Name the city.");
       }
       if (locateNameSpan(source, location.choice) === undefined) {
         return clarify("I couldn't match that place to what you said. Name the city again.");
       }
-      const day = choice(`tool_${tool.name}_day`, CIRCE_DECISION_THRESHOLDS.predicate)?.choice;
+      const day = choice(`tool_${tool.name}_day`, T3CODE_DECISION_THRESHOLDS.predicate)?.choice;
       return {
         action: "lookup",
         refs: [],
@@ -287,7 +287,7 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
       };
     }
     if (tool.action === "open-website") {
-      const website = choice("tool_open-website_website", CIRCE_DECISION_THRESHOLDS.readOnly);
+      const website = choice("tool_open-website_website", T3CODE_DECISION_THRESHOLDS.readOnly);
       if (website === undefined || website.choice === NONE_OPTION) {
         return clarify("I couldn't tell which site you wanted. Say the site or address.");
       }
@@ -319,7 +319,7 @@ function composeSingle(input: ComposeSingleInput): SingleCommand | DecisionCompo
     return { action: "converse", refs, model: null, effort: null, answer: null };
   }
 
-  const actionAnswer = choice("action", CIRCE_DECISION_THRESHOLDS.readOnly);
+  const actionAnswer = choice("action", T3CODE_DECISION_THRESHOLDS.readOnly);
   if (actionAnswer === undefined) {
     return table.projects.length === 0 && refs.length === 0
       ? needsTarget("I don't have a recent Circe task to apply that to.")
@@ -458,6 +458,6 @@ export function acceptedBoundaries(
   answers: DecisionAnswers,
 ): ReadonlyArray<BoundaryCandidate> {
   return boundaries.filter(
-    (boundary) => noulHolds(answers, boundary.id, CIRCE_DECISION_THRESHOLDS.boundary) === true,
+    (boundary) => noulHolds(answers, boundary.id, T3CODE_DECISION_THRESHOLDS.boundary) === true,
   );
 }

@@ -6,7 +6,7 @@ import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
 import type { RelayLiveVoiceSessionCreateResponse } from "@circe/contracts/relay";
-import { CIRCE_LIVE_VOICE_DEFAULT_MODEL, CIRCE_LIVE_VOICE_DEFAULT_VOICE } from "@circe/contracts";
+import { T3CODE_LIVE_VOICE_DEFAULT_MODEL, T3CODE_LIVE_VOICE_DEFAULT_VOICE } from "@circe/contracts";
 
 import { RelayConfiguration } from "../Config.ts";
 import * as EnvironmentLinks from "../environments/EnvironmentLinks.ts";
@@ -167,8 +167,8 @@ export const make = Effect.gen(function* () {
       if (publicKey === null) {
         return yield* new LiveVoiceNotConfigured();
       }
-      const model = liveVoice?.model ?? CIRCE_LIVE_VOICE_DEFAULT_MODEL;
-      const voice = liveVoice?.voice ?? CIRCE_LIVE_VOICE_DEFAULT_VOICE;
+      const model = liveVoice?.model ?? T3CODE_LIVE_VOICE_DEFAULT_MODEL;
+      const voice = liveVoice?.voice ?? T3CODE_LIVE_VOICE_DEFAULT_VOICE;
       const userId = yield* resolveUserId(input.environmentId, true);
       const now = yield* DateTime.now;
       const nowIso = DateTime.formatIso(now);

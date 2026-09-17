@@ -302,15 +302,15 @@ if (isLiveRun && selectedCases.length > FINAL_MAX_CALLS) {
 // executable through the normal CodexSettings binaryPath seam.
 // Resolve with volta which codex.
 if (isLiveRun) {
-  const pinned = process.env.CIRCE_SEMANTIC_EVAL_CODEX?.trim() ?? "";
+  const pinned = process.env.T3CODE_SEMANTIC_EVAL_CODEX?.trim() ?? "";
   if (pinned.length === 0) {
     fail(
-      'Live eval requires CIRCE_SEMANTIC_EVAL_CODEX to name the exact codex executable (e.g., CIRCE_SEMANTIC_EVAL_CODEX="$(volta which codex)"). Unset PATH lookup is disabled.',
+      'Live eval requires T3CODE_SEMANTIC_EVAL_CODEX to name the exact codex executable (e.g., T3CODE_SEMANTIC_EVAL_CODEX="$(volta which codex)"). Unset PATH lookup is disabled.',
     );
   }
   if (!NodePath.isAbsolute(pinned) || !NodeFS.existsSync(pinned)) {
     fail(
-      `CIRCE_SEMANTIC_EVAL_CODEX must be an absolute existing executable path, got ${pinned}. Resolve with volta which codex.`,
+      `T3CODE_SEMANTIC_EVAL_CODEX must be an absolute existing executable path, got ${pinned}. Resolve with volta which codex.`,
     );
   }
 }
@@ -419,10 +419,10 @@ async function runLiveProposal(
   // versions depending on the parent process (node-image 0.149.1 vs outer
   // 0.153.4), so name the exact executable. Recorded in the report
   // supervisor block. Resolve with volta which codex.
-  const evalBinary = process.env.CIRCE_SEMANTIC_EVAL_CODEX?.trim() ?? "";
+  const evalBinary = process.env.T3CODE_SEMANTIC_EVAL_CODEX?.trim() ?? "";
   if (evalBinary.length === 0) {
     throw new Error(
-      "Live eval requires CIRCE_SEMANTIC_EVAL_CODEX to name the exact codex executable. Resolve with volta which codex.",
+      "Live eval requires T3CODE_SEMANTIC_EVAL_CODEX to name the exact codex executable. Resolve with volta which codex.",
     );
   }
   const codexSettings = decodeEvalCodexSettings({ binaryPath: evalBinary });

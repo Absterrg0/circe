@@ -6,15 +6,15 @@ import type {
 } from "@circe/contracts";
 
 /** Expanded window footprint: orb plus the provider and running-agent lists. */
-export const DESKTOP_CIRCE_ORB_WINDOW_WIDTH = 384;
-export const DESKTOP_CIRCE_ORB_WINDOW_HEIGHT = 440;
-export const DESKTOP_CIRCE_ORB_MARGIN = 16;
+export const DESKTOP_T3CODE_ORB_WINDOW_WIDTH = 384;
+export const DESKTOP_T3CODE_ORB_WINDOW_HEIGHT = 440;
+export const DESKTOP_T3CODE_ORB_MARGIN = 16;
 /** Collapsed window footprint. Keep the native hit area close to the visible orb. */
-export const DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH = 72;
-export const DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT = 72;
+export const DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH = 72;
+export const DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT = 72;
 
 /** Console/stdout bridge prefix. Overlay JS logs selections; main parses them. */
-export const DESKTOP_CIRCE_ORB_CONSOLE_PREFIX = "[circe-orb]";
+export const DESKTOP_T3CODE_ORB_CONSOLE_PREFIX = "[circe-orb]";
 
 export interface DesktopCirceOrbPresentation {
   readonly label: string;
@@ -30,7 +30,7 @@ const ORB_ACCENT = "#9db4c7";
 const ORB_ACCENT_DEEP = "#5f7186";
 const ORB_ACCENT_FAILED = "#d59a9a";
 
-const DESKTOP_CIRCE_ORB_PROFILES: Readonly<
+const DESKTOP_T3CODE_ORB_PROFILES: Readonly<
   Record<DesktopCirceLiveVoiceStatus, { label: string; accent: string; accentSecondary: string }>
 > = {
   idle: { label: "Circe is idle", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
@@ -66,14 +66,17 @@ const DESKTOP_CIRCE_ORB_PROFILES: Readonly<
 export const desktopCirceOrbPresentation = (
   state: DesktopCirceLiveVoiceState,
 ): DesktopCirceOrbPresentation => {
-  const profile = DESKTOP_CIRCE_ORB_PROFILES[state.status];
+  const profile = DESKTOP_T3CODE_ORB_PROFILES[state.status];
   const animated =
     state.active &&
     (state.status === "requesting" || state.status === "connecting" || state.status === "live");
   return { ...profile, animated };
 };
 
-const serializedOrbProfiles = JSON.stringify(DESKTOP_CIRCE_ORB_PROFILES).replaceAll("<", "\\u003c");
+const serializedOrbProfiles = JSON.stringify(DESKTOP_T3CODE_ORB_PROFILES).replaceAll(
+  "<",
+  "\\u003c",
+);
 
 export interface DesktopCirceOverlayWorkArea {
   readonly x: number;
@@ -85,7 +88,7 @@ export interface DesktopCirceOverlayWorkArea {
 export interface DesktopCirceOverlayBounds extends DesktopCirceOverlayWorkArea {}
 
 /** Distance from the window's right edge to the orb centre, in both sizes. */
-export const DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT = 36;
+export const DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT = 36;
 
 export interface DesktopCirceOverlayAnchor {
   readonly x: number;
@@ -100,13 +103,13 @@ export function desktopCirceOverlayOrbCenter(
   bounds: DesktopCirceOverlayBounds,
 ): DesktopCirceOverlayAnchor {
   return {
-    x: bounds.x + bounds.width - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT,
+    x: bounds.x + bounds.width - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT,
     y: bounds.y + bounds.height / 2,
   };
 }
 
 /** How close the orb centre must be to a mesh point before it snaps. */
-export const DESKTOP_CIRCE_ORB_SNAP_THRESHOLD = 56;
+export const DESKTOP_T3CODE_ORB_SNAP_THRESHOLD = 56;
 const SNAP_VERTICAL_STEPS = 5;
 
 /** Window footprint for a work area, shrunk when the work area cannot hold it. */
@@ -116,12 +119,12 @@ function desktopCirceOverlayWindowSize(
 ): { readonly width: number; readonly height: number } {
   return {
     width: Math.min(
-      expanded ? DESKTOP_CIRCE_ORB_WINDOW_WIDTH : DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH,
-      Math.max(48, workArea.width - DESKTOP_CIRCE_ORB_MARGIN * 2),
+      expanded ? DESKTOP_T3CODE_ORB_WINDOW_WIDTH : DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH,
+      Math.max(48, workArea.width - DESKTOP_T3CODE_ORB_MARGIN * 2),
     ),
     height: Math.min(
-      expanded ? DESKTOP_CIRCE_ORB_WINDOW_HEIGHT : DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT,
-      Math.max(48, workArea.height - DESKTOP_CIRCE_ORB_MARGIN * 2),
+      expanded ? DESKTOP_T3CODE_ORB_WINDOW_HEIGHT : DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT,
+      Math.max(48, workArea.height - DESKTOP_T3CODE_ORB_MARGIN * 2),
     ),
   };
 }
@@ -155,14 +158,14 @@ function desktopCirceOverlayWindowSize(
 export function snapDesktopCirceOverlayAnchor(
   workArea: DesktopCirceOverlayWorkArea,
   anchor: DesktopCirceOverlayAnchor,
-  threshold = DESKTOP_CIRCE_ORB_SNAP_THRESHOLD,
+  threshold = DESKTOP_T3CODE_ORB_SNAP_THRESHOLD,
 ): DesktopCirceOverlayAnchor {
-  const minX = workArea.x + DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT;
+  const minX = workArea.x + DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT;
   const maxX =
-    workArea.x + workArea.width - DESKTOP_CIRCE_ORB_MARGIN - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT;
-  const minY = workArea.y + DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT;
+    workArea.x + workArea.width - DESKTOP_T3CODE_ORB_MARGIN - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT;
+  const minY = workArea.y + DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT;
   const maxY =
-    workArea.y + workArea.height - DESKTOP_CIRCE_ORB_MARGIN - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT;
+    workArea.y + workArea.height - DESKTOP_T3CODE_ORB_MARGIN - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT;
   // A degenerate work area narrower than the orb lane offers no snap targets:
   // clamping would collapse every drop onto one point. Keep the drop inside
   // the work area and skip snapping entirely.
@@ -188,8 +191,8 @@ export function snapDesktopCirceOverlayAnchor(
   const clampedX = clamp(anchor.x, minX, maxX);
   const clampedY = clamp(anchor.y, minY, maxY);
   const expanded = desktopCirceOverlayWindowSize(workArea, true);
-  const bandTop = workArea.y + DESKTOP_CIRCE_ORB_MARGIN + expanded.height / 2;
-  const bandBottom = workArea.y + workArea.height - DESKTOP_CIRCE_ORB_MARGIN - expanded.height / 2;
+  const bandTop = workArea.y + DESKTOP_T3CODE_ORB_MARGIN + expanded.height / 2;
+  const bandBottom = workArea.y + workArea.height - DESKTOP_T3CODE_ORB_MARGIN - expanded.height / 2;
   const verticalTargets =
     bandBottom > bandTop
       ? Array.from(
@@ -227,7 +230,7 @@ export function resolveDesktopCirceOverlayBounds(
   const { width, height } = desktopCirceOverlayWindowSize(workArea, expanded);
   if (anchor === undefined) {
     return {
-      x: Math.round(workArea.x + workArea.width - width - DESKTOP_CIRCE_ORB_MARGIN),
+      x: Math.round(workArea.x + workArea.width - width - DESKTOP_T3CODE_ORB_MARGIN),
       y: Math.round(workArea.y + (workArea.height - height) / 2),
       width,
       height,
@@ -236,7 +239,7 @@ export function resolveDesktopCirceOverlayBounds(
   return {
     x: Math.round(
       clamp(
-        anchor.x - (width - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT),
+        anchor.x - (width - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT),
         workArea.x,
         workArea.x + workArea.width - width,
       ),
@@ -387,7 +390,7 @@ const orbScript = `<script>
   const errorRow = document.querySelector("[data-picker-error]");
   const liveLabel = document.querySelector("[data-live-label]");
   const fragSource = document.getElementById("orb-frag");
-  const prefix = ${JSON.stringify(DESKTOP_CIRCE_ORB_CONSOLE_PREFIX)};
+  const prefix = ${JSON.stringify(DESKTOP_T3CODE_ORB_CONSOLE_PREFIX)};
   if (!main || !orb || !canvas || !picker || !list || !runningSection || !runningList || !errorRow || !liveLabel) return;
 
   const profiles = ${serializedOrbProfiles};
@@ -884,8 +887,8 @@ export interface DesktopCirceOrbDragEvent {
 export function parseDesktopCirceOverlayEvent(
   line: string,
 ): DesktopCirceOrbSelection | DesktopCirceOrbExpansionEvent | DesktopCirceOrbDragEvent | null {
-  const prefix = line.startsWith(DESKTOP_CIRCE_ORB_CONSOLE_PREFIX)
-    ? DESKTOP_CIRCE_ORB_CONSOLE_PREFIX
+  const prefix = line.startsWith(DESKTOP_T3CODE_ORB_CONSOLE_PREFIX)
+    ? DESKTOP_T3CODE_ORB_CONSOLE_PREFIX
     : null;
   if (prefix === null) return null;
   const payload = line.slice(prefix.length).trim();
@@ -917,8 +920,8 @@ export function parseDesktopCirceOverlayEvent(
 
 /** Parse one console/stdout line from the orb document into a selection. */
 export function parseDesktopCirceOrbEvent(line: string): DesktopCirceOrbSelection | null {
-  const prefix = line.startsWith(DESKTOP_CIRCE_ORB_CONSOLE_PREFIX)
-    ? DESKTOP_CIRCE_ORB_CONSOLE_PREFIX
+  const prefix = line.startsWith(DESKTOP_T3CODE_ORB_CONSOLE_PREFIX)
+    ? DESKTOP_T3CODE_ORB_CONSOLE_PREFIX
     : null;
   if (prefix === null) return null;
   const payload = line.slice(prefix.length).trim();

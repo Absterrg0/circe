@@ -2,7 +2,7 @@ import type { ExpoConfig } from "expo/config";
 
 import { BRAND_ASSET_PATHS } from "../../scripts/lib/brand-assets.ts";
 import { loadRepoEnv } from "../../scripts/lib/public-config.ts";
-import { CIRCE_MOBILE_SLUG, resolveExpoOwnership } from "./expo-ownership.ts";
+import { T3CODE_MOBILE_SLUG, resolveExpoOwnership } from "./expo-ownership.ts";
 
 type AppVariant = "development" | "preview" | "production";
 
@@ -39,7 +39,7 @@ const personalTeamBundleIdentifier = repoEnv.T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID?
 const IOS_BUNDLE_IDENTIFIER_PATTERN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 
 const fromRepoRoot = (relativePath: string) => `../../${relativePath}`;
-const CIRCE_MICROPHONE_PERMISSION = "Allow Circe to listen while you hold the voice button.";
+const T3CODE_MICROPHONE_PERMISSION = "Allow Circe to listen while you hold the voice button.";
 // Android layers are rendered by scripts/export-android-icons.ts from the Icon Composer sources.
 // The wordmark sits inside the adaptive safe zone; the variant artwork is a full-bleed background.
 const androidAdaptiveForeground = "./assets/android-icon-foreground.png";
@@ -249,7 +249,7 @@ const sharingPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
 
 const config: ExpoConfig = {
   name: variant.appName,
-  slug: CIRCE_MOBILE_SLUG,
+  slug: T3CODE_MOBILE_SLUG,
   platforms: ["ios", "android"],
   scheme: variant.scheme,
   version: "1.2.1",
@@ -342,7 +342,7 @@ const config: ExpoConfig = {
     [
       "expo-audio",
       {
-        microphonePermission: CIRCE_MICROPHONE_PERMISSION,
+        microphonePermission: T3CODE_MICROPHONE_PERMISSION,
         recordAudioAndroid: true,
         enableBackgroundRecording: false,
         enableBackgroundPlayback: false,
@@ -427,7 +427,7 @@ const config: ExpoConfig = {
     // remove the permission requested above by expo-audio and disable Circe push-to-talk.
     [
       "expo-image-picker",
-      { photosPermission: false, microphonePermission: CIRCE_MICROPHONE_PERMISSION },
+      { photosPermission: false, microphonePermission: T3CODE_MICROPHONE_PERMISSION },
     ],
     [
       "expo-splash-screen",
@@ -488,7 +488,7 @@ const config: ExpoConfig = {
     appVariant: APP_VARIANT,
     iosPersonalTeamBuild: isIosPersonalTeamBuild,
     relay: {
-      url: repoEnv.CIRCE_RELAY_URL ?? null,
+      url: repoEnv.T3CODE_RELAY_URL ?? null,
     },
     clerk: {
       publishableKey: repoEnv.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY ?? null,

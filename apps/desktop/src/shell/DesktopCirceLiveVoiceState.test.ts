@@ -1,7 +1,7 @@
 import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 
-import { CIRCE_LIVE_VOICE_STATE_CHANNEL } from "../ipc/channels.ts";
+import { T3CODE_LIVE_VOICE_STATE_CHANNEL } from "../ipc/channels.ts";
 import { createDesktopCirceLiveVoiceStateBridge } from "./DesktopCirceLiveVoiceState.ts";
 
 describe("DesktopCirceLiveVoiceState bridge", () => {
@@ -9,7 +9,7 @@ describe("DesktopCirceLiveVoiceState bridge", () => {
     let reportListener: ((event: unknown, raw: unknown) => void) | undefined;
     const ipcMain = {
       on: vi.fn((channel: string, listener: (event: unknown, raw: unknown) => void) => {
-        if (channel === CIRCE_LIVE_VOICE_STATE_CHANNEL) reportListener = listener;
+        if (channel === T3CODE_LIVE_VOICE_STATE_CHANNEL) reportListener = listener;
       }),
       removeListener: vi.fn(),
     };
@@ -29,7 +29,7 @@ describe("DesktopCirceLiveVoiceState bridge", () => {
     unsubscribe();
     bridge.dispose();
     expect(ipcMain.removeListener).toHaveBeenCalledWith(
-      CIRCE_LIVE_VOICE_STATE_CHANNEL,
+      T3CODE_LIVE_VOICE_STATE_CHANNEL,
       expect.any(Function),
     );
   });

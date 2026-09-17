@@ -1,4 +1,4 @@
-import { CommandId, CIRCE_CONVERSATIONS_PROJECT_TITLE, ProjectId } from "@circe/contracts";
+import { CommandId, T3CODE_CONVERSATIONS_PROJECT_TITLE, ProjectId } from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -16,9 +16,9 @@ import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSn
  * workspace that carries the conversational provider guidance in AGENTS.md, so
  * the guidance never leaks into the visible transcript.
  */
-export { CIRCE_CONVERSATIONS_PROJECT_TITLE };
+export { T3CODE_CONVERSATIONS_PROJECT_TITLE };
 
-export const CIRCE_CONVERSATIONS_AGENTS_MD = [
+export const T3CODE_CONVERSATIONS_AGENTS_MD = [
   "# Conversations",
   "",
   "This project holds Circe general-question threads. Nothing here is a coding task.",
@@ -67,7 +67,7 @@ export const ensureCirceConversationsProject = Effect.gen(function* () {
     .readFileString(agentsPath)
     .pipe(Effect.orElseSucceed(() => null));
   if (existingAgents === null) {
-    yield* fs.writeFileString(agentsPath, CIRCE_CONVERSATIONS_AGENTS_MD);
+    yield* fs.writeFileString(agentsPath, T3CODE_CONVERSATIONS_AGENTS_MD);
   }
 
   const existing = yield* projections.getActiveProjectByWorkspaceRoot(root);
@@ -78,7 +78,7 @@ export const ensureCirceConversationsProject = Effect.gen(function* () {
     type: "project.create",
     commandId: CommandId.make(yield* crypto.randomUUIDv4),
     projectId,
-    title: CIRCE_CONVERSATIONS_PROJECT_TITLE,
+    title: T3CODE_CONVERSATIONS_PROJECT_TITLE,
     workspaceRoot: root,
     createWorkspaceRootIfMissing: true,
     createdAt: DateTime.formatIso(yield* DateTime.now),

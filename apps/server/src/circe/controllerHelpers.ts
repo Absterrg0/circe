@@ -248,17 +248,17 @@ export function commandTaskFromShell(input: {
  * Bound on semantic supervisor attempts. The configured supervisor runs
  * first; at most two fallbacks follow so latency never grows unbounded.
  */
-export const CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS = 2;
+export const T3CODE_SEMANTIC_FALLBACK_MAX_ATTEMPTS = 2;
 
 /** Honest prompt when every semantic candidate is unavailable. */
-export const CIRCE_SEMANTIC_UNAVAILABLE_PROMPT =
+export const T3CODE_SEMANTIC_UNAVAILABLE_PROMPT =
   "My semantic model providers are unavailable right now. Check provider limits or choose another supervisor.";
 
 /**
  * One supervisor attempt must not hold the whole turn. After this long the
  * candidate is treated as failed and the next provider runs.
  */
-export const CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS = 4_500;
+export const T3CODE_SEMANTIC_ATTEMPT_TIMEOUT_MS = 4_500;
 
 const isOpencodeDriver = (driver: string): boolean => driver === "opencode";
 
@@ -390,8 +390,8 @@ export function selectCirceSemanticCandidates(input: {
         } satisfies ModelSelection,
       ];
     })
-    .slice(0, CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS - 1);
-  return [input.configured, ...fallbacks].slice(0, CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS);
+    .slice(0, T3CODE_SEMANTIC_FALLBACK_MAX_ATTEMPTS - 1);
+  return [input.configured, ...fallbacks].slice(0, T3CODE_SEMANTIC_FALLBACK_MAX_ATTEMPTS);
 }
 
 /**

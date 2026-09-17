@@ -7,20 +7,20 @@ import { TrimmedNonEmptyString, TrimmedString } from "./baseSchemas.ts";
  * and speaker media over WebRTC; the node owns the API key and mints the
  * session, so the key never crosses to a client.
  */
-export const CIRCE_LIVE_VOICE_DEFAULT_MODEL = "gpt-live-1";
-export const CIRCE_LIVE_VOICE_DEFAULT_VOICE = "marin";
-export const CIRCE_LIVE_VOICE_MAX_SDP_LENGTH = 100_000;
-export const CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH = 2_000;
+export const T3CODE_LIVE_VOICE_DEFAULT_MODEL = "gpt-live-1";
+export const T3CODE_LIVE_VOICE_DEFAULT_VOICE = "marin";
+export const T3CODE_LIVE_VOICE_MAX_SDP_LENGTH = 100_000;
+export const T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH = 2_000;
 
 export const CirceLiveVoiceCreateInput = Schema.Struct({
   /** Session Description Protocol offer from the renderer peer connection. */
   sdpOffer: Schema.String.check(
     Schema.isMinLength(1),
-    Schema.isMaxLength(CIRCE_LIVE_VOICE_MAX_SDP_LENGTH),
+    Schema.isMaxLength(T3CODE_LIVE_VOICE_MAX_SDP_LENGTH),
   ),
   /** Bounded app-authored context (focused project/task) for the live model. */
   context: Schema.optionalKey(
-    TrimmedString.check(Schema.isMaxLength(CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH)),
+    TrimmedString.check(Schema.isMaxLength(T3CODE_LIVE_VOICE_MAX_CONTEXT_LENGTH)),
   ),
 });
 export type CirceLiveVoiceCreateInput = typeof CirceLiveVoiceCreateInput.Type;
@@ -45,7 +45,7 @@ export const CirceLiveVoiceCreateResult = Schema.Struct({
   sessionId: TrimmedNonEmptyString,
   sdpAnswer: Schema.String.check(
     Schema.isMinLength(1),
-    Schema.isMaxLength(CIRCE_LIVE_VOICE_MAX_SDP_LENGTH),
+    Schema.isMaxLength(T3CODE_LIVE_VOICE_MAX_SDP_LENGTH),
   ),
   model: TrimmedNonEmptyString,
   voice: TrimmedNonEmptyString,

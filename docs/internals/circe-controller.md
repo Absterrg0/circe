@@ -79,8 +79,8 @@ free text, sequences, or numbers outside a set; those are derived in code.
 `apps/server/src/circe/Services/CirceDecision.ts` is the swappable seam and
 `Layers/CirceDecision.ts` the only outbound call: one request, 16k state cap,
 1500ms timeout, one retry on 429/529/network, then a typed decline that never
-fails the turn. Config is opt-in by `CIRCE_TYPESAFE_API_KEY` (or
-`CIRCE_TYPESAFE_ENABLED`). `CIRCE_TYPESAFE_MODEL` pins `jev-latest` by default,
+fails the turn. Config is opt-in by `T3CODE_TYPESAFE_API_KEY` (or
+`T3CODE_TYPESAFE_ENABLED`). `T3CODE_TYPESAFE_MODEL` pins `jev-latest` by default,
 and the resolved `response.model` is recorded per turn because aliases move. The
 key is server-side only and is referenced solely in `apps/server/src/cli/config.ts`.
 

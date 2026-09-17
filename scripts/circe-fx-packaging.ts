@@ -15,12 +15,12 @@ import * as NodePath from "node:path";
  * the published SHA-256 before it is extracted. Platforms fx does not publish
  * (for example Windows) skip staging and keep the `~/.fx/bin/fx` fallback.
  */
-export const CIRCE_FX_VERSION = "0.0.8";
-export const CIRCE_FX_PIN = `v${CIRCE_FX_VERSION}`;
-export const CIRCE_FX_RESOURCE_DIR = "fx";
+export const T3CODE_FX_VERSION = "0.0.8";
+export const T3CODE_FX_PIN = `v${T3CODE_FX_VERSION}`;
+export const T3CODE_FX_RESOURCE_DIR = "fx";
 export const DESKTOP_FX_EXTRA_RESOURCE = {
-  from: `apps/desktop/prod-resources/${CIRCE_FX_RESOURCE_DIR}`,
-  to: CIRCE_FX_RESOURCE_DIR,
+  from: `apps/desktop/prod-resources/${T3CODE_FX_RESOURCE_DIR}`,
+  to: T3CODE_FX_RESOURCE_DIR,
 } as const;
 
 export type CirceFxBuildPlatform = "linux" | "mac" | "win";
@@ -38,7 +38,7 @@ export function circeFxReleaseAsset(
 }
 
 const releaseBase = (): string =>
-  `https://github.com/vercel-labs/fx/releases/download/${CIRCE_FX_PIN}`;
+  `https://github.com/vercel-labs/fx/releases/download/${T3CODE_FX_PIN}`;
 
 async function download(url: string) {
   const response = await fetch(url);
@@ -50,7 +50,7 @@ async function download(url: string) {
 
 /** Reuse a verified archive across builds; the pinned version is the cache key. */
 async function fetchVerifiedArchive(asset: string): Promise<Buffer> {
-  const cacheDir = NodePath.join(NodeOS.homedir(), ".cache", "circe-fx", CIRCE_FX_PIN);
+  const cacheDir = NodePath.join(NodeOS.homedir(), ".cache", "circe-fx", T3CODE_FX_PIN);
   const cachedArchive = NodePath.join(cacheDir, asset);
   const cachedChecksum = `${cachedArchive}.sha256`;
   let archive = await NodeFSP.readFile(cachedArchive).catch(() => null);
@@ -83,7 +83,7 @@ export async function stageCirceFxResources(input: {
 }): Promise<string | null> {
   const asset = circeFxReleaseAsset(input.platform, input.arch);
   if (asset === null) return null;
-  const destinationDir = NodePath.join(input.stageProdResourcesDir, CIRCE_FX_RESOURCE_DIR);
+  const destinationDir = NodePath.join(input.stageProdResourcesDir, T3CODE_FX_RESOURCE_DIR);
   await NodeFSP.rm(destinationDir, { recursive: true, force: true });
   await NodeFSP.mkdir(destinationDir, { recursive: true });
   const archive = await fetchVerifiedArchive(asset);

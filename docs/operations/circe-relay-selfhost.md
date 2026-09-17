@@ -21,8 +21,8 @@ You need accounts you control. Nothing here reuses T3 infrastructure.
 Create your own Clerk application. The relay trusts only this instance.
 
 - Copy the publishable key and secret key from API keys. The secret key lives only in the relay environment, never in client builds.
-- Create a JWT template. The template name goes to clients as `CIRCE_CLERK_JWT_TEMPLATE`. Its `aud` claim must equal the relay `CLERK_JWT_AUDIENCE` value. The names can stay `circe-relay` and `circe-relay` inside your own instance, or pick your own pair, as long as the two sides match.
-- Create a public OAuth application for the CLI with authorization-code exchange and PKCE. Allow two redirect URIs: the loopback `http://127.0.0.1:34338/callback` and the hosted `<hosted-app>/connect/callback` where `<hosted-app>` is the origin you ship in `CIRCE_HOSTED_APP_URL`. Headless and SSH logins use the hosted callback, so that entry must exist. Enable `openid`, `profile`, and `email` scopes, then copy the client ID for `CIRCE_CLERK_CLI_OAUTH_CLIENT_ID`.
+- Create a JWT template. The template name goes to clients as `T3CODE_CLERK_JWT_TEMPLATE`. Its `aud` claim must equal the relay `CLERK_JWT_AUDIENCE` value. The names can stay `circe-relay` and `circe-relay` inside your own instance, or pick your own pair, as long as the two sides match.
+- Create a public OAuth application for the CLI with authorization-code exchange and PKCE. Allow two redirect URIs: the loopback `http://127.0.0.1:34338/callback` and the hosted `<hosted-app>/connect/callback` where `<hosted-app>` is the origin you ship in `T3CODE_HOSTED_APP_URL`. Headless and SSH logins use the hosted callback, so that entry must exist. Enable `openid`, `profile`, and `email` scopes, then copy the client ID for `T3CODE_CLERK_CLI_OAUTH_CLIENT_ID`.
 - Passkeys need no extra relay setting. The mobile and desktop builds derive the relying party domain from the Clerk publishable key. Set an explicit RP override only when Clerk returns a different RP ID or you must entitle several domains.
 
 Lock sign-ups in Clerk with an allowlist or Restricted mode if the relay is not meant to be open.
@@ -81,14 +81,14 @@ Personal stages reuse the production zones and create an isolated PlanetScale br
 Set these in the repository-root `.env` or `.env.local` before building clients. They are public identifiers. The deploy step already filled in the relay URL.
 
 ```dotenv
-CIRCE_RELAY_URL=https://relay.example.com
-CIRCE_CLERK_PUBLISHABLE_KEY=pk_live_...
-CIRCE_CLERK_JWT_TEMPLATE=circe-relay
-CIRCE_CLERK_CLI_OAUTH_CLIENT_ID=...
-CIRCE_HOSTED_APP_URL=https://app.example.com
+T3CODE_RELAY_URL=https://relay.example.com
+T3CODE_CLERK_PUBLISHABLE_KEY=pk_live_...
+T3CODE_CLERK_JWT_TEMPLATE=circe-relay
+T3CODE_CLERK_CLI_OAUTH_CLIENT_ID=...
+T3CODE_HOSTED_APP_URL=https://app.example.com
 ```
 
-Leave a value unset to build with cloud features disabled. Rebuild web, desktop, CLI, and mobile after changing them. Mobile EAS environments need the same publishable key, JWT template name, and relay URL. The hosted app origin defaults to the web build's own origin when `CIRCE_HOSTED_APP_URL` is unset, but the CLI out-of-band flow needs the explicit origin to reach the right `/connect/callback`.
+Leave a value unset to build with cloud features disabled. Rebuild web, desktop, CLI, and mobile after changing them. Mobile EAS environments need the same publishable key, JWT template name, and relay URL. The hosted app origin defaults to the web build's own origin when `T3CODE_HOSTED_APP_URL` is unset, but the CLI out-of-band flow needs the explicit origin to reach the right `/connect/callback`.
 
 ## Operate
 

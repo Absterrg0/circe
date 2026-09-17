@@ -1,5 +1,5 @@
 /** The visual states shared by Circe-owned surfaces. */
-export const CIRCE_PRESENCE_MODES = [
+export const T3CODE_PRESENCE_MODES = [
   "idle",
   "listening",
   "working",
@@ -8,10 +8,10 @@ export const CIRCE_PRESENCE_MODES = [
   "error",
 ] as const;
 
-export type CircePresenceMode = (typeof CIRCE_PRESENCE_MODES)[number];
+export type CircePresenceMode = (typeof T3CODE_PRESENCE_MODES)[number];
 
 /** Semantic colors are deliberately restrained; surfaces may tint them, but should not invent state colors. */
-export const CIRCE_PRESENCE_PALETTE: Readonly<
+export const T3CODE_PRESENCE_PALETTE: Readonly<
   Record<CircePresenceMode, readonly [number, number, number]>
 > = {
   idle: [0.2, 0.68, 0.66],
@@ -22,14 +22,14 @@ export const CIRCE_PRESENCE_PALETTE: Readonly<
   error: [0.82, 0.32, 0.29],
 };
 
-export const CIRCE_PRESENCE_SHADER_MOTION = {
+export const T3CODE_PRESENCE_SHADER_MOTION = {
   frameIntervalMs: 33,
   maxFrames: 45,
   burstDurationMs: 1_500,
 } as const;
 
 /** A fullscreen triangle keeps the renderer tiny and avoids geometry churn between surfaces. */
-export const CIRCE_PRESENCE_VERTEX_SHADER = `
+export const T3CODE_PRESENCE_VERTEX_SHADER = `
 attribute vec2 a_position;
 varying vec2 v_uv;
 void main(){
@@ -42,7 +42,7 @@ void main(){
  * purpose so the voice presence never collapses into a radial filled blob at icon
  * size — the eye should read moving strands, not a soft circle.
  */
-export const CIRCE_PRESENCE_FRAGMENT_SHADER = `
+export const T3CODE_PRESENCE_FRAGMENT_SHADER = `
 precision mediump float;
 uniform float u_time;
 uniform float u_progress;
@@ -151,9 +151,9 @@ export function createCircePresenceLifecycle(input: {
   let startedAt: number | undefined;
   let lastDrawAt = Number.NEGATIVE_INFINITY;
 
-  const frameIntervalMs = input.frameIntervalMs ?? CIRCE_PRESENCE_SHADER_MOTION.frameIntervalMs;
-  const maxFrames = input.maxFrames ?? CIRCE_PRESENCE_SHADER_MOTION.maxFrames;
-  const burstDurationMs = input.burstDurationMs ?? CIRCE_PRESENCE_SHADER_MOTION.burstDurationMs;
+  const frameIntervalMs = input.frameIntervalMs ?? T3CODE_PRESENCE_SHADER_MOTION.frameIntervalMs;
+  const maxFrames = input.maxFrames ?? T3CODE_PRESENCE_SHADER_MOTION.maxFrames;
+  const burstDurationMs = input.burstDurationMs ?? T3CODE_PRESENCE_SHADER_MOTION.burstDurationMs;
 
   const stop = () => {
     running = false;

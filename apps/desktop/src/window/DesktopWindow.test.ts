@@ -1003,7 +1003,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-trigger-"),
       );
       vi.stubEnv(
-        "CIRCE_STARTUP_PROBE_FILE",
+        "T3CODE_STARTUP_PROBE_FILE",
         NodePath.join(receiptDirectory, "startup-receipt.json"),
       );
       const layer = makeTestLayer({
@@ -1139,7 +1139,7 @@ describe("DesktopWindow", () => {
         mainWindow,
         environment: { ...environmentInput, platform: "linux" },
       });
-      vi.stubEnv("CIRCE_STARTUP_PROBE_FILE", NodePath.join(receiptDirectory, "receipt.json"));
+      vi.stubEnv("T3CODE_STARTUP_PROBE_FILE", NodePath.join(receiptDirectory, "receipt.json"));
 
       try {
         yield* Effect.gen(function* () {
@@ -1226,7 +1226,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-"),
       );
       const receiptPath = NodePath.join(receiptDirectory, "startup-receipt.json");
-      vi.stubEnv("CIRCE_STARTUP_PROBE_FILE", receiptPath);
+      vi.stubEnv("T3CODE_STARTUP_PROBE_FILE", receiptPath);
       const layer = makeTestLayer({
         window: fakeWindow.window,
         createCount,
@@ -1297,7 +1297,7 @@ describe("DesktopWindow", () => {
         NodePath.join(NodeOS.tmpdir(), "circe-desktop-window-failure-"),
       );
       vi.stubEnv(
-        "CIRCE_STARTUP_PROBE_FILE",
+        "T3CODE_STARTUP_PROBE_FILE",
         NodePath.join(receiptDirectory, "startup-receipt.json"),
       );
       const layer = makeTestLayer({

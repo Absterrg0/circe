@@ -67,7 +67,7 @@ terminals, connection infrastructure, coding UI) are Circe code and may be
 audited, refactored, optimized, or replaced like any other part of the product.
 A request to review the "whole app" or improve performance means everything.
 
-`T3`, `t3code`, `T3CODE_*`, `t3code:*`, and `@circe/*` names still found in
+`T3`, `t3code`, `CIRCE_*`, `t3code:*`, and `@circe/*` names still found in
 code, storage keys, schemes, and package names are legacy identifiers being
 renamed in phases, not a boundary. User-visible copy must say Circe. renames
 that break compat (URL schemes, storage keys, package names, D-Bus names,

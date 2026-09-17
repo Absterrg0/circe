@@ -2,13 +2,13 @@ import { EnvironmentId, ThreadId } from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 
 import {
-  DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT,
-  DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT,
-  DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH,
-  DESKTOP_CIRCE_ORB_CONSOLE_PREFIX,
-  DESKTOP_CIRCE_ORB_MARGIN,
-  DESKTOP_CIRCE_ORB_WINDOW_HEIGHT,
-  DESKTOP_CIRCE_ORB_WINDOW_WIDTH,
+  DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT,
+  DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT,
+  DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH,
+  DESKTOP_T3CODE_ORB_CONSOLE_PREFIX,
+  DESKTOP_T3CODE_ORB_MARGIN,
+  DESKTOP_T3CODE_ORB_WINDOW_HEIGHT,
+  DESKTOP_T3CODE_ORB_WINDOW_WIDTH,
   desktopCirceOrbCatalogScript,
   desktopCirceOrbPresentation,
   desktopCirceOrbStateScript,
@@ -88,7 +88,7 @@ describe("DesktopCirceOrb", () => {
     expect(html).toContain("aria-label");
     // Picker reports selections on the console bridge; toggling stays local
     // to the orb button and Escape.
-    expect(html).toContain(DESKTOP_CIRCE_ORB_CONSOLE_PREFIX);
+    expect(html).toContain(DESKTOP_T3CODE_ORB_CONSOLE_PREFIX);
     expect(html).toContain("setLiveState");
     expect(html).toContain("setCatalog");
     // Middle-right anchoring, not the old bottom dock.
@@ -119,11 +119,11 @@ describe("DesktopCirceOrb", () => {
   });
 
   it("keeps the orb window tight around the orb plus the short picker", () => {
-    expect(DESKTOP_CIRCE_ORB_WINDOW_WIDTH).toBe(384);
-    expect(DESKTOP_CIRCE_ORB_WINDOW_HEIGHT).toBe(440);
-    expect(DESKTOP_CIRCE_ORB_MARGIN).toBe(16);
-    expect(DESKTOP_CIRCE_ORB_COLLAPSED_WIDTH).toBe(72);
-    expect(DESKTOP_CIRCE_ORB_COLLAPSED_HEIGHT).toBe(72);
+    expect(DESKTOP_T3CODE_ORB_WINDOW_WIDTH).toBe(384);
+    expect(DESKTOP_T3CODE_ORB_WINDOW_HEIGHT).toBe(440);
+    expect(DESKTOP_T3CODE_ORB_MARGIN).toBe(16);
+    expect(DESKTOP_T3CODE_ORB_COLLAPSED_WIDTH).toBe(72);
+    expect(DESKTOP_T3CODE_ORB_COLLAPSED_HEIGHT).toBe(72);
     const html = decodeURIComponent(
       desktopCirceOverlayDataUrl().replace(/^data:text\/html;charset=utf-8,/, ""),
     );
@@ -239,13 +239,13 @@ describe("DesktopCirceOrb", () => {
     const workArea = { x: 0, y: 0, width: 1920, height: 1080 };
     const edge = snapDesktopCirceOverlayAnchor(workArea, { x: 1920 - 40, y: 540 });
     expect(edge).toEqual({
-      x: 1920 - (DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT),
+      x: 1920 - (DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT),
       y: 540,
     });
     const row = snapDesktopCirceOverlayAnchor(workArea, { x: 900, y: 850 });
     expect(row).toEqual({
       x: 900,
-      y: 1080 - DESKTOP_CIRCE_ORB_MARGIN - DESKTOP_CIRCE_ORB_WINDOW_HEIGHT / 2,
+      y: 1080 - DESKTOP_T3CODE_ORB_MARGIN - DESKTOP_T3CODE_ORB_WINDOW_HEIGHT / 2,
     });
   });
 
@@ -308,7 +308,7 @@ describe("DesktopCirceOrb", () => {
 
   it("snaps at the threshold boundary and leaves a drop one pixel beyond it", () => {
     const workArea = { x: 0, y: 0, width: 1920, height: 1080 };
-    const maxX = 1920 - (DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT);
+    const maxX = 1920 - (DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT);
     expect(snapDesktopCirceOverlayAnchor(workArea, { x: maxX - 56, y: 540 })).toEqual({
       x: maxX,
       y: 540,
@@ -321,7 +321,7 @@ describe("DesktopCirceOrb", () => {
 
   it("clamps an off-screen drop into the lane before considering a snap", () => {
     const workArea = { x: 0, y: 0, width: 1920, height: 1080 };
-    const maxX = 1920 - (DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT);
+    const maxX = 1920 - (DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT);
     expect(snapDesktopCirceOverlayAnchor(workArea, { x: 2500, y: 540 })).toEqual({
       x: maxX,
       y: 540,
@@ -336,7 +336,7 @@ describe("DesktopCirceOrb", () => {
 
   it("snaps against a negative-origin secondary display", () => {
     const workArea = { x: -1920, y: 0, width: 1920, height: 1080 };
-    const maxX = -1920 + 1920 - (DESKTOP_CIRCE_ORB_MARGIN + DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT);
+    const maxX = -1920 + 1920 - (DESKTOP_T3CODE_ORB_MARGIN + DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT);
     expect(snapDesktopCirceOverlayAnchor(workArea, { x: maxX - 8, y: 540 })).toEqual({
       x: maxX,
       y: 540,
@@ -348,8 +348,8 @@ describe("DesktopCirceOrb", () => {
     const collapsed = resolveDesktopCirceOverlayBounds(workArea, false, anchor);
     const expanded = resolveDesktopCirceOverlayBounds(workArea, true, anchor);
 
-    expect(collapsed.x + collapsed.width - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT).toBe(anchor.x);
-    expect(expanded.x + expanded.width - DESKTOP_CIRCE_ORB_CENTER_FROM_RIGHT).toBe(anchor.x);
+    expect(collapsed.x + collapsed.width - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT).toBe(anchor.x);
+    expect(expanded.x + expanded.width - DESKTOP_T3CODE_ORB_CENTER_FROM_RIGHT).toBe(anchor.x);
     expect(desktopCirceOverlayOrbCenter(collapsed)).toEqual(anchor);
     expect(desktopCirceOverlayOrbCenter(expanded)).toEqual(anchor);
   });

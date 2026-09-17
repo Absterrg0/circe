@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
-  CIRCE_PRESENCE_MODES,
-  CIRCE_PRESENCE_PALETTE,
-  CIRCE_PRESENCE_SHADER_MOTION,
-  CIRCE_PRESENCE_FRAGMENT_SHADER,
-  CIRCE_PRESENCE_VERTEX_SHADER,
+  T3CODE_PRESENCE_MODES,
+  T3CODE_PRESENCE_PALETTE,
+  T3CODE_PRESENCE_SHADER_MOTION,
+  T3CODE_PRESENCE_FRAGMENT_SHADER,
+  T3CODE_PRESENCE_VERTEX_SHADER,
   createCircePresenceLifecycle,
 } from "./presence.ts";
 
 describe("Circe presence visual core", () => {
   it("exposes one semantic palette and transparent flowing-ribbon shader", () => {
-    expect(CIRCE_PRESENCE_MODES).toEqual([
+    expect(T3CODE_PRESENCE_MODES).toEqual([
       "idle",
       "listening",
       "working",
@@ -19,22 +19,22 @@ describe("Circe presence visual core", () => {
       "attention",
       "error",
     ]);
-    expect(Object.keys(CIRCE_PRESENCE_PALETTE)).toEqual([...CIRCE_PRESENCE_MODES]);
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("u_time");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("u_progress");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("u_resolution");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("float fbm");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("float strand");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("upperCenter");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("middleCenter");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("lowerCenter");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("transparent between strands");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).toContain("never a radial disc mask");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).not.toContain("aperture");
-    expect(CIRCE_PRESENCE_FRAGMENT_SHADER).not.toContain("length(p)");
-    expect(CIRCE_PRESENCE_VERTEX_SHADER).toContain("a_position");
-    expect(CIRCE_PRESENCE_SHADER_MOTION.frameIntervalMs).toBeGreaterThanOrEqual(30);
-    expect(CIRCE_PRESENCE_SHADER_MOTION.maxFrames).toBeGreaterThan(0);
+    expect(Object.keys(T3CODE_PRESENCE_PALETTE)).toEqual([...T3CODE_PRESENCE_MODES]);
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("u_time");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("u_progress");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("u_resolution");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("float fbm");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("float strand");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("upperCenter");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("middleCenter");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("lowerCenter");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("transparent between strands");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).toContain("never a radial disc mask");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).not.toContain("aperture");
+    expect(T3CODE_PRESENCE_FRAGMENT_SHADER).not.toContain("length(p)");
+    expect(T3CODE_PRESENCE_VERTEX_SHADER).toContain("a_position");
+    expect(T3CODE_PRESENCE_SHADER_MOTION.frameIntervalMs).toBeGreaterThanOrEqual(30);
+    expect(T3CODE_PRESENCE_SHADER_MOTION.maxFrames).toBeGreaterThan(0);
   });
 
   it("runs only a bounded visible active burst and cancels on state changes", () => {

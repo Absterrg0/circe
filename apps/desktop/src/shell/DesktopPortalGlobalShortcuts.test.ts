@@ -2,7 +2,7 @@ import { describe, expect, it } from "@effect/vitest";
 import { vi } from "vite-plus/test";
 
 import {
-  CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+  T3CODE_PORTAL_VOICE_SHORTCUT_ID,
   attachDesktopPortalGlobalShortcuts,
 } from "./DesktopPortalGlobalShortcuts.ts";
 
@@ -56,7 +56,7 @@ describe("DesktopPortalGlobalShortcuts", () => {
       }),
       BindShortcuts: vi.fn(async () => {
         emitResponse("/org/freedesktop/portal/desktop/request/1_88/bs_host", {
-          shortcuts: new TestVariant("a(sa{sv})", [[CIRCE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
+          shortcuts: new TestVariant("a(sa{sv})", [[T3CODE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
         });
         return "/request/bind";
       }),
@@ -133,7 +133,7 @@ describe("DesktopPortalGlobalShortcuts", () => {
       }),
       BindShortcuts: vi.fn(async () => {
         emitResponse("/org/freedesktop/portal/desktop/request/1_90/bs_fallback", {
-          shortcuts: new TestVariant("a(sa{sv})", [[CIRCE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
+          shortcuts: new TestVariant("a(sa{sv})", [[T3CODE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
         });
         return "/request/bind";
       }),
@@ -343,13 +343,13 @@ describe("DesktopPortalGlobalShortcuts", () => {
       }),
       ListShortcuts: vi.fn(async () => {
         emitResponse("/org/freedesktop/portal/desktop/request/1_99/ls_test", {
-          shortcuts: new TestVariant("a(sa{sv})", [[CIRCE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
+          shortcuts: new TestVariant("a(sa{sv})", [[T3CODE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
         });
         return "/request/list";
       }),
       BindShortcuts: vi.fn(async () => {
         emitResponse("/org/freedesktop/portal/desktop/request/1_99/bs_test", {
-          shortcuts: new TestVariant("a(sa{sv})", [[CIRCE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
+          shortcuts: new TestVariant("a(sa{sv})", [[T3CODE_PORTAL_VOICE_SHORTCUT_ID, {}]]),
         });
         return "/request/bind";
       }),
@@ -408,7 +408,7 @@ describe("DesktopPortalGlobalShortcuts", () => {
       "/org/freedesktop/portal/desktop/session/test",
       expect.arrayContaining([
         [
-          CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+          T3CODE_PORTAL_VOICE_SHORTCUT_ID,
           expect.objectContaining({ preferred_trigger: expect.any(TestVariant) }),
         ],
       ]),
@@ -418,24 +418,24 @@ describe("DesktopPortalGlobalShortcuts", () => {
 
     shortcutListeners.get("Activated")?.(
       "/org/freedesktop/portal/desktop/session/other",
-      CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+      T3CODE_PORTAL_VOICE_SHORTCUT_ID,
     );
     shortcutListeners.get("Deactivated")?.(
       "/org/freedesktop/portal/desktop/session/other",
-      CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+      T3CODE_PORTAL_VOICE_SHORTCUT_ID,
     );
     expect(onActivated).not.toHaveBeenCalled();
     expect(onDeactivated).not.toHaveBeenCalled();
     shortcutListeners.get("Activated")?.(
       "/org/freedesktop/portal/desktop/session/test",
-      CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+      T3CODE_PORTAL_VOICE_SHORTCUT_ID,
     );
     shortcutListeners.get("Deactivated")?.(
       "/org/freedesktop/portal/desktop/session/test",
-      CIRCE_PORTAL_VOICE_SHORTCUT_ID,
+      T3CODE_PORTAL_VOICE_SHORTCUT_ID,
     );
-    expect(onActivated).toHaveBeenCalledWith(CIRCE_PORTAL_VOICE_SHORTCUT_ID);
-    expect(onDeactivated).toHaveBeenCalledWith(CIRCE_PORTAL_VOICE_SHORTCUT_ID);
+    expect(onActivated).toHaveBeenCalledWith(T3CODE_PORTAL_VOICE_SHORTCUT_ID);
+    expect(onDeactivated).toHaveBeenCalledWith(T3CODE_PORTAL_VOICE_SHORTCUT_ID);
 
     await handle?.close();
     expect(Close).toHaveBeenCalledTimes(1);

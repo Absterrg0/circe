@@ -1246,7 +1246,7 @@ function pinCirceConversationsProjectFirst<T extends { readonly title: string }>
   projects: readonly T[],
 ): T[] {
   const index = projects.findIndex(
-    (project) => project.title === CIRCE_CONVERSATIONS_PROJECT_TITLE,
+    (project) => project.title === T3CODE_CONVERSATIONS_PROJECT_TITLE,
   );
   if (index <= 0) return [...projects];
   const ordered = [...projects];

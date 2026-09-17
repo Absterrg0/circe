@@ -78,7 +78,7 @@ export type CirceSemanticEvalCaseV2 = {
 };
 
 /** Frozen user-approved thresholds. */
-export const CIRCE_SEMANTIC_THRESHOLDS = {
+export const T3CODE_SEMANTIC_THRESHOLDS = {
   exclusionDispatch: 0,
   textCorruption: 0,
   crossNodeViolation: 0,
@@ -932,36 +932,36 @@ export function gateThresholds(
   ).length;
   const staleSpeech = results.filter((result) => result.verdict === "stale-speech").length;
   const failures: Array<string> = [];
-  if (exclusionDispatch !== CIRCE_SEMANTIC_THRESHOLDS.exclusionDispatch) {
+  if (exclusionDispatch !== T3CODE_SEMANTIC_THRESHOLDS.exclusionDispatch) {
     failures.push(`exclusion-dispatch ${exclusionDispatch} exceeds zero`);
   }
-  if (textCorruption !== CIRCE_SEMANTIC_THRESHOLDS.textCorruption) {
+  if (textCorruption !== T3CODE_SEMANTIC_THRESHOLDS.textCorruption) {
     failures.push(`text-corruption ${textCorruption} exceeds zero`);
   }
-  if (crossNodeViolation !== CIRCE_SEMANTIC_THRESHOLDS.crossNodeViolation) {
+  if (crossNodeViolation !== T3CODE_SEMANTIC_THRESHOLDS.crossNodeViolation) {
     failures.push(`cross-node ${crossNodeViolation} exceeds zero`);
   }
-  if (staleSpeech !== CIRCE_SEMANTIC_THRESHOLDS.staleSpeech) {
+  if (staleSpeech !== T3CODE_SEMANTIC_THRESHOLDS.staleSpeech) {
     failures.push(`stale-speech ${staleSpeech} exceeds zero`);
   }
-  if (completePassRate !== null && completePassRate < CIRCE_SEMANTIC_THRESHOLDS.completePassRate) {
+  if (completePassRate !== null && completePassRate < T3CODE_SEMANTIC_THRESHOLDS.completePassRate) {
     failures.push(`complete ${completePassRate.toFixed(3)} below 0.95`);
   }
   if (
     unnecessaryRate !== null &&
-    unnecessaryRate > CIRCE_SEMANTIC_THRESHOLDS.unnecessaryClarificationRate
+    unnecessaryRate > T3CODE_SEMANTIC_THRESHOLDS.unnecessaryClarificationRate
   ) {
     failures.push(`unnecessary-clarification ${unnecessaryRate.toFixed(3)} above 0.05`);
   }
   if (
     ambiguityAccuracy !== null &&
-    ambiguityAccuracy < CIRCE_SEMANTIC_THRESHOLDS.ambiguityAccuracy
+    ambiguityAccuracy < T3CODE_SEMANTIC_THRESHOLDS.ambiguityAccuracy
   ) {
     failures.push(`ambiguity ${ambiguityAccuracy.toFixed(3)} below 0.95`);
   }
   if (
     repeatConsistency !== null &&
-    repeatConsistency < CIRCE_SEMANTIC_THRESHOLDS.repeatConsistency
+    repeatConsistency < T3CODE_SEMANTIC_THRESHOLDS.repeatConsistency
   ) {
     failures.push(`repeat-consistency ${repeatConsistency.toFixed(3)} below 1`);
   }

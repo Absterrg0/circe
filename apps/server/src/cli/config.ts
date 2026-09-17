@@ -105,7 +105,9 @@ const EnvServerConfig = Config.all({
   otlpExportIntervalMs: Config.int("T3CODE_OTLP_EXPORT_INTERVAL_MS").pipe(
     Config.withDefault(10_000),
   ),
-  otlpServiceName: Config.string("T3CODE_OTLP_SERVICE_NAME").pipe(Config.withDefault("circe-server")),
+  otlpServiceName: Config.string("T3CODE_OTLP_SERVICE_NAME").pipe(
+    Config.withDefault("circe-server"),
+  ),
   otlpHeaders: Config.schema(OtlpHeadersFromString, "T3CODE_OTLP_HEADERS").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
@@ -117,7 +119,7 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeNodePreset: Config.schema(CirceNodePreset, "CIRCE_NODE_PRESET").pipe(
+  circeNodePreset: Config.schema(CirceNodePreset, "T3CODE_NODE_PRESET").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
@@ -158,23 +160,23 @@ const EnvServerConfig = Config.all({
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeDecisionEnabled: Config.boolean("CIRCE_TYPESAFE_ENABLED").pipe(
+  circeDecisionEnabled: Config.boolean("T3CODE_TYPESAFE_ENABLED").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeDecisionApiKey: Config.string("CIRCE_TYPESAFE_API_KEY").pipe(
+  circeDecisionApiKey: Config.string("T3CODE_TYPESAFE_API_KEY").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeDecisionModel: Config.string("CIRCE_TYPESAFE_MODEL").pipe(
+  circeDecisionModel: Config.string("T3CODE_TYPESAFE_MODEL").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeDecisionTimeoutMs: Config.int("CIRCE_TYPESAFE_TIMEOUT_MS").pipe(
+  circeDecisionTimeoutMs: Config.int("T3CODE_TYPESAFE_TIMEOUT_MS").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),
-  circeDecisionEndpoint: Config.string("CIRCE_TYPESAFE_ENDPOINT").pipe(
+  circeDecisionEndpoint: Config.string("T3CODE_TYPESAFE_ENDPOINT").pipe(
     Config.option,
     Config.map(Option.getOrUndefined),
   ),

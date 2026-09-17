@@ -6,7 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 const REPO_ROOT = NodePath.resolve(import.meta.dirname, "../../..");
 const CLIENT_SOURCES = ["apps/web/src", "apps/mobile/src"];
-const SERVER_ONLY_KEY = "CIRCE_TYPESAFE_API_KEY";
+const SERVER_ONLY_KEY = "T3CODE_TYPESAFE_API_KEY";
 
 const sourceFiles = (root: string): ReadonlyArray<string> => {
   const out: Array<string> = [];

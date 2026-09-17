@@ -42,7 +42,7 @@ import {
 } from "@circe/client/rpc";
 import {
   CirceMeshNodeUnavailableError,
-  CIRCE_MESH_REFRESH_CONCURRENCY,
+  T3CODE_MESH_REFRESH_CONCURRENCY,
   buildCirceInterpretInput,
   circeMeshCatalogCoverage,
   circeMeshNodeReadiness,
@@ -997,7 +997,7 @@ describe("Circe mesh", () => {
       const reachedLimit = yield* Deferred.make<void>();
       const releaseReads = yield* Deferred.make<void>();
       const nodes = yield* Effect.forEach(
-        Array.from({ length: CIRCE_MESH_REFRESH_CONCURRENCY * 2 }, (_, index) => index),
+        Array.from({ length: T3CODE_MESH_REFRESH_CONCURRENCY * 2 }, (_, index) => index),
         (index) =>
           makeNode({
             nodeId: EnvironmentId.make(`refresh-node-${index}`),
@@ -1008,7 +1008,7 @@ describe("Circe mesh", () => {
               Effect.gen(function* () {
                 const active = yield* Ref.updateAndGet(activeReads, (count) => count + 1);
                 yield* Ref.update(maxActiveReads, (maximum) => Math.max(maximum, active));
-                if (active === CIRCE_MESH_REFRESH_CONCURRENCY) {
+                if (active === T3CODE_MESH_REFRESH_CONCURRENCY) {
                   yield* Deferred.succeed(reachedLimit, undefined);
                 }
                 yield* Deferred.await(releaseReads);
@@ -1024,7 +1024,7 @@ describe("Circe mesh", () => {
       yield* Deferred.succeed(releaseReads, undefined);
       const catalog = yield* Fiber.join(refreshFiber);
 
-      expect(yield* Ref.get(maxActiveReads)).toBe(CIRCE_MESH_REFRESH_CONCURRENCY);
+      expect(yield* Ref.get(maxActiveReads)).toBe(T3CODE_MESH_REFRESH_CONCURRENCY);
       expect(catalog.projects).toHaveLength(nodes.length);
       expect(catalog.providers).toHaveLength(nodes.length);
     }),

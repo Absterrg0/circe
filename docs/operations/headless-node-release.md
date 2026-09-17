@@ -71,7 +71,7 @@ tar -tzf "$artifact" | sed -n '1,80p'
 tmp_home=$(mktemp -d)
 tmp_root=$(mktemp -d)
 HOME="$tmp_home" tar -xzf "$artifact" -C "$tmp_root"
-HOME="$tmp_home" CIRCE_HEADLESS_HOME="$tmp_home/.circe-headless" \
+HOME="$tmp_home" T3CODE_HEADLESS_HOME="$tmp_home/.circe-headless" \
   sh -n "$tmp_root"/*/install.sh
 "$tmp_root"/*/node/bin/node -e 'console.log(process.arch, process.version)'
 if tar -tzf "$artifact" | grep -Eq '(^|/)node_modules/@absterrg0/circe/(src(/|$)|dist/client(/|$)|dist/.*\.map$)'; then

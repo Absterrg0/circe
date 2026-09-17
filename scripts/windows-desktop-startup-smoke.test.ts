@@ -19,8 +19,8 @@ describe("packaged Windows desktop lifecycle smoke", () => {
     expect(smokeStart).toBeGreaterThanOrEqual(0);
     expect(smokeEnd).toBeGreaterThan(smokeStart);
     expect(smoke).toContain("scripts/windows-desktop-startup-smoke.ps1");
-    expect(smoke).toContain("$env:CIRCE_DESKTOP_PAYLOAD 'Circe.exe'");
-    expect(smoke).toContain("-Version $env:CIRCE_SETUP_VERSION");
+    expect(smoke).toContain("$env:T3CODE_DESKTOP_PAYLOAD 'Circe.exe'");
+    expect(smoke).toContain("-Version $env:T3CODE_SETUP_VERSION");
   });
 
   it("captures bounded process output and rejects destroyed-window failures", () => {
@@ -28,7 +28,7 @@ describe("packaged Windows desktop lifecycle smoke", () => {
       NodePath.join(repoRoot, "scripts/windows-desktop-startup-smoke.ps1"),
       "utf8",
     );
-    expect(script).toContain("CIRCE_STARTUP_PROBE_QUIT = '1'");
+    expect(script).toContain("T3CODE_STARTUP_PROBE_QUIT = '1'");
     expect(script).toContain("-RedirectStandardOutput $stdoutPath");
     expect(script).toContain("-RedirectStandardError $stderrPath");
     expect(script).toContain("WaitForExit(30000)");

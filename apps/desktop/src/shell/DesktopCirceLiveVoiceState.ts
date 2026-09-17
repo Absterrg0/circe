@@ -5,7 +5,7 @@ import {
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 
-import { CIRCE_LIVE_VOICE_STATE_CHANNEL } from "../ipc/channels.ts";
+import { T3CODE_LIVE_VOICE_STATE_CHANNEL } from "../ipc/channels.ts";
 
 const decodeState = Schema.decodeUnknownOption(DesktopCirceLiveVoiceStateSchema);
 
@@ -39,7 +39,7 @@ export function createDesktopCirceLiveVoiceStateBridge(
     for (const listener of listeners) listener(decoded.value);
   };
 
-  ipcMain.on(CIRCE_LIVE_VOICE_STATE_CHANNEL, onReport);
+  ipcMain.on(T3CODE_LIVE_VOICE_STATE_CHANNEL, onReport);
 
   return {
     getState: () => state,
@@ -53,7 +53,7 @@ export function createDesktopCirceLiveVoiceStateBridge(
     dispose: () => {
       listeners.clear();
       state = null;
-      ipcMain.removeListener(CIRCE_LIVE_VOICE_STATE_CHANNEL, onReport);
+      ipcMain.removeListener(T3CODE_LIVE_VOICE_STATE_CHANNEL, onReport);
     },
   };
 }

@@ -1027,13 +1027,13 @@ interface StagePackageJson {
   };
 }
 
-export const CIRCE_DESKTOP_PACKAGE_DESCRIPTION = "Circe desktop build";
-export const CIRCE_DESKTOP_PACKAGE_AUTHOR = "Abstergo";
+export const T3CODE_DESKTOP_PACKAGE_DESCRIPTION = "Circe desktop build";
+export const T3CODE_DESKTOP_PACKAGE_AUTHOR = "Abstergo";
 
 export const STAGE_INSTALL_ARGS = ["install", "--prod"] as const;
 export const DESKTOP_ELECTRON_LANGUAGES = ["en-US"] as const;
 export const DESKTOP_FILE_EXCLUSIONS = [
-  // T3 Code always passes the user's installed Claude executable to the SDK,
+  // Circe always passes the user's installed Claude executable to the SDK,
   // so the SDK's optional platform packages (each a ~200MB bundled executable)
   // are dead weight. The trailing dash keeps the SDK's own JS package.
   "!**/node_modules/@anthropic-ai/claude-agent-sdk-*/**/*",
@@ -1303,7 +1303,7 @@ export class MissingMacPasskeyDomainConfigurationError extends Schema.TaggedErro
   {},
 ) {
   override get message(): string {
-    return "CIRCE_CLERK_PUBLISHABLE_KEY or CIRCE_CLERK_PASSKEY_RP_DOMAINS is required for signed macOS passkey builds.";
+    return "T3CODE_CLERK_PUBLISHABLE_KEY or T3CODE_CLERK_PASSKEY_RP_DOMAINS is required for signed macOS passkey builds.";
   }
 }
 
@@ -1314,7 +1314,7 @@ export class InvalidMacPasskeyPublishableKeyError extends Schema.TaggedError<Inv
   },
 ) {
   override get message(): string {
-    return "CIRCE_CLERK_PUBLISHABLE_KEY is invalid.";
+    return "T3CODE_CLERK_PUBLISHABLE_KEY is invalid.";
   }
 }
 
@@ -1392,12 +1392,12 @@ export function resolveMacPasskeySigningConfiguration(
     throw new MissingMacPasskeyProvisioningProfileError();
   }
 
-  const configuredRpDomains = env.CIRCE_CLERK_PASSKEY_RP_DOMAINS?.trim();
+  const configuredRpDomains = env.T3CODE_CLERK_PASSKEY_RP_DOMAINS?.trim();
   let rpDomains: readonly string[];
   if (configuredRpDomains) {
     rpDomains = configuredRpDomains.split(",").map(normalizePasskeyRpDomain);
   } else {
-    const publishableKey = env.CIRCE_CLERK_PUBLISHABLE_KEY?.trim();
+    const publishableKey = env.T3CODE_CLERK_PUBLISHABLE_KEY?.trim();
     if (!publishableKey) {
       throw new MissingMacPasskeyDomainConfigurationError();
     }
@@ -4109,8 +4109,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const macPasskeyConfigurationValues = [
     repoEnv.T3CODE_APPLE_TEAM_ID,
     repoEnv.T3CODE_MACOS_PROVISIONING_PROFILE,
-    repoEnv.CIRCE_CLERK_PUBLISHABLE_KEY,
-    repoEnv.CIRCE_CLERK_PASSKEY_RP_DOMAINS,
+    repoEnv.T3CODE_CLERK_PUBLISHABLE_KEY,
+    repoEnv.T3CODE_CLERK_PASSKEY_RP_DOMAINS,
   ];
   const configuredMacPasskeySigning =
     options.platform === "mac" &&
@@ -4185,8 +4185,8 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     t3codeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
-    description: CIRCE_DESKTOP_PACKAGE_DESCRIPTION,
-    author: CIRCE_DESKTOP_PACKAGE_AUTHOR,
+    description: T3CODE_DESKTOP_PACKAGE_DESCRIPTION,
+    author: T3CODE_DESKTOP_PACKAGE_AUTHOR,
     main: "apps/desktop/dist-electron/main.cjs",
     build: yield* createBuildConfig(
       options.platform,
@@ -4492,7 +4492,7 @@ const buildDesktopArtifactCli = Command.make("build-desktop-artifact", {
     Flag.optional,
   ),
 }).pipe(
-  Command.withDescription("Build a desktop artifact for T3 Code."),
+  Command.withDescription("Build a desktop artifact for Circe."),
   Command.withHandler((input) => Effect.flatMap(resolveBuildOptions(input), buildDesktopArtifact)),
 );
 

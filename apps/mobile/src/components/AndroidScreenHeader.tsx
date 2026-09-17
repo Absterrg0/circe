@@ -4,7 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import type { AppSymbolName } from "./AppSymbol";
 import { AppText as Text } from "./AppText";
-import { CIRCE_INK, CIRCE_IVORY, CIRCE_MUTED } from "../lib/circeBrandColors";
+import { T3CODE_INK, T3CODE_IVORY, T3CODE_MUTED } from "../lib/circeBrandColors";
 import { cn } from "../lib/cn";
 import { MaterialIconButton } from "./MaterialIconButton";
 import { AndroidAnchoredMenu } from "./AndroidAnchoredMenu";
@@ -64,7 +64,7 @@ export function AndroidScreenHeader(props: {
       className="border-b border-header-border bg-header px-2 pb-2"
       style={{
         paddingTop: props.embedded ? 8 : Math.max(insets.top, 12),
-        ...(ivory ? { backgroundColor: CIRCE_IVORY } : null),
+        ...(ivory ? { backgroundColor: T3CODE_IVORY } : null),
         borderBottomWidth: props.hideBottomBorder || ivory ? 0 : undefined,
       }}
     >
@@ -85,7 +85,7 @@ export function AndroidScreenHeader(props: {
         <View className={cn("min-w-0 flex-1", !props.onBack && "pl-1")}>
           <Text
             numberOfLines={1}
-            style={[titleTypography, ivory ? { color: CIRCE_INK } : undefined]}
+            style={[titleTypography, ivory ? { color: T3CODE_INK } : undefined]}
             className="text-foreground"
           >
             {props.title}
@@ -93,7 +93,7 @@ export function AndroidScreenHeader(props: {
           {props.subtitle ? (
             <Text
               numberOfLines={1}
-              style={[subtitleTypography, ivory ? { color: CIRCE_MUTED } : undefined]}
+              style={[subtitleTypography, ivory ? { color: T3CODE_MUTED } : undefined]}
               className="mt-px text-[13px] font-t3-medium text-foreground-muted"
             >
               {props.subtitle}

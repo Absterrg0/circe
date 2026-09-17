@@ -237,7 +237,7 @@ describe("DesktopBackendConfiguration", () => {
         assert.isUndefined(first.env.T3CODE_PORT);
         assert.isUndefined(first.env.T3CODE_MODE);
         assert.isUndefined(first.env.T3CODE_DESKTOP_LAN_HOST);
-        assert.isUndefined(first.env.CIRCE_NODE_PRESET);
+        assert.isUndefined(first.env.T3CODE_NODE_PRESET);
         assert.isUndefined(first.env.T3CODE_CODEX_LAUNCH_ARGS);
 
         assert.equal(first.bootstrap.mode, "desktop");
@@ -337,7 +337,7 @@ describe("DesktopBackendConfiguration", () => {
         const resourcesPath = `${baseDir}/resources`;
         yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
         yield* fileSystem.writeFileString(
-          `${resourcesPath}/${DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE}`,
+          `${resourcesPath}/${DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE}`,
           '{"product":"Circe","distribution":"official"}\n',
         );
 
@@ -383,7 +383,7 @@ describe("DesktopBackendConfiguration", () => {
         const resourcesPath = `${baseDir}/resources`;
         yield* fileSystem.makeDirectory(resourcesPath, { recursive: true });
         yield* fileSystem.writeFileString(
-          `${resourcesPath}/${DesktopEnvironment.CIRCE_OFFICIAL_RELEASE_MARKER_FILE}`,
+          `${resourcesPath}/${DesktopEnvironment.T3CODE_OFFICIAL_RELEASE_MARKER_FILE}`,
           '{"product":"Circe","distribution":"official"}\n',
         );
 
@@ -464,9 +464,9 @@ describe("DesktopBackendConfiguration", () => {
 
   it.effect("managed primary and WSL children strip an ambient node preset", () =>
     Effect.gen(function* () {
-      const previousPreset = process.env.CIRCE_NODE_PRESET;
+      const previousPreset = process.env.T3CODE_NODE_PRESET;
       try {
-        process.env.CIRCE_NODE_PRESET = "headless";
+        process.env.T3CODE_NODE_PRESET = "headless";
 
         yield* withHarness(
           Effect.gen(function* () {
@@ -474,12 +474,12 @@ describe("DesktopBackendConfiguration", () => {
             const primary = yield* configuration.resolvePrimary;
             const wsl = yield* configuration.resolveWsl({ port: 5000, distro: null });
 
-            assert.isUndefined(primary.env.CIRCE_NODE_PRESET);
-            assert.isUndefined(wsl.env.CIRCE_NODE_PRESET);
+            assert.isUndefined(primary.env.T3CODE_NODE_PRESET);
+            assert.isUndefined(wsl.env.T3CODE_NODE_PRESET);
           }),
         );
       } finally {
-        restoreEnv("CIRCE_NODE_PRESET", previousPreset);
+        restoreEnv("T3CODE_NODE_PRESET", previousPreset);
       }
     }),
   );
@@ -493,8 +493,8 @@ describe("DesktopBackendConfiguration", () => {
         const wsl = yield* configuration.resolveWsl({ port: 5000, distro: null });
 
         assert.equal(wsl.bootstrap.desktopBootstrapToken, primary.bootstrap.desktopBootstrapToken);
-        assert.isUndefined(primary.env.CIRCE_NODE_PRESET);
-        assert.isUndefined(wsl.env.CIRCE_NODE_PRESET);
+        assert.isUndefined(primary.env.T3CODE_NODE_PRESET);
+        assert.isUndefined(wsl.env.T3CODE_NODE_PRESET);
       }),
     ),
   );

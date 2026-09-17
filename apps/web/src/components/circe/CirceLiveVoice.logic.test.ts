@@ -3,8 +3,8 @@ import { describe, expect, it, vi } from "vite-plus/test";
 import {
   buildCirceLiveVoiceContext,
   createCirceLiveVoiceController,
-  CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS,
-  CIRCE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS,
+  T3CODE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS,
+  T3CODE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS,
   type CirceLiveVoiceAudioElement,
   type CirceLiveVoiceBrowser,
   type CirceLiveVoiceCloseReason,
@@ -507,7 +507,7 @@ describe("Circe live voice controller", () => {
     vi.useFakeTimers();
     try {
       const f = fixture({ closeTimeoutMs: 1 });
-      expect(CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS).toBe(60_000);
+      expect(T3CODE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS).toBe(60_000);
       await f.controller.start();
       f.peer.channel.emit(started);
       expect(f.controller.getStatus()).toBe("live");
@@ -575,7 +575,7 @@ describe("Circe live voice controller", () => {
     vi.useFakeTimers();
     try {
       const f = fixture({ closeTimeoutMs: 1 });
-      expect(CIRCE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS).toBe(600_000);
+      expect(T3CODE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS).toBe(600_000);
       await f.controller.start();
       f.peer.channel.emit(started);
       // Keep talking so idle never fires; the hard cap still ends billing.

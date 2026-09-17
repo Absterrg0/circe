@@ -11,7 +11,7 @@ import { runMigrations } from "./Migrations.ts";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
 
-const CIRCE_OWNER_MARKER = "circe-product.json";
+const T3CODE_OWNER_MARKER = "circe-product.json";
 
 layer("Database ownership", (it) => {
   it.effect("claims a fresh database directory and migrates it", () =>
@@ -22,7 +22,7 @@ layer("Database ownership", (it) => {
           const executed = yield* runMigrations({ baseDir });
 
           assert.isAtLeast(executed.length, 65);
-          assert.isTrue(NodeFS.existsSync(NodePath.join(baseDir, CIRCE_OWNER_MARKER)));
+          assert.isTrue(NodeFS.existsSync(NodePath.join(baseDir, T3CODE_OWNER_MARKER)));
         }),
       (baseDir) => Effect.sync(() => NodeFS.rmSync(baseDir, { recursive: true, force: true })),
     ),

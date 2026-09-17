@@ -12,8 +12,8 @@ import * as NodeFS from "node:fs";
 import { applyDesktopDbusNextElectronCompat } from "./DesktopDbusNextElectronCompat.ts";
 import { ensureDesktopLinuxPortalAppScope } from "./DesktopLinuxPortalAppScope.ts";
 
-export const CIRCE_PORTAL_VOICE_SHORTCUT_ID = "circe.voice";
-export const CIRCE_PORTAL_VOICE_PREFERRED_TRIGGER = "CTRL+SHIFT+J";
+export const T3CODE_PORTAL_VOICE_SHORTCUT_ID = "circe.voice";
+export const T3CODE_PORTAL_VOICE_PREFERRED_TRIGGER = "CTRL+SHIFT+J";
 
 type DbusVariant = { new (type: string, value: unknown): unknown };
 type DbusMessageType = { readonly SIGNAL: number };
@@ -220,8 +220,8 @@ const defaultReadCgroup = (): string => {
 export async function attachDesktopPortalGlobalShortcuts(
   input: AttachDesktopPortalGlobalShortcutsInput,
 ): Promise<DesktopPortalGlobalShortcutsHandle | null> {
-  const shortcutId = input.shortcutId ?? CIRCE_PORTAL_VOICE_SHORTCUT_ID;
-  const preferredTrigger = input.preferredTrigger ?? CIRCE_PORTAL_VOICE_PREFERRED_TRIGGER;
+  const shortcutId = input.shortcutId ?? T3CODE_PORTAL_VOICE_SHORTCUT_ID;
+  const preferredTrigger = input.preferredTrigger ?? T3CODE_PORTAL_VOICE_PREFERRED_TRIGGER;
   const description = input.description ?? "Hold to talk to Circe";
   const bindTimeoutMs = input.bindTimeoutMs ?? 120_000;
   const instanceToken = input.instanceToken ?? NodeCrypto.randomBytes(6).toString("hex");

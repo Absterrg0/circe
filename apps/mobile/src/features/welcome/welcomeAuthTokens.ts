@@ -10,9 +10,9 @@
  * palette so the screen header and these pages cannot drift apart.
  */
 export {
-  CIRCE_INK as INK,
-  CIRCE_IVORY as IVORY,
-  CIRCE_MUTED as MUTED,
+  T3CODE_INK as INK,
+  T3CODE_IVORY as IVORY,
+  T3CODE_MUTED as MUTED,
 } from "../../lib/circeBrandColors";
 export const FAINT = "#918A84";
 export const COPPER_TEXT = "#A5482C";

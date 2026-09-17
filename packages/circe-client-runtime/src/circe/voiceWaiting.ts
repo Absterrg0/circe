@@ -5,12 +5,12 @@
  * so every surface reads the same words without a second state machine.
  */
 
-export const CIRCE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT = 140;
+export const T3CODE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT = 140;
 
 const truncateTranscript = (transcript: string): string => {
   const trimmed = transcript.trim().replace(/\s+/gu, " ");
-  if (trimmed.length <= CIRCE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT) return trimmed;
-  return `${trimmed.slice(0, CIRCE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT - 1).trimEnd()}...`;
+  if (trimmed.length <= T3CODE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT) return trimmed;
+  return `${trimmed.slice(0, T3CODE_SUBMISSION_RECEIPT_MAX_TRANSCRIPT - 1).trimEnd()}...`;
 };
 
 /**

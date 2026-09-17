@@ -184,7 +184,7 @@ const findPackagedServer = async (
   const [serverPath] = candidates;
   if (serverPath === undefined || candidates.length !== 1) {
     throw new Error(
-      `Expected exactly one packaged T3 server entrypoint, found ${candidates.length}.`,
+      `Expected exactly one packaged Circe server entrypoint, found ${candidates.length}.`,
     );
   }
   return { nodePath, serverPath };
@@ -229,9 +229,9 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
       CIRCE_HOME: homeDir,
-      CIRCE_HEADLESS_HOME: homeDir,
+      T3CODE_HEADLESS_HOME: homeDir,
     };
-    delete env.CIRCE_NODE_PRESET;
+    delete env.T3CODE_NODE_PRESET;
     delete env.T3CODE_PORT;
     delete env.T3CODE_HOST;
     delete env.T3CODE_MODE;

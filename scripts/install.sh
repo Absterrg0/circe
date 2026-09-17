@@ -13,7 +13,7 @@
 #   CIRCE_RELEASE_BASE_URL  mirror for releases/download (default: GitHub)
 #
 # The archive is unpacked into $CIRCE_HOME/runtime/versions/<version>, the
-# same layout `t3 service install` uses, so the service reuses this download
+# same layout `circe service install` uses, so the service reuses this download
 # instead of fetching the release again.
 set -eu
 
@@ -23,7 +23,7 @@ circe_home="${CIRCE_HOME:-$HOME/.circe}"
 bin_dir="${CIRCE_INSTALL_BIN_DIR:-$HOME/.local/bin}"
 
 fail() {
-  printf '\nt3 install: %s\n' "$1" >&2
+  printf '\ncirce install: %s\n' "$1" >&2
   exit 1
 }
 
@@ -162,7 +162,7 @@ fi
 case "$version" in
   *-preview.*)
     printf '%s\n' \
-      "t3 ${version} is a preview build." \
+      "circe ${version} is a preview build." \
       "  Preview builds are cut by maintainers from unreleased branches to exercise the release" \
       "  pipeline. They can be broken, receive no fixes, and are never offered as updates." \
       "  Set CIRCE_CHANNEL=stable (the default) for a supported build." >&2
@@ -172,7 +172,7 @@ case "$version" in
     ;;
 esac
 
-stem="t3-${version}-${platform}-${arch}"
+stem="circe-${version}-${platform}-${arch}"
 archive="${stem}.tar.gz"
 versions_dir="${circe_home}/runtime/versions"
 target_dir="${versions_dir}/${version}"
@@ -193,7 +193,7 @@ else
   fetch_status=0
   fetch "${base_url}/v${version}/SHA256SUMS" "${staging}/SHA256SUMS" || fetch_status=$?
   if [ "$fetch_status" -eq 44 ]; then
-    fail "t3 ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g t3@${version}\`"
+    fail "circe ${version} has no release archive for ${platform}-${arch}; releases before the self-contained CLI can only be installed with \`npm install -g @absterrg0/circe@${version}\`"
   elif [ "$fetch_status" -ne 0 ]; then
     fail "could not download the release checksums"
   fi
@@ -208,7 +208,7 @@ else
   step "Extracting Circe..."
   tar -xzf "${staging}/${archive}" -C "$staging" --strip-components=1
   rm -f "${staging}/${archive}" "${staging}/SHA256SUMS"
-  "${staging}/t3" --version >/dev/null || fail "the downloaded executable does not run"
+  "${staging}/circe" --version >/dev/null || fail "the downloaded executable does not run"
   printf '%s\n' "$version" > "${staging}/.install-complete"
 
   rm -rf "$target_dir"
@@ -216,12 +216,12 @@ else
   trap - EXIT
 fi
 
-step "Setting up the t3 command..."
+step "Setting up the circe command..."
 mkdir -p "$bin_dir"
-ln -sfn "${target_dir}/t3" "${bin_dir}/t3"
+ln -sfn "${target_dir}/circe" "${bin_dir}/circe"
 if "$interactive"; then printf '\r\033[2K' >&2; fi
 printf '  %sInstalled Circe %s%s\n\n' "$green" "$version" "$reset" >&2
 case ":${PATH}:" in
-  *":${bin_dir}:"*) printf '  Run %st3%s to get started.\n\n' "$bold" "$reset" ;;
-  *) printf '  Add %s to your PATH, then run %st3%s.\n\n' "$bin_dir" "$bold" "$reset" ;;
+  *":${bin_dir}:"*) printf '  Run %scirce%s to get started.\n\n' "$bold" "$reset" ;;
+  *) printf '  Add %s to your PATH, then run %scirce%s.\n\n' "$bin_dir" "$bold" "$reset" ;;
 esac
