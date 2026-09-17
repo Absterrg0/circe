@@ -213,10 +213,11 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
         const pendingStart = yield* turns.getPendingTurnStartByThreadId({
           threadId: input.threadId,
         });
-        const interrupted =
+        const shouldInterrupt =
           Option.isSome(pendingStart) ||
           (Option.isSome(detail) && hasActiveCirceTurn(detail.value));
-        if (interrupted) {
+        let interrupted = false;
+        if (shouldInterrupt) {
           const projection = yield* orchestration.getThreadProjection(input.threadId);
           const activeRun = latestActiveRun(projection);
           if (activeRun !== undefined) {
@@ -226,6 +227,7 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
               threadId: input.threadId,
               runId: activeRun.id,
             });
+            interrupted = true;
           }
         }
         return { interrupted, cancelledFollowUps };

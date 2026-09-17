@@ -2098,14 +2098,20 @@ export const makeCirceControllerLive = <R>(
             rerouteSource.thread.id,
           );
           const activeRun = latestActiveRun(rerouteProjection);
-          if (activeRun !== undefined) {
-            yield* orchestration.dispatch({
-              type: "run.interrupt",
-              commandId: CommandId.make(yield* requestScopedId("reroute-interrupt-command")),
-              threadId: rerouteSource.thread.id,
-              runId: activeRun.id,
-            });
+          if (activeRun === undefined) {
+            return {
+              status: "needs-input" as const,
+              reason: "control-target-required" as const,
+              prompt: "I couldn't interrupt the source task safely. Choose a current task to reroute.",
+              choices: [],
+            };
           }
+          yield* orchestration.dispatch({
+            type: "run.interrupt",
+            commandId: CommandId.make(yield* requestScopedId("reroute-interrupt-command")),
+            threadId: rerouteSource.thread.id,
+            runId: activeRun.id,
+          });
         }
 
         // The accepted turn dispatch is the execution outcome. Everything

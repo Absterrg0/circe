@@ -228,7 +228,9 @@ const asArguments = (
 
 function readEnumArgument(answers: DecisionAnswers, id: string): string | undefined {
   const answer = choiceAnswer(answers, id);
-  return answer === undefined || answer.choice === NONE_OPTION ? undefined : answer.choice;
+  if (answer === undefined || answer.choice === NONE_OPTION) return undefined;
+  if (answer.confidence < OUTCOME_FLOOR) return undefined;
+  return answer.choice;
 }
 
 function readTextArgument(
@@ -238,17 +240,26 @@ function readTextArgument(
 ): { readonly value: string } | { readonly missing: true } {
   const answer = choiceAnswer(answers, id);
   if (answer === undefined || answer.choice === NONE_OPTION) return { missing: true };
+  if (answer.confidence < OUTCOME_FLOOR) return { missing: true };
   if (locateNameSpan(source, answer.choice) === undefined) return { missing: true };
   return { value: answer.choice };
 }
 
 function toolArgumentClarification(
   tool: CirceTool,
+  parameter: CirceToolParameter,
   input: ComposeCirceOutcomeInput,
 ): CirceClarification {
+  if (parameter.kind === "enum") {
+    return {
+      kind: "model",
+      prompt: `Which ${parameter.name} did you mean: ${parameter.values.join(", ")}?`,
+      choices: [...parameter.values],
+    };
+  }
   const locationCandidates = input.locationCandidates ?? [];
   const websiteCandidates = input.websiteCandidates ?? [];
-  if (tool.name === "weather" || tool.name === "time") {
+  if (parameter.name === "location" && (tool.name === "weather" || tool.name === "time")) {
     return {
       kind: "lookup",
       prompt: `Which place should I check for ${tool.name}?`,
@@ -280,7 +291,7 @@ function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): C
         if (!parameter.required) continue;
         return {
           kind: "clarification",
-          clarification: toolArgumentClarification(tool, input),
+          clarification: toolArgumentClarification(tool, parameter, input),
         };
       }
       entries.push([parameter.name, value]);
@@ -294,7 +305,7 @@ function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): C
     const text = readTextArgument(input.answers, id, input.source);
     if ("missing" in text) {
       if (!parameter.required) continue;
-      return { kind: "clarification", clarification: toolArgumentClarification(tool, input) };
+      return { kind: "clarification", clarification: toolArgumentClarification(tool, parameter, input) };
     }
     entries.push([parameter.name, text.value]);
   }
@@ -333,7 +344,8 @@ export function composeCirceOutcome(input: ComposeCirceOutcomeInput): CirceOutco
   }
   const tool = input.tools.find((candidate) => candidate.name === selection);
   if (tool !== undefined) return composeToolOutcome(input, tool);
-  return composeWorkOutcome(input);
+  if (selection === CIRCE_OUTCOME_WORK) return composeWorkOutcome(input);
+  return { kind: "refused", reason: "classifier-declined" };
 }
 
 function composeWorkOutcome(input: ComposeCirceOutcomeInput): CirceOutcome {
