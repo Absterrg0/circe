@@ -171,20 +171,65 @@ export function decisionStateFromEvidence(input: CirceInterpretInput): DecisionS
   };
 }
 
+// Case-insensitive on purpose: ASR output and typo'd city names are often
+// lowercase ("weather in ahemedabad"). The phrase is only a candidate for the
+// lookup tool, which re-checks the place against the geocoder and the
+// utterance, so over-inclusion is harmless and missing a place is not.
 const LOCATION_PATTERN =
-  /\b(?:in|at|for)\s+((?:the\s+)?[A-Z][\p{Letter}.'-]*(?:\s+[A-Z][\p{Letter}.'-]*){0,3})\b/gu;
+  /\b(?:in|at|for|near)\s+([\p{Letter}][\p{Letter}.'-]*(?:\s+[\p{Letter}][\p{Letter}.'-]*){0,3})/giu;
+
+const LOCATION_STOPWORDS = new Set([
+  "the",
+  "a",
+  "an",
+  "my",
+  "our",
+  "your",
+  "his",
+  "her",
+  "their",
+  "this",
+  "that",
+  "these",
+  "those",
+  "it",
+  "here",
+  "there",
+  "weather",
+  "forecast",
+  "temperature",
+  "time",
+  "today",
+  "tomorrow",
+  "now",
+  "morning",
+  "afternoon",
+  "evening",
+  "night",
+  "please",
+  "general",
+  "detail",
+  "details",
+]);
 
 /** Code-built place candidates for a lookup, capped and deduped. */
 export function extractLocationCandidates(source: string): ReadonlyArray<string> {
   const seen = new Set<string>();
   const candidates: string[] = [];
   let match: RegExpExecArray | null;
-  const pattern = new RegExp(LOCATION_PATTERN.source, "gu");
+  const pattern = new RegExp(LOCATION_PATTERN.source, "giu");
   while ((match = pattern.exec(source)) !== null) {
-    const value = match[1]?.trim();
-    if (value === undefined || value.length === 0) continue;
+    const value = (match[1] ?? "")
+      .replace(
+        /\s+(?:today|tomorrow|now|right\s+now|this\s+(?:morning|afternoon|evening|night))\s*$/iu,
+        "",
+      )
+      .trim();
+    if (value.length === 0) continue;
+    const firstWord = (value.split(/\s+/u)[0] ?? "").toLowerCase();
+    if (LOCATION_STOPWORDS.has(firstWord)) continue;
     const key = fold(value);
-    if (seen.has(key)) continue;
+    if (key.length === 0 || seen.has(key)) continue;
     seen.add(key);
     candidates.push(value);
     if (candidates.length >= 6) break;

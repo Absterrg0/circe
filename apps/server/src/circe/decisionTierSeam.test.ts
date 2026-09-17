@@ -18,6 +18,7 @@ import * as Effect from "effect/Effect";
 import {
   decisionCatalogFromContext,
   decisionStateFromContext,
+  extractLocationCandidates,
   runCirceDecisionTier,
 } from "./decisionTier.ts";
 
@@ -209,4 +210,19 @@ describe("decision tier seam", () => {
       expect((tier.proposal.steps ?? []).length).toBeGreaterThanOrEqual(2);
     }),
   );
+});
+
+describe("location candidates", () => {
+  it("accepts lowercase and typo'd places after a preposition", () => {
+    expect(extractLocationCandidates("can you tell me the weather in ahemedabad")).toContain(
+      "ahemedabad",
+    );
+    expect(extractLocationCandidates("What's the weather in Ahmedabad?")).toContain("Ahmedabad");
+    expect(extractLocationCandidates("fix the login redirect in Rivvl")).toContain("Rivvl");
+  });
+
+  it("does not offer a time-of-day or article as a place", () => {
+    expect(extractLocationCandidates("what's the weather in the morning")).not.toContain("morning");
+    expect(extractLocationCandidates("what is the weather")).toEqual([]);
+  });
 });

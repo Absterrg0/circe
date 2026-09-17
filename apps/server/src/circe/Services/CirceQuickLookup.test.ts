@@ -12,6 +12,7 @@ const ahmedabad = {
   latitude: 23.02,
   longitude: 72.57,
   timezone: "Asia/Kolkata",
+  population: 100,
 };
 const forecast = {
   current: {
@@ -88,6 +89,23 @@ describe("Circe quick lookup", () => {
       expect("message" in result && result.message).toContain("multiple places named Ahmedabad");
       expect("choices" in result).toBe(false);
       expect(calls).toHaveLength(1);
+    }),
+  );
+  it.effect("picks the dominant exact-name city instead of asking", () =>
+    Effect.gen(function* () {
+      // The geocoder returns many obscure same-named places; the real city has
+      // orders of magnitude more people, so no question is needed.
+      const { http, calls } = fixture([
+        { ...ahmedabad, population: 6_357_693 },
+        { ...ahmedabad, id: 2, admin1: "Khyber Pakhtunkhwa", country: "Pakistan" },
+        { ...ahmedabad, id: 3, admin1: "Punjab", country: "Pakistan" },
+      ]);
+      const result = yield* runCirceQuickLookup(input, "full").pipe(
+        Effect.provideService(HttpClient.HttpClient, http),
+      );
+      expect(result).toMatchObject({ status: "answer", source: "https://open-meteo.com/" });
+      expect("message" in result && result.message).toContain("Ahmedabad, Gujarat, India");
+      expect(calls).toHaveLength(2);
     }),
   );
   it.effect("grounds explicit state and country, and handles tomorrow", () =>

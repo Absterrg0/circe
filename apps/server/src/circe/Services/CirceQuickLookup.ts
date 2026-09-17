@@ -15,6 +15,7 @@ const Place = Schema.Struct({
   country: Schema.optionalKey(Schema.String),
   country_code: Schema.optionalKey(Schema.String),
   admin1: Schema.optionalKey(Schema.String),
+  population: Schema.optionalKey(Schema.Number),
 });
 const Places = Schema.Struct({
   results: Schema.optionalKey(Schema.Array(Place).check(Schema.isMaxLength(10))),
@@ -117,7 +118,31 @@ export const runCirceQuickLookup = (
         ),
       ),
     );
-    const selected = candidates.length === 1 ? candidates[0] : undefined;
+    // A real city name matches several obscure places ("Ahmedabad" appears ten
+    // times, once in Gujarat, India at 6.3M and otherwise in small Pakistani
+    // towns). Prefer exact-name matches, then the dominantly largest one; ask
+    // only when no place clearly wins.
+    const exactName = candidates.filter((place) => normalized(place.name) === normalized(name));
+    const pool = exactName.length > 0 ? exactName : candidates;
+    let selected: (typeof pool)[number] | undefined;
+    if (pool.length === 1) {
+      selected = pool[0];
+    } else if (pool.length > 1) {
+      const ranked = [...pool].sort(
+        (left, right) => (right.population ?? 0) - (left.population ?? 0),
+      );
+      const best = ranked[0];
+      const runnerUp = ranked[1];
+      const bestPopulation = best?.population ?? 0;
+      const runnerUpPopulation = runnerUp?.population ?? 0;
+      if (
+        best !== undefined &&
+        bestPopulation >= 1_000_000 &&
+        bestPopulation >= runnerUpPopulation * 10
+      ) {
+        selected = best;
+      }
+    }
     if (selected === undefined) {
       return {
         status: "needs-input",
