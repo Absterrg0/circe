@@ -5,6 +5,19 @@ the Circe control layer. Each entry states the decision, the reason, and the
 alternative that was rejected. Written so a reviewer can change any one of them
 without re-deriving the context.
 
+## Interface priority
+
+### Desktop and mobile are the product; web is a last resort
+
+The desktop app (orb overlay, tray, hotkey, native voice) is the primary
+interface and mobile is second. They control each other and headless nodes.
+The web UI exists for capability and interaction only and is never the surface
+to build first. A feature that touches several clients is implemented and
+verified on desktop and mobile before web, and browser-tab-only behavior gets
+no design effort. Speech, hotkeys, the orb, and the tray are desktop
+capabilities. Desktop and browser use execute on the target node; the origin is
+the user's current device.
+
 ## Product and naming
 
 ### Workspace scope is `@circe/*`
