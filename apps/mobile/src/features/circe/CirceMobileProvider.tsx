@@ -1147,12 +1147,19 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         pendingSurfaceRef.current = null;
         const verdict = resolveVoiceConfirmation(utterance);
         if (verdict === "accept") {
-          await startSurfaceMission(
-            pendingSurface.surface,
-            pendingSurface.goal,
-            pendingSurface.nodeId,
-          );
-          drainQueuedInput();
+          submittingRef.current = true;
+          setSubmitting(true);
+          try {
+            await startSurfaceMission(
+              pendingSurface.surface,
+              pendingSurface.goal,
+              pendingSurface.nodeId,
+            );
+          } finally {
+            submittingRef.current = false;
+            setSubmitting(false);
+            drainQueuedInput();
+          }
           return;
         }
         if (verdict === "decline") {
