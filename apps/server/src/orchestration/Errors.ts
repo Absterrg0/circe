@@ -1,32 +1,7 @@
-import { ThreadId } from "@circe/contracts";
 import * as SchemaIssue from "effect/SchemaIssue";
 import * as Schema from "effect/Schema";
 
 import type { ProjectionRepositoryError } from "../persistence/Errors.ts";
-
-export class OrchestrationCommandJsonParseError extends Schema.TaggedError<OrchestrationCommandJsonParseError>()(
-  "OrchestrationCommandJsonParseError",
-  {
-    detail: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  },
-) {
-  override get message(): string {
-    return `Invalid orchestration command JSON: ${this.detail}`;
-  }
-}
-
-export class OrchestrationCommandDecodeError extends Schema.TaggedError<OrchestrationCommandDecodeError>()(
-  "OrchestrationCommandDecodeError",
-  {
-    issue: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  },
-) {
-  override get message(): string {
-    return `Invalid orchestration command payload: ${this.issue}`;
-  }
-}
 
 export class OrchestrationCommandInvariantError extends Schema.TaggedError<OrchestrationCommandInvariantError>()(
   "OrchestrationCommandInvariantError",
@@ -41,22 +16,11 @@ export class OrchestrationCommandInvariantError extends Schema.TaggedError<Orche
   }
 }
 
-export class OrchestrationThreadSettleBlockedError extends Schema.TaggedError<OrchestrationThreadSettleBlockedError>()(
-  "OrchestrationThreadSettleBlockedError",
-  {
-    threadId: ThreadId,
-  },
-) {
-  override get message(): string {
-    return "This thread still needs attention. Resolve or interrupt it first, then try again.";
-  }
-}
-
-export const OrchestrationCommandRejection = Schema.Union([
-  OrchestrationCommandInvariantError,
-  OrchestrationThreadSettleBlockedError,
-]);
-export type OrchestrationCommandRejection = typeof OrchestrationCommandRejection.Type;
+// The V1 engine only decides project lifecycle commands and the `thread.delete`
+// cascade now; agent thread/turn commands are owned by orchestration V2. The
+// settle-blocked rejection belonged to the removed V1 settlement commands.
+export const OrchestrationCommandRejection = OrchestrationCommandInvariantError;
+export type OrchestrationCommandRejection = OrchestrationCommandInvariantError;
 export const isOrchestrationCommandRejection = Schema.is(OrchestrationCommandRejection);
 
 export class OrchestrationCommandPreviouslyRejectedError extends Schema.TaggedError<OrchestrationCommandPreviouslyRejectedError>()(
@@ -100,31 +64,12 @@ export class OrchestrationProjectorDecodeError extends Schema.TaggedError<Orches
   }
 }
 
-export class OrchestrationListenerCallbackError extends Schema.TaggedError<OrchestrationListenerCallbackError>()(
-  "OrchestrationListenerCallbackError",
-  {
-    listener: Schema.Literals(["read-model", "domain-event"]),
-    detail: Schema.String,
-    cause: Schema.optional(Schema.Defect()),
-  },
-) {
-  override get message(): string {
-    return `Orchestration ${this.listener} listener failed: ${this.detail}`;
-  }
-}
-
 export type OrchestrationDispatchError =
   | ProjectionRepositoryError
   | OrchestrationCommandRejection
   | OrchestrationCommandIdConflictError
   | OrchestrationCommandPreviouslyRejectedError
-  | OrchestrationProjectorDecodeError
-  | OrchestrationListenerCallbackError;
-
-export type OrchestrationEngineError =
-  | OrchestrationDispatchError
-  | OrchestrationCommandJsonParseError
-  | OrchestrationCommandDecodeError;
+  | OrchestrationProjectorDecodeError;
 
 export function toProjectorDecodeError(eventType: string) {
   return (error: Schema.SchemaError): OrchestrationProjectorDecodeError =>
