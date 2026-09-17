@@ -22,7 +22,7 @@ This starts the Circe server on your machine and opens the local web app. Use
 
 ## Desktop app
 
-Download a release from [GitHub Releases](https://github.com/pingdotgg/t3code/releases),
+Download a release from [GitHub Releases](https://github.com/Absterrg0/circe/releases),
 or use a package manager:
 
 | Platform           | Install                         |

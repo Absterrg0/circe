@@ -16,7 +16,7 @@
 $ErrorActionPreference = "Stop"
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-$repo = "pingdotgg/t3code"
+$repo = "Absterrg0/circe"
 $baseUrl = if ($env:CIRCE_RELEASE_BASE_URL) { $env:CIRCE_RELEASE_BASE_URL.TrimEnd("/") } else { "https://github.com/$repo/releases/download" }
 $circeHome = if ($env:CIRCE_HOME) { $env:CIRCE_HOME } else { Join-Path $HOME ".t3" }
 $binDir = if ($env:CIRCE_INSTALL_BIN_DIR) { $env:CIRCE_INSTALL_BIN_DIR } else { Join-Path $HOME ".local\bin" }

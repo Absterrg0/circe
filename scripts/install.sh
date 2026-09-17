@@ -17,7 +17,7 @@
 # instead of fetching the release again.
 set -eu
 
-repo="pingdotgg/t3code"
+repo="Absterrg0/circe"
 base_url="${CIRCE_RELEASE_BASE_URL:-https://github.com/${repo}/releases/download}"
 circe_home="${CIRCE_HOME:-$HOME/.circe}"
 bin_dir="${CIRCE_INSTALL_BIN_DIR:-$HOME/.local/bin}"

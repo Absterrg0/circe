@@ -1711,9 +1711,9 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
       const threadId = ThreadId.make("runtime-layer-linked-pull-request-thread");
       const linkedPullRequest = {
         projectId: ProjectId.make("runtime-layer-linked-pull-request-project"),
-        repository: "pingdotgg/t3code",
+        repository: "Absterrg0/circe",
         number: 8160,
-        url: "https://github.com/pingdotgg/t3code/pull/8160",
+        url: "https://github.com/Absterrg0/circe/pull/8160",
       } as const;
 
       yield* orchestrator.dispatch({
@@ -1792,14 +1792,14 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
           threadId,
           ...key,
           number,
-          url: `https://github.com/pingdotgg/t3code/pull/${number}`,
+          url: `https://github.com/Absterrg0/circe/pull/${number}`,
           source: number === 1 ? "manual" : "stack",
         });
       }
       const linked = yield* orchestrator.getThreadShell(threadId);
       assert.deepEqual(
         linked?.pullRequests?.map(({ host, repository, number }) => ({ host, repository, number })),
-        [1, 2].map((number) => ({ host: "github.com", repository: "pingdotgg/t3code", number })),
+        [1, 2].map((number) => ({ host: "github.com", repository: "Absterrg0/circe", number })),
       );
       yield* orchestrator.dispatch({
         type: "thread.pull-request.unlink",
@@ -1828,7 +1828,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
         threadId,
         ...key,
         number: 2,
-        url: "https://github.com/pingdotgg/t3code/pull/2",
+        url: "https://github.com/Absterrg0/circe/pull/2",
         source: "stack",
       });
       assert.equal(
@@ -1846,7 +1846,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
         threadId,
         ...key,
         number: 2,
-        url: "https://github.com/pingdotgg/t3code/pull/2",
+        url: "https://github.com/Absterrg0/circe/pull/2",
         source: "manual",
       });
       assert.equal(

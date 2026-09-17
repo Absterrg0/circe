@@ -243,7 +243,7 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     });
     child = spawnedChild;
     await waitForStartup(spawnedChild, STARTUP_TIMEOUT_MS);
-    const response = await fetch(`http://127.0.0.1:${port}/.well-known/t3/environment`);
+    const response = await fetch(`http://127.0.0.1:${port}/.well-known/circe/environment`);
     if (!response.ok) {
       throw new Error(`Headless environment descriptor returned HTTP ${response.status}.`);
     }
