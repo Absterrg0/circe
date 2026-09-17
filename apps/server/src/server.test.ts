@@ -6425,7 +6425,11 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
         generateThreadTitle: () => Effect.die("unused"),
         generateStructured: ({ prompt }) => {
           const request = /^Request: (.*)$/mu.exec(prompt)?.[1]?.trim() ?? "";
+          const original = /^Original transcript: (.*)$/mu.exec(prompt)?.[1] ?? "";
           const focusedProject = /^Switch to (?:the )?(.+?) project[.!]?$/iu.exec(request)?.[1];
+          // A focus-project proposal must cite the heard project name; the
+          // host derives the instruction and route from that exact span.
+          const focusSpan = focusedProject === undefined ? -1 : original.indexOf(focusedProject);
           const intent = {
             action:
               focusedProject !== undefined
@@ -6433,7 +6437,20 @@ it.layer(NodeServices.layer)("server router seam", (it) => {
                 : /actually,?\s+use SQLite instead/iu.test(request)
                   ? ("steer" as const)
                   : ("start" as const),
-            refs: [],
+            refs:
+              focusedProject !== undefined && focusSpan >= 0
+                ? [
+                    {
+                      span: {
+                        start: focusSpan,
+                        end: focusSpan + focusedProject.length,
+                        text: focusedProject,
+                      },
+                      role: "destination" as const,
+                      value: focusedProject,
+                    },
+                  ]
+                : [],
             model: null,
             effort: null,
             answer: null,
