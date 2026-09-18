@@ -1,11 +1,19 @@
 import { lookupCirceQuickAnswer } from "@circe/client-runtime/operations/circeLiveVoice";
-import { executeCirceInstruction } from "@circe/client-runtime/operations/circe";
+import {
+  cancelCirceMission,
+  executeCirceInstruction,
+  useCirceBrowser,
+} from "@circe/client-runtime/operations/circe";
 import {
   createEnvironmentCommand,
   createEnvironmentRpcSubscriptionAtomFamily,
 } from "@circe/client/state/runtime";
 import { WS_METHODS } from "@circe/contracts";
-import type { CirceExecuteInput } from "@circe/contracts";
+import type {
+  CirceBrowserUseInput,
+  CirceCancelMissionInput,
+  CirceExecuteInput,
+} from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
@@ -18,6 +26,14 @@ export const circeEnvironment = {
   execute: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:execute",
     execute: (input: CirceExecuteInput) => executeCirceInstruction(input),
+  }),
+  browserUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:browser-use",
+    execute: (input: CirceBrowserUseInput) => useCirceBrowser(input),
+  }),
+  cancelMission: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:cancel-mission",
+    execute: (input: CirceCancelMissionInput) => cancelCirceMission(input),
   }),
   presentations: createEnvironmentRpcSubscriptionAtomFamily(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:presentation-stream",

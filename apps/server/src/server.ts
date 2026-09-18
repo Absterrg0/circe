@@ -132,8 +132,10 @@ import * as ResourceMonitorBinary from "./resourceTelemetry/ResourceMonitorBinar
 import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
+import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
+import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
   CirceWsRpcHandlerExtensionLive,
@@ -643,6 +645,11 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CircePushRegistrationsLive),
         // One shared projection fans out to every presentation listener.
         Layer.provide(CircePresentationFanoutLive),
+        // Browser missions reuse the previewAutomation broker under a
+        // Circe-owned scope, so voice and text control drive the same host a
+        // provider session would.
+        Layer.provide(CirceBrowserUseLive),
+        Layer.provide(CirceMissionCancellationLive),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),

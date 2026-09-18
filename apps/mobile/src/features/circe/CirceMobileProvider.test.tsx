@@ -45,6 +45,13 @@ vi.mock("react-native", () => ({
   Linking: { openURL: (url: string) => state.openWebsite(url) },
   AppState: { currentState: "active", addEventListener: () => ({ remove: () => {} }) },
 }));
+// The mobile client-action executors own the platform APIs; stub them so the
+// provider graph never pulls the native modules into the test transform.
+vi.mock("expo-clipboard", () => ({
+  setStringAsync: vi.fn().mockResolvedValue(undefined),
+  getStringAsync: vi.fn().mockResolvedValue(""),
+}));
+vi.mock("expo-linking", () => ({ openURL: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("@effect/atom-react", () => ({
   useAtomValue: (atom: string) =>
     atom === "catalog" ? state.catalog : { _tag: "Success", value: {} },

@@ -1306,15 +1306,19 @@ function interpretCirceCommandProposal(
       choices: [],
     };
   }
-  // A lookup or website launch is a bounded assistant action with no project
-  // or task. The originating client runs it through the quick-action endpoint
-  // or its own launcher, so a proposal that reaches the Director without that
-  // path is refused rather than misread as a new task.
-  if (proposal.action === "lookup" || proposal.action === "open-website") {
+  // A lookup, website launch, or browser mission is a bounded assistant action
+  // with no project or task. The originating client runs it through the
+  // quick-action endpoint or its own mission call, so a proposal that reaches
+  // the Director without that path is refused rather than misread as a new task.
+  if (
+    proposal.action === "lookup" ||
+    proposal.action === "open-website" ||
+    proposal.action === "browse"
+  ) {
     return {
       status: "needs-input",
       reason: "unsupported-command",
-      prompt: "I couldn't complete that on this device. Try again.",
+      prompt: "I couldn't run that bounded action. Try again.",
       choices: [],
     };
   }

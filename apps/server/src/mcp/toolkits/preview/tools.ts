@@ -1,5 +1,7 @@
 import {
+  CirceBrowserUseResult,
   ToolActivityIcon,
+  TrimmedNonEmptyString,
   PreviewAutomationClickInput,
   PreviewAutomationError,
   PreviewAutomationEvaluateInput,
@@ -26,11 +28,15 @@ import { Tool, Toolkit } from "effect/unstable/ai";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
 import * as ServerConfig from "../../../config.ts";
+import { CirceBrowserUse } from "../../../circe/Services/CirceBrowserUse.ts";
 
 const dependencies = [
   McpInvocationContext.McpInvocationContext,
   PreviewAutomationBroker.PreviewAutomationBroker,
 ];
+
+/** The run-goal tool delegates to the mission service instead of the broker. */
+const goalDependencies = [McpInvocationContext.McpInvocationContext, CirceBrowserUse];
 
 const presentationFields = { toolIcon: Schema.optional(ToolActivityIcon) };
 
@@ -241,6 +247,40 @@ const PreviewRecordingStopTool = safeBrowserTool(
   }).annotate(Tool.Title, "Stop browser recording"),
 );
 
+/**
+ * The provider hands a multi-step goal to the node's TypeSafe loop instead of
+ * stepping with `preview_click` / `preview_type` itself. Perception is a fresh
+ * grounded snapshot per step and the selector chooses only among elements the
+ * host enumerated, so the provider never supplies a selector or coordinate.
+ */
+export const PreviewRunGoalTool = Tool.make("preview_run_goal", {
+  description:
+    "Achieve a short goal in the collaborative browser tab with the grounded TypeSafe step loop, which observes the page and selects among grounded elements. Prefer this over clicking step by step when a task needs several steps. The goal is an objective, never a prompt: the loop only selects grounded elements and finite actions, and it types only the text you supply.",
+  parameters: Schema.Struct({
+    goal: TrimmedNonEmptyString.annotate({
+      description: "What to accomplish, in plain language.",
+    }),
+    typeText: Schema.optional(
+      TrimmedNonEmptyString.annotate({
+        description: "Text the loop may type when a step needs to fill a field.",
+      }),
+    ),
+    maxSteps: Schema.optional(
+      Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))
+        .check(Schema.isLessThanOrEqualTo(40))
+        .annotate({ description: "Maximum steps before stopping. Defaults to 24." }),
+    ),
+  }),
+  success: CirceBrowserUseResult,
+  failure: PreviewAutomationError,
+  dependencies: goalDependencies,
+})
+  .annotate(Tool.Title, "Run a browser goal")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, true)
+  .annotate(Tool.Idempotent, false)
+  .annotate(Tool.OpenWorld, true);
+
 export const PreviewToolkit = Toolkit.make(
   PreviewStatusTool,
   PreviewOpenTool,
@@ -273,5 +313,13 @@ export const PreviewStandardToolkit = Toolkit.make(
   PreviewRecordingStartTool,
   PreviewRecordingStopTool,
 );
+
+/**
+ * The goal tool is registered on its own because it needs the mission service
+ * and its broker scope, while the observation and stepping tools need only the
+ * broker. Keeping them apart means a node without the mission dependencies can
+ * still serve the rest of the preview toolkit.
+ */
+export const PreviewGoalToolkit = Toolkit.make(PreviewRunGoalTool);
 
 export const PreviewSnapshotToolkit = Toolkit.make(PreviewSnapshotTool);
