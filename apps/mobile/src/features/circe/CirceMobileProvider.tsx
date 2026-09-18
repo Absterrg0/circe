@@ -41,6 +41,11 @@ import {
   resolveCirceRouteCoverageConfirm,
 } from "@circe/client-runtime/circe/routeGrounding";
 import { circePlanTargetOutcomes } from "@circe/client-runtime/circe/planPresentation";
+import {
+  circeClientActionSpeech,
+  runCirceClientAction,
+} from "@circe/client-runtime/circe/clientActions";
+import { mobileClientActionCapabilities, mobileClientActionExecutors } from "./mobileClientActions";
 
 import { uuidv4 } from "../../lib/uuid";
 import { NO_DEVICES_COPY } from "./circeAvailability";
@@ -855,6 +860,8 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           ...(args.clarificationFrameId === undefined
             ? {}
             : { clarificationFrameId: args.clarificationFrameId }),
+          clientTools: mobileClientActionCapabilities().tools,
+          clientToolCandidates: mobileClientActionCapabilities().candidates,
           requestId,
         }),
       ).finally(() => {
@@ -1004,6 +1011,22 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         if (focusedNodeId !== null && focusedNodeId !== turn.projectRef.nodeId) {
           void refreshTaskDesk(focusedNodeId);
         }
+      } else if (result.value.status === "client-action") {
+        // A bounded action this phone owns. The node authorized it; run the
+        // client executor and report the real result.
+        const actionResult = await runCirceClientAction({
+          tool: result.value.tool,
+          args: result.value.args,
+          executors: mobileClientActionExecutors,
+        });
+        setMessage(
+          circeClientActionSpeech({ acceptance: result.value.speech, result: actionResult }),
+        );
+        removeActiveTurn(turn.originInteractionId);
+      } else if (result.value.status === "tool-answer") {
+        // A bounded node tool ran and its grounded result is the outcome.
+        setMessage(result.value.speech);
+        removeActiveTurn(turn.originInteractionId);
       } else if (result.value.action === "focused") {
         // Explicit focus adopts the exact response identity: the task
         // node when a taskRef is present, else the execution turn node. A

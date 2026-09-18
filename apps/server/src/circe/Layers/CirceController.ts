@@ -242,6 +242,9 @@ function planStepEntry(result: CirceExecutionResult): CirceExecutionPlanStep {
   if (result.status === "needs-input") {
     return { action: "needs-input", status: "needs-input", message: result.prompt.slice(0, 400) };
   }
+  if (result.status === "tool-answer" || result.status === "client-action") {
+    return { action: result.tool, status: "acknowledged", message: result.speech.slice(0, 400) };
+  }
   if (result.status === "plan") {
     return { action: "plan", status: "acknowledged", message: result.message.slice(0, 400) };
   }
@@ -554,7 +557,9 @@ const defaultInterpreterLayer = Layer.effect(
             proposal,
             source,
           })),
-          Effect.tapError((cause) => Effect.logWarning("Semantic supervisor request failed", cause)),
+          Effect.tapError((cause) =>
+            Effect.logWarning("Semantic supervisor request failed", cause),
+          ),
           Effect.catchCause((cause) => {
             if (Cause.hasInterruptsOnly(cause))
               return Effect.failCause(cause as Cause.Cause<never>);
@@ -1242,9 +1247,10 @@ export const makeCirceControllerLive = <R>(
             ? null
             : Effect.sync((): CirceClassifiedTurn => {
                 let interpretation: CirceCommandInterpretation;
+                let proposal: typeof CirceSemanticProposal.Type | undefined;
+                const source = input.sourceUtterance ?? input.utterance;
                 try {
-                  const proposal = decodeCirceSemanticProposal(input.semanticProposal);
-                  const source = input.sourceUtterance ?? input.utterance;
+                  proposal = decodeCirceSemanticProposal(input.semanticProposal);
                   interpretation = !/[\p{Letter}\p{Number}]/u.test(source)
                     ? {
                         status: "needs-input",
@@ -1262,11 +1268,38 @@ export const makeCirceControllerLive = <R>(
                   interpretation = {
                     status: "needs-input",
                     reason: "unsupported-command",
-                    prompt: "I couldn't safely apply that request. Restate the task or control action.",
+                    prompt:
+                      "I couldn't safely apply that request. Restate the task or control action.",
                     choices: [],
                   };
                 }
-                return { interpretation, outcome: circeOutcomeFromInterpretation(interpretation) };
+                // A bounded tool proposal resolves to a typed outcome here,
+                // before the Director's ordinary work interpretation. The
+                // Director refuses lookup/open-website because it cannot run
+                // them; the node and the origin client own those tools, so the
+                // proposal's tool outcome wins when the host offered it.
+                const offered = offeredCirceTools({
+                  nodeTools: nodeTools.available,
+                  clientTools: input.clientTools ?? [],
+                  locationCandidates: extractLocationCandidates(source),
+                  websiteCandidates: extractWebsiteCandidates(source),
+                  ...(input.clientToolCandidates?.apps === undefined
+                    ? {}
+                    : { appCandidates: input.clientToolCandidates.apps }),
+                  ...(input.clientToolCandidates?.mediaTargets === undefined
+                    ? {}
+                    : { mediaCandidates: input.clientToolCandidates.mediaTargets }),
+                });
+                const toolOutcome =
+                  proposal === undefined
+                    ? undefined
+                    : circeOutcomeFromProposal({ proposal, tools: offered });
+                const outcome =
+                  toolOutcome !== undefined &&
+                  (toolOutcome.kind === "tool-answer" || toolOutcome.kind === "client-action")
+                    ? toolOutcome
+                    : circeOutcomeFromInterpretation(interpretation);
+                return { interpretation, outcome };
               });
         const classifiedEffect =
           deterministicPendingReply !== null
@@ -1321,7 +1354,11 @@ export const makeCirceControllerLive = <R>(
             executors: nodeTools.executors,
           });
           if (execution.status === "ok") {
-            return { status: "acknowledged" as const, action: "conversed" as const, message: execution.speech };
+            return {
+              status: "tool-answer" as const,
+              tool: outcome.tool,
+              speech: execution.speech,
+            };
           }
           if (execution.status === "needs-input") {
             return {
@@ -1343,9 +1380,13 @@ export const makeCirceControllerLive = <R>(
         // acceptance speech so the caller can speak and route it.
         if (outcome.kind === "client-action") {
           return {
-            status: "acknowledged" as const,
-            action: "conversed" as const,
-            message: outcome.speech,
+            status: "client-action" as const,
+            tool: outcome.tool,
+            args: outcome.args,
+            speech: outcome.speech,
+            ...(input.requestMetadata === undefined
+              ? {}
+              : { requestId: input.requestMetadata.requestId }),
           };
         }
         // Every general question lives in the dedicated Conversations project,
@@ -2087,13 +2128,16 @@ export const makeCirceControllerLive = <R>(
         // cannot keep running after a cross-project reroute. V2 addresses a
         // concrete run, so resolve the active one from the source projection.
         if (rerouteSource !== undefined && hasActiveCirceTurn(rerouteSource.thread)) {
-          const rerouteProjection = yield* orchestration.getThreadProjection(rerouteSource.thread.id);
+          const rerouteProjection = yield* orchestration.getThreadProjection(
+            rerouteSource.thread.id,
+          );
           const activeRun = latestActiveRun(rerouteProjection);
           if (activeRun === undefined) {
             return {
               status: "needs-input" as const,
               reason: "control-target-required" as const,
-              prompt: "I couldn't interrupt the source task safely. Choose a current task to reroute.",
+              prompt:
+                "I couldn't interrupt the source task safely. Choose a current task to reroute.",
               choices: [],
             };
           }

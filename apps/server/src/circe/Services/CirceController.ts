@@ -5,6 +5,8 @@ import {
   type EnvironmentId,
   type CirceCancelRequestInput,
   type CirceCancelRequestResult,
+  type CirceClientToolCandidates,
+  type CirceClientToolName,
   type CirceExpectedReply,
   type CirceInterpretInput,
   type CirceRequestMetadata,
@@ -90,9 +92,27 @@ export type CirceExecutionPlan = {
   readonly steps: ReadonlyArray<CirceExecutionPlanStep>;
 };
 
+/** A bounded node tool ran and its grounded result is the turn outcome. */
+export type CirceExecutionToolAnswer = {
+  readonly status: "tool-answer";
+  readonly tool: string;
+  readonly speech: string;
+};
+
+/** A bounded action the origin client performs, with revalidated arguments. */
+export type CirceExecutionClientAction = {
+  readonly status: "client-action";
+  readonly tool: string;
+  readonly args: Readonly<Record<string, string | boolean>>;
+  readonly speech: string;
+  readonly requestId?: string;
+};
+
 export type CirceExecutionResult =
   | CirceExecutionStarted
   | CirceExecutionAcknowledged
+  | CirceExecutionToolAnswer
+  | CirceExecutionClientAction
   | CirceExecutionPlan
   | CirceCommandNeedsInput
   | { readonly status: "cancelled"; readonly requestId: string };
@@ -191,6 +211,10 @@ export interface CirceControllerExecuteInput {
   readonly referenceThreadId?: ThreadId | undefined;
   /** Continue the selected conversation regardless of the wording of the utterance. */
   readonly continueContext?: boolean | undefined;
+  /** Client tools the origin device can execute, advertised on the execute wire. */
+  readonly clientTools?: ReadonlyArray<CirceClientToolName> | undefined;
+  /** Client-owned bounded candidate sets for app and media tool parameters. */
+  readonly clientToolCandidates?: CirceClientToolCandidates | undefined;
   /** A saved provider/model/options selection from the controlling client. */
   readonly modelSelection?: ModelSelection | undefined;
   /** Host-confirmed real project identity used to resume a durable clarification. */

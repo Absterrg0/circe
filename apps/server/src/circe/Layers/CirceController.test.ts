@@ -250,7 +250,12 @@ function harness(input: {
 const execute = (layer: Harness["layer"], utterance: string) =>
   Effect.gen(function* () {
     const controller = yield* CirceController;
-    return yield* controller.execute({ sessionId, executionNodeId, utterance, projectId: project.id });
+    return yield* controller.execute({
+      sessionId,
+      executionNodeId,
+      utterance,
+      projectId: project.id,
+    });
   }).pipe(Effect.provide(layer));
 
 const startTurn = (): CirceClassifiedTurn => {
@@ -262,7 +267,10 @@ const startTurn = (): CirceClassifiedTurn => {
     runtimeMode: DEFAULT_RUNTIME_MODE,
     interactionMode: "default" as const,
   };
-  return { outcome: { kind: "work", commands: [command] }, interpretation: { status: "command", command } };
+  return {
+    outcome: { kind: "work", commands: [command] },
+    interpretation: { status: "command", command },
+  };
 };
 
 describe("CirceController outcome dispatch", () => {
@@ -295,7 +303,12 @@ describe("CirceController outcome dispatch", () => {
       taskSelection: "explicit" as const,
     };
     const test = harness({
-      turns: [{ outcome: { kind: "work", commands: [command] }, interpretation: { status: "command", command } }],
+      turns: [
+        {
+          outcome: { kind: "work", commands: [command] },
+          interpretation: { status: "command", command },
+        },
+      ],
       details: [thread(threadId, "Running task")],
     });
     return Effect.gen(function* () {
@@ -330,12 +343,46 @@ describe("CirceController outcome dispatch", () => {
     return Effect.gen(function* () {
       const result = yield* execute(test.layer, "open YouTube");
       expect(result).toEqual({
-        status: "acknowledged",
-        action: "conversed",
-        message: "Opening YouTube.",
+        status: "client-action",
+        tool: "open-website",
+        args: { website: "YouTube" },
+        speech: "Opening YouTube.",
       });
       expect(test.commands).toEqual([]);
     });
+  });
+
+  it.effect("emits a typed client action for a website proposal the host offered", () => {
+    // Proposal-first path: the client sends the semantic proposal and its
+    // advertised client tools; the node revalidates and returns the typed
+    // action instead of accepting speech the client cannot route.
+    const test = harness({ turns: [] });
+    return Effect.gen(function* () {
+      const controller = yield* CirceController;
+      const result = yield* controller.execute({
+        sessionId,
+        executionNodeId,
+        projectId: project.id,
+        utterance: "open YouTube",
+        sourceUtterance: "open YouTube",
+        semanticProposal: {
+          action: "open-website",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          website: "YouTube",
+        },
+        clientTools: ["open-website"],
+      });
+      expect(result).toEqual({
+        status: "client-action",
+        tool: "open-website",
+        args: { website: "YouTube" },
+        speech: "Opening YouTube.",
+      });
+      expect(test.commands).toEqual([]);
+    }).pipe(Effect.provide(test.layer));
   });
 
   it.effect("runs a node tool through controlDispatch and speaks its result", () => {
@@ -370,9 +417,9 @@ describe("CirceController outcome dispatch", () => {
     return Effect.gen(function* () {
       const result = yield* execute(test.layer, "weather in Paris");
       expect(result).toEqual({
-        status: "acknowledged",
-        action: "conversed",
-        message: "Weather for Paris.",
+        status: "tool-answer",
+        tool: "weather",
+        speech: "Weather for Paris.",
       });
     });
   });
@@ -411,7 +458,10 @@ describe("CirceController outcome dispatch", () => {
     };
     const test = harness({
       turns: [
-        { outcome: { kind: "conversation", answer: command.answer }, interpretation: { status: "command", command } },
+        {
+          outcome: { kind: "conversation", answer: command.answer },
+          interpretation: { status: "command", command },
+        },
       ],
     });
     return Effect.gen(function* () {
@@ -474,7 +524,12 @@ describe("CirceController outcome dispatch", () => {
   it.effect("lists projects without dispatching provider work", () => {
     const command = { type: "list-projects" as const };
     const test = harness({
-      turns: [{ outcome: { kind: "work", commands: [command] }, interpretation: { status: "command", command } }],
+      turns: [
+        {
+          outcome: { kind: "work", commands: [command] },
+          interpretation: { status: "command", command },
+        },
+      ],
     });
     return Effect.gen(function* () {
       const result = yield* execute(test.layer, "what projects are there");
@@ -487,7 +542,12 @@ describe("CirceController outcome dispatch", () => {
     const threadId = ThreadId.make("thread-status");
     const command = { type: "status" as const, task: { threadId } };
     const test = harness({
-      turns: [{ outcome: { kind: "work", commands: [command] }, interpretation: { status: "command", command } }],
+      turns: [
+        {
+          outcome: { kind: "work", commands: [command] },
+          interpretation: { status: "command", command },
+        },
+      ],
       details: [thread(threadId, "Status task")],
     });
     return Effect.gen(function* () {

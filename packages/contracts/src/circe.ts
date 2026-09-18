@@ -296,6 +296,33 @@ export type CirceInterpretInput = typeof CirceInterpretInput.Type;
 export const CirceInterpretResult = CirceSemanticProposal;
 export type CirceInterpretResult = typeof CirceInterpretResult.Type;
 
+/**
+ * Bounded tool names a client can execute itself. A client advertises the
+ * tools it can actually run on the execute wire; the node offers the
+ * classifier only those tools, so a missing platform API becomes an absent
+ * capability instead of a "not on this device" refusal.
+ */
+export const CirceClientToolName = Schema.Literals([
+  "open-website",
+  "open-app",
+  "media",
+  "clipboard",
+  "computer",
+]);
+export type CirceClientToolName = typeof CirceClientToolName.Type;
+
+/**
+ * Code-built candidate sets the client owns (installed apps, media targets).
+ * The node cannot enumerate the user's device, so the client sends bounded
+ * candidate names; the classifier may pick only from them and the client
+ * revalidates its own pick against its live catalog.
+ */
+export const CirceClientToolCandidates = Schema.Struct({
+  apps: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
+  mediaTargets: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
+});
+export type CirceClientToolCandidates = typeof CirceClientToolCandidates.Type;
+
 export const CirceExecuteInput = Schema.Union([
   Schema.Struct({
     kind: Schema.Literal("control").pipe(
@@ -330,6 +357,14 @@ export const CirceExecuteInput = Schema.Union([
     referenceThreadId: Schema.optional(ThreadId),
     /** Continue the supplied context thread even when the utterance is a new instruction. */
     continueContext: Schema.optional(Schema.Boolean),
+    /**
+     * Client tools the origin device can execute right now. The node offers
+     * the classifier only these tools plus its own node tools, so an
+     * unsupported capability is absent rather than refused.
+     */
+    clientTools: Schema.optional(Schema.Array(CirceClientToolName).check(Schema.isMaxLength(16))),
+    /** Client-owned bounded candidate sets for app and media tool parameters. */
+    clientToolCandidates: Schema.optional(CirceClientToolCandidates),
     /**
      * Nonauthoritative proposal from one interpret call. The execution node
      * schema-validates it and revalidates every ref against its authoritative
@@ -454,6 +489,42 @@ export const CirceExecutionAcknowledged = Schema.Union([
 ]);
 export type CirceExecutionAcknowledged = typeof CirceExecutionAcknowledged.Type;
 
+/**
+ * A bounded node tool ran and its grounded result is the turn outcome. The
+ * node owns execution; clients speak the result and mark the turn complete.
+ */
+export const CirceExecutionToolAnswer = Schema.Struct({
+  status: Schema.Literal("tool-answer"),
+  tool: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
+  speech: TrimmedNonEmptyString,
+});
+export type CirceExecutionToolAnswer = typeof CirceExecutionToolAnswer.Type;
+
+/** Finite string/boolean arguments for one bounded tool. */
+export const CirceToolArgumentsWire = Schema.Record(
+  Schema.String,
+  Schema.Union([Schema.String, Schema.Boolean]),
+);
+export type CirceToolArgumentsWire = typeof CirceToolArgumentsWire.Type;
+
+/**
+ * A bounded action the origin client performs on the user's device. The
+ * node never attempts it: it returns the tool, its revalidated arguments,
+ * and the acceptance speech. The client runs its executor, speaks the real
+ * result, and reports failure only from its own execution — never because
+ * the capability was missing (it would not have been offered).
+ */
+export const CirceExecutionClientAction = Schema.Struct({
+  status: Schema.Literal("client-action"),
+  /** The classified tool name; the client must have advertised it. */
+  tool: TrimmedNonEmptyString.check(Schema.isMaxLength(80)),
+  args: CirceToolArgumentsWire,
+  speech: TrimmedNonEmptyString,
+  /** Correlates the action with the originating execute request when known. */
+  requestId: Schema.optional(TrimmedNonEmptyString),
+});
+export type CirceExecutionClientAction = typeof CirceExecutionClientAction.Type;
+
 /** One executed command of a multi-command turn, in order. */
 export const CirceExecutionPlanStep = Schema.Struct({
   action: TrimmedNonEmptyString.check(Schema.isMaxLength(40)),
@@ -493,6 +564,8 @@ export const CirceExecutionResult = Schema.Union([
   CirceNeedsInput,
   CirceExecutionStarted,
   CirceExecutionAcknowledged,
+  CirceExecutionToolAnswer,
+  CirceExecutionClientAction,
   CirceExecutionPlan,
   CirceExecutionCancelled,
 ]);
