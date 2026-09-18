@@ -95,12 +95,13 @@ export interface ObserveDesktopWithFallbackInput<E = never> {
 export const observeDesktopWithFallback = <E = never>(
   input: ObserveDesktopWithFallbackInput<E>,
 ): Effect.Effect<ComputerSurface, E> =>
-  input
-    .base()
-    .pipe(
-      Effect.flatMap((surface) =>
-        surface.elements.length > 0 ? Effect.succeed(surface) : input.fallback(),
-      ),
-    );
+  input.base().pipe(
+    // A failed accessibility read is the strongest case for vision: the
+    // surface may exist but be unreadable, so fall back rather than failing.
+    Effect.catch(() => input.fallback()),
+    Effect.flatMap((surface) =>
+      surface.elements.length > 0 ? Effect.succeed(surface) : input.fallback(),
+    ),
+  );
 
 export const VISION_GROUNDING_MAX = VISION_GROUNDING_MAX_ELEMENTS;

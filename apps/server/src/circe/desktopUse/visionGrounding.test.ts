@@ -105,6 +105,21 @@ describe("observeDesktopWithFallback", () => {
     expect(surface.elements).toHaveLength(1);
     expect(fallbackCalls).toBe(1);
   });
+
+  it("uses vision when the accessibility observer fails", () => {
+    let fallbackCalls = 0;
+    const surface = Effect.runSync(
+      observeDesktopWithFallback<string>({
+        base: () => Effect.fail("accessibility unavailable"),
+        fallback: () => {
+          fallbackCalls += 1;
+          return Effect.succeed(surfaceWith(1));
+        },
+      }),
+    );
+    expect(surface.elements).toHaveLength(1);
+    expect(fallbackCalls).toBe(1);
+  });
 });
 
 describe("vision grounding error", () => {
