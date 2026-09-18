@@ -5,6 +5,7 @@ import {
   type DesktopUseInputRequest,
   type DesktopUseStatus,
 } from "@circe/contracts";
+import type { DesktopSnapshot } from "@circe/core/desktopSurface";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -13,7 +14,8 @@ import * as Stream from "effect/Stream";
 import type { Tool } from "effect/unstable/ai";
 
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
-import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
+import { DesktopSurface } from "../../../circe/desktopSurface/Services/DesktopSurface.ts";
+import { CirceDecision } from "../../../circe/Services/CirceDecision.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import { DesktopUseToolkitHandlersLive } from "./handlers.ts";
 import { DesktopUseToolkit } from "./tools.ts";
@@ -65,21 +67,61 @@ const makeHarness = () =>
         ]),
       subscribeFrames: () => Stream.empty,
     });
-    const goalRuns = yield* Ref.make<ReadonlyArray<string>>([]);
-    const missionIds = yield* Ref.make<ReadonlyArray<string>>([]);
-    const computerUse = Layer.succeed(CirceComputerUse, {
-      run: (input) =>
-        Effect.all([
-          Ref.update(goalRuns, (existing) => [...existing, input.goal]),
-          Ref.update(missionIds, (existing) => [
-            ...existing,
-            input.requestMetadata?.requestId ?? "",
-          ]),
-        ]).pipe(Effect.as({ status: "done" as const, message: `Did: ${input.goal}`, steps: 1 })),
+    const snapshot: DesktopSnapshot = {
+      capture: {
+        captureId: "cap_1",
+        displayId: "primary",
+        width: 800,
+        height: 600,
+        scale: 1,
+        takenAtMs: 1,
+        source: "semantic",
+      },
+      title: "Desktop",
+      regions: [
+        {
+          id: "app:0/0/3",
+          role: "push button",
+          name: "Save",
+          bounds: { x: 0, y: 0, width: 10, height: 10 },
+          source: "semantic",
+          interactive: true,
+        },
+      ],
+    };
+    const surface = Layer.succeed(DesktopSurface, {
+      observe: () => Effect.succeed(snapshot),
+      snapshot: (captureId) => Effect.succeed(captureId === "cap_1" ? snapshot : null),
+      act: () => Effect.void,
+    });
+    const decision = Layer.succeed(CirceDecision, {
+      decide: () =>
+        Effect.succeed({
+          status: "answered" as const,
+          model: "jev-latest",
+          answers: {
+            action: {
+              type: "choice" as const,
+              choice: "click",
+              probabilities: { click: 0.95 },
+              confidence: 0.95,
+            },
+            element: {
+              type: "choice" as const,
+              choice: "app:0/0/3",
+              probabilities: { "app:0/0/3": 0.95 },
+              confidence: 0.95,
+            },
+          },
+        }),
     });
     const toolkit = yield* DesktopUseToolkit.pipe(
       Effect.provide(
-        DesktopUseToolkitHandlersLive.pipe(Layer.provide(service), Layer.provide(computerUse)),
+        DesktopUseToolkitHandlersLive.pipe(
+          Layer.provide(service),
+          Layer.provide(surface),
+          Layer.provide(decision),
+        ),
       ),
     );
     const call = <Name extends keyof typeof DesktopUseToolkit.tools>(
@@ -95,9 +137,10 @@ const makeHarness = () =>
         ),
         Effect.provideService(McpInvocationContext.McpInvocationContext, invocation(capabilities)),
         Effect.provide(service),
-        Effect.provide(computerUse),
+        Effect.provide(surface),
+        Effect.provide(decision),
       );
-    return { calls, goalRuns, missionIds, call };
+    return { calls, call };
   });
 
 describe("desktop use toolkit handlers", () => {
@@ -173,26 +216,47 @@ describe("desktop use toolkit handlers", () => {
     }),
   );
 
-  it.effect("delegates desktop_run_goal to the mission service", () =>
+  it.effect("returns a capture-bound snapshot from desktop_observe", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness();
-      const result = yield* harness.call("desktop_run_goal", { goal: "save the document" });
-      expect(result).toEqual({
-        status: "done",
-        message: "Did: save the document",
-        steps: 1,
-      });
-      expect(yield* Ref.get(harness.goalRuns)).toEqual(["save the document"]);
-      // The provider mission registers under its thread so a stop can reach it.
-      expect(yield* Ref.get(harness.missionIds)).toEqual([`thread:${THREAD_ID}`]);
+      const result = yield* harness.call("desktop_observe", {});
+      expect(result.captureId).toBe("cap_1");
+      expect(result.regions.map((region) => region.id)).toEqual(["app:0/0/3"]);
     }),
   );
 
-  it.effect("refuses desktop_run_goal without the desktop-use capability", () =>
+  it.effect("maps a TypeSafe choice to a capture-bound desktop action", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      const result = yield* harness.call("desktop_decide", {
+        captureId: "cap_1",
+        goal: "save the document",
+      });
+      expect(result).toEqual({
+        status: "action",
+        action: { kind: "click", captureId: "cap_1", regionId: "app:0/0/3" },
+      });
+    }),
+  );
+
+  it.effect("reports a capture that is no longer current as unavailable", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      const result = yield* harness.call("desktop_decide", {
+        captureId: "cap-gone",
+        goal: "save the document",
+      });
+      expect(result.status).toBe("unavailable");
+    }),
+  );
+
+  it.effect("refuses desktop_act without the desktop-use capability", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       const error = yield* harness
-        .call("desktop_run_goal", { goal: "save" }, ["preview"])
+        .call("desktop_act", { kind: "click", captureId: "cap_1", regionId: "app:0/0/3" }, [
+          "preview",
+        ])
         .pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "McpCapabilityUnavailableError",

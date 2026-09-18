@@ -45,6 +45,8 @@ export interface DesktopSurfaceShape {
   readonly observe: (
     input?: DesktopObserveInput,
   ) => Effect.Effect<DesktopSnapshot, DesktopSurfaceError>;
+  /** The cached snapshot for a capture, or null when the surface moved on. */
+  readonly snapshot: (captureId: string) => Effect.Effect<DesktopSnapshot | null, never>;
   readonly act: (action: DesktopSurfaceAction) => Effect.Effect<void, DesktopSurfaceError>;
 }
 

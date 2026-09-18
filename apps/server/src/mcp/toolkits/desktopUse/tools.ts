@@ -1,5 +1,4 @@
 import {
-  CirceComputerUseResult,
   DesktopUseError,
   DesktopUseFrame,
   DesktopUseInputResult,
@@ -16,10 +15,17 @@ import * as Toolkit from "effect/unstable/ai/Toolkit";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
-import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
+import {
+  DesktopSurface,
+  DesktopSurfaceBackendError,
+  DesktopSurfaceStaleError,
+  DesktopSurfaceUnavailableError,
+} from "../../../circe/desktopSurface/Services/DesktopSurface.ts";
+import { CirceDecision } from "../../../circe/Services/CirceDecision.ts";
 
 const dependencies = [McpInvocationContext.McpInvocationContext, DesktopUse.DesktopUse];
-const goalDependencies = [...dependencies, CirceComputerUse];
+const observeDependencies = [...dependencies, DesktopSurface];
+const decideDependencies = [...observeDependencies, CirceDecision];
 
 export const DesktopUseToolError = Schema.Union([McpCapabilityUnavailableError, DesktopUseError]);
 export type DesktopUseToolError = typeof DesktopUseToolError.Type;
@@ -238,29 +244,123 @@ const DesktopFocusWindowTool = Tool.make("desktop_focus_window", {
   .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
-export const DesktopRunGoalTool = Tool.make("desktop_run_goal", {
+const SurfaceBounds = Schema.Struct({
+  x: Schema.Finite,
+  y: Schema.Finite,
+  width: Schema.Finite,
+  height: Schema.Finite,
+});
+
+export const DesktopSurfaceRegion = Schema.Struct({
+  id: TrimmedNonEmptyString,
+  role: Schema.NullOr(TrimmedNonEmptyString),
+  name: Schema.String,
+  bounds: SurfaceBounds,
+  source: Schema.Literals(["semantic", "visual"]),
+  interactive: Schema.Boolean,
+});
+export type DesktopSurfaceRegion = typeof DesktopSurfaceRegion.Type;
+
+export const DesktopSurfaceSnapshotResult = Schema.Struct({
+  captureId: TrimmedNonEmptyString,
+  displayId: TrimmedNonEmptyString,
+  title: Schema.String,
+  width: Schema.Int,
+  height: Schema.Int,
+  regions: Schema.Array(DesktopSurfaceRegion),
+});
+export type DesktopSurfaceSnapshotResult = typeof DesktopSurfaceSnapshotResult.Type;
+
+export const DesktopSurfaceActionSchema = Schema.Union([
+  Schema.Struct({
+    kind: Schema.Literal("click"),
+    captureId: TrimmedNonEmptyString,
+    regionId: TrimmedNonEmptyString,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("type"),
+    captureId: TrimmedNonEmptyString,
+    regionId: Schema.optional(TrimmedNonEmptyString),
+    text: TrimmedNonEmptyString,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("press"),
+    captureId: TrimmedNonEmptyString,
+    regionId: Schema.optional(TrimmedNonEmptyString),
+    key: TrimmedNonEmptyString,
+  }),
+  Schema.Struct({
+    kind: Schema.Literal("scroll"),
+    captureId: TrimmedNonEmptyString,
+    regionId: Schema.optional(TrimmedNonEmptyString),
+    direction: Schema.Literals(["up", "down", "left", "right"]),
+  }),
+]);
+export type DesktopSurfaceActionSchema = typeof DesktopSurfaceActionSchema.Type;
+
+export const DesktopDecideResult = Schema.Union([
+  Schema.Struct({ status: Schema.Literal("action"), action: DesktopSurfaceActionSchema }),
+  Schema.Struct({ status: Schema.Literal("done"), summary: Schema.String }),
+  Schema.Struct({ status: Schema.Literal("wait") }),
+  Schema.Struct({ status: Schema.Literal("refused"), reason: Schema.String }),
+  Schema.Struct({ status: Schema.Literal("unavailable"), message: Schema.String }),
+]);
+export type DesktopDecideResult = typeof DesktopDecideResult.Type;
+
+export const DesktopActResult = Schema.Struct({ applied: Schema.Boolean });
+export type DesktopActResult = typeof DesktopActResult.Type;
+
+const DesktopSurfaceToolError = Schema.Union([
+  McpCapabilityUnavailableError,
+  DesktopSurfaceUnavailableError,
+  DesktopSurfaceStaleError,
+  DesktopSurfaceBackendError,
+]);
+
+export const DesktopObserveTool = Tool.make("desktop_observe", {
   description:
-    "Achieve a short goal on this node's desktop with the grounded TypeSafe step loop, which selects among accessibility elements and performs each action. Prefer this over clicking step by step when the app exposes an accessibility tree. For canvas or GL apps where you are the only one who can see the target, use desktop_screenshot and desktop_click/desktop_type directly. The goal is an objective, never a prompt: the loop only selects grounded elements and finite actions.",
+    "Read this node's desktop as a bounded, addressable snapshot: a captureId plus the interactive elements (id, role, name, bounds) the accessibility tree offers. Act only on an id this snapshot listed, and pass its captureId back so a changed screen is refused instead of mis-clicked. Prefer this over raw coordinates whenever the app exposes an accessibility tree.",
+  parameters: Schema.Struct({ displayId: DisplayTarget }),
+  success: DesktopSurfaceSnapshotResult,
+  failure: DesktopSurfaceToolError,
+  dependencies: observeDependencies,
+})
+  .annotate(Tool.Title, "Observe the desktop")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+export const DesktopDecideTool = Tool.make("desktop_decide", {
+  description:
+    "Ask TypeSafe to choose the single next step for a goal over the elements desktop_observe just offered. Returns one capture-bound action, or done, wait, or a refusal. It never invents a target; the surface revalidates the choice before acting.",
   parameters: Schema.Struct({
+    captureId: TrimmedNonEmptyString.annotate({
+      description: "The captureId from the desktop_observe call this decision is about.",
+    }),
     goal: TrimmedNonEmptyString.annotate({
       description: "What to accomplish, in plain language.",
     }),
-    typeText: Schema.optional(
-      TrimmedNonEmptyString.annotate({
-        description: "Text the loop may type when a step needs to fill a field.",
-      }),
-    ),
-    maxSteps: Schema.optional(
-      Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))
-        .check(Schema.isLessThanOrEqualTo(40))
-        .annotate({ description: "Maximum steps before stopping. Defaults to 24." }),
-    ),
   }),
-  success: CirceComputerUseResult,
-  failure: DesktopUseToolError,
-  dependencies: goalDependencies,
+  success: DesktopDecideResult,
+  failure: DesktopSurfaceToolError,
+  dependencies: decideDependencies,
 })
-  .annotate(Tool.Title, "Run a desktop goal")
+  .annotate(Tool.Title, "Decide the next desktop step")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+export const DesktopActTool = Tool.make("desktop_act", {
+  description:
+    "Perform exactly one capture-bound desktop action chosen from the current snapshot. A click, type, or key names an element id from that snapshot; type, key, and scroll may instead act on the focused element. The action is refused as stale when the desktop changed since it was observed.",
+  parameters: DesktopSurfaceActionSchema,
+  success: DesktopActResult,
+  failure: DesktopSurfaceToolError,
+  dependencies: observeDependencies,
+})
+  .annotate(Tool.Title, "Act on the desktop")
   .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, true)
   .annotate(Tool.Idempotent, false)
@@ -276,5 +376,7 @@ export const DesktopUseToolkit = Toolkit.make(
   DesktopKeyTool,
   DesktopWindowsTool,
   DesktopFocusWindowTool,
-  DesktopRunGoalTool,
+  DesktopObserveTool,
+  DesktopDecideTool,
+  DesktopActTool,
 );

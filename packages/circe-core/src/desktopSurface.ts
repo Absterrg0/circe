@@ -59,19 +59,19 @@ export type DesktopSurfaceAction =
   | {
       readonly kind: "type";
       readonly captureId: string;
-      readonly regionId?: string;
+      readonly regionId?: string | undefined;
       readonly text: string;
     }
   | {
       readonly kind: "press";
       readonly captureId: string;
-      readonly regionId?: string;
+      readonly regionId?: string | undefined;
       readonly key: string;
     }
   | {
       readonly kind: "scroll";
       readonly captureId: string;
-      readonly regionId?: string;
+      readonly regionId?: string | undefined;
       readonly direction: DesktopSurfaceScrollDirection;
     };
 

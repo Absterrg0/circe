@@ -241,8 +241,20 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
       if (action.kind === "type") yield* typeText(action.text);
     });
 
-    return DesktopSurface.of({ observe, act });
+    const snapshot: DesktopSurfaceShape["snapshot"] = (captureId) =>
+      Ref.get(cache).pipe(
+        Effect.map((cached) =>
+          cached !== null && cached.snapshot.capture.captureId === captureId
+            ? cached.snapshot
+            : null,
+        ),
+      );
+
+    return DesktopSurface.of({ observe, snapshot, act });
   });
 
 export const layer = (options: { readonly backend?: DesktopUseBackend } = {}) =>
   Layer.effect(DesktopSurface, make(options));
+
+/** The node's own desktop: backend resolved from the running platform. */
+export const DesktopSurfaceLive = layer();
