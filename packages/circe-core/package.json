@@ -30,6 +30,8 @@
     "./visionGrounding": "./src/visionGrounding.ts",
     "./projectMemory": "./src/projectMemory.ts",
     "./modelChoice": "./src/modelChoice.ts",
+    "./modelVision": "./src/modelVision.ts",
+    "./desktopSurface": "./src/desktopSurface.ts",
     "./spokenSummary": "./src/spokenSummary.ts",
     "./timing": "./src/timing.ts",
     "./website": "./src/website.ts"
