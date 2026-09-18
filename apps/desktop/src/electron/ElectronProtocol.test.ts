@@ -19,7 +19,7 @@ vi.mock("electron", () => ({
 
 import * as ElectronProtocol from "./ElectronProtocol.ts";
 
-const protocolLayer = ElectronProtocol.layer.pipe(Layer.provide(NodeServices.layer));
+const protocolLayer = Layer.provideMerge(ElectronProtocol.layer, NodeServices.layer);
 
 describe("ElectronProtocol", () => {
   beforeEach(() => {
@@ -65,7 +65,7 @@ describe("ElectronProtocol", () => {
       assert.equal((yield* request("/%invalid")).status, 400);
       assert.equal((yield* request("/", { method: "POST" })).status, 405);
       assert.equal(netFetchMock.mock.calls.length, 0);
-    }).pipe(Effect.provide(Layer.merge(protocolLayer, NodeServices.layer)), Effect.scoped),
+    }).pipe(Effect.provide(protocolLayer), Effect.scoped),
   );
 
   it.effect("proxies the stable renderer origin to the current app server", () =>
@@ -129,7 +129,7 @@ describe("ElectronProtocol", () => {
       assert.isNull(forwardedHeaders.get("referer"));
       assert.isNull(forwardedHeaders.get("sec-fetch-site"));
       assert.deepEqual(unhandleMock.mock.calls, [["circe-dev"]]);
-    }).pipe(Effect.provide(ElectronProtocol.layer)),
+    }).pipe(Effect.provide(protocolLayer)),
   );
 
   it.effect("rejects custom protocol requests for another host", () =>
@@ -203,7 +203,7 @@ describe("ElectronProtocol", () => {
       assert.equal(error.scheme, "circe-dev");
       assert.strictEqual(error.cause, cause);
       assert.equal(error.message, 'Failed to register Electron protocol scheme "circe-dev".');
-    }).pipe(Effect.provide(ElectronProtocol.layer)),
+    }).pipe(Effect.provide(protocolLayer)),
   );
 
   it.effect("preserves protocol unregistration failures", () =>

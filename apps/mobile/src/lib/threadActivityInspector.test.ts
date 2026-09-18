@@ -14,7 +14,7 @@ import {
 import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildThreadFeed, type ThreadFeedActivity } from "./threadActivity";
+import { toFeedActivity, type ThreadFeedActivity } from "./threadActivity";
 import { buildThreadActivityInspector } from "./threadActivityInspector";
 
 const threadId = ThreadId.make("thread-1");
@@ -51,11 +51,10 @@ function activityFor(item: OrchestrationV2TurnItem): ThreadFeedActivity {
     sourceItemId: item.id,
     item,
   };
-  const group = buildThreadFeed([row])[0];
-  if (group?.type !== "activity-group" || !group.activities[0]) {
-    throw new Error("Expected an activity group");
-  }
-  return group.activities[0];
+  // Built directly rather than through `buildThreadFeed`: the feed folds
+  // checkpoint items into separate timeline entries, but the inspector is
+  // still asked about them.
+  return toFeedActivity(row, null);
 }
 
 describe("buildThreadActivityInspector", () => {

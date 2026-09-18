@@ -629,7 +629,7 @@ function toWorkLogEntry(
   }
 }
 
-function toFeedActivity(
+export function toFeedActivity(
   row: OrchestrationV2ProjectedTurnItem,
   attemptId: RunAttemptId | null,
 ): ThreadFeedActivity {

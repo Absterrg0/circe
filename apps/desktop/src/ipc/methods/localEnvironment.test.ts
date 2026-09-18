@@ -23,7 +23,7 @@ const unusedLifecycleRuntimeLayer = Layer.mergeAll(
       {} as DesktopEnvironment.DesktopEnvironment["Service"],
     ),
   ),
-  Layer.mock(DesktopWindow.DesktopWindow, {}),
+  Layer.mock(DesktopWindow.DesktopWindow, { allowClose: () => undefined }),
   Layer.mock(ElectronApp.ElectronApp, {}),
   Layer.mock(ElectronTheme.ElectronTheme, {}),
 );
