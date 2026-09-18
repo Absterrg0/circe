@@ -1,4 +1,4 @@
-import { resolveEnvironmentMachineKind } from "@t3tools/contracts";
+import { resolveEnvironmentMachineKind } from "@circe/contracts";
 import { LayersIcon } from "lucide-react";
 import type { ReactNode } from "react";
 

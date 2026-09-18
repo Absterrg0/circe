@@ -2,11 +2,11 @@ import type {
   ThreadPendingApproval,
   ThreadPendingUserInput,
   ThreadUserInputQuestion,
-} from "@t3tools/client-runtime/state/thread-requests";
-import { turnItemIsWorkspacePreparation } from "@t3tools/client-runtime/state/turn-item-presentation";
-import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
-import { extractToolActivityPresentation } from "@t3tools/client-runtime/work-log/tool-presentation";
-import { commandProgramName } from "@t3tools/client-runtime/work-log/command-label";
+} from "@circe/client/state/thread-requests";
+import { turnItemIsWorkspacePreparation } from "@circe/client/state/turn-item-presentation";
+import { formatSubagentDisplayTitle } from "@circe/client/state/subagent-display";
+import { extractToolActivityPresentation } from "@circe/client/work-log/tool-presentation";
+import { commandProgramName } from "@circe/client/work-log/command-label";
 import {
   contextCompactionLabel,
   toolItemForDisplay,
@@ -19,12 +19,12 @@ import {
   type ToolGroupSummaryKind,
   type WorkLogPresentationEntry,
   type WorkLogToolLifecycleStatus,
-} from "@t3tools/client-runtime/work-log/presentation";
+} from "@circe/client/work-log/presentation";
 import {
   resolveT3McpToolPresentation,
   type T3McpToolLogo,
   type T3McpToolPresentation,
-} from "@t3tools/shared/t3McpToolPresentation";
+} from "@circe/shared/t3McpToolPresentation";
 import type {
   ChatAttachment,
   MessageId,
@@ -40,9 +40,9 @@ import type {
   RunId,
   RunAttemptId,
   ScheduledTaskId,
-} from "@t3tools/contracts";
-import { ThreadId } from "@t3tools/contracts";
-import { formatDuration } from "@t3tools/shared/orchestrationTiming";
+} from "@circe/contracts";
+import { ThreadId } from "@circe/contracts";
+import { formatDuration } from "@circe/shared/orchestrationTiming";
 import * as DateTime from "effect/DateTime";
 
 export type PendingApproval = ThreadPendingApproval;
@@ -92,7 +92,7 @@ export interface ThreadFeedActivity {
 }
 
 export interface ThreadFeedMessage {
-  readonly context?: import("@t3tools/contracts").OrchestrationMessageContext | undefined;
+  readonly context?: import("@circe/contracts").OrchestrationMessageContext | undefined;
   readonly id: MessageId;
   readonly role: "user" | "assistant";
   readonly text: string;

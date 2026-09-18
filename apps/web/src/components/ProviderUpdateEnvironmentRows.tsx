@@ -1,11 +1,11 @@
 import { CheckIcon } from "lucide-react";
 import { type ReactNode, useCallback, useMemo, useRef, useState } from "react";
-import type { EnvironmentId, ServerProvider } from "@t3tools/contracts";
+import type { EnvironmentId, ServerProvider } from "@circe/contracts";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 
 import { cn } from "~/lib/utils";
 import { serverEnvironment } from "~/state/server";

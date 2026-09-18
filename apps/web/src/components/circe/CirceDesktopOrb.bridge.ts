@@ -1,7 +1,7 @@
-import type { DesktopCirceOrbCatalog, DesktopCirceOrbSelection } from "@t3tools/contracts";
+import type { DesktopCirceOrbCatalog, DesktopCirceOrbSelection } from "@circe/contracts";
 import type { CirceMeshCatalog, CirceMeshProvider } from "@circe/client-runtime/circe/mesh";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
+import type { EnvironmentId } from "@circe/contracts";
 
 export interface DesktopOrbCatalogInput {
   readonly providers: ReadonlyArray<CirceMeshProvider>;

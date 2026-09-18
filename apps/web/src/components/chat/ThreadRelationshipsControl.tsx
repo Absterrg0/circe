@@ -1,8 +1,8 @@
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
-import { scopedThreadKey, scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { fileBasename } from "@t3tools/client-runtime/markdown-links";
-import { projectedSubagentsToRuntime } from "@t3tools/client-runtime/state/subagentRuntime";
-import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
+import { scopedThreadKey, scopeThreadRef } from "@circe/client/environment";
+import { fileBasename } from "@circe/client/markdown-links";
+import { projectedSubagentsToRuntime } from "@circe/client/state/subagentRuntime";
+import { formatSubagentDisplayTitle } from "@circe/client/state/subagent-display";
 import {
   deriveThreadRelationshipGraph,
   immediateThreadRelationships,
@@ -11,13 +11,13 @@ import {
   resolveMergeBackTargetThreadId,
   type ThreadRelationshipEdge,
   type ThreadRelationshipWalkRow,
-} from "@t3tools/client-runtime/state/thread-relationships";
+} from "@circe/client/state/thread-relationships";
 import {
   canDetachThreadProviderSession,
   resolveLatestMergeBackRun,
-} from "@t3tools/client-runtime/state/thread-workflows";
-import type { EnvironmentId, OrchestrationV2ThreadShell, ThreadId } from "@t3tools/contracts";
-import { formatModelSlugName } from "@t3tools/shared/model";
+} from "@circe/client/state/thread-workflows";
+import type { EnvironmentId, OrchestrationV2ThreadShell, ThreadId } from "@circe/contracts";
+import { formatModelSlugName } from "@circe/shared/model";
 import { groupBy } from "effect/Array";
 import { useNavigate } from "@tanstack/react-router";
 import {

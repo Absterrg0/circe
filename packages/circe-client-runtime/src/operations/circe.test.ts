@@ -4,7 +4,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
@@ -15,9 +15,9 @@ import {
   AVAILABLE_CONNECTION_STATE,
   PrimaryConnectionTarget,
   type PreparedConnection,
-} from "@t3tools/client-runtime/connection";
-import * as EnvironmentSupervisor from "@t3tools/client-runtime/connection";
-import type { WsRpcProtocolClient, RpcSession } from "@t3tools/client-runtime/rpc";
+} from "@circe/client/connection";
+import * as EnvironmentSupervisor from "@circe/client/connection";
+import type { WsRpcProtocolClient, RpcSession } from "@circe/client/rpc";
 import {
   cancelCirceRequest,
   executeCirceInstruction,

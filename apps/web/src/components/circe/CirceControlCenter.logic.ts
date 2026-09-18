@@ -4,7 +4,7 @@ import type {
   CirceMeshProject,
   CirceMeshProvider,
 } from "@circe/client-runtime/circe/mesh";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 
 export interface CirceControlCenterDevice {
   readonly node: CirceMeshNode;

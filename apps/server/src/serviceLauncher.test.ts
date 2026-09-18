@@ -86,7 +86,7 @@ const writeFakeRuntime = (
   childSource: string,
 ) =>
   Effect.gen(function* () {
-    const entryPath = path.join(versionDir, "t3");
+    const entryPath = path.join(versionDir, "circe");
     yield* fs.makeDirectory(versionDir, { recursive: true });
     yield* fs.writeFileString(entryPath, `#!${process.execPath}\n${childSource}`);
     yield* fs.chmod(entryPath, 0o755);
@@ -201,7 +201,7 @@ it.layer(NodeServices.layer)("service state persistence", (it) => {
       // @effect-diagnostics-next-line preferSchemaOverJson:off - embeds a path in fake child source.
       const encodedDatabasePath = JSON.stringify(databasePath);
       const childSource = `
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.CIRCE_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   process.send({ type: "prepared", updateId: context.update.id });
   process.on("message", (message) => {
@@ -255,7 +255,7 @@ if (context.update?.status === "pending") {
       // @effect-diagnostics-next-line preferSchemaOverJson:off - embeds a path in fake child source.
       const encodedDatabasePath = JSON.stringify(databasePath);
       const childSource = `
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.CIRCE_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   process.send({ type: "prepared", updateId: "wrong-update" });
 } else if (context.update === undefined) {
@@ -312,7 +312,7 @@ if (context.update?.status === "pending") {
       const encodedDatabasePath = JSON.stringify(databasePath);
       const childSource = `
 import { writeFileSync } from "node:fs";
-const context = JSON.parse(process.env.T3_SERVICE_LAUNCHER_CONTEXT);
+const context = JSON.parse(process.env.CIRCE_SERVICE_LAUNCHER_CONTEXT);
 if (context.update?.status === "pending") {
   writeFileSync(context.update.dbPath, "database after migration");
   writeFileSync(context.update.dbPath + "-wal", "trial wal");

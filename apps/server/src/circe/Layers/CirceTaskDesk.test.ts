@@ -4,7 +4,7 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { AuthSessionId, EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { AuthSessionId, EnvironmentId, ProjectId, ThreadId } from "@circe/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";

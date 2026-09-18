@@ -1,7 +1,7 @@
-import type { EnvironmentPresentation, NetworkStatus } from "@t3tools/client-runtime/connection";
-import type { EnvironmentCatalogState } from "@t3tools/client-runtime/state/connections";
-import type { EnvironmentId } from "@t3tools/contracts";
-import { createEnvironmentSummaryAtoms } from "@t3tools/client-runtime/state/presentation";
+import type { EnvironmentPresentation, NetworkStatus } from "@circe/client/connection";
+import type { EnvironmentCatalogState } from "@circe/client/state/connections";
+import type { EnvironmentId } from "@circe/contracts";
+import { createEnvironmentSummaryAtoms } from "@circe/client/state/presentation";
 import { Atom } from "effect/unstable/reactivity";
 
 import { projectWorkspaceConnectionState } from "./workspaceModel";

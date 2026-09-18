@@ -1,6 +1,6 @@
 import type { AppStateStatus } from "react-native";
-import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentConnectionPhase } from "@circe/client/connection";
+import type { EnvironmentId } from "@circe/contracts";
 import type { ConnectedEnvironmentSummary } from "../../state/remote-runtime-types";
 
 export function isAppForegroundTransition(previous: AppStateStatus, next: AppStateStatus): boolean {

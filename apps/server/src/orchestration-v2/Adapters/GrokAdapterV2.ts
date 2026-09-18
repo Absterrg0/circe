@@ -1,10 +1,10 @@
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
 import {
   defaultInstanceIdForDriver,
   GrokSettings,
   ProviderDriverKind,
   type OrchestrationV2ProviderCapabilities,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

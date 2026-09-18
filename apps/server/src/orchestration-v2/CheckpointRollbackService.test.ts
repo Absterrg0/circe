@@ -8,11 +8,11 @@ import {
   ProviderSessionId,
   ProviderThreadId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
-import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
+import { symlinksSupported } from "@circe/shared/testing/symlinks";
 import * as Layer from "effect/Layer";
 
 import { isCheckpointRestoreIsolated } from "./CheckpointRestoreSafety.ts";

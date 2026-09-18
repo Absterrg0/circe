@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ProjectId, ThreadId, type CirceSemanticProposal } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ThreadId, type CirceSemanticProposal } from "@circe/contracts";
 import type { CirceMeshCatalog } from "./mesh.ts";
 
 import {

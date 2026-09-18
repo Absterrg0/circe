@@ -2,15 +2,15 @@ import {
   PROVIDER_SEND_TURN_SUPPORTED_IMAGE_MIME_TYPES,
   type ChatAttachment,
   type EnvironmentId,
-} from "@t3tools/contracts";
-import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
-import { resolveAssetUrl } from "@t3tools/client-runtime/state/assets";
+} from "@circe/contracts";
+import { parseScopedThreadKey } from "@circe/client/environment";
+import { resolveAssetUrl } from "@circe/client/state/assets";
 import {
   deletePendingAttachmentUpload,
   runAttachmentUploadCycle,
   verifyPersistedAttachmentUpload,
   type PersistedAttachmentVerification,
-} from "@t3tools/client-runtime/state/attachments";
+} from "@circe/client/state/attachments";
 import { create } from "zustand";
 
 import {

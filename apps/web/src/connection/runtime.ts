@@ -1,11 +1,11 @@
 import { layer as circeMeshLayer } from "@circe/client-runtime/circe/mesh";
-import { Connection } from "@t3tools/client-runtime/connection";
-import { shellSnapshotLoaderLayer } from "@t3tools/client-runtime/state/shell";
+import { Connection } from "@circe/client/connection";
+import { shellSnapshotLoaderLayer } from "@circe/client/state/shell";
 import {
   boundedThreadSnapshotLoaderLayer,
   threadHistoryControllerLayer,
-} from "@t3tools/client-runtime/state/threads";
-import { pullRequestDiffLoaderLayer } from "@t3tools/client-runtime/state/pull-requests";
+} from "@circe/client/state/threads";
+import { pullRequestDiffLoaderLayer } from "@circe/client/state/pull-requests";
 import * as Layer from "effect/Layer";
 import { Atom } from "effect/unstable/reactivity";
 

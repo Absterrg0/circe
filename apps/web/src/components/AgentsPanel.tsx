@@ -11,17 +11,17 @@
  * - Static status dots, DOM-write elapsed timers, plain token counters.
  */
 import { useAtomValue } from "@effect/atom-react";
-import { formatSubagentDisplayTitle } from "@t3tools/client-runtime/state/subagent-display";
+import { formatSubagentDisplayTitle } from "@circe/client/state/subagent-display";
 import type {
   AgentPanelModel,
   AgentPanelWorkflowGroup,
   RuntimeSubagent,
-} from "@t3tools/client-runtime/state/subagentRuntime";
+} from "@circe/client/state/subagentRuntime";
 import {
   formatSubagentModelLabel,
   formatSubagentTokenCount,
-} from "@t3tools/client-runtime/state/subagentRuntime";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+} from "@circe/client/state/subagentRuntime";
+import type { EnvironmentId, ThreadId } from "@circe/contracts";
 import { Bot, Braces, Check, ChevronDown, ChevronRight, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 

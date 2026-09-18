@@ -1,11 +1,11 @@
-import type { ProjectId, ThreadId } from "@t3tools/contracts";
+import type { ProjectId, ThreadId } from "@circe/contracts";
 import type {
   OrchestrationCommand,
   OrchestrationProject,
   OrchestrationReadModel,
   OrchestrationThread,
-} from "@t3tools/contracts/legacy-orchestration";
-import { normalizeProjectPathForComparison } from "@t3tools/shared/path";
+} from "@circe/contracts/legacy-orchestration";
+import { normalizeProjectPathForComparison } from "@circe/shared/path";
 import * as Effect from "effect/Effect";
 
 import { OrchestrationCommandInvariantError } from "./Errors.ts";

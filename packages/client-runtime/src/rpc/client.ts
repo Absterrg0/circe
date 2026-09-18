@@ -1,4 +1,4 @@
-import { ORCHESTRATION_V2_WS_METHODS, WS_METHODS } from "@t3tools/contracts";
+import { ORCHESTRATION_V2_WS_METHODS, WS_METHODS } from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import type * as Duration from "effect/Duration";
@@ -30,7 +30,7 @@ export class EnvironmentRpcRequestObserver extends Context.Reference<{
   readonly observe: (
     request: EnvironmentRpcRequestObservation,
   ) => Effect.Effect<Effect.Effect<void>>;
-}>("@t3tools/client-runtime/rpc/EnvironmentRpcRequestObserver", {
+}>("@circe/client/rpc/EnvironmentRpcRequestObserver", {
   defaultValue: () => ({
     observe: () => Effect.succeed(Effect.void),
   }),
@@ -92,7 +92,7 @@ export class EnvironmentRpcSubscriptionObserver extends Context.Reference<{
   readonly observe: (
     subscription: EnvironmentRpcSubscriptionObservation,
   ) => Effect.Effect<Effect.Effect<void>>;
-}>("@t3tools/client-runtime/rpc/EnvironmentRpcSubscriptionObserver", {
+}>("@circe/client/rpc/EnvironmentRpcSubscriptionObserver", {
   defaultValue: () => ({
     observe: () => Effect.succeed(Effect.void),
   }),

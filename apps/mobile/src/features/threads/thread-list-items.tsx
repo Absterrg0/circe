@@ -1,9 +1,9 @@
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import type { EnvironmentThreadSearchMatch } from "@t3tools/client-runtime/state/thread-search";
-import type { EnvironmentMachineKind } from "@t3tools/contracts";
+} from "@circe/client/state/shell";
+import type { EnvironmentThreadSearchMatch } from "@circe/client/state/thread-search";
+import type { EnvironmentMachineKind } from "@circe/contracts";
 import type { MenuAction } from "@react-native-menu/menu";
 import { SymbolView } from "../../components/AppSymbol";
 import { memo, useCallback, useMemo, type ComponentProps } from "react";

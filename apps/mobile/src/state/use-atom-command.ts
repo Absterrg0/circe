@@ -6,7 +6,7 @@ import {
   type AtomCommandResult,
   runAbortableAtomCommand,
   runAtomCommand,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 import { useCallback, useContext } from "react";
 
 export function useAtomCommand<A, E, W>(

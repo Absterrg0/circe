@@ -1,4 +1,4 @@
-import type { CirceTaskRef, ProjectId, ThreadId } from "@t3tools/contracts";
+import type { CirceTaskRef, ProjectId, ThreadId } from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

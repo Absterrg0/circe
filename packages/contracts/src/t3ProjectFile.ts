@@ -5,13 +5,13 @@ import { ThreadEnvMode } from "./environment.ts";
 import { ProjectScriptIcon } from "./project.ts";
 
 /** File name of the checked-in T3 project file, resolved at the workspace root. */
-export const T3_PROJECT_FILE_NAME = "t3.json";
+export const CIRCE_PROJECT_FILE_NAME = "t3.json";
 
 /** Public URL of the published JSON Schema for {@link T3ProjectFile}. */
-export const T3_PROJECT_FILE_SCHEMA_URL = "https://t3.codes/schema/t3.json";
+export const CIRCE_PROJECT_FILE_SCHEMA_URL = "https://heycirce.com/schema/t3.json";
 
-const T3_PROJECT_FILE_PATH_MAX_LENGTH = 512;
-const T3_PROJECT_FILE_MAX_SCRIPTS = 50;
+const CIRCE_PROJECT_FILE_PATH_MAX_LENGTH = 512;
+const CIRCE_PROJECT_FILE_MAX_SCRIPTS = 50;
 
 // Annotations go on the encoded (string) side so they survive into the
 // published JSON Schema; decoding still trims and re-validates non-emptiness.
@@ -26,10 +26,10 @@ const trimmedNonEmpty = (annotations: { readonly description: string }, maxLengt
 
 export const T3ProjectFileScript = Schema.Struct({
   name: trimmedNonEmpty({
-    description: "Display name for the script, shown in the T3 Code scripts menu.",
+    description: "Display name for the script, shown in the Circe scripts menu.",
   }),
   command: trimmedNonEmpty({
-    description: "Shell command executed in a T3 Code terminal at the project root.",
+    description: "Shell command executed in a Circe terminal at the project root.",
   }),
   icon: Schema.optionalKey(
     ProjectScriptIcon.annotate({
@@ -61,41 +61,41 @@ export const T3ProjectFileScript = Schema.Struct({
     }),
   ),
 }).annotate({
-  description: "A project script that team members can import into T3 Code.",
+  description: "A project script that team members can import into Circe.",
 });
 export type T3ProjectFileScript = typeof T3ProjectFileScript.Type;
 
 export const T3ProjectFile = Schema.Struct({
   $schema: Schema.optionalKey(
     Schema.String.annotate({
-      description: `URL of the JSON Schema for this file, typically "${T3_PROJECT_FILE_SCHEMA_URL}".`,
+      description: `URL of the JSON Schema for this file, typically "${CIRCE_PROJECT_FILE_SCHEMA_URL}".`,
     }),
   ),
   iconPath: Schema.optionalKey(
     trimmedNonEmpty(
       {
         description:
-          'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before T3 Code\'s built-in icon locations.',
+          'Workspace-relative path to the project icon (e.g. "assets/logo.svg"). Checked before Circe\'s built-in icon locations.',
       },
-      T3_PROJECT_FILE_PATH_MAX_LENGTH,
+      CIRCE_PROJECT_FILE_PATH_MAX_LENGTH,
     ),
   ),
   defaultThreadEnvMode: Schema.optionalKey(
     ThreadEnvMode.annotate({
       description:
-        'Where new threads start for this repository: "worktree" for a fresh git worktree, "local" for the current checkout. A per-project setting in T3 Code overrides this; when neither is set, the global default applies.',
+        'Where new threads start for this repository: "worktree" for a fresh git worktree, "local" for the current checkout. A per-project setting in Circe overrides this; when neither is set, the global default applies.',
     }),
   ),
   scripts: Schema.optionalKey(
     Schema.Array(T3ProjectFileScript)
       .annotate({
-        description: "Project scripts shared with everyone who opens this repository in T3 Code.",
+        description: "Project scripts shared with everyone who opens this repository in Circe.",
       })
-      .check(Schema.isMaxLength(T3_PROJECT_FILE_MAX_SCRIPTS)),
+      .check(Schema.isMaxLength(CIRCE_PROJECT_FILE_MAX_SCRIPTS)),
   ),
 }).annotate({
   title: "T3 project file",
   description:
-    "Checked-in project configuration for T3 Code (t3.json at the repository root). See https://t3.codes for documentation.",
+    "Checked-in project configuration for Circe (t3.json at the repository root). See https://heycirce.com for documentation.",
 });
 export type T3ProjectFile = typeof T3ProjectFile.Type;

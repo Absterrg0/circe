@@ -1,9 +1,9 @@
-import { worktreeSetupAgentStarted } from "@t3tools/client-runtime/worktree-setup";
-export { worktreeSetupAgentStarted } from "@t3tools/client-runtime/worktree-setup";
+import { worktreeSetupAgentStarted } from "@circe/client/worktree-setup";
+export { worktreeSetupAgentStarted } from "@circe/client/worktree-setup";
 import * as Equal from "effect/Equal";
 import { shallow } from "zustand/vanilla/shallow";
-import { renderCodexDirectivesForCopy } from "@t3tools/client-runtime/codex-markdown-directives";
-import { commandProgramName } from "@t3tools/client-runtime/work-log/command-label";
+import { renderCodexDirectivesForCopy } from "@circe/client/codex-markdown-directives";
+import { commandProgramName } from "@circe/client/work-log/command-label";
 import {
   liveActivityToolStatus,
   normalizeCompactToolLabel,
@@ -12,11 +12,11 @@ import {
   toolGroupAction,
   toolGroupSummaryKind,
   type ToolGroupSummaryKind,
-} from "@t3tools/client-runtime/work-log/presentation";
+} from "@circe/client/work-log/presentation";
 export {
   normalizeCompactToolLabel,
   toolGroupAction,
-} from "@t3tools/client-runtime/work-log/presentation";
+} from "@circe/client/work-log/presentation";
 import {
   deriveRevertTurnCountByUserMessageId,
   formatDuration,
@@ -37,12 +37,12 @@ import {
   type OrchestrationV2ProjectedTurnItem,
   type RunAttemptId,
   type RunId,
-} from "@t3tools/contracts";
-import type { ThreadRunSummary } from "@t3tools/client-runtime/state/shell";
+} from "@circe/contracts";
+import type { ThreadRunSummary } from "@circe/client/state/shell";
 import {
   resolveT3McpToolPresentation,
   type T3McpToolPresentation,
-} from "@t3tools/shared/t3McpToolPresentation";
+} from "@circe/shared/t3McpToolPresentation";
 import { formatWorkspaceRelativePath } from "../../filePathDisplay";
 
 function timelineEntryRunId(entry: TimelineEntry): RunId | null {

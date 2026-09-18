@@ -14,8 +14,8 @@ import { useCallback, useEffect, useMemo, useRef } from "react";
 import { Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useResolveClassNames } from "uniwind";
 import { useAtomValue } from "@effect/atom-react";
-import { EnvironmentId } from "@t3tools/contracts";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { EnvironmentId } from "@circe/contracts";
+import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 
 import { AppText as Text } from "./components/AppText";
 import { getCompactBrandHeaderOptions } from "./components/CompactBrandTitle";

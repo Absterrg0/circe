@@ -9,7 +9,7 @@ import {
   EnvironmentHttpApi,
   ProviderDriverKind,
   type RepositoryIdentity,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
@@ -169,9 +169,9 @@ import {
 import { orchestrationHttpApiLayer } from "./orchestration-v2/http.ts";
 import { projectHttpApiLayer } from "./project/http.ts";
 import * as RpcAuthorization from "./auth/RpcAuthorization.ts";
-import * as NetService from "@t3tools/shared/Net";
-import * as RelayClient from "@t3tools/shared/relayClient";
-import { disableTailscaleServe, ensureTailscaleServe } from "@t3tools/tailscale";
+import * as NetService from "@circe/shared/Net";
+import * as RelayClient from "@circe/shared/relayClient";
+import { disableTailscaleServe, ensureTailscaleServe } from "@circe/tailscale";
 import { forkParked, ServerActivation } from "./serverActivation.ts";
 
 // MCP handoff thread IDs include escaped provenance and can exceed find-my-way's

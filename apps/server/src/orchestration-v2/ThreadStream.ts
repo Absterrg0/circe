@@ -1,7 +1,7 @@
 import type {
   OrchestrationV2ThreadProjection,
   OrchestrationV2ThreadStreamItem,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import { buildBoundedThreadProjection } from "./threadHistoryPaging.ts";
 import { projectThreadProjectionForWire } from "./WireProjection.ts";

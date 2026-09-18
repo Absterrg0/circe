@@ -1,5 +1,5 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import type { ProviderDriverKind, ProviderReplayTranscript } from "@t3tools/contracts";
+import type { ProviderDriverKind, ProviderReplayTranscript } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";

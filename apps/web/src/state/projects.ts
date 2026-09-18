@@ -1,7 +1,7 @@
-import { createEnvironmentProjectAtoms } from "@t3tools/client-runtime/state/projects";
-import { createProjectEnvironmentAtoms } from "@t3tools/client-runtime/state/projects";
-import { createEnvironmentRpcQueryAtomFamily } from "@t3tools/client-runtime/state/runtime";
-import { WS_METHODS } from "@t3tools/contracts";
+import { createEnvironmentProjectAtoms } from "@circe/client/state/projects";
+import { createProjectEnvironmentAtoms } from "@circe/client/state/projects";
+import { createEnvironmentRpcQueryAtomFamily } from "@circe/client/state/runtime";
+import { WS_METHODS } from "@circe/contracts";
 
 import { environmentCatalog } from "../connection/catalog";
 import { connectionAtomRuntime } from "../connection/runtime";

@@ -2,8 +2,8 @@ import type {
   OrchestrationV2DomainEvent,
   OrchestrationV2ThreadProjection,
   OrchestrationV2TurnItem,
-} from "@t3tools/contracts";
-import { compactDynamicToolOutput, toolOutputIndicatesFailure } from "@t3tools/shared/toolOutput";
+} from "@circe/contracts";
+import { compactDynamicToolOutput, toolOutputIndicatesFailure } from "@circe/shared/toolOutput";
 
 const MAX_DETAIL_STRING_BYTES = 32_768;
 const MAX_DYNAMIC_VALUE_BYTES = 16_384;

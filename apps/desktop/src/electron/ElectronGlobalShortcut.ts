@@ -18,7 +18,7 @@ export class ElectronGlobalShortcut extends Context.Service<
       callback: () => void,
     ) => Effect.Effect<boolean, never, Scope.Scope>;
   }
->()("@t3tools/desktop/electron/ElectronGlobalShortcut") {}
+>()("@circe/desktop/electron/ElectronGlobalShortcut") {}
 
 export const make = (api: ElectronGlobalShortcutApi): ElectronGlobalShortcut["Service"] =>
   ElectronGlobalShortcut.of({

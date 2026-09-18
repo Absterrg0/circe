@@ -1,7 +1,7 @@
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import { planPinnedReorder } from "@t3tools/client-runtime/state/thread-sort";
-import { effectiveSnoozed } from "@t3tools/client-runtime/state/thread-settled";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
+import { planPinnedReorder } from "@circe/client/state/thread-sort";
+import { effectiveSnoozed } from "@circe/client/state/thread-settled";
+import type { EnvironmentId } from "@circe/contracts";
 
 export type ThreadMoveDestination =
   | "up"

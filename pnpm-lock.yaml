@@ -131,9 +131,24 @@ importers:
 
   apps/desktop:
     dependencies:
+      '@circe/client':
+        specifier: workspace:*
+        version: link:../../packages/client-runtime
       '@circe/client-runtime':
         specifier: workspace:*
         version: link:../../packages/circe-client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@circe/ssh':
+        specifier: workspace:*
+        version: link:../../packages/ssh
+      '@circe/tailscale':
+        specifier: workspace:*
+        version: link:../../packages/tailscale
       '@clerk/electron':
         specifier: 0.0.44
         version: 0.0.44(@clerk/electron-passkeys@0.0.3)(electron-store@8.2.0)(electron@44.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -149,21 +164,6 @@ importers:
       '@napi-rs/keyring':
         specifier: ^1.3.0
         version: 1.3.0
-      '@t3tools/client-runtime':
-        specifier: workspace:*
-        version: link:../../packages/client-runtime
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@t3tools/ssh':
-        specifier: workspace:*
-        version: link:../../packages/ssh
-      '@t3tools/tailscale':
-        specifier: workspace:*
-        version: link:../../packages/tailscale
       dbus-next:
         specifier: 0.10.2
         version: 0.10.2(patch_hash=cfff57561b0ee59b5addb3b2e6c6f20906e967507a530ab67e8db8108e520ba4)
@@ -216,7 +216,7 @@ importers:
 
   apps/marketing:
     dependencies:
-      '@t3tools/shared':
+      '@circe/shared':
         specifier: workspace:*
         version: link:../../packages/shared
       astro:
@@ -238,12 +238,30 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@circe/client':
+        specifier: workspace:*
+        version: link:../../packages/client-runtime
       '@circe/client-runtime':
         specifier: workspace:*
         version: link:../../packages/circe-client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@circe/core':
         specifier: workspace:*
         version: link:../../packages/circe-core
+      '@circe/mobile-markdown-text':
+        specifier: file:./modules/t3-markdown-text
+        version: file:apps/mobile/modules/t3-markdown-text(1359531fe5341de3de4ade560ef740c2)
+      '@circe/mobile-review-diff-native':
+        specifier: file:./modules/t3-review-diff
+        version: file:apps/mobile/modules/t3-review-diff
+      '@circe/mobile-terminal-native':
+        specifier: file:./modules/t3-terminal
+        version: file:apps/mobile/modules/t3-terminal
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@clerk/expo':
         specifier: 4.6.8
         version: 4.6.8(patch_hash=a82bb41039ee88a290a87d4ab58be7be4c49fa338603b17ea646e1ec140a1cfb)(dbc31631339ce74330e188d5d7a88158)
@@ -307,24 +325,6 @@ importers:
       '@shopify/react-native-skia':
         specifier: 2.11.2
         version: 2.11.2(415fa36fde24f9a550a06e8490b349a7)
-      '@t3tools/client-runtime':
-        specifier: workspace:*
-        version: link:../../packages/client-runtime
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@t3tools/mobile-markdown-text':
-        specifier: file:./modules/t3-markdown-text
-        version: file:apps/mobile/modules/t3-markdown-text(6f0a94b6f541bbd4be3f343e27991996)
-      '@t3tools/mobile-review-diff-native':
-        specifier: file:./modules/t3-review-diff
-        version: file:apps/mobile/modules/t3-review-diff
-      '@t3tools/mobile-terminal-native':
-        specifier: file:./modules/t3-terminal
-        version: file:apps/mobile/modules/t3-terminal
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@tabler/icons-react-native':
         specifier: ^3.44.0
         version: 3.44.0(react-native-svg@15.15.4(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react@19.2.3)
@@ -567,27 +567,27 @@ importers:
       '@circe/client-runtime':
         specifier: workspace:*
         version: link:../../packages/circe-client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@circe/core':
         specifier: workspace:*
         version: link:../../packages/circe-core
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
+      '@circe/ssh':
+        specifier: workspace:*
+        version: link:../../packages/ssh
+      '@circe/tailscale':
+        specifier: workspace:*
+        version: link:../../packages/tailscale
+      '@circe/web':
+        specifier: workspace:*
+        version: link:../web
       '@effect/vitest':
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(patch_hash=a16b1e870d8c29e4a98b17cc4c638a4ff471753d8ca3487f78a22b759caf951b)(effect@4.0.0-rc.112(patch_hash=8bef799f35729cf3465eb428196f617b434a7c9f658d56acb2874d74b21b98b2))
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      '@t3tools/ssh':
-        specifier: workspace:*
-        version: link:../../packages/ssh
-      '@t3tools/tailscale':
-        specifier: workspace:*
-        version: link:../../packages/tailscale
-      '@t3tools/web':
-        specifier: workspace:*
-        version: link:../web
       '@types/node':
         specifier: 24.12.4
         version: 24.12.4
@@ -612,12 +612,21 @@ importers:
       '@base-ui/react':
         specifier: ^1.4.1
         version: 1.5.0(@date-fns/tz@1.5.0)(@types/react@19.2.16)(date-fns@4.4.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
+      '@circe/client':
+        specifier: workspace:*
+        version: link:../../packages/client-runtime
       '@circe/client-runtime':
         specifier: workspace:*
         version: link:../../packages/circe-client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
       '@circe/core':
         specifier: workspace:*
         version: link:../../packages/circe-core
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@clerk/electron':
         specifier: 0.0.44
         version: 0.0.44(@clerk/electron-passkeys@0.0.3)(electron-store@8.2.0)(electron@44.1.0)(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -657,15 +666,6 @@ importers:
       '@pierre/trees':
         specifier: 1.0.0-beta.4
         version: 1.0.0-beta.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
-      '@t3tools/client-runtime':
-        specifier: workspace:*
-        version: link:../../packages/client-runtime
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       '@tanstack/react-pacer':
         specifier: ^0.19.4
         version: 0.19.4(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -814,6 +814,15 @@ importers:
 
   infra/relay:
     dependencies:
+      '@circe/client':
+        specifier: workspace:*
+        version: link:../../packages/client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@clerk/backend':
         specifier: 3.18.1
         version: 3.18.1(react-dom@19.2.6(react@19.2.6))(react@19.2.6)
@@ -826,15 +835,6 @@ importers:
       '@noble/hashes':
         specifier: 'catalog:'
         version: 1.8.0
-      '@t3tools/client-runtime':
-        specifier: workspace:*
-        version: link:../../packages/client-runtime
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
       alchemy:
         specifier: 2.0.0-beta.76
         version: 2.0.0-beta.76(197b68e0d20fdf20cf352009eca17c9f)
@@ -888,15 +888,15 @@ importers:
 
   packages/circe-client-runtime:
     dependencies:
+      '@circe/client':
+        specifier: workspace:*
+        version: link:../client-runtime
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@circe/core':
         specifier: workspace:*
         version: link:../circe-core
-      '@t3tools/client-runtime':
-        specifier: workspace:*
-        version: link:../client-runtime
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../contracts
       effect:
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(patch_hash=8bef799f35729cf3465eb428196f617b434a7c9f658d56acb2874d74b21b98b2)
@@ -910,7 +910,7 @@ importers:
 
   packages/circe-core:
     dependencies:
-      '@t3tools/contracts':
+      '@circe/contracts':
         specifier: workspace:*
         version: link:../contracts
       effect:
@@ -929,10 +929,10 @@ importers:
 
   packages/client-runtime:
     dependencies:
-      '@t3tools/contracts':
+      '@circe/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@t3tools/shared':
+      '@circe/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -1023,15 +1023,15 @@ importers:
 
   packages/shared:
     dependencies:
+      '@circe/contracts':
+        specifier: workspace:*
+        version: link:../contracts
       '@noble/curves':
         specifier: 'catalog:'
         version: 1.9.1
       '@noble/hashes':
         specifier: 'catalog:'
         version: 1.8.0
-      '@t3tools/contracts':
-        specifier: workspace:*
-        version: link:../contracts
       effect:
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(patch_hash=8bef799f35729cf3465eb428196f617b434a7c9f658d56acb2874d74b21b98b2)
@@ -1057,10 +1057,10 @@ importers:
 
   packages/ssh:
     dependencies:
-      '@t3tools/contracts':
+      '@circe/contracts':
         specifier: workspace:*
         version: link:../contracts
-      '@t3tools/shared':
+      '@circe/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -1082,7 +1082,7 @@ importers:
 
   packages/tailscale:
     dependencies:
-      '@t3tools/shared':
+      '@circe/shared':
         specifier: workspace:*
         version: link:../shared
       effect:
@@ -1101,6 +1101,12 @@ importers:
 
   scripts:
     dependencies:
+      '@circe/shared':
+        specifier: workspace:*
+        version: link:../packages/shared
+      '@circe/tailscale':
+        specifier: workspace:*
+        version: link:../packages/tailscale
       '@effect/platform-node':
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(bufferutil@4.1.0)(effect@4.0.0-rc.112(patch_hash=8bef799f35729cf3465eb428196f617b434a7c9f658d56acb2874d74b21b98b2))(redis@6.2.1)(utf-8-validate@6.0.6)
@@ -1110,12 +1116,6 @@ importers:
       '@electron/osx-sign':
         specifier: 2.7.0
         version: 2.7.0
-      '@t3tools/shared':
-        specifier: workspace:*
-        version: link:../packages/shared
-      '@t3tools/tailscale':
-        specifier: workspace:*
-        version: link:../packages/tailscale
       effect:
         specifier: 4.0.0-rc.112
         version: 4.0.0-rc.112(patch_hash=8bef799f35729cf3465eb428196f617b434a7c9f658d56acb2874d74b21b98b2)
@@ -1891,6 +1891,26 @@ packages:
 
   '@chevrotain/utils@10.5.0':
     resolution: {integrity: sha512-hBzuU5+JjB2cqNZyszkDHZgOSrUUT8V3dhgRl8Q9Gp6dAj/H5+KILGjbhDpc3Iy9qmqlm/akuOI2ut9VUtzJxQ==}
+
+  '@circe/mobile-markdown-text@file:apps/mobile/modules/t3-markdown-text':
+    resolution: {directory: apps/mobile/modules/t3-markdown-text, type: directory}
+    peerDependencies:
+      '@circe/client': '*'
+      '@circe/shared': '*'
+      expo: '*'
+      expo-asset: '*'
+      expo-clipboard: '*'
+      expo-haptics: '*'
+      expo-symbols: '*'
+      react: '*'
+      react-native: '*'
+      react-native-nitro-markdown: '*'
+
+  '@circe/mobile-review-diff-native@file:apps/mobile/modules/t3-review-diff':
+    resolution: {directory: apps/mobile/modules/t3-review-diff, type: directory}
+
+  '@circe/mobile-terminal-native@file:apps/mobile/modules/t3-terminal':
+    resolution: {directory: apps/mobile/modules/t3-terminal, type: directory}
 
   '@clack/core@1.4.2':
     resolution: {integrity: sha512-0Ty/1Gfm+Kb07sXcuESjyKfwEhSy4Ns1AgeEisHb/bDY5fWme0tTeTkU14T1Gmcs17YIjB/teiDe4uaCghbYqQ==}
@@ -5223,26 +5243,6 @@ packages:
   '@szmarczak/http-timer@4.0.6':
     resolution: {integrity: sha512-4BAffykYOgO+5nzBWYwE3W90sBgLJoUPRWWcL8wlyiM8IB8ipJz3UMJ9KXQd1RKQXpKp8Tutn80HZtWsu2u76w==}
     engines: {node: '>=10'}
-
-  '@t3tools/mobile-markdown-text@file:apps/mobile/modules/t3-markdown-text':
-    resolution: {directory: apps/mobile/modules/t3-markdown-text, type: directory}
-    peerDependencies:
-      '@t3tools/client-runtime': '*'
-      '@t3tools/shared': '*'
-      expo: '*'
-      expo-asset: '*'
-      expo-clipboard: '*'
-      expo-haptics: '*'
-      expo-symbols: '*'
-      react: '*'
-      react-native: '*'
-      react-native-nitro-markdown: '*'
-
-  '@t3tools/mobile-review-diff-native@file:apps/mobile/modules/t3-review-diff':
-    resolution: {directory: apps/mobile/modules/t3-review-diff, type: directory}
-
-  '@t3tools/mobile-terminal-native@file:apps/mobile/modules/t3-terminal':
-    resolution: {directory: apps/mobile/modules/t3-terminal, type: directory}
 
   '@tabler/icons-react-native@3.44.0':
     resolution: {integrity: sha512-/Ppp68bpl9vQQsI/c+YiDC9dnLq4JUo0YI5qP72OQMC1WmCaRzdYn3CU79q01M2L3MfXO9a8WctWN8ay1Odkow==}
@@ -12734,6 +12734,23 @@ snapshots:
 
   '@chevrotain/utils@10.5.0': {}
 
+  '@circe/mobile-markdown-text@file:apps/mobile/modules/t3-markdown-text(1359531fe5341de3de4ade560ef740c2)':
+    dependencies:
+      '@circe/client': link:packages/client-runtime
+      '@circe/shared': link:packages/shared
+      expo: 57.0.18(41fd11498a34454c91128cdad32f22f8)
+      expo-asset: 57.0.15(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)(typescript@7.0.2)
+      expo-clipboard: 57.0.1(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
+      expo-haptics: 57.0.2(expo@57.0.18)
+      expo-symbols: 57.0.2(expo-font@57.0.2(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
+      react: 19.2.3
+      react-native: 0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)
+      react-native-nitro-markdown: 0.5.8(react-native-nitro-modules@0.35.9(patch_hash=825622aae63a8fb5b904f3c77908a0e216261d727ea171709f2c0b6088422675)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
+
+  '@circe/mobile-review-diff-native@file:apps/mobile/modules/t3-review-diff': {}
+
+  '@circe/mobile-terminal-native@file:apps/mobile/modules/t3-terminal': {}
+
   '@clack/core@1.4.2':
     dependencies:
       fast-wrap-ansi: 0.2.2
@@ -15896,23 +15913,6 @@ snapshots:
   '@szmarczak/http-timer@4.0.6':
     dependencies:
       defer-to-connect: 2.0.1
-
-  '@t3tools/mobile-markdown-text@file:apps/mobile/modules/t3-markdown-text(6f0a94b6f541bbd4be3f343e27991996)':
-    dependencies:
-      '@t3tools/client-runtime': link:packages/client-runtime
-      '@t3tools/shared': link:packages/shared
-      expo: 57.0.18(41fd11498a34454c91128cdad32f22f8)
-      expo-asset: 57.0.15(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)(typescript@7.0.2)
-      expo-clipboard: 57.0.1(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
-      expo-haptics: 57.0.2(expo@57.0.18)
-      expo-symbols: 57.0.2(expo-font@57.0.2(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(expo@57.0.18)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
-      react: 19.2.3
-      react-native: 0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6)
-      react-native-nitro-markdown: 0.5.8(react-native-nitro-modules@0.35.9(patch_hash=825622aae63a8fb5b904f3c77908a0e216261d727ea171709f2c0b6088422675)(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native-svg@15.15.4(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3)
-
-  '@t3tools/mobile-review-diff-native@file:apps/mobile/modules/t3-review-diff': {}
-
-  '@t3tools/mobile-terminal-native@file:apps/mobile/modules/t3-terminal': {}
 
   '@tabler/icons-react-native@3.44.0(react-native-svg@15.15.4(react-native@0.86.3(@babel/core@7.29.7)(@react-native/metro-config@0.86.3(@babel/core@7.29.7)(bufferutil@4.1.0)(utf-8-validate@6.0.6))(@types/react@19.2.16)(bufferutil@4.1.0)(react@19.2.3)(utf-8-validate@6.0.6))(react@19.2.3))(react@19.2.3)':
     dependencies:

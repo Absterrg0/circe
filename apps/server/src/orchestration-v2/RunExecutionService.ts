@@ -1,5 +1,5 @@
 import { makeAssistantStreamingFilter } from "./assistantStreaming.ts";
-import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { resolveProjectSettings } from "@circe/shared/projectSettings";
 import {
   CommandId,
   type EventId,
@@ -22,7 +22,7 @@ import {
   type RunAttemptId,
   type ThreadId,
   type TurnItemId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -525,7 +525,7 @@ export interface RunExecutionServiceV2Shape {
 export class RunExecutionServiceV2 extends Context.Service<
   RunExecutionServiceV2,
   RunExecutionServiceV2Shape
->()("t3/orchestration-v2/RunExecutionService/RunExecutionServiceV2") {}
+>()("@absterrg0/circe/orchestration-v2/RunExecutionService/RunExecutionServiceV2") {}
 
 /**
  * IMPLEMENTATIONS

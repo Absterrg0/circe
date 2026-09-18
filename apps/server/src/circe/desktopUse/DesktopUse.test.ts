@@ -1,4 +1,4 @@
-import { DesktopUsePolicyError } from "@t3tools/contracts";
+import { DesktopUsePolicyError } from "@circe/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

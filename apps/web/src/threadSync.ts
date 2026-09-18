@@ -1,4 +1,4 @@
-import type { EnvironmentThreadStatus } from "@t3tools/client-runtime/state/threads";
+import type { EnvironmentThreadStatus } from "@circe/client/state/threads";
 
 export type ThreadSyncPhase = "loading" | "syncing";
 

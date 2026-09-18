@@ -9,7 +9,7 @@ import type {
   CirceTaskRef,
   CirceTaskDeskTaskView,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
 import { resolveCirceProjectChoice } from "@circe/core/projectChoice";
 

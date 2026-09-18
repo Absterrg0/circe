@@ -9,7 +9,7 @@ it("formats package runner commands from their cache entry paths", () => {
       "npx @absterrg0/circe serve",
     ],
     [
-      "C:\\Users\\theo\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\t3\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\npm-cache\\_npx\\abc\\node_modules\\circe\\dist\\bin.mjs",
       "npx @absterrg0/circe serve",
     ],
     [
@@ -21,7 +21,7 @@ it("formats package runner commands from their cache entry paths", () => {
       "pnpm dlx @absterrg0/circe serve",
     ],
     [
-      "C:\\Users\\theo\\AppData\\Local\\pnpm-cache\\dlx\\abc\\node_modules\\t3\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\pnpm-cache\\dlx\\abc\\node_modules\\circe\\dist\\bin.mjs",
       "pnpm dlx @absterrg0/circe serve",
     ],
     [
@@ -33,7 +33,7 @@ it("formats package runner commands from their cache entry paths", () => {
       "bunx @absterrg0/circe serve",
     ],
     [
-      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-@absterrg0/circe@latest\\node_modules\\t3\\dist\\bin.mjs",
+      "C:\\Users\\theo\\AppData\\Local\\Temp\\bunx-0-@absterrg0/circe@latest\\node_modules\\circe\\dist\\bin.mjs",
       "bunx @absterrg0/circe serve",
     ],
   ] as const) {

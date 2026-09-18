@@ -1,5 +1,5 @@
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
-import { EnvironmentId, ProjectId, ThreadId, ProviderInstanceId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ThreadId, ProviderInstanceId } from "@circe/contracts";
 import type { DependencyList, EffectCallback } from "react";
 import * as Cause from "effect/Cause";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vite-plus/test";

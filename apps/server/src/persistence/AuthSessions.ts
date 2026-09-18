@@ -12,7 +12,7 @@ import {
   AuthSessionId,
   ClientSurface,
   ServerAuthSessionMethod,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import {
   type AuthSessionRepositoryError,

@@ -1,4 +1,4 @@
-import type { VoiceTranscriber } from "@t3tools/client-runtime/voice-input";
+import type { VoiceTranscriber } from "@circe/client/voice-input";
 import type { LocalLiveVoiceRecognizer } from "./voiceTranscription.android";
 
 export function getLocalVoiceTranscriber(): VoiceTranscriber | null {

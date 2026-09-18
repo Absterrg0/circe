@@ -1,5 +1,5 @@
-import type { ServerSelfUpdateOutcome } from "@t3tools/contracts";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
+import type { ServerSelfUpdateOutcome } from "@circe/contracts";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -34,7 +34,7 @@ export class ServiceLauncherClientError extends Schema.TaggedError<ServiceLaunch
       case "decode-context":
         return "The service launcher supplied invalid startup context.";
       case "version-mismatch":
-        return "The service launcher started a different t3 version.";
+        return "The service launcher started a different Circe version.";
       case "ipc-unavailable":
         return "The service launcher IPC channel is unavailable.";
       case "unmanaged":

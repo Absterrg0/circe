@@ -4,7 +4,7 @@ import {
   type OrchestrationV2DomainEvent,
   ProviderThreadId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -71,7 +71,7 @@ export interface CheckpointRollbackServiceV2Shape {
 export class CheckpointRollbackServiceV2 extends Context.Service<
   CheckpointRollbackServiceV2,
   CheckpointRollbackServiceV2Shape
->()("t3/orchestration-v2/CheckpointRollbackService/CheckpointRollbackServiceV2") {}
+>()("@absterrg0/circe/orchestration-v2/CheckpointRollbackService/CheckpointRollbackServiceV2") {}
 
 export const layer: Layer.Layer<
   CheckpointRollbackServiceV2,

@@ -3,10 +3,10 @@ import {
   type CirceLiveVoiceReleaseInput,
   type CirceLiveVoiceCreateInput,
   type CirceLiveVoiceRenewInput,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
-import { request } from "@t3tools/client-runtime/rpc";
+import { request } from "@circe/client/rpc";
 
 /**
  * Mint one GPT-Live WebRTC session on the node. The node owns the API key;
@@ -37,7 +37,7 @@ export const renewCirceVoiceLiveSession = Effect.fn("Circe.voiceLiveRenew")(func
 });
 
 export const lookupCirceQuickAnswer = Effect.fn("Circe.quickLookup")(function* (
-  input: import("@t3tools/contracts").CirceQuickLookupInput,
+  input: import("@circe/contracts").CirceQuickLookupInput,
 ) {
   return yield* request(WS_METHODS.circeQuickLookup, input);
 });

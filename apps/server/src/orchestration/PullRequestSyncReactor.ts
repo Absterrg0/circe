@@ -1,4 +1,4 @@
-import { siblingPullRequestUrl } from "@t3tools/shared/changeRequestUrl";
+import { siblingPullRequestUrl } from "@circe/shared/changeRequestUrl";
 import {
   CommandId,
   type OrchestrationV2ThreadShell,
@@ -7,14 +7,14 @@ import {
   type ThreadPullRequestLink,
   type ThreadPullRequestSnapshot,
   type ThreadPullRequestStack,
-} from "@t3tools/contracts";
-import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
+} from "@circe/contracts";
+import { makeDrainableWorker } from "@circe/shared/DrainableWorker";
 import {
   threadPullRequestKeyOf,
   normalizeThreadPullRequestKey,
   threadPullRequestKeysEqual,
   visibleThreadPullRequests,
-} from "@t3tools/shared/threadPullRequests";
+} from "@circe/shared/threadPullRequests";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";

@@ -4,12 +4,12 @@ import {
   UserInputAttachmentAnswerPayload,
   type ChatAttachment,
   ThreadId,
-} from "@t3tools/contracts";
-import { compareDateTimeStrings } from "@t3tools/shared/dateTime";
+} from "@circe/contracts";
+import { compareDateTimeStrings } from "@circe/shared/dateTime";
 import type {
   OrchestrationEvent,
   OrchestrationSessionStatus,
-} from "@t3tools/contracts/legacy-orchestration";
+} from "@circe/contracts/legacy-orchestration";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -21,7 +21,7 @@ import * as SqlClient from "effect/unstable/sql/SqlClient";
 import {
   legacyThreadPullRequestKey,
   threadPullRequestKeysEqual,
-} from "@t3tools/shared/threadPullRequests";
+} from "@circe/shared/threadPullRequests";
 
 import { toPersistenceSqlError, type ProjectionRepositoryError } from "../../persistence/Errors.ts";
 import { OrchestrationEventStore } from "../../persistence/Services/OrchestrationEventStore.ts";

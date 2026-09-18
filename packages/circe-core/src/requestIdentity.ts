@@ -1,4 +1,4 @@
-import type { EnvironmentId, CirceRequestMetadata } from "@t3tools/contracts";
+import type { EnvironmentId, CirceRequestMetadata } from "@circe/contracts";
 
 /**
  * Derive the deterministic scope used by Circe command IDs.

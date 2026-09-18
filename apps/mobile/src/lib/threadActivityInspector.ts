@@ -1,7 +1,7 @@
-import type { V2ItemSupport } from "@t3tools/client-runtime/state/item-support";
-import { toolItemForDisplay } from "@t3tools/client-runtime/work-log/presentation";
-import type { ThreadId } from "@t3tools/contracts";
-import { formatDuration } from "@t3tools/shared/orchestrationTiming";
+import type { V2ItemSupport } from "@circe/client/state/item-support";
+import { toolItemForDisplay } from "@circe/client/work-log/presentation";
+import type { ThreadId } from "@circe/contracts";
+import { formatDuration } from "@circe/shared/orchestrationTiming";
 import * as DateTime from "effect/DateTime";
 
 import type { ThreadFeedActivity } from "./threadActivity";

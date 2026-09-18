@@ -4,7 +4,7 @@ import {
   ThreadId,
   TurnId,
   type CircePresentationEvent,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it, vi, beforeEach } from "vite-plus/test";
 
 import {

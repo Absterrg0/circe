@@ -14,7 +14,7 @@ import {
   type CirceExecutionResult,
   type CirceNodeCapabilities,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Deferred from "effect/Deferred";
@@ -33,13 +33,13 @@ import {
   type PreparedConnection,
   type NetworkStatus,
   type SupervisorConnectionState,
-} from "@t3tools/client-runtime/connection";
-import * as EnvironmentSupervisor from "@t3tools/client-runtime/connection";
+} from "@circe/client/connection";
+import * as EnvironmentSupervisor from "@circe/client/connection";
 import {
   EnvironmentRpcUnavailableError,
   type WsRpcProtocolClient,
   type RpcSession,
-} from "@t3tools/client-runtime/rpc";
+} from "@circe/client/rpc";
 import {
   CirceMeshNodeUnavailableError,
   CIRCE_MESH_REFRESH_CONCURRENCY,
@@ -147,7 +147,7 @@ const makeNode = Effect.fn("CirceMeshTest.makeNode")(function* (input: {
   readonly executeResult?: CirceExecutionResult;
   readonly executeFailure?: CirceExecutionError;
   readonly cancelResult?: CirceCancelRequestResult;
-  readonly interpretResult?: import("@t3tools/contracts").CirceSemanticProposal;
+  readonly interpretResult?: import("@circe/contracts").CirceSemanticProposal;
 }) {
   const target = new PrimaryConnectionTarget({
     environmentId: input.nodeId,

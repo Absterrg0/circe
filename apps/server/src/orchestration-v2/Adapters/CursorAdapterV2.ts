@@ -7,7 +7,7 @@ import type {
   SDKUserMessage,
   ToolCall,
 } from "@cursor/sdk";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
 import {
   CursorSettings,
   defaultInstanceIdForDriver,
@@ -26,7 +26,7 @@ import {
   type OrchestrationV2TurnItem,
   type ProviderInstanceId,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -319,7 +319,7 @@ export function makeCursorAgentOptions(input: {
   const mcpServers = cursorMcpServers(input.threadId);
   return {
     model: cursorSdkModelSelection(input.modelSelection),
-    name: `T3 Code ${input.threadId}`,
+    name: `Circe ${input.threadId}`,
     mode: input.runtimePolicy.interactionMode === "plan" ? "plan" : "agent",
     ...(input.apiKey === undefined ? {} : { apiKey: input.apiKey }),
     local: {

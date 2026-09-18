@@ -1,5 +1,5 @@
-import type { EnvironmentId } from "@t3tools/contracts";
-import { RELAY_DEFAULT_ENABLED_DEVICE_LIMIT } from "@t3tools/contracts/relay";
+import type { EnvironmentId } from "@circe/contracts";
+import { RELAY_DEFAULT_ENABLED_DEVICE_LIMIT } from "@circe/contracts/relay";
 import { useState } from "react";
 
 import {

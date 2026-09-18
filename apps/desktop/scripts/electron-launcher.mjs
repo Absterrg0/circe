@@ -111,14 +111,14 @@ function shellSingleQuote(value) {
 export function makeDevelopmentEnvironmentScript(environment) {
   const envEntries = [
     ["VITE_DEV_SERVER_URL", environment.VITE_DEV_SERVER_URL],
-    ["T3CODE_PORT", environment.T3CODE_PORT],
-    ["T3CODE_HOME", environment.T3CODE_HOME],
-    ["T3CODE_COMMIT_HASH", environment.T3CODE_COMMIT_HASH],
-    ["T3CODE_OTLP_TRACES_URL", environment.T3CODE_OTLP_TRACES_URL],
-    ["T3CODE_OTLP_EXPORT_INTERVAL_MS", environment.T3CODE_OTLP_EXPORT_INTERVAL_MS],
-    ["T3CODE_OTLP_HEADERS", environment.T3CODE_OTLP_HEADERS],
-    ["T3CODE_OTLP_PROTOCOL", environment.T3CODE_OTLP_PROTOCOL],
-    ["T3CODE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
+    ["CIRCE_PORT", environment.CIRCE_PORT],
+    ["CIRCE_HOME", environment.CIRCE_HOME],
+    ["CIRCE_COMMIT_HASH", environment.CIRCE_COMMIT_HASH],
+    ["CIRCE_OTLP_TRACES_URL", environment.CIRCE_OTLP_TRACES_URL],
+    ["CIRCE_OTLP_EXPORT_INTERVAL_MS", environment.CIRCE_OTLP_EXPORT_INTERVAL_MS],
+    ["CIRCE_OTLP_HEADERS", environment.CIRCE_OTLP_HEADERS],
+    ["CIRCE_OTLP_PROTOCOL", environment.CIRCE_OTLP_PROTOCOL],
+    ["CIRCE_DESKTOP_APP_USER_MODEL_ID", APP_BUNDLE_ID],
   ].filter((entry) => typeof entry[1] === "string" && entry[1].trim().length > 0);
   return [
     ...envEntries.map(
@@ -270,8 +270,8 @@ export function resolveMacBundleInfoPlistStrings(executableName) {
     CFBundleExecutable: executableName,
     CFBundleIconFile: "icon.icns",
     NSScreenCaptureUsageDescription:
-      "T3 Code captures the active window when you use the snapshot shortcut.",
-    NSDocumentsFolderUsageDescription: "T3 Code reads project files you open in the desktop app.",
+      "Circe captures the active window when you use the snapshot shortcut.",
+    NSDocumentsFolderUsageDescription: "Circe reads project files you open in the desktop app.",
   };
 }
 
@@ -402,7 +402,7 @@ function buildMacLauncher(electronBinaryPath) {
   if (isDevelopment) {
     // Keep Electron's native executable inside the branded bundle. Launching the
     // node_modules copy makes macOS associate the process (and Dock label) with
-    // Electron.app even though this bundle's Info.plist has the T3 Code name.
+    // Electron.app even though this bundle's Info.plist has the Circe name.
     // Its conventional executable name also keeps Electron's default-app runtime
     // in development mode instead of making app.isPackaged report true.
     writeDevelopmentEnvironmentScript();

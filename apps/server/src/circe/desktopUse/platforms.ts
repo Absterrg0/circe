@@ -5,7 +5,7 @@ import type {
   DesktopUseModifier,
   DesktopUseMouseButton,
   DesktopUsePlatform,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   captureWindowsScript,
   dragWindowsScript,

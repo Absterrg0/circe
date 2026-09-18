@@ -1,4 +1,4 @@
-import { createAuthEnvironmentAtoms } from "@t3tools/client-runtime/state/auth";
+import { createAuthEnvironmentAtoms } from "@circe/client/state/auth";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

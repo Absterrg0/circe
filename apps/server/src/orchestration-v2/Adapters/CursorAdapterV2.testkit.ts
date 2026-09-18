@@ -5,7 +5,7 @@ import {
   type ModelSelection,
   type ProviderReplayTranscript,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";

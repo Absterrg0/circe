@@ -1,4 +1,4 @@
-import { OrchestratorMcpFailure } from "@t3tools/contracts";
+import { OrchestratorMcpFailure } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Preview from "../../../preview/Manager.ts";
 import * as ServerSettings from "../../../serverSettings.ts";

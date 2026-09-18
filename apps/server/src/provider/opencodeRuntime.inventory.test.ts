@@ -13,7 +13,7 @@ import {
   HostProcessEnvironment,
   HostProcessExecutablePath,
   HostProcessPlatform,
-} from "@t3tools/shared/hostProcess";
+} from "@circe/shared/hostProcess";
 
 import { OpenCodeRuntime, OpenCodeRuntimeLive } from "./opencodeRuntime.ts";
 
@@ -239,8 +239,8 @@ it.layer(testLayer)("OpenCodeRuntime inventory", (it) => {
         [
           ...(isWindows ? ["@echo off"] : ["#!/bin/sh"]),
           isWindows
-            ? '"%T3_TEST_NODE_BINARY%" "%T3_TEST_OPENCODE_SCRIPT%" %*'
-            : 'exec "$T3_TEST_NODE_BINARY" "$T3_TEST_OPENCODE_SCRIPT" "$@"',
+            ? '"%CIRCE_TEST_NODE_BINARY%" "%CIRCE_TEST_OPENCODE_SCRIPT%" %*'
+            : 'exec "$CIRCE_TEST_NODE_BINARY" "$CIRCE_TEST_OPENCODE_SCRIPT" "$@"',
           "",
         ].join("\n"),
       );
@@ -254,8 +254,8 @@ it.layer(testLayer)("OpenCodeRuntime inventory", (it) => {
         cwd: tempDir,
         environment: {
           ...hostEnvironment,
-          T3_TEST_NODE_BINARY: executablePath,
-          T3_TEST_OPENCODE_SCRIPT: scriptPath,
+          CIRCE_TEST_NODE_BINARY: executablePath,
+          CIRCE_TEST_OPENCODE_SCRIPT: scriptPath,
         },
       });
 

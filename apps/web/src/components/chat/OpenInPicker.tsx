@@ -3,7 +3,7 @@ import {
   EditorId,
   type EnvironmentId,
   type ResolvedKeybindingsConfig,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { isOpenFavoriteEditorShortcut, shortcutLabelForCommand } from "../../keybindings";
 import { usePreferredEditor } from "../../editorPreferences";

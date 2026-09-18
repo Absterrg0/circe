@@ -1,4 +1,4 @@
-import type { CirceTaskRef, ThreadId, TurnId } from "@t3tools/contracts";
+import type { CirceTaskRef, ThreadId, TurnId } from "@circe/contracts";
 
 import {
   isCirceSpeechRequestStale,

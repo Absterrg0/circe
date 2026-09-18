@@ -1,6 +1,6 @@
 import { NodeServices } from "@effect/platform-node";
 import { expect, it } from "@effect/vitest";
-import { type DesktopUseAction } from "@t3tools/contracts";
+import { type DesktopUseAction } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as FileSystem from "effect/FileSystem";
@@ -8,7 +8,7 @@ import * as Deferred from "effect/Deferred";
 import * as Fiber from "effect/Fiber";
 import * as TestClock from "effect/testing/TestClock";
 import { PNG } from "pngjs";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as Config from "../../config.ts";
 import * as Driver from "./DesktopDriver.ts";
 import * as Use from "./DesktopUse.ts";

@@ -351,9 +351,9 @@ async function pruneRuntimePayload(source: string): Promise<void> {
 
   async function visit(directory: string): Promise<void> {
     const packageName = await packageNameAt(directory);
-    if (packageName === "@t3tools/web") {
+    if (packageName === "@circe/web") {
       if (NodePath.resolve(directory) === root) {
-        throw new Error("The standalone runtime root cannot be the @t3tools/web package.");
+        throw new Error("The standalone runtime root cannot be the @circe/web package.");
       }
       await NodeFSP.rm(directory, { recursive: true, force: true });
       return;

@@ -31,7 +31,7 @@ repo_root="$(git rev-parse --show-toplevel)"
 cd "$repo_root"
 
 if ! pairing_output="$({
-  T3CODE_PORT="$server_port" node apps/server/src/bin.ts auth pairing create \
+  CIRCE_PORT="$server_port" node apps/server/src/bin.ts auth pairing create \
     --base-dir "$base_dir" \
     --base-url "$mobile_origin" \
     --ttl 15m \

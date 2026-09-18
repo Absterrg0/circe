@@ -6,4 +6,4 @@ export {
   toSortableTimestamp,
   type SettledThreadTimestampInput,
   type ThreadSortInput,
-} from "@t3tools/client-runtime/state/thread-sort";
+} from "@circe/client/state/thread-sort";

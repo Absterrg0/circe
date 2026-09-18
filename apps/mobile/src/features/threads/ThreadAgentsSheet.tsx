@@ -1,7 +1,7 @@
 import { useAtomValue } from "@effect/atom-react";
-import type { ThreadTurnSubagents } from "@t3tools/client-runtime/state/thread-subagents";
-import type { EnvironmentId, OrchestrationV2Subagent, ThreadId } from "@t3tools/contracts";
-import { formatDuration } from "@t3tools/shared/orchestrationTiming";
+import type { ThreadTurnSubagents } from "@circe/client/state/thread-subagents";
+import type { EnvironmentId, OrchestrationV2Subagent, ThreadId } from "@circe/contracts";
+import { formatDuration } from "@circe/shared/orchestrationTiming";
 import { StackActions, useNavigation, type StaticScreenProps } from "@react-navigation/native";
 import * as DateTime from "effect/DateTime";
 import * as Haptics from "expo-haptics";

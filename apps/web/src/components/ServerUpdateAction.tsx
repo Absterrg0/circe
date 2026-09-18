@@ -1,9 +1,9 @@
-import type { EnvironmentId, ServerSelfUpdateCapability } from "@t3tools/contracts";
-import type { ServerUpdateStage, ServerUpdateState } from "@t3tools/client-runtime/state/server";
+import type { EnvironmentId, ServerSelfUpdateCapability } from "@circe/contracts";
+import type { ServerUpdateStage, ServerUpdateState } from "@circe/client/state/server";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 import { CircleArrowUpIcon } from "lucide-react";
 import { type ComponentProps, useRef, useState } from "react";
 

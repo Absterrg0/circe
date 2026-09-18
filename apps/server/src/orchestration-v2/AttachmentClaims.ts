@@ -1,5 +1,5 @@
 import * as FileSystem from "effect/FileSystem";
-import { ChatAttachmentId, type ChatAttachment } from "@t3tools/contracts";
+import { ChatAttachmentId, type ChatAttachment } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 

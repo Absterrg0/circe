@@ -2,8 +2,8 @@
  * UsageService - scans provider transcripts and returns priced usage buckets.
  *
  * The scan reads the provider CLIs' own session files (Claude Code, Codex, and
- * Grok Build) rather than T3 Code's orchestration projections, so usage covers
- * turns driven outside T3 Code too. This is the approach `ccusage` takes.
+ * Grok Build) rather than Circe's orchestration projections, so usage covers
+ * turns driven outside Circe too. This is the approach `ccusage` takes.
  *
  * Transcripts are append-only, so parsed records are memoised per file by
  * `(size, mtime)`. A cold 30-day scan of ~1.4 GB lands around 2-3 seconds; warm
@@ -26,8 +26,8 @@ import {
   type UsageSummary,
   type UsageSummaryInput,
   UsageReadError,
-} from "@t3tools/contracts";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
+} from "@circe/contracts";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
 import * as Cause from "effect/Cause";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";

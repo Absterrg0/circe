@@ -1,13 +1,13 @@
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import { LegendList } from "@legendapp/list/react-native";
 import {
   type EnvironmentId,
   type EnvironmentMachineKind,
   resolveEnvironmentMachineKind,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { MenuAction } from "@react-native-menu/menu";
 import { NativeHeaderToolbar, NativeStackScreenOptions } from "../../native/StackHeader";
 import { SymbolView } from "../../components/AppSymbol";

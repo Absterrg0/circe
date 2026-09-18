@@ -1,4 +1,4 @@
-import { projectComposerContextForProvider } from "@t3tools/shared/composerContextReferences";
+import { projectComposerContextForProvider } from "@circe/shared/composerContextReferences";
 import {
   CommandId,
   type OrchestrationV2DomainEvent,
@@ -9,7 +9,7 @@ import {
   type OrchestrationV2TurnItem,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
@@ -58,7 +58,7 @@ export interface ProviderTurnStartServiceV2Shape {
 export class ProviderTurnStartServiceV2 extends Context.Service<
   ProviderTurnStartServiceV2,
   ProviderTurnStartServiceV2Shape
->()("t3/orchestration-v2/ProviderTurnStartService/ProviderTurnStartServiceV2") {}
+>()("@absterrg0/circe/orchestration-v2/ProviderTurnStartService/ProviderTurnStartServiceV2") {}
 
 export const layer: Layer.Layer<
   ProviderTurnStartServiceV2,

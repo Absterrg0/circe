@@ -4,7 +4,7 @@ import type {
   PullRequestChecksState,
   PullRequestRef,
   ScopedThreadRef,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { ChevronDownIcon } from "lucide-react";
 import { useState } from "react";
 

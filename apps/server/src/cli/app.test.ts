@@ -6,14 +6,14 @@ import * as NodePath from "node:path";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { it } from "@effect/vitest";
-import type { DesktopAppActivationRequest } from "@t3tools/contracts";
-import { resolveDesktopAppControlAddress } from "@t3tools/shared/desktopAppControl";
+import type { DesktopAppActivationRequest } from "@circe/contracts";
+import { resolveDesktopAppControlAddress } from "@circe/shared/desktopAppControl";
 import {
   HostProcessPlatform,
   HostProcessUserId,
   HostProcessWorkingDirectory,
-} from "@t3tools/shared/hostProcess";
-import * as NetService from "@t3tools/shared/Net";
+} from "@circe/shared/hostProcess";
+import * as NetService from "@circe/shared/Net";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -132,9 +132,9 @@ const withTempDirectory = <A, E, R>(
 
 describe("circe app", () => {
   it.effect("rejects SSH before it tries to reach a desktop app", () =>
-    withTempDirectory("t3-app-ssh-test-", (root) =>
+    withTempDirectory("circe-app-ssh-test-", (root) =>
       Effect.gen(function* () {
-        const baseDir = NodePath.join(root, "missing-t3-home");
+        const baseDir = NodePath.join(root, "missing-circe-home");
         const error = yield* runCli(["app", "--base-dir", baseDir], {
           SSH_CONNECTION: "client server",
         }).pipe(Effect.flip);
@@ -150,9 +150,9 @@ describe("circe app", () => {
   );
 
   it.effect("rejects unsupported platforms without creating state", () =>
-    withTempDirectory("t3-app-platform-test-", (root) =>
+    withTempDirectory("circe-app-platform-test-", (root) =>
       Effect.gen(function* () {
-        const baseDir = NodePath.join(root, "missing-t3-home");
+        const baseDir = NodePath.join(root, "missing-circe-home");
         const error = yield* runCli(["app", "--base-dir", baseDir]).pipe(
           Effect.provideService(HostProcessPlatform, "freebsd"),
           Effect.flip,
@@ -169,16 +169,16 @@ describe("circe app", () => {
   );
 
   it.effect("does not create state when only a server or no desktop app is running", () =>
-    withTempDirectory("t3-app-missing-test-", (root) =>
+    withTempDirectory("circe-app-missing-test-", (root) =>
       Effect.gen(function* () {
-        const baseDir = NodePath.join(root, "missing-t3-home");
+        const baseDir = NodePath.join(root, "missing-circe-home");
         const error = yield* runCli(["app", "--base-dir", baseDir]).pipe(Effect.flip);
 
         expect(error).toMatchObject({
           _tag: "DesktopAppUnreachableError",
           candidateAddresses: [expect.any(String)],
           workspaceRoot: yield* HostProcessWorkingDirectory,
-          message: expect.stringContaining("Could not reach the T3 Code desktop app."),
+          message: expect.stringContaining("Could not reach the Circe desktop app."),
           cause: { code: "ENOENT" },
         });
         expect(yield* pathExists(baseDir)).toBe(false);
@@ -186,16 +186,16 @@ describe("circe app", () => {
     ),
   );
 
-  it.effect("uses T3CODE_HOME or --base-dir and sends the default or explicit path", () =>
-    withTempDirectory("t3-app-command-test-", (root) =>
+  it.effect("uses CIRCE_HOME or --base-dir and sends the default or explicit path", () =>
+    withTempDirectory("circe-app-command-test-", (root) =>
       Effect.gen(function* () {
-        const baseDir = NodePath.join(root, "t3-home");
+        const baseDir = NodePath.join(root, "circe-home");
         const explicitPath = NodePath.join(root, "project");
         const platform = yield* HostProcessPlatform;
         const workingDirectory = yield* HostProcessWorkingDirectory;
         const desktop = yield* fakeDesktop({ baseDir });
 
-        yield* runCli(["app"], { T3CODE_HOME: baseDir });
+        yield* runCli(["app"], { CIRCE_HOME: baseDir });
         yield* runCli(["app", explicitPath, "--base-dir", baseDir]);
 
         expect(desktop.received.map((request) => request.workspaceRoot)).toEqual([
@@ -208,7 +208,7 @@ describe("circe app", () => {
   );
 
   it.effect("prefers the installed desktop app when a dev desktop is also running", () =>
-    withTempDirectory("t3-app-preferred-test-", (root) =>
+    withTempDirectory("circe-app-preferred-test-", (root) =>
       Effect.gen(function* () {
         vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, ".circe");
@@ -224,14 +224,14 @@ describe("circe app", () => {
   );
 
   it.effect("finds the dev desktop when the default desktop socket is absent", () =>
-    withTempDirectory("t3-app-dev-test-", (root) =>
+    withTempDirectory("circe-app-dev-test-", (root) =>
       Effect.gen(function* () {
         vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, ".circe");
         const development = yield* fakeDesktop({ baseDir, stateSubdirectory: "dev" });
 
         yield* runCli(["app"]);
-        yield* runCli(["app"], { T3CODE_HOME: "   " });
+        yield* runCli(["app"], { CIRCE_HOME: "   " });
 
         expect(development.received).toHaveLength(2);
         expect(yield* pathExists(baseDir)).toBe(false);
@@ -240,14 +240,14 @@ describe("circe app", () => {
   );
 
   it.effect("never searches a dev state directory for an explicit T3 home", () =>
-    withTempDirectory("t3-app-explicit-test-", (root) =>
+    withTempDirectory("circe-app-explicit-test-", (root) =>
       Effect.gen(function* () {
         vi.mocked(NodeOS.homedir).mockReturnValue(root);
         const baseDir = NodePath.join(root, ".circe");
         const development = yield* fakeDesktop({ baseDir, stateSubdirectory: "dev" });
 
         const flagError = yield* runCli(["app", "--base-dir", baseDir]).pipe(Effect.flip);
-        const envError = yield* runCli(["app"], { T3CODE_HOME: baseDir }).pipe(Effect.flip);
+        const envError = yield* runCli(["app"], { CIRCE_HOME: baseDir }).pipe(Effect.flip);
 
         expect(flagError).toMatchObject({ _tag: "DesktopAppUnreachableError" });
         expect(envError).toMatchObject({ _tag: "DesktopAppUnreachableError" });
@@ -258,7 +258,7 @@ describe("circe app", () => {
 
   for (const responseKind of ["failure", "invalid"] as const) {
     it.effect(`never falls back after the default desktop sends a ${responseKind} response`, () =>
-      withTempDirectory("t3-app-response-test-", (root) =>
+      withTempDirectory("circe-app-response-test-", (root) =>
         Effect.gen(function* () {
           vi.mocked(NodeOS.homedir).mockReturnValue(root);
           const baseDir = NodePath.join(root, ".circe");

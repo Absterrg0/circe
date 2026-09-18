@@ -6,7 +6,7 @@ import {
   ThreadId,
   ProviderInstanceId,
   circeNodeCapabilitiesForPreset,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 import { reactHookHarness as hooks } from "../../../../web/src/test/reactHookHarness";
 

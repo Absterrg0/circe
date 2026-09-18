@@ -3,7 +3,7 @@ import type {
   AuthClientPresentationMetadata,
   ClientOs,
   DesktopBridge,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { APP_BASE_NAME } from "../branding.ts";
 
 interface BrowserIdentity {

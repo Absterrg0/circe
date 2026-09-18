@@ -1,4 +1,4 @@
-import { imageMimeType } from "@t3tools/shared/image";
+import { imageMimeType } from "@circe/shared/image";
 import type {
   ChatFileAttachment as ContractChatFileAttachment,
   ChatImageAttachment as ContractChatImageAttachment,
@@ -14,17 +14,17 @@ import type {
   RunId,
   RuntimeMode,
   ScheduledTaskId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
   ThreadRunSummary,
   ThreadRuntimeSummary,
-} from "@t3tools/client-runtime/state/shell";
-import type { ThreadCheckpointSummary } from "@t3tools/client-runtime/state/thread-checkpoints";
-import { videoMimeType } from "@t3tools/shared/video";
+} from "@circe/client/state/shell";
+import type { ThreadCheckpointSummary } from "@circe/client/state/thread-checkpoints";
+import { videoMimeType } from "@circe/shared/video";
 
-export { videoMimeType } from "@t3tools/shared/video";
+export { videoMimeType } from "@circe/shared/video";
 
 export type SessionPhase = "disconnected" | "connecting" | "ready" | "running";
 export const DEFAULT_RUNTIME_MODE: RuntimeMode = "full-access";
@@ -88,7 +88,7 @@ export function isBrowserPreviewAttachment(attachment: ChatFileAttachment): bool
 }
 
 export interface ChatMessage {
-  readonly context?: import("@t3tools/contracts").OrchestrationMessageContext | undefined;
+  readonly context?: import("@circe/contracts").OrchestrationMessageContext | undefined;
   readonly id: MessageId;
   readonly role: "user" | "assistant" | "system";
   readonly text: string;

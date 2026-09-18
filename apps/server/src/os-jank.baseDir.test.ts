@@ -12,7 +12,7 @@ import { ForeignBaseDirectoryError, resolveBaseDir } from "./os-jank.ts";
 const isForeignBaseDirectoryError = Schema.is(ForeignBaseDirectoryError);
 
 it.layer(NodeServices.layer)("resolveBaseDir", (it) => {
-  it.effect("defaults to ~/.circe, never the separate T3 Code home", () =>
+  it.effect("defaults to ~/.circe, never the separate Circe home", () =>
     Effect.gen(function* () {
       const baseDir = yield* resolveBaseDir(undefined);
 

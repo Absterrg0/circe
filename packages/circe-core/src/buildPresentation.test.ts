@@ -7,7 +7,7 @@ import {
   ThreadId,
   TurnId,
   type OrchestrationThread,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {

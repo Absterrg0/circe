@@ -7,10 +7,10 @@ import {
   type ChatAttachment,
   type ModelSelection,
   type OpenCodeSettings,
-} from "@t3tools/contracts";
-import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@t3tools/shared/git";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
-import { extractJsonObject } from "@t3tools/shared/schemaJson";
+} from "@circe/contracts";
+import { sanitizeBranchFragment, sanitizeFeatureBranchName } from "@circe/shared/git";
+import { getModelSelectionStringOptionValue } from "@circe/shared/model";
+import { extractJsonObject } from "@circe/shared/schemaJson";
 
 import * as ServerConfig from "../config.ts";
 import { resolveAttachmentPath } from "../attachmentStore.ts";
@@ -218,7 +218,7 @@ export const makeOpenCodeTextGeneration = Effect.fn("makeOpenCodeTextGeneration"
         const session = yield* Effect.tryPromise({
           try: () =>
             client.session.create({
-              title: `T3 Code ${input.operation}`,
+              title: `Circe ${input.operation}`,
               permission: [{ permission: "*", pattern: "*", action: "deny" }],
             }),
           catch: (cause) =>

@@ -4,9 +4,9 @@ import {
   resolveV2ItemSupport,
   v2ItemSupportEqual,
   type V2ItemSupport,
-} from "@t3tools/client-runtime/state/item-support";
-import type { EnvironmentId, ThreadId, TurnItemId } from "@t3tools/contracts";
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
+} from "@circe/client/state/item-support";
+import type { EnvironmentId, ThreadId, TurnItemId } from "@circe/contracts";
+import { scopeThreadRef } from "@circe/client/environment";
 import { Atom } from "effect/unstable/reactivity";
 
 import { environmentThreadDetails } from "./threads";

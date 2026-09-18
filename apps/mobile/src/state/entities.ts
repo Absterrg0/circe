@@ -4,13 +4,13 @@ import { appAtomRegistry } from "./atom-registry";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import type {
   EnvironmentId,
   ScopedProjectRef,
   ScopedThreadRef,
   ServerConfig,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { Atom } from "effect/unstable/reactivity";
 
 import { environmentProjects } from "./projects";

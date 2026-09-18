@@ -1,9 +1,9 @@
-import type { ClientSettings } from "@t3tools/contracts/settings";
-import type { AssistantCitation } from "@t3tools/contracts";
+import type { ClientSettings } from "@circe/contracts/settings";
+import type { AssistantCitation } from "@circe/contracts";
 import {
   serializeAssistantCitation,
   withAssistantCitationComment,
-} from "@t3tools/shared/assistantCitations";
+} from "@circe/shared/assistantCitations";
 import {
   splitPromptIntoComposerSegments,
   type ComposerPromptSegment,

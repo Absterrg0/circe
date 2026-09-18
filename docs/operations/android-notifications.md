@@ -38,7 +38,7 @@ vp run android:dev
 
 For an EAS build, provide the same configuration through each selected build environment, using an EAS file variable named `GOOGLE_SERVICES_JSON` for the Google services file. Make the file available to fingerprint generation as well as the native build. FCM service-account credentials belong on the relay, not in EAS's app environment. If deploying a separate hosted relay, configure the build's Circe Mesh public settings for that relay and Clerk application as described in [Circe Mesh](../internals/circe-mesh.md).
 
-Set `T3CODE_MOBILE_UPDATES_ENABLED=0` before prebuild and bundling a private binary to disable the repository's configured Expo OTA update source. A debug development-client APK requires Metro; a bundled release build is needed to verify cold-start notification taps without Expo's development launcher.
+Set `CIRCE_MOBILE_UPDATES_ENABLED=0` before prebuild and bundling a private binary to disable the repository's configured Expo OTA update source. A debug development-client APK requires Metro; a bundled release build is needed to verify cold-start notification taps without Expo's development launcher.
 
 ## Clerk sign-in for private builds
 

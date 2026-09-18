@@ -1,5 +1,5 @@
-import { IsoDateTime, ThreadId, TrimmedNonEmptyString, TurnId } from "@t3tools/contracts";
-import { OrchestrationProposedPlanId } from "@t3tools/contracts/legacy-orchestration";
+import { IsoDateTime, ThreadId, TrimmedNonEmptyString, TurnId } from "@circe/contracts";
+import { OrchestrationProposedPlanId } from "@circe/contracts/legacy-orchestration";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";

@@ -6,8 +6,8 @@ import {
   ProjectId,
   ProviderInstanceId,
   ThreadId,
-} from "@t3tools/contracts";
-import { RelayAgentActivityState } from "@t3tools/contracts/relay";
+} from "@circe/contracts";
+import { RelayAgentActivityState } from "@circe/contracts/relay";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";

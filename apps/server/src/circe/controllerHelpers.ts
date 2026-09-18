@@ -13,7 +13,7 @@ import {
   type ProjectId,
   type ServerProvider,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { type CirceCommandTask, type CirceTaskNavigationCandidate } from "@circe/core/command";
 import { listPendingCirceReplies } from "@circe/core/confirmation";
 import { deriveCirceTaskState } from "@circe/core/deriveTaskState";

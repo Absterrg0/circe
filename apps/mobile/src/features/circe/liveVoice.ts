@@ -4,8 +4,8 @@ import type {
 } from "@circe/client-runtime/circe/liveVoiceController";
 import { createCirceLiveVoiceController } from "@circe/client-runtime/circe/liveVoiceController";
 import { circeLiveVoiceCaption } from "@circe/client-runtime/circe/liveVoice";
-import { runAtomCommand } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+import { runAtomCommand } from "@circe/client/state/runtime";
+import type { EnvironmentId } from "@circe/contracts";
 
 import { appAtomRegistry } from "../../state/atom-registry";
 import { circeLiveVoiceEnvironment } from "../../state/circeLiveVoice";

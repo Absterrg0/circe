@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ThreadId } from "@circe/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 import {

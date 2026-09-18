@@ -30,7 +30,7 @@ import {
   type VcsRemoveWorktreeInput,
   type VcsStatusInput,
   type VcsStatusResult,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   makeGitVcsDriverCore,
   PATCH_RENDER_PREFIX_ARGS,
@@ -795,9 +795,9 @@ export const makeVcsDriverShape = Effect.fn("makeGitVcsDriverShape")(function* (
       const commitEnv: NodeJS.ProcessEnv = {
         ...process.env,
         GIT_INDEX_FILE: tempIndexPath,
-        GIT_AUTHOR_NAME: "T3 Code",
+        GIT_AUTHOR_NAME: "Circe",
         GIT_AUTHOR_EMAIL: "t3code@users.noreply.github.com",
-        GIT_COMMITTER_NAME: "T3 Code",
+        GIT_COMMITTER_NAME: "Circe",
         GIT_COMMITTER_EMAIL: "t3code@users.noreply.github.com",
       };
 

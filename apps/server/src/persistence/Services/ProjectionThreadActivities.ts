@@ -6,8 +6,8 @@
  *
  * @module ProjectionThreadActivityRepository
  */
-import { EventId, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@t3tools/contracts";
-import { OrchestrationThreadActivityTone } from "@t3tools/contracts/legacy-orchestration";
+import { EventId, IsoDateTime, NonNegativeInt, ThreadId, TurnId } from "@circe/contracts";
+import { OrchestrationThreadActivityTone } from "@circe/contracts/legacy-orchestration";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";

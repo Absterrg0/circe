@@ -8,9 +8,9 @@
 import * as NodeFS from "node:fs";
 import * as NodePath from "node:path";
 
-import type { ThreadId } from "@t3tools/contracts";
-import { RotatingFileSink } from "@t3tools/shared/logging";
-import { errorTag } from "@t3tools/shared/observability";
+import type { ThreadId } from "@circe/contracts";
+import { RotatingFileSink } from "@circe/shared/logging";
+import { errorTag } from "@circe/shared/observability";
 import * as Clock from "effect/Clock";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

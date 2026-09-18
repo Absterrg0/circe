@@ -5,14 +5,14 @@ import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { Radio as RadioPrimitive } from "@base-ui/react/radio";
 import { CheckIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
   type AcpRegistrySearchAgent,
   ProviderInstanceId,
   ProviderDriverKind,
   type EnvironmentId,
   type ProviderInstanceConfig,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import {
   useEnvironmentSettings,
@@ -59,7 +59,7 @@ const PROVIDER_ACCENT_SWATCHES = [
  * The full id is formed by prefixing the driver slug. For example, label "Work" on
  * driver "codex" becomes `codex_work`. Output is trimmed to 48 chars so the
  * final composed id stays under the 64-char slug cap enforced by
- * `ProviderInstanceId` in `@t3tools/contracts`.
+ * `ProviderInstanceId` in `@circe/contracts`.
  */
 function slugifyLabel(value: string): string {
   return value
@@ -294,7 +294,7 @@ export function AddProviderInstanceDialog({
       type: "success",
       title: "Provider instance added",
       description: isAcpRegistry
-        ? `${selectedAcp?.name ?? manualAgentId} was added. Complete the agent's advertised authentication on the server; T3 Code detects it automatically.`
+        ? `${selectedAcp?.name ?? manualAgentId} was added. Complete the agent's advertised authentication on the server; Circe detects it automatically.`
         : `${driverOption.label} instance '${instanceId}' was added.`,
       ...(referenceUrl
         ? {

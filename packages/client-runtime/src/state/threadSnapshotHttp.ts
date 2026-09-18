@@ -1,4 +1,4 @@
-import type { OrchestrationV2ThreadDetailSnapshot, ThreadId } from "@t3tools/contracts";
+import type { OrchestrationV2ThreadDetailSnapshot, ThreadId } from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -107,7 +107,7 @@ export class ThreadSnapshotLoader extends Context.Service<
       threadId: ThreadId,
     ) => Effect.Effect<ThreadSnapshotLookup, RemoteEnvironmentRequestError>;
   }
->()("@t3tools/client-runtime/state/threadSnapshotHttp/ThreadSnapshotLoader") {}
+>()("@circe/client/state/threadSnapshotHttp/ThreadSnapshotLoader") {}
 
 export const threadSnapshotLoaderLayer: Layer.Layer<
   ThreadSnapshotLoader,

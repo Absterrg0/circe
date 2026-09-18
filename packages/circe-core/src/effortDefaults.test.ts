@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ServerProvider } from "@t3tools/contracts";
-import { ProviderDriverKind, ProviderInstanceId } from "@t3tools/contracts";
+import type { ServerProvider } from "@circe/contracts";
+import { ProviderDriverKind, ProviderInstanceId } from "@circe/contracts";
 
 import { validateCirceModelSelection } from "./command.ts";
 import {

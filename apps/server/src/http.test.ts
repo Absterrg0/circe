@@ -20,7 +20,7 @@ import {
 } from "effect/unstable/http";
 import { openMediaFile } from "./assets/MediaFile.ts";
 
-import { ORCHESTRATION_PROTOCOL_HEADER } from "@t3tools/contracts";
+import { ORCHESTRATION_PROTOCOL_HEADER } from "@circe/contracts";
 
 import * as ServerConfig from "./config.ts";
 
@@ -54,7 +54,7 @@ describe("browser API CORS", () => {
         new Request("https://backend.example/api/environment", {
           method: "OPTIONS",
           headers: {
-            origin: "https://app.t3.codes",
+            origin: "https://app.heycirce.com",
             "access-control-request-method": "GET",
             "access-control-request-headers": [
               ORCHESTRATION_PROTOCOL_HEADER,

@@ -166,7 +166,7 @@ describe("Windows setup compiler invocation", () => {
     try {
       await writeJson(NodePath.join(root, "package.json"), { name: "@absterrg0/circe" });
       await writeJson(NodePath.join(root, "node_modules", "@t3tools", "web", "package.json"), {
-        name: "@t3tools/web",
+        name: "@circe/web",
       });
       await NodeFSP.writeFile(
         NodePath.join(root, "node_modules", "@t3tools", "web", "client.js"),

@@ -5,7 +5,7 @@ import {
   ProviderInstanceId,
   circeNodeCapabilitiesForPreset,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 import { describe, expect, it } from "vite-plus/test";
 

@@ -1,4 +1,4 @@
-import { SERVER_ENVIRONMENT_LABEL_MAX_LENGTH } from "@t3tools/contracts";
+import { SERVER_ENVIRONMENT_LABEL_MAX_LENGTH } from "@circe/contracts";
 
 /**
  * Device-name rules for the first-run setup wizard's "Name this device"

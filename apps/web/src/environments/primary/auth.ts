@@ -6,9 +6,9 @@ import type {
   ServerAuthSessionMethod,
   AuthSessionId,
   AuthSessionState,
-} from "@t3tools/contracts";
-import { EnvironmentHttpCommonError, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@t3tools/contracts";
-import type { EnvironmentHttpCommonError as EnvironmentHttpCommonErrorType } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { EnvironmentHttpCommonError, PRIMARY_LOCAL_ENVIRONMENT_ID } from "@circe/contracts";
+import type { EnvironmentHttpCommonError as EnvironmentHttpCommonErrorType } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import { HttpClientError } from "effect/unstable/http";

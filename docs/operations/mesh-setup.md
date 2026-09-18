@@ -100,8 +100,8 @@ For a production macOS app with bundle ID `com.abstergo.circe`:
 Local signed builds additionally use:
 
 ```dotenv
-T3CODE_APPLE_TEAM_ID=ABC1234567
-T3CODE_MACOS_PROVISIONING_PROFILE=/absolute/path/to/t3code.provisionprofile
+CIRCE_APPLE_TEAM_ID=ABC1234567
+CIRCE_MACOS_PROVISIONING_PROFILE=/absolute/path/to/t3code.provisionprofile
 # Override only when the RP domain differs from the Clerk Frontend API hostname.
 CIRCE_CLERK_PASSKEY_RP_DOMAINS=example.clerk.accounts.dev,clerk.example.com
 ```
@@ -116,7 +116,7 @@ actual web and server ports. For example, with the default ports:
 
 ```sh
 VITE_DEV_SERVER_URL=http://127.0.0.1:5733 \
-T3CODE_PORT=13773 \
+CIRCE_PORT=13773 \
   "/Applications/T3 Code (Alpha).app/Contents/MacOS/T3 Code (Alpha)"
 ```
 

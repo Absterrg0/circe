@@ -1,8 +1,8 @@
-import type { DesktopUseDisplay, DesktopUseWindow } from "@t3tools/contracts";
+import type { DesktopUseDisplay, DesktopUseWindow } from "@circe/contracts";
 import {
   DesktopUseDisplay as DisplaySchema,
   DesktopUseWindow as WindowSchema,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Schema from "effect/Schema";
 import * as Option from "effect/Option";
 

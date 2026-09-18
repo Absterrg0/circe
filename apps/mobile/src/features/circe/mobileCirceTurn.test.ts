@@ -5,7 +5,7 @@ import {
   ProviderInstanceId,
   ThreadId,
   type OrchestrationThread,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { interpretPendingCirceReply, type CirceCommandTask } from "@circe/core/command";
 import { resolveCirceLiveContextTask } from "@circe/client-runtime/circe/commandContext";
 import { getPendingCirceReplyState, isExpectedPendingReply } from "@circe/core/confirmation";

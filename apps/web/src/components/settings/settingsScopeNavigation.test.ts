@@ -1,4 +1,4 @@
-import { EnvironmentId, ProviderInstanceId } from "@t3tools/contracts";
+import { EnvironmentId, ProviderInstanceId } from "@circe/contracts";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -14,7 +14,7 @@ import { retainSettingsScope, validateSettingsRouteSearch } from "./settingsScop
 const checkoutSearch = {
   project: "repository:t3code",
   machine: "remote-server",
-  checkout: "remote-server:/home/user/T3 Code",
+  checkout: "remote-server:/home/user/Circe",
 };
 
 function createSettingsRouter(initialEntry = "/settings/general") {

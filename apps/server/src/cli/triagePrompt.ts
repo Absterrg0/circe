@@ -1,5 +1,5 @@
 /**
- * All text `t3 triage` hands to the coding agent. Kept as bare template strings
+ * All text `circe triage` hands to the coding agent. Kept as bare template strings
  * on purpose: to change triage behavior, edit the text.
  *
  * `TRIAGE_PLAYBOOK` must stay byte-identical to `.github/triage/PLAYBOOK.md`

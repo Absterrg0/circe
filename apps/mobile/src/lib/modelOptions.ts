@@ -4,11 +4,11 @@ import type {
   ModelSelection,
   RuntimeMode,
   ServerConfig as T3ServerConfig,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   buildExplicitProviderOptionSelectionsFromDescriptors,
   getProviderOptionDescriptors,
-} from "@t3tools/shared/model";
+} from "@circe/shared/model";
 
 export type ModelOption = {
   readonly key: string;

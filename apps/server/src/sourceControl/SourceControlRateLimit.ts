@@ -8,12 +8,12 @@ import * as Schema from "effect/Schema";
 import {
   SourceControlProviderKind as SourceControlProviderKindSchema,
   type SourceControlProviderKind,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 const FALLBACK_COOLDOWN = Duration.seconds(30);
 const MAX_FALLBACK_COOLDOWN = Duration.minutes(15);
 
-export const CredentialScope = Context.Reference<string>("t3/sourceControl/CredentialScope", {
+export const CredentialScope = Context.Reference<string>("@absterrg0/circe/sourceControl/CredentialScope", {
   defaultValue: () => "",
 });
 

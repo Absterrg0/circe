@@ -1,4 +1,4 @@
-import type { CirceTaskState, OrchestrationThreadShell } from "@t3tools/contracts";
+import type { CirceTaskState, OrchestrationThreadShell } from "@circe/contracts";
 
 export type CirceTaskStateInput = Pick<OrchestrationThreadShell, "latestTurn" | "session"> &
   Partial<Pick<OrchestrationThreadShell, "hasPendingApprovals" | "hasPendingUserInput">>;

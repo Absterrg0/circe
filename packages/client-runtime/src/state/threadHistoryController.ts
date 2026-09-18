@@ -1,4 +1,4 @@
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import type { EnvironmentId, ThreadId } from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -44,7 +44,7 @@ export class ThreadHistoryController extends Context.Service<
       threadId: ThreadId,
     ) => Effect.Effect<ThreadHistoryLoadEarlierResult>;
   }
->()("@t3tools/client-runtime/state/threadHistoryController") {}
+>()("@circe/client/state/threadHistoryController") {}
 
 export const threadHistoryControllerLayer: Layer.Layer<ThreadHistoryController> = Layer.effect(
   ThreadHistoryController,

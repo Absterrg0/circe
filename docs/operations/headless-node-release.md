@@ -86,7 +86,7 @@ scripts, source-map removal, and production staging:
 
 ```sh
 pnpm --dir scripts exec vp test run package-headless-node.test.ts
-pnpm --filter @t3tools/scripts exec tsgo --noEmit
+pnpm --filter @circe/scripts exec tsgo --noEmit
 ```
 
 For a manually supplied cross-architecture build, pass the source commit explicitly when the

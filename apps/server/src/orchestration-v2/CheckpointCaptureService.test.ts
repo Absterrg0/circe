@@ -14,7 +14,7 @@ import {
   ProviderThreadId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -22,7 +22,7 @@ import * as Ref from "effect/Ref";
 
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
 import * as CheckpointStore from "../checkpointing/CheckpointStore.ts";
-import { VcsProcessTimeoutError } from "@t3tools/contracts";
+import { VcsProcessTimeoutError } from "@circe/contracts";
 import { CheckpointServiceV2, layer as checkpointServiceLayer } from "./CheckpointService.ts";
 import * as CheckpointCaptureService from "./CheckpointCaptureService.ts";
 import { EventSinkV2 } from "./EventSink.ts";

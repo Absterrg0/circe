@@ -16,7 +16,7 @@ import { symlinksSupported } from "./testing/symlinks.ts";
 describe("Node runtime selection", () => {
   it.effect("keeps the current Node or Electron runtime without requiring Node on PATH", () =>
     Effect.gen(function* () {
-      for (const executable of ["/runtime/node", "/Applications/T3 Code.app/Electron"]) {
+      for (const executable of ["/runtime/node", "/Applications/Circe.app/Electron"]) {
         expect(
           yield* resolveNodeExecutable("Local device support", { PATH: "" }).pipe(
             Effect.provideService(HostProcessExecutablePath, executable),
@@ -27,7 +27,7 @@ describe("Node runtime selection", () => {
     }).pipe(Effect.provide(NodeServices.layer)),
   );
 
-  it.effect("uses installed Node instead of the standalone T3 executable", () =>
+  it.effect("uses installed Node instead of the standalone Circe executable", () =>
     Effect.gen(function* () {
       const path = yield* Path.Path;
       expect(
@@ -36,7 +36,7 @@ describe("Node runtime selection", () => {
         }),
       ).toBe(process.execPath);
     }).pipe(
-      Effect.provideService(HostProcessExecutablePath, "/packaged/t3"),
+      Effect.provideService(HostProcessExecutablePath, "/packaged/circe"),
       Effect.provideService(HostProcessIsExecutable, true),
       Effect.provide(NodeServices.layer),
     ),
@@ -74,7 +74,7 @@ describe("Node runtime selection", () => {
       expect(yield* resolveNodeExecutable("Local device support", env)).toBe(node);
     }).pipe(
       Effect.scoped,
-      Effect.provideService(HostProcessExecutablePath, "/packaged/t3"),
+      Effect.provideService(HostProcessExecutablePath, "/packaged/circe"),
       Effect.provideService(HostProcessIsExecutable, true),
       Effect.provide(NodeServices.layer),
     ),
@@ -101,7 +101,7 @@ describe("Node runtime selection", () => {
       ).toBe(node);
     }).pipe(
       Effect.scoped,
-      Effect.provideService(HostProcessExecutablePath, "/packaged/t3"),
+      Effect.provideService(HostProcessExecutablePath, "/packaged/circe"),
       Effect.provideService(HostProcessIsExecutable, true),
       Effect.provideService(HostProcessPlatform, "win32"),
       Effect.provide(NodeServices.layer),
@@ -135,7 +135,7 @@ describe("Node runtime selection", () => {
       const path = yield* Path.Path;
       const directory = yield* fs.makeTempDirectoryScoped();
       const platform = yield* HostProcessPlatform;
-      const executable = path.join(directory, platform === "win32" ? "t3.exe" : "t3");
+      const executable = path.join(directory, platform === "win32" ? "circe.exe" : "circe");
       const node = path.join(directory, platform === "win32" ? "node.exe" : "node");
       yield* fs.writeFileString(executable, "standalone executable fixture");
       yield* fs.chmod(executable, 0o755);
@@ -164,7 +164,7 @@ describe("Node runtime selection", () => {
       expect(yield* resolveNodeExecutable("Local device support", { PATH: directory })).toBe(node);
     }).pipe(
       Effect.scoped,
-      Effect.provideService(HostProcessExecutablePath, "/packaged/t3"),
+      Effect.provideService(HostProcessExecutablePath, "/packaged/circe"),
       Effect.provideService(HostProcessIsExecutable, true),
       Effect.provide(NodeServices.layer),
     ),

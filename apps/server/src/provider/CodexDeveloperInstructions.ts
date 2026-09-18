@@ -1,14 +1,14 @@
-import type { ProviderInteractionMode } from "@t3tools/contracts";
+import type { ProviderInteractionMode } from "@circe/contracts";
 import { buildRuntimeInstructions } from "./RuntimeInstructions.ts";
 
 import {
-  T3_CODE_BROWSER_TOOL_INSTRUCTIONS,
-  T3_CODE_ORCHESTRATION_INSTRUCTIONS,
+  CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS,
+  CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS,
 } from "./T3OrchestrationInstructions.ts";
 
-const T3_CODE_DEVICE_TOOL_INSTRUCTIONS = `
+const CIRCE_CODE_DEVICE_TOOL_INSTRUCTIONS = `
 
-## T3 Code devices
+## Circe devices
 
 The \`t3-code\` MCP server also exposes \`device_*\` tools for iOS Simulators and Android Emulators on this environment. For mobile verification, call \`device_list\`, then \`device_open\` so the user can watch the device in their Device panel; its result explains how to drive the device. Driving happens through the \`agent-device\` CLI, using the exact launcher path returned by \`device_open\`. Keep the host config and session flags returned by \`device_open\` on every command so concurrent devices stay independent: prefer \`agent-device snapshot -i\` refs over coordinates, and use \`device_screenshot\` when you need to see the screen. Do not call simctl, adb, xcrun, or serve-sim directly while these tools are present. If \`device_list\` reports a platform as unavailable, say so instead of trying another route.
 `;
@@ -32,8 +32,8 @@ const normalizeAvailability = (
  */
 const browserToolInstructions = (availability: boolean | T3CodeToolAvailability): string => {
   const tools = normalizeAvailability(availability);
-  return `${tools.browser ? T3_CODE_BROWSER_TOOL_INSTRUCTIONS : ""}${
-    tools.device ? T3_CODE_DEVICE_TOOL_INSTRUCTIONS : ""
+  return `${tools.browser ? CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS : ""}${
+    tools.device ? CIRCE_CODE_DEVICE_TOOL_INSTRUCTIONS : ""
   }`;
 };
 
@@ -184,7 +184,7 @@ Use the \`request_user_input\` tool only when it is listed in the available tool
 
 In Default mode, strongly prefer making reasonable assumptions and executing the user's request rather than stopping to ask questions. If you absolutely must ask a question because the answer cannot be discovered from local context and a reasonable assumption would be risky, ask the user directly with a concise plain-text question. Never write a multiple choice question as a textual assistant message.
 ${browserToolInstructions(browserToolsAvailable)}
-${T3_CODE_ORCHESTRATION_INSTRUCTIONS}
+${CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS}
 </collaboration_mode>`;
 
 export interface CodexRuntimeInfo {

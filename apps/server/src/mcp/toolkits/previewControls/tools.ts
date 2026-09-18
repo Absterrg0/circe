@@ -4,7 +4,7 @@ import {
   PreviewAutomationUnavailableError,
   PreviewListResult,
   PreviewTabId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Schema from "effect/Schema";
 import { Tool, Toolkit } from "effect/unstable/ai";
 import { PreviewManager } from "../../../preview/Manager.ts";

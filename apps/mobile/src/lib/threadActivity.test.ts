@@ -17,8 +17,8 @@ import {
   type OrchestrationV2RunAttempt,
   type OrchestrationV2ProjectedTurnItem,
   type OrchestrationV2TurnItem,
-} from "@t3tools/contracts";
-import { resolveUserMessagePresentation } from "@t3tools/client-runtime/user-message";
+} from "@circe/contracts";
+import { resolveUserMessagePresentation } from "@circe/client/user-message";
 import * as DateTime from "effect/DateTime";
 import { describe, expect, it } from "vite-plus/test";
 

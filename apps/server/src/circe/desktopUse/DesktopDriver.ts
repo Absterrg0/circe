@@ -10,7 +10,7 @@ import {
   type DesktopUsePlatform,
   type DesktopUseStatus,
   type DesktopUseWindow,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Clock from "effect/Clock";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -19,7 +19,7 @@ import * as Schema from "effect/Schema";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as Semaphore from "effect/Semaphore";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as ServerConfig from "../../config.ts";
 import * as Commands from "./DesktopCommands.ts";
 import {

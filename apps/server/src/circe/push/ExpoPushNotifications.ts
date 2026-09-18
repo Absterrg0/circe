@@ -3,7 +3,7 @@ import {
   CircePushNotificationData,
   CircePushNotificationKind,
   type OrchestrationEvent,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   classifyActivityPresentationKind,
   isClosedResponseFailure,

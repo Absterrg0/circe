@@ -1,10 +1,10 @@
-import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
+import { isWorkspaceImagePreviewPath } from "@circe/shared/filePreview";
 import type {
   ToolActivityIcon,
   ToolActivityNativeAppReference,
   ToolActivitySource,
   ToolActivitySurface,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 export interface ExtractedToolActivityPresentation {
   readonly viewedImagePath?: string;

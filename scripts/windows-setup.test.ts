@@ -94,7 +94,7 @@ describe("Windows setup contracts", () => {
     });
     const launcher = renderWindowsNodeLauncherCmd();
     expect(launcher).toContain('set "CIRCE_NODE_PRESET=headless"');
-    expect(launcher).toContain("CIRCE_NODE_STOP=%T3CODE_HOME%\\runtime\\windows-stop.marker");
+    expect(launcher).toContain("CIRCE_NODE_STOP=%CIRCE_HOME%\\runtime\\windows-stop.marker");
     expect(launcher).toContain('cd /d "%~dp0"');
     expect(launcher).toContain('"%~dp0node\\node.exe" "%~dp0circe-node-supervisor.mjs"');
     expect(launcher).not.toContain("service-launcher.mjs");

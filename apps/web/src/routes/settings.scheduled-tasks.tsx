@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { EnvironmentId, ScheduledTaskId } from "@t3tools/contracts";
+import { EnvironmentId, ScheduledTaskId } from "@circe/contracts";
 
 import { ScheduledTasksSettings } from "../components/settings/ScheduledTasksSettings";
 

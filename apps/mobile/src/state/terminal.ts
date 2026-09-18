@@ -1,4 +1,4 @@
-import { createTerminalEnvironmentAtoms } from "@t3tools/client-runtime/state/terminal";
+import { createTerminalEnvironmentAtoms } from "@circe/client/state/terminal";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

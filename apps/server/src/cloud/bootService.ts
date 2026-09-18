@@ -3,7 +3,7 @@ import {
   HostProcessExecutablePath,
   HostProcessPlatform,
   HostProcessUserId,
-} from "@t3tools/shared/hostProcess";
+} from "@circe/shared/hostProcess";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -16,7 +16,7 @@ import * as Path from "effect/Path";
 import { HttpClient } from "effect/unstable/http";
 import * as Schema from "effect/Schema";
 
-import { CLI_RELEASE_BASE_URL_ENV } from "@t3tools/shared/cliRelease";
+import { CLI_RELEASE_BASE_URL_ENV } from "@circe/shared/cliRelease";
 
 import * as ProcessRunner from "../processRunner.ts";
 import {
@@ -39,11 +39,11 @@ import {
 const BOOT_SERVICE_NAME = "circe";
 const BOOT_SERVICE_UNIT_FILE = `${BOOT_SERVICE_NAME}.service`;
 // The label and unit name are Circe-owned. They must not match the separate
-// T3 Code product (t3code.service / com.t3tools.t3code.service), or installing
+// Circe product (circe.service / com.t3tools.circe.service), or installing
 // Circe would overwrite the other product's service.
 const BOOT_SERVICE_LAUNCHD_LABEL = "com.abstergo.circe.service";
 const BOOT_SERVICE_PLIST_FILE = `${BOOT_SERVICE_LAUNCHD_LABEL}.plist`;
-const BOOT_SERVICE_UNIT_ENV = "T3_BOOT_SERVICE_UNIT";
+const BOOT_SERVICE_UNIT_ENV = "CIRCE_BOOT_SERVICE_UNIT";
 
 /** systemd expands `%` specifiers, including in unquoted append-log paths. */
 function escapeSystemdSpecifiers(value: string): string {
@@ -58,12 +58,12 @@ function quoteSystemdValue(value: string): string {
 }
 
 /**
- * Reads `T3CODE_HOME` back out of a rendered unit or plist. Only values this
+ * Reads `CIRCE_HOME` back out of a rendered unit or plist. Only values this
  * file writes are expected, so a quoted systemd value is unquoted and
  * unescaped the same way `quoteSystemdValue` produced it.
  */
 export function bootServiceBaseDirOf(contents: string): string | undefined {
-  const systemd = /^Environment=T3CODE_HOME=(.*)$/m.exec(contents)?.[1];
+  const systemd = /^Environment=CIRCE_HOME=(.*)$/m.exec(contents)?.[1];
   if (systemd !== undefined) {
     const raw = systemd.trim();
     const unquoted =
@@ -72,7 +72,7 @@ export function bootServiceBaseDirOf(contents: string): string | undefined {
         : raw;
     return unquoted.replaceAll("%%", "%");
   }
-  const plist = /<key>T3CODE_HOME<\/key>\s*<string>([^<]*)<\/string>/.exec(contents)?.[1];
+  const plist = /<key>CIRCE_HOME<\/key>\s*<string>([^<]*)<\/string>/.exec(contents)?.[1];
   if (plist !== undefined) {
     return plist.replaceAll("&lt;", "<").replaceAll("&gt;", ">").replaceAll("&amp;", "&");
   }
@@ -104,7 +104,7 @@ export function renderBootServiceUnit(plan: BootServicePlan): string {
     "[Service]",
     "Type=simple",
     "WorkingDirectory=%h",
-    `Environment=T3CODE_HOME=${quoteSystemdValue(plan.baseDir)}`,
+    `Environment=CIRCE_HOME=${quoteSystemdValue(plan.baseDir)}`,
     `Environment=${BOOT_SERVICE_UNIT_ENV}=${BOOT_SERVICE_UNIT_FILE}`,
     `ExecStart=${plan.program.map(quoteSystemdValue).join(" ")}`,
     // Let the launcher mark an explicit stop before it signals the server.
@@ -163,7 +163,7 @@ export function renderBootServicePlist(
     `  <dict>`,
     `    <key>PATH</key>`,
     `    <string>${escapeXmlText(options.environmentPath)}</string>`,
-    `    <key>T3CODE_HOME</key>`,
+    `    <key>CIRCE_HOME</key>`,
     `    <string>${escapeXmlText(plan.baseDir)}</string>`,
     `    <key>${BOOT_SERVICE_UNIT_ENV}</key>`,
     `    <string>${BOOT_SERVICE_PLIST_FILE}</string>`,

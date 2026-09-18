@@ -1,4 +1,4 @@
-import type { CircePresentationEvent } from "@t3tools/contracts";
+import type { CircePresentationEvent } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Stream from "effect/Stream";
 

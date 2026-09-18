@@ -2,7 +2,7 @@ import { circeWebsiteUrl } from "@circe/core/website";
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { AppState, Linking, type AppStateStatus } from "react-native";
-import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
+import type { EnvironmentConnectionPhase } from "@circe/client/connection";
 import {
   createContext,
   useCallback,
@@ -20,7 +20,7 @@ import type {
   CirceTaskRef,
   ModelSelection,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
 import {
   answerCirceModelChoice,
@@ -255,7 +255,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     readonly requestId: string;
     readonly utterance?: string;
     readonly sourceUtterance?: string;
-    readonly semanticProposal?: import("@t3tools/contracts").CirceSemanticProposal;
+    readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
     readonly modelSelection?: ModelSelection;
   } | null>(null);
   // A project/task switch must await its server-frame cancel before the new
@@ -779,7 +779,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
       readonly projectRef: CirceMeshProject["ref"];
       readonly utterance: string;
       readonly sourceUtterance?: string;
-      readonly semanticProposal?: import("@t3tools/contracts").CirceSemanticProposal;
+      readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
       readonly modelSelection?: ModelSelection;
       /** Reused across retries of one turn so a retry stays idempotent. */
       readonly requestId?: string;
@@ -797,7 +797,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         readonly requestId: string;
         readonly utterance?: string;
         readonly sourceUtterance?: string;
-        readonly semanticProposal?: import("@t3tools/contracts").CirceSemanticProposal;
+        readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
         readonly modelSelection?: ModelSelection;
       };
     }): Promise<string> => {

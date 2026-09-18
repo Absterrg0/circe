@@ -16,8 +16,8 @@ Circe is the product name and the only name used across visible copy, code, pack
 
 ## Legacy T3 names being renamed
 
-There is no upstream. `T3CODE_*` settings, `t3code:*` storage keys, `t3code`
-URL schemes, and `@t3tools/*` package names inherited from the foundation are
+There is no upstream. `CIRCE_*` settings, `t3code:*` storage keys, `t3code`
+URL schemes, and `@circe/*` package names inherited from the foundation are
 legacy identifiers renamed in phases. Compat-sensitive renames (schemes,
 storage keys, package names, D-Bus names, desktop entry IDs) keep the old
 identifier working as an alias or migrate stored state; display names change

@@ -9,7 +9,7 @@ import {
   type ProviderReplayEntry,
   type ProviderReplayTranscript,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -93,7 +93,7 @@ const makeCheckpointWorkspace = Effect.gen(function* () {
   const path = yield* Path.Path;
   const cwd = yield* fs.makeTempDirectory({ prefix: "t3-orchestrator-v2-thread-fork-" });
   yield* runGit(cwd, ["init"]);
-  yield* runGit(cwd, ["config", "user.name", "T3 Code Test"]);
+  yield* runGit(cwd, ["config", "user.name", "Circe Test"]);
   yield* runGit(cwd, ["config", "user.email", "t3code-test@example.com"]);
   yield* fs.writeFileString(path.join(cwd, "README.md"), "# thread fork\n");
   yield* runGit(cwd, ["add", "README.md"]);

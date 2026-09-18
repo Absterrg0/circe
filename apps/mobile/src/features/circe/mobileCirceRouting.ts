@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
 import type { CirceMeshProject } from "@circe/client-runtime/circe/mesh";
 import { groundVoiceTurn } from "@circe/core/groundVoiceTurn";

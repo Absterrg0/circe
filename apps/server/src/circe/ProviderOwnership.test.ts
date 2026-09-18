@@ -23,9 +23,12 @@ describe("provider ownership", () => {
   it("keeps Circe concepts out of provider internals", () => {
     for (const sourcePath of sourceFiles(providerRoot)) {
       const source = NodeFS.readFileSync(sourcePath, "utf8");
-      // Providers may hold product copy, but must not import Circe-owned code or
-      // carry the retired codename.
-      expect(source, sourcePath).not.toMatch(/@circe\//iu);
+      // Providers may hold product copy and depend on the generic contracts and
+      // shared seams, but must not import Circe product policy or carry the
+      // retired codename.
+      expect(source, sourcePath).not.toMatch(
+        /(?:from\s+|import\s*\(\s*)["']@circe\/(?!contracts\b|shared\b)/iu,
+      );
       expect(source, sourcePath).not.toMatch(/jarvis/iu);
     }
   });

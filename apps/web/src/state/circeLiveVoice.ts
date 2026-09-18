@@ -1,4 +1,4 @@
-import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
+import { createEnvironmentCommand } from "@circe/client/state/runtime";
 import {
   lookupCirceQuickAnswer,
   startCirceVoiceLiveSession,
@@ -9,14 +9,14 @@ import type {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
   CirceLiveVoiceRenewInput,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
 export const circeLiveVoiceEnvironment = {
   lookup: createEnvironmentCommand(connectionAtomRuntime, {
     label: "environment-data:commands:circe:quick-lookup",
-    execute: (input: import("@t3tools/contracts").CirceQuickLookupInput) =>
+    execute: (input: import("@circe/contracts").CirceQuickLookupInput) =>
       lookupCirceQuickAnswer(input),
   }),
   release: createEnvironmentCommand(connectionAtomRuntime, {

@@ -1,4 +1,4 @@
-import type { VcsStatusRemoteResult, VcsStatusResult } from "@t3tools/contracts";
+import type { VcsStatusRemoteResult, VcsStatusResult } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -60,12 +60,12 @@ describe("parseOriginUrlFromGitConfig", () => {
       '[remote "upstream"]',
       "\turl = https://github.com/other/repo.git",
       '[remote "origin"]',
-      "\turl = git@github.com:pingdotgg/t3code.git",
+      "\turl = git@github.com:Absterrg0/circe.git",
       "\tfetch = +refs/heads/*:refs/remotes/origin/*",
       '[branch "main"]',
       "\tremote = origin",
     ].join("\n");
-    expect(parseOriginUrlFromGitConfig(config)).toBe("git@github.com:pingdotgg/t3code.git");
+    expect(parseOriginUrlFromGitConfig(config)).toBe("git@github.com:Absterrg0/circe.git");
   });
 
   it("strips inline comments and quotes from the url value", () => {

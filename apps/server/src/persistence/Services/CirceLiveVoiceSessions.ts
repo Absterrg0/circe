@@ -1,4 +1,4 @@
-import { EnvironmentId, TrimmedNonEmptyString } from "@t3tools/contracts";
+import { EnvironmentId, TrimmedNonEmptyString } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";

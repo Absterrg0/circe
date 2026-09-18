@@ -5,8 +5,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
-import type { RelayLiveVoiceSessionCreateResponse } from "@t3tools/contracts/relay";
-import { CIRCE_LIVE_VOICE_DEFAULT_MODEL, CIRCE_LIVE_VOICE_DEFAULT_VOICE } from "@t3tools/contracts";
+import type { RelayLiveVoiceSessionCreateResponse } from "@circe/contracts/relay";
+import { CIRCE_LIVE_VOICE_DEFAULT_MODEL, CIRCE_LIVE_VOICE_DEFAULT_VOICE } from "@circe/contracts";
 
 import { RelayConfiguration } from "../Config.ts";
 import * as EnvironmentLinks from "../environments/EnvironmentLinks.ts";

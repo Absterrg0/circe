@@ -51,7 +51,7 @@ interface ManagedChild {
 const runtimePaths = (baseDir: string, version: string) => {
   const versionDir = NodePath.join(baseDir, "runtime", "versions", version);
   // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher has no Effect runtime.
-  const executableName = process.platform === "win32" ? "t3.exe" : "t3";
+  const executableName = process.platform === "win32" ? "circe.exe" : "circe";
   return {
     versionDir,
     entryPath: NodePath.join(versionDir, executableName),
@@ -629,9 +629,9 @@ export class Launcher {
 }
 
 export async function main(): Promise<void> {
-  const baseDir = process.env.T3CODE_HOME?.trim();
+  const baseDir = process.env.CIRCE_HOME?.trim();
   if (baseDir === undefined || baseDir === "") {
-    throw new Error("T3CODE_HOME is required by the Circe service launcher.");
+    throw new Error("CIRCE_HOME is required by the Circe service launcher.");
   }
   const statePath = NodePath.join(baseDir, "runtime", SERVICE_STATE_FILE);
   const state = await readServiceState(statePath);

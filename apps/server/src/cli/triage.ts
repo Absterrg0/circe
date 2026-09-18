@@ -1,5 +1,5 @@
 /**
- * `t3 triage` - hand a misbehaving install to the user's own coding agent.
+ * `circe triage` - hand a misbehaving install to the user's own coding agent.
  *
  * The command is deliberately thin: it writes a `context.md` with machine facts
  * (version, paths, server liveness), then launches claude or codex
@@ -14,8 +14,8 @@ import * as NodeChildProcess from "node:child_process";
 import * as NodeOS from "node:os";
 import * as NodeReadlinePromises from "node:readline/promises";
 
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { isCommandAvailable, resolveSpawnCommand } from "@t3tools/shared/shell";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { isCommandAvailable, resolveSpawnCommand } from "@circe/shared/shell";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -166,10 +166,10 @@ export const triageCommand = Command.make("triage", {
       const path = yield* Path.Path;
 
       // Triage is a user-facing feature: always the userdata state, never dev.
-      // --base-dir wins; T3CODE_HOME is its documented env equivalent (same
-      // precedence as `t3 pair`).
+      // --base-dir wins; CIRCE_HOME is its documented env equivalent (same
+      // precedence as `circe pair`).
       const explicitBaseDir = Option.getOrUndefined(flags.baseDir);
-      const envHome = yield* Config.string("T3CODE_HOME").pipe(Config.option);
+      const envHome = yield* Config.string("CIRCE_HOME").pipe(Config.option);
       const baseDir = yield* resolveBaseDir(explicitBaseDir ?? Option.getOrUndefined(envHome));
       const paths = yield* ServerConfig.deriveServerPaths(baseDir, undefined, {});
 

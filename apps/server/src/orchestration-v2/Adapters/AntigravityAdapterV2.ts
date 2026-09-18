@@ -4,7 +4,7 @@ import {
   ProviderInstanceId,
   type OrchestrationV2ProviderCapabilities,
   type ProviderSetupError,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import type * as FileSystem from "effect/FileSystem";

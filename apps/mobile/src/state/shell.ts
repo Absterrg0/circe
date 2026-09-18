@@ -4,9 +4,9 @@ import {
   createEnvironmentSnapshotAtom,
   createShellEnvironmentAtoms,
   type EnvironmentShellState,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import { useAtomValue } from "@effect/atom-react";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 import * as Option from "effect/Option";
 import { Atom } from "effect/unstable/reactivity";
 

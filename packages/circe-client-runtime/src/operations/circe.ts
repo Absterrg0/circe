@@ -5,10 +5,10 @@ import {
   type CirceFocusTaskInput,
   type CirceInterpretInput,
   type CirceManageProjectAliasInput,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
-import { request } from "@t3tools/client-runtime/rpc";
+import { request } from "@circe/client/rpc";
 
 /** Send one text or transcribed voice instruction to the T3 Circe manager. */
 export const executeCirceInstruction = Effect.fn("Circe.executeInstruction")(function* (

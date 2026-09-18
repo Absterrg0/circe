@@ -1,12 +1,12 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import { deriveThreadQueueWorkflowState } from "@t3tools/client-runtime/state/thread-workflows";
+import { scopeThreadRef } from "@circe/client/environment";
+import { deriveThreadQueueWorkflowState } from "@circe/client/state/thread-workflows";
 import type {
   ChatAttachment as ContractChatAttachment,
   EnvironmentId,
   MessageId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   Clock3Icon,
   CornerUpRightIcon,

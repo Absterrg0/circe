@@ -225,9 +225,9 @@ Required GitHub Actions secrets:
 Optional GitHub Actions variables:
 
 - `VERCEL_TEAM_SLUG`: overrides the Vercel CLI scope when the team slug is preferred over the `VERCEL_ORG_ID` secret.
-- `T3CODE_WEB_ROUTER_URL`: defaults to `https://app.example.com`.
-- `T3CODE_WEB_LATEST_DOMAIN`: defaults to `latest.app.example.com`.
-- `T3CODE_WEB_NIGHTLY_DOMAIN`: defaults to `nightly.app.example.com`.
+- `CIRCE_WEB_ROUTER_URL`: defaults to `https://app.example.com`.
+- `CIRCE_WEB_LATEST_DOMAIN`: defaults to `latest.app.example.com`.
+- `CIRCE_WEB_NIGHTLY_DOMAIN`: defaults to `nightly.app.example.com`.
 
 Required Vercel domains:
 
@@ -322,7 +322,7 @@ payloads beyond what the nightly updater release carries for those manual checks
   - The desktop UI shows a rocket update button when an update is available; click once to download, click again after download to restart/install.
 - Provider: GitHub Releases (`provider: github`) configured at build time.
 - Repository slug source:
-  - `T3CODE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
+  - `CIRCE_DESKTOP_UPDATE_REPOSITORY` (format `owner/repo`), if set.
   - otherwise `GITHUB_REPOSITORY` from GitHub Actions.
 - Historical upstream updater assets (not published by Circe Full):
   - platform installers (`.exe`, `.dmg`, and `.AppImage`)

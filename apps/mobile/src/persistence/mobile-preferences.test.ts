@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId } from "@circe/contracts";
 import { describe, expect, it, vi } from "vite-plus/test";
 
 vi.mock("./mobile-database", () => ({}));

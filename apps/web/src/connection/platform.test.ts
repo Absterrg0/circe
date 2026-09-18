@@ -4,9 +4,9 @@ import {
   PRIMARY_LOCAL_ENVIRONMENT_ID,
   type DesktopBridge,
   type DesktopSshEnvironmentTarget,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { afterEach, describe, expect, it, vi } from "@effect/vitest";
-import { PlatformConnectionSource } from "@t3tools/client-runtime/platform";
+import { PlatformConnectionSource } from "@circe/client/platform";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 

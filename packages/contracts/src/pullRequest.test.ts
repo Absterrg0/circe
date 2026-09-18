@@ -42,10 +42,10 @@ const LIST_RESULT: PullRequestListResult = {
       host: "github.com",
       projectId: "project-1" as PullRequestListResult["entries"][number]["projectId"],
       projectTitle: "t3code",
-      repository: "pingdotgg/t3code",
+      repository: "Absterrg0/circe",
       number: 1,
       title: "Add a pull requests page",
-      url: "https://github.com/pingdotgg/t3code/pull/1",
+      url: "https://github.com/Absterrg0/circe/pull/1",
       author: { login: "octocat", name: null, avatarUrl: null },
       headBranch: "feat/page",
       baseBranch: "main",
@@ -62,7 +62,7 @@ const LIST_RESULT: PullRequestListResult = {
   ],
   errors: [],
   truncated: false,
-  nextCursors: { "github.com pingdotgg/t3code": "2026-07-02T00:00:00Z|1|1" },
+  nextCursors: { "github.com Absterrg0/circe": "2026-07-02T00:00:00Z|1|1" },
 };
 
 describe("PullRequestListResult", () => {
@@ -119,7 +119,7 @@ describe("PullRequestListInput", () => {
   });
 
   it("takes back the continuation a result handed out, keyed the way it arrived", () => {
-    const cursors = { "github.com pingdotgg/t3code": "2026-07-02T00:00:00Z|99|1,2" };
+    const cursors = { "github.com Absterrg0/circe": "2026-07-02T00:00:00Z|99|1,2" };
 
     expect(decodeListInput({ state: "open", cursors }).cursors).toStrictEqual(cursors);
   });

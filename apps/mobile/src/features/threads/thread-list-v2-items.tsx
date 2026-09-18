@@ -7,11 +7,11 @@ import type { ThreadMoveDestination } from "./threadOrder";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import type { EnvironmentThreadSearchMatch } from "@t3tools/client-runtime/state/thread-search";
-import type { EnvironmentMachineKind } from "@t3tools/contracts";
-import { canSnooze, resolveSnoozePresets } from "@t3tools/client-runtime/state/thread-settled";
-import { resolveSettledThreadTimestamp } from "@t3tools/client-runtime/state/thread-sort";
+} from "@circe/client/state/shell";
+import type { EnvironmentThreadSearchMatch } from "@circe/client/state/thread-search";
+import type { EnvironmentMachineKind } from "@circe/contracts";
+import { canSnooze, resolveSnoozePresets } from "@circe/client/state/thread-settled";
+import { resolveSettledThreadTimestamp } from "@circe/client/state/thread-sort";
 import type { MenuAction } from "@react-native-menu/menu";
 import { memo, useCallback, useEffect, useMemo, useState, type ComponentProps } from "react";
 import { Alert, Platform, Pressable, useWindowDimensions, View } from "react-native";

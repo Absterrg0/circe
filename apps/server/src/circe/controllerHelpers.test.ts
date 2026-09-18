@@ -1,5 +1,5 @@
 import { describe, expect, it } from "@effect/vitest";
-import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@t3tools/contracts";
+import { ProviderDriverKind, ProviderInstanceId, type ServerProvider } from "@circe/contracts";
 import {
   CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS,
   resolveCirceSupervisorPlan,

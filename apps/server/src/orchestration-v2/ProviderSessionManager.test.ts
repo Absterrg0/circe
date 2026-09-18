@@ -14,7 +14,7 @@ import {
   ProviderInstanceId,
   type ProviderSessionId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";

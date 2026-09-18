@@ -4,8 +4,8 @@ import type {
   OrchestrationV2ShellSnapshot,
   OrchestrationV2StoredEvent,
   OrchestrationV2ThreadShell,
-} from "@t3tools/contracts";
-import { ProjectId, ThreadId } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { ProjectId, ThreadId } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 

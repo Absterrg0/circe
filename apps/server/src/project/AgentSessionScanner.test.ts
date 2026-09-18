@@ -7,8 +7,8 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   type ServerSettings as ContractServerSettings,
-} from "@t3tools/contracts";
-import { symlinksSupported } from "@t3tools/shared/testing/symlinks";
+} from "@circe/contracts";
+import { symlinksSupported } from "@circe/shared/testing/symlinks";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
@@ -930,7 +930,7 @@ it.layer(NodeServices.layer)("AgentSessionScanner", (it) => {
         yield* fileSystem.makeDirectory(path.join(repo, ".git"));
         yield* fileSystem.writeFileString(
           path.join(repo, ".git", "config"),
-          '[core]\n\tbare = false\n[remote "origin"]\n\turl = git@github.com:pingdotgg/t3code.git\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n',
+          '[core]\n\tbare = false\n[remote "origin"]\n\turl = git@github.com:Absterrg0/circe.git\n\tfetch = +refs/heads/*:refs/remotes/origin/*\n',
         );
         yield* fileSystem.writeFileString(
           path.join(worktree, ".git"),
@@ -971,7 +971,7 @@ it.layer(NodeServices.layer)("AgentSessionScanner", (it) => {
           { path: plain, git: null },
           {
             path: repo,
-            git: { remoteKey: "github.com/pingdotgg/t3code", repository: "pingdotgg/t3code" },
+            git: { remoteKey: "github.com/absterrg0/circe", repository: "Absterrg0/circe" },
           },
         ]);
       }),

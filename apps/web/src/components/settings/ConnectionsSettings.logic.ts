@@ -1,5 +1,5 @@
-import type { AdvertisedEndpoint, DesktopBridge, DesktopWslState } from "@t3tools/contracts";
-import { normalizeHttpBaseUrl } from "@t3tools/client-runtime/environment";
+import type { AdvertisedEndpoint, DesktopBridge, DesktopWslState } from "@circe/contracts";
+import { normalizeHttpBaseUrl } from "@circe/client/environment";
 
 type WslEnableBridge = Pick<DesktopBridge, "setWslBackendEnabled" | "setWslDistro" | "setWslOnly">;
 

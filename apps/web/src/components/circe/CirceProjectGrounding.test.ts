@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId } from "@circe/contracts";
 import { resolveVoiceConfirmation } from "@circe/core/confirmation";
 import type { CirceMeshProject } from "@circe/client-runtime/circe/mesh";
 

@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId } from "@circe/contracts";
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 import type { DependencyList, EffectCallback } from "react";
 import { beforeEach, describe, expect, it, vi } from "vite-plus/test";

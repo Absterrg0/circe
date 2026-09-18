@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId, ProjectId, ThreadId } from "@t3tools/contracts";
-import type { CircePresentationEvent } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId, ThreadId } from "@circe/contracts";
+import type { CircePresentationEvent } from "@circe/contracts";
 
 import type { MobileCircePresentation } from "./CirceMobileProvider";
 import { selectCurrentPresentations } from "./mobilePresentations";

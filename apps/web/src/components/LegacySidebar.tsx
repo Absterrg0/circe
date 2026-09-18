@@ -1,5 +1,5 @@
 import { useSupportsMultiplePullRequests } from "~/hooks/useSupportsMultiplePullRequests";
-import { resolveThreadCurrentPullRequestLink } from "@t3tools/shared/threadPullRequests";
+import { resolveThreadCurrentPullRequestLink } from "@circe/shared/threadPullRequests";
 import { Spinner } from "~/components/ui/spinner";
 import {
   ArchiveIcon,
@@ -50,21 +50,21 @@ import {
   type SidebarProjectGroupingMode,
   resolveEnvironmentMachineKind,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   parseScopedThreadKey,
   scopedProjectKey,
   scopedThreadKey,
   scopeProjectRef,
   scopeThreadRef,
-} from "@t3tools/client-runtime/environment";
-import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
+} from "@circe/client/environment";
+import { safeErrorLogAttributes } from "@circe/client/errors";
 import {
   isAtomCommandInterrupted,
   settlePromise,
   squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { threadRuntimeCanArchive } from "@t3tools/client-runtime/state/models";
+} from "@circe/client/state/runtime";
+import { threadRuntimeCanArchive } from "@circe/client/state/models";
 import { useNavigate, useParams, useRouter } from "@tanstack/react-router";
 import {
   MAX_SIDEBAR_THREAD_PREVIEW_COUNT,
@@ -72,7 +72,7 @@ import {
   type SidebarProjectSortOrder,
   type SidebarThreadPreviewCount,
   type SidebarThreadSortOrder,
-} from "@t3tools/contracts/settings";
+} from "@circe/contracts/settings";
 import { isDesktopLocalConnectionTarget, isWslConnectionTarget } from "../connection/desktopLocal";
 import { useDesktopLocalBootstraps } from "../connection/useDesktopLocalBootstraps";
 import { isElectron } from "../env";

@@ -3,16 +3,16 @@ import { executeCirceInstruction } from "@circe/client-runtime/operations/circe"
 import {
   createEnvironmentCommand,
   createEnvironmentRpcSubscriptionAtomFamily,
-} from "@t3tools/client-runtime/state/runtime";
-import { WS_METHODS } from "@t3tools/contracts";
-import type { CirceExecuteInput } from "@t3tools/contracts";
+} from "@circe/client/state/runtime";
+import { WS_METHODS } from "@circe/contracts";
+import type { CirceExecuteInput } from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 
 export const circeEnvironment = {
   lookup: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:quick-lookup",
-    execute: (input: import("@t3tools/contracts").CirceQuickLookupInput) =>
+    execute: (input: import("@circe/contracts").CirceQuickLookupInput) =>
       lookupCirceQuickAnswer(input),
   }),
   execute: createEnvironmentCommand(connectionAtomRuntime, {

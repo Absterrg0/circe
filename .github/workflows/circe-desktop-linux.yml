@@ -59,12 +59,12 @@ jobs:
           cache: true
           run-install: |
             args:
-              - --filter=@t3tools/desktop...
+              - --filter=@circe/desktop...
               - --filter=@absterrg0/circe...
-              - --filter=@t3tools/scripts...
+              - --filter=@circe/scripts...
 
       - name: Ensure Electron runtime is installed
-        run: vp run --filter @t3tools/desktop ensure:electron
+        run: vp run --filter @circe/desktop ensure:electron
 
       - name: Run focused Circe desktop tests
         run: |
@@ -74,7 +74,7 @@ jobs:
             apps/desktop/src/shell/DesktopCirceShell.test.ts \
             apps/desktop/src/shell/DesktopCirceOverlay.test.ts \
             scripts/circe-release-workflow.test.ts
-          vp run --filter @t3tools/desktop typecheck
+          vp run --filter @circe/desktop typecheck
 
       - name: Install Linux packaging and startup-smoke dependencies
         run: sudo apt-get update && sudo apt-get install -y dbus-x11 gnome-keyring inotify-tools libsecret-1-0 libasound2-dev libx11-dev libxrandr-dev libxtst-dev libxt-dev openbox x11-utils xvfb imagemagick
@@ -344,7 +344,7 @@ jobs:
 
           setsid --wait dbus-run-session -- env \
             APPIMAGE_EXTRACT_AND_RUN=1 ELECTRON_ENABLE_LOGGING=1 CIRCE_STARTUP_PROBE_FILE="$probe_file" \
-            T3CODE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config" \
+            CIRCE_HOME="$smoke_root/t3-home" XDG_CONFIG_HOME="$smoke_root/xdg-config" \
             XDG_DATA_HOME="$smoke_root/xdg-data" XDG_CACHE_HOME="$smoke_root/xdg-cache" \
             XDG_RUNTIME_DIR="$smoke_root/xdg-runtime" DISPLAY="$x_display" \
             "$appimage" --ozone-platform=x11 --no-sandbox --disable-gpu --password-store=basic --circe-startup-probe="$probe_file" >"$log_file" 2>&1 &

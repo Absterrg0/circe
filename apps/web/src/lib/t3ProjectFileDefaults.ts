@@ -1,6 +1,6 @@
-import { T3_PROJECT_FILE_NAME, type EnvironmentId, type ThreadEnvMode } from "@t3tools/contracts";
-import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
-import { executeAtomQuery } from "@t3tools/client-runtime/state/runtime";
+import { CIRCE_PROJECT_FILE_NAME, type EnvironmentId, type ThreadEnvMode } from "@circe/contracts";
+import { parseT3ProjectFile } from "@circe/shared/t3ProjectFile";
+import { executeAtomQuery } from "@circe/client/state/runtime";
 
 import {
   getProjectFileQueryAtom,
@@ -24,13 +24,13 @@ export async function readT3ProjectFileDefaultThreadEnvMode(
 ): Promise<ThreadEnvMode | null> {
   const result = await executeAtomQuery(
     appAtomRegistry,
-    getProjectFileQueryAtom(environmentId, workspaceRoot, T3_PROJECT_FILE_NAME),
+    getProjectFileQueryAtom(environmentId, workspaceRoot, CIRCE_PROJECT_FILE_NAME),
     { reportDefect: false, reportFailure: false },
   );
   const data = resolveProjectFileQueryData(
     environmentId,
     workspaceRoot,
-    T3_PROJECT_FILE_NAME,
+    CIRCE_PROJECT_FILE_NAME,
     result._tag === "Success" ? result.value : null,
   );
   if (data === null || data.truncated) return null;

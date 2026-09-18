@@ -4,7 +4,7 @@ import {
   type ProviderDriverKind,
   type ProviderInstanceConfig,
   type ProviderInstanceConfigMap,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -61,7 +61,7 @@ export interface ProviderAdapterRegistryV2Shape {
 export class ProviderAdapterRegistryV2 extends Context.Service<
   ProviderAdapterRegistryV2,
   ProviderAdapterRegistryV2Shape
->()("t3/orchestration-v2/ProviderAdapterRegistry/ProviderAdapterRegistryV2") {}
+>()("@absterrg0/circe/orchestration-v2/ProviderAdapterRegistry/ProviderAdapterRegistryV2") {}
 
 /**
  * Production facade over the canonical provider-instance registry. Adapter

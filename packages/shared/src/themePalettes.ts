@@ -121,7 +121,7 @@ export type ThemeDefinition = Readonly<{
   managed?: boolean;
 }>;
 
-export const T3_CHAT_THEME: ThemeDefinition = {
+export const CIRCE_CHAT_THEME: ThemeDefinition = {
   id: "t3-chat",
   label: "T3 Chat",
   appearance: "light",
@@ -757,7 +757,7 @@ export const IRIS_THEME: ThemeDefinition = {
 };
 
 export const BUILT_IN_THEMES: ReadonlyArray<ThemeDefinition> = [
-  T3_CHAT_THEME,
+  CIRCE_CHAT_THEME,
   GROVE_THEME,
   OCEAN_THEME,
   EMBER_THEME,

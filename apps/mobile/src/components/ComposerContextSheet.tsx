@@ -1,12 +1,12 @@
 import { SourceFileSurface } from "../features/files/SourceFileSurface";
-import { filePreviewKind } from "@t3tools/shared/filePreview";
+import { filePreviewKind } from "@circe/shared/filePreview";
 import type {
   ComposerContextRecord,
   ElementContextSource,
   EnvironmentId,
-} from "@t3tools/contracts";
-import { formatAttachmentSize } from "@t3tools/client-runtime/state/attachments";
-import { videoMimeType } from "@t3tools/shared/video";
+} from "@circe/contracts";
+import { formatAttachmentSize } from "@circe/client/state/attachments";
+import { videoMimeType } from "@circe/shared/video";
 import { useState } from "react";
 import {
   Alert,

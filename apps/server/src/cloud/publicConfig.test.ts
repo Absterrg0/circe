@@ -52,9 +52,9 @@ it.effect("normalizes the hosted app URL to an absolute origin", () =>
   Effect.gen(function* () {
     assert.equal(
       yield* hostedAppUrlConfig.pipe(
-        provideEnv({ CIRCE_HOSTED_APP_URL: "https://nightly.app.t3.codes" }),
+        provideEnv({ CIRCE_HOSTED_APP_URL: "https://nightly.app.heycirce.com" }),
       ),
-      "https://nightly.app.t3.codes",
+      "https://nightly.app.heycirce.com",
     );
     assert.equal(
       yield* hostedAppUrlConfig.pipe(provideEnv({ CIRCE_HOSTED_APP_URL: "http://localhost:5733" })),
@@ -66,10 +66,10 @@ it.effect("normalizes the hosted app URL to an absolute origin", () =>
 it.effect("rejects malformed or insecure hosted app URLs", () =>
   Effect.gen(function* () {
     for (const value of [
-      "app.t3.codes",
-      "http://app.t3.codes",
-      "https://app.t3.codes/nested",
-      "https://app.t3.codes?alias=true",
+      "app.heycirce.com",
+      "http://app.heycirce.com",
+      "https://app.heycirce.com/nested",
+      "https://app.heycirce.com?alias=true",
     ]) {
       const result = yield* hostedAppUrlConfig.pipe(
         provideEnv({ CIRCE_HOSTED_APP_URL: value }),

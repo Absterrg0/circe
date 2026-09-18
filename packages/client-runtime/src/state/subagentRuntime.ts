@@ -18,7 +18,7 @@
  * metadata).
  */
 import * as DateTime from "effect/DateTime";
-import type { OrchestrationThreadActivity, OrchestrationV2Subagent } from "@t3tools/contracts";
+import type { OrchestrationThreadActivity, OrchestrationV2Subagent } from "@circe/contracts";
 
 export type RuntimeSubagentStatus =
   | "pending"

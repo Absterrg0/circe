@@ -21,7 +21,7 @@ import {
   defaultInstanceIdForDriver,
   ProviderDriverKind,
   type ProviderInstanceId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import { makeCodexTextGeneration } from "../src/textGeneration/CodexTextGeneration.ts";
 import * as ServerConfig from "../src/config.ts";

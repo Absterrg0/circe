@@ -19,7 +19,7 @@ import {
   type CirceTaskDeskView,
   type ServerProvider,
   WS_METHODS,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
@@ -34,7 +34,7 @@ import {
   EnvironmentNotRegisteredError,
   EnvironmentRegistry,
   type SupervisorConnectionPhase,
-} from "@t3tools/client-runtime/connection";
+} from "@circe/client/connection";
 import {
   executeCirceInstruction,
   interpretCirceInstruction,
@@ -49,7 +49,7 @@ import {
   isRpcClientError,
   request,
   type EnvironmentRpcFailure,
-} from "@t3tools/client-runtime/rpc";
+} from "@circe/client/rpc";
 
 export type CirceMeshReachability = "online" | "offline";
 export const CIRCE_MESH_REFRESH_CONCURRENCY = 4;

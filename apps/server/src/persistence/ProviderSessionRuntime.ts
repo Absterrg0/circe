@@ -15,8 +15,8 @@ import {
   ProviderInstanceId,
   RuntimeMode,
   ThreadId,
-} from "@t3tools/contracts";
-import { ProviderSessionRuntimeStatus } from "@t3tools/contracts/legacy-orchestration";
+} from "@circe/contracts";
+import { ProviderSessionRuntimeStatus } from "@circe/contracts/legacy-orchestration";
 
 import {
   PersistenceDecodeError,

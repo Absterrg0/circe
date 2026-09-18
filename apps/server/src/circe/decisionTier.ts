@@ -12,7 +12,7 @@ import { findCirceEffortDescriptor } from "@circe/core/modelChoice";
 import { semanticBasename, projectSemanticNames } from "@circe/core/semantic";
 import type { CirceSemanticProposal } from "@circe/core/semanticEvidence";
 import { circeWebsiteUrl } from "@circe/core/website";
-import type { CirceInterpretInput, OrchestrationThreadActivity } from "@t3tools/contracts";
+import type { CirceInterpretInput, OrchestrationThreadActivity } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
 import { getPendingCirceReplyState } from "@circe/core/confirmation";

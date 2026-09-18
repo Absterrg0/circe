@@ -7,7 +7,7 @@ import * as Result from "effect/Result";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ForeignDatabaseError, migrationManifest, runMigrations } from "./Migrations.ts";
-import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@circe/shared/nodeSqliteClient";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
 

@@ -1,4 +1,4 @@
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 
 export function folderDropTarget(input: {
   localEnvironmentDisabled: boolean;

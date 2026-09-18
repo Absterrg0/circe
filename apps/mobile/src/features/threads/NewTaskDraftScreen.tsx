@@ -1,12 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
-import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
+import { clampFileAttachmentUploadBytes } from "@circe/client/state/attachments";
 import {
   nextPastedTextFileName,
   pastedTextDisposition,
   replaceTextSelection,
-} from "@t3tools/client-runtime/text-paste";
+} from "@circe/client/text-paste";
 import { NativeHeaderToolbar, NativeStackScreenOptions } from "../../native/StackHeader";
 import {
   CommonActions,
@@ -33,8 +33,8 @@ import {
   PROVIDER_SEND_TURN_MAX_ATTACHMENTS,
   PROVIDER_SEND_TURN_MAX_INPUT_CHARS,
   resolveEnvironmentMachineKind,
-} from "@t3tools/contracts";
-import { deriveThreadTitleSeed } from "@t3tools/client-runtime/operations";
+} from "@circe/contracts";
+import { deriveThreadTitleSeed } from "@circe/client/operations";
 
 import {
   ComposerEditor,
@@ -67,7 +67,7 @@ import { VideoPreviewModal, type VideoPreviewSource } from "../../components/Vid
 import { ProviderIcon } from "../../components/ProviderIcon";
 import { SymbolView } from "../../components/AppSymbol";
 import { AppText as Text } from "../../components/AppText";
-import { hasProviderUsageLimits, isUsageLimitsCommand } from "@t3tools/shared/usageLimits";
+import { hasProviderUsageLimits, isUsageLimitsCommand } from "@circe/shared/usageLimits";
 import { COMPOSER_LAYOUT_TRANSITION, ComposerSurface } from "./ThreadComposer";
 import { ComposerCommandPopover } from "./ComposerCommandPopover";
 import { useComposerCommandMenu } from "./use-composer-command-menu";

@@ -6,11 +6,11 @@
  *
  * @module OrchestrationCommandReceiptRepository
  */
-import { CommandId, IsoDateTime, NonNegativeInt, ProjectId, ThreadId } from "@t3tools/contracts";
+import { CommandId, IsoDateTime, NonNegativeInt, ProjectId, ThreadId } from "@circe/contracts";
 import {
   OrchestrationAggregateKind,
   OrchestrationCommandReceiptStatus,
-} from "@t3tools/contracts/legacy-orchestration";
+} from "@circe/contracts/legacy-orchestration";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import * as Context from "effect/Context";

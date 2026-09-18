@@ -3,7 +3,7 @@ import { useAtomValue } from "@effect/atom-react";
 import {
   COMPOSER_CONTEXT_CLIPBOARD_MIME,
   encodeComposerContextClipboardHtml,
-} from "@t3tools/shared/composerContextClipboard";
+} from "@circe/shared/composerContextClipboard";
 import {
   CheckIcon,
   ChevronRightIcon,
@@ -32,26 +32,26 @@ import type {
   ScopedThreadRef,
   ServerProviderSkill,
   ThreadPullRequestKey,
-} from "@t3tools/contracts";
-import { faviconUrlForOrigin } from "@t3tools/shared/favicon";
-import { githubMediaFetchUrl } from "@t3tools/shared/githubMedia";
+} from "@circe/contracts";
+import { faviconUrlForOrigin } from "@circe/shared/favicon";
+import { githubMediaFetchUrl } from "@circe/shared/githubMedia";
 import {
   isAtomCommandInterrupted,
   squashAtomCommandFailure,
   type AtomCommandResult,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/client/state/runtime";
 import {
   codexArtifactTemplatePresentationLabel,
   type CodexArtifactTemplate,
   type CodexArtifactTemplateKind,
-} from "@t3tools/client-runtime/codex-artifact-templates";
+} from "@circe/client/codex-artifact-templates";
 import {
   classifyMarkdownImageSource,
   markdownImageSourceFragment,
-} from "@t3tools/client-runtime/markdown-images";
-import { inlineCodeFilePathCandidate } from "@t3tools/client-runtime/markdown-links";
-import { mediaFileReference, mediaUrlReference } from "@t3tools/client-runtime/media-reference";
-import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@t3tools/shared/filePreview";
+} from "@circe/client/markdown-images";
+import { inlineCodeFilePathCandidate } from "@circe/client/markdown-links";
+import { mediaFileReference, mediaUrlReference } from "@circe/client/media-reference";
+import { mediaKindFromPath, mediaMimeTypeFromExtension } from "@circe/shared/filePreview";
 import * as Cause from "effect/Cause";
 import { AsyncResult } from "effect/unstable/reactivity";
 import React, {
@@ -84,8 +84,8 @@ import { defaultUrlTransform } from "react-markdown";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
 import remarkBreaks from "remark-breaks";
-import { parseAssistantCitationHref } from "@t3tools/shared/assistantCitations";
-import { parseComposerContextHref } from "@t3tools/shared/composerContextReferences";
+import { parseAssistantCitationHref } from "@circe/shared/assistantCitations";
+import { parseComposerContextHref } from "@circe/shared/composerContextReferences";
 import { AssistantCitationChip } from "./chat/AssistantCitationChip";
 import remarkGfm from "remark-gfm";
 import { remarkGithubAlerts } from "../markdown-github-alerts";
@@ -94,7 +94,7 @@ import {
   CODEX_ARTIFACT_TEMPLATE_HAST_PROPERTIES,
   remarkCodexDirectives,
   renderCodexFileCitationsAsMarkdown,
-} from "@t3tools/client-runtime/codex-markdown-directives";
+} from "@circe/client/codex-markdown-directives";
 import { renderSkillInlineMarkdownChildren } from "./chat/SkillInlineText";
 import {
   resolveMarkdownMediaPreview,

@@ -768,9 +768,9 @@ it.effect("decodes thread pull request links with snapshot and stack", () =>
       pullRequests: [
         {
           host: "github.com",
-          repository: "pingdotgg/t3code",
+          repository: "Absterrg0/circe",
           number: 42,
-          url: "https://github.com/pingdotgg/t3code/pull/42",
+          url: "https://github.com/Absterrg0/circe/pull/42",
           source: "agent",
           linkedAt: "2026-01-01T00:00:00.000Z",
           snapshot: null,
@@ -778,9 +778,9 @@ it.effect("decodes thread pull request links with snapshot and stack", () =>
         },
         {
           host: "github.com",
-          repository: "pingdotgg/t3code",
+          repository: "Absterrg0/circe",
           number: 43,
-          url: "https://github.com/pingdotgg/t3code/pull/43",
+          url: "https://github.com/Absterrg0/circe/pull/43",
           source: "stack",
           linkedAt: "2026-01-01T00:01:00.000Z",
           snapshot: {
@@ -796,7 +796,7 @@ it.effect("decodes thread pull request links with snapshot and stack", () =>
             kind: "native",
             id: "7",
             number: 3,
-            url: "https://github.com/pingdotgg/t3code/stacks/3",
+            url: "https://github.com/Absterrg0/circe/stacks/3",
             base: "main",
             layers: [
               { number: 42, headBranch: "feature/stack-1", state: "open" },
@@ -1101,9 +1101,9 @@ it.effect("accepts thread.pull-request.link and .unlink commands", () =>
       commandId: "cmd-link-pull-request",
       threadId: "thread-1",
       host: "github.com",
-      repository: "pingdotgg/t3code",
+      repository: "Absterrg0/circe",
       number: 42,
-      url: "https://github.com/pingdotgg/t3code/pull/42",
+      url: "https://github.com/Absterrg0/circe/pull/42",
       source: "manual",
     });
     assert.strictEqual(link.type, "thread.pull-request.link");
@@ -1117,7 +1117,7 @@ it.effect("accepts thread.pull-request.link and .unlink commands", () =>
       commandId: "cmd-unlink-pull-request",
       threadId: "thread-1",
       host: "github.com",
-      repository: "pingdotgg/t3code",
+      repository: "Absterrg0/circe",
       number: 42,
     });
     assert.strictEqual(unlink.type, "thread.pull-request.unlink");
@@ -1141,9 +1141,9 @@ it.effect("still decodes a persisted thread.meta-updated event carrying linkedPu
         threadId: "thread-1",
         linkedPullRequest: {
           projectId: "project-1",
-          repository: "pingdotgg/t3code",
+          repository: "Absterrg0/circe",
           number: 42,
-          url: "https://github.com/pingdotgg/t3code/pull/42",
+          url: "https://github.com/Absterrg0/circe/pull/42",
         },
         updatedAt: "2026-01-01T00:00:00.000Z",
       },
@@ -1176,9 +1176,9 @@ it.effect("accepts pull request synchronization only as an internal command", ()
   Effect.gen(function* () {
     const pullRequest = {
       projectId: ProjectId.make("project-1"),
-      repository: "pingdotgg/t3code",
+      repository: "Absterrg0/circe",
       number: 42,
-      url: "https://github.com/pingdotgg/t3code/pull/42",
+      url: "https://github.com/Absterrg0/circe/pull/42",
     };
     const command = {
       type: "thread.pull-request.sync" as const,

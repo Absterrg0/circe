@@ -4,8 +4,8 @@ import type {
   ProviderOptionDescriptor,
   SelectProviderOptionDescriptor,
   ServerProvider,
-} from "@t3tools/contracts";
-import { isProviderAvailable } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { isProviderAvailable } from "@circe/contracts";
 
 /** Clarification reasons answered with a typed model selection, never rewritten English. */
 export type CirceModelClarificationReason =
