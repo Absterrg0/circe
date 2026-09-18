@@ -509,9 +509,6 @@ describe("Expo push send boundary", () => {
       const harness = Layer.mergeAll(
         Layer.succeed(OrchestrationEngineService, {
           readEvents: () => Stream.empty,
-          readThreadEvents: () => Stream.empty,
-          getThreadReplayStats: () =>
-            Effect.succeed({ eventCount: 0, payloadBytes: 0, hasCreateEvent: false }),
           dispatch: () => Effect.succeed({ sequence: 1 }),
           streamDomainEvents: Stream.fromQueue(events),
           subscribeDomainEvents: Effect.never,

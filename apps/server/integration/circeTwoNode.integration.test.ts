@@ -385,6 +385,7 @@ const makeClientLayer = () => {
 
   const targetStore = Persistence.ConnectionTargetStore.of({
     list: Effect.sync(() => [...targets.values()]),
+    listDisabled: Effect.succeed([]),
   });
   const registrationStore = Persistence.ConnectionRegistrationStore.of({
     register: (registration: ConnectionRegistration) =>
@@ -403,6 +404,7 @@ const makeClientLayer = () => {
           credentials.delete(target.connectionId);
         }
       }),
+    setEnabled: () => Effect.void,
   });
   const profileStore = ConnectionProfileStore.ConnectionProfileStore.of({
     get: (connectionId) => Effect.succeed(Option.fromUndefinedOr(profiles.get(connectionId))),
@@ -874,7 +876,10 @@ describe("Circe multi-node client mesh", () => {
           execution: "desktop",
         });
         yield* runDirection({ name: "controller-to-vps", origin: "controller", execution: "vps" });
-      }).pipe(Effect.scoped, Effect.provide(clientLayer));
+      }).pipe(
+        Effect.scoped,
+        Effect.provide(clientLayer.pipe(Layer.provideMerge(remoteHttpClientLayer(localFetch)))),
+      );
 
       // oxlint-disable-next-line t3code/no-manual-effect-runtime-in-tests -- The outer async scope owns real child-process startup and guaranteed teardown; it.effect cannot safely bracket that lifecycle.
       await Effect.runPromise(proof).catch((error) => {

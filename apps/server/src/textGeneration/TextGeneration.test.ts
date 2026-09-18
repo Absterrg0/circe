@@ -190,8 +190,16 @@ describe("TextGeneration.make", () => {
             Schema.decodeUnknownEffect(outputSchema)({ action: "status" }).pipe(Effect.orDie),
         }),
       );
-      const textGeneration = TextGeneration.makeTextGenerationFromRegistry(
-        makeStubRegistry([instance]),
+      const textGeneration = yield* TextGeneration.make.pipe(
+        Effect.provideService(
+          ProviderInstanceRegistry.ProviderInstanceRegistry,
+          makeStubRegistry([instance]),
+        ),
+        Effect.provide(
+          Layer.mock(SourceControlProviderRegistry.SourceControlProviderRegistry)({
+            resolveLink: () => Effect.die("unused"),
+          }),
+        ),
       );
 
       const result = yield* textGeneration.generateStructured({

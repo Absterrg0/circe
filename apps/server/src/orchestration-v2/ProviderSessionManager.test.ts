@@ -407,6 +407,7 @@ const fakeHttpServer = HttpServer.HttpServer.of({
 const fakeEnvironment = ServerEnvironment.of({
   getEnvironmentId: Effect.succeed(EnvironmentId.make("environment-provider-session-manager")),
   getDescriptor: Effect.die("unused"),
+  setLabel: () => Effect.die("unused"),
 });
 
 const TestMcpRegistryLayer = Layer.effect(
