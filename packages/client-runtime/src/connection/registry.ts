@@ -113,6 +113,20 @@ export class EnvironmentRegistry extends Context.Service<
       environmentId: EnvironmentId,
       error: ConnectionBlockedError | null,
     ) => Effect.Effect<void, Persistence.ConnectionPersistenceError>;
+    /**
+     * Re-probe every environment blocked for incompatibility and clear the
+     * block when the node now matches this client.
+     *
+     * A blocked environment is disabled, so its supervisor never runs and the
+     * only watcher that could clear the block never fires. Without an explicit
+     * re-probe, upgrading the node leaves it permanently and silently off.
+     * Resolution probes the live descriptor, so a matching node is admitted
+     * again and the saved enabled state is restored.
+     */
+    readonly recheckCompatibility: () => Effect.Effect<
+      void,
+      Persistence.ConnectionPersistenceError
+    >;
     readonly state: (
       environmentId: EnvironmentId,
     ) => Effect.Effect<SupervisorConnectionState, EnvironmentNotRegisteredError>;
@@ -395,6 +409,15 @@ export const make = Effect.gen(function* () {
     if (yield* Ref.getAndSet(started, true)) {
       return;
     }
+    // A node blocked on protocol incompatibility is disabled, so its
+    // supervisor never runs and nothing else would ever re-check it. Probe
+    // first so an upgraded node becomes usable on this launch, then start
+    // every environment; rechecks that cleared a block start connected.
+    yield* recheckCompatibility().pipe(
+      Effect.catch((error) =>
+        Effect.logWarning("Could not re-check blocked environments.", { error }),
+      ),
+    );
     yield* Effect.forEach(
       persistedTargets,
       (target) =>
@@ -870,6 +893,47 @@ export const make = Effect.gen(function* () {
     );
   });
 
+  /**
+   * Re-probe a blocked environment against its live descriptor.
+   *
+   * `setCompatibility` disables a blocked environment, and a disabled
+   * environment never starts its supervisor, so nothing else ever clears the
+   * block. Probing here is the only way an upgraded node becomes usable again
+   * without the user editing saved state. Resolution is the probe: it fetches
+   * the descriptor and re-runs the same protocol check, so success means the
+   * node genuinely matches this client now. Clearing restores the saved
+   * enabled state because a saved environment was disabled by the block, not
+   * by the user.
+   */
+  const recheckCompatibility = Effect.fn("EnvironmentRegistry.recheckCompatibility")(function* () {
+    const platformIds = yield* Ref.get(platformEnvironmentIds);
+    const blocked = [...(yield* SubscriptionRef.get(entries)).values()].filter(
+      (entry) => entry.unsupportedReason !== undefined,
+    );
+    yield* Effect.forEach(
+      blocked,
+      (entry) =>
+        Effect.gen(function* () {
+          // Resolution is the probe: it fetches the descriptor and re-runs
+          // the protocol check, so success means the node matches again.
+          const compatible = yield* driver.probe(entry).pipe(
+            Effect.as(true),
+            Effect.catch(() => Effect.succeed(false)),
+          );
+          if (!compatible) return;
+          yield* setCompatibility(entry.target.environmentId, null);
+          // A saved environment was disabled by the block, not by the user,
+          // so restore it. Platform environments are reconciled separately.
+          if (!platformIds.has(entry.target.environmentId)) {
+            yield* registrations
+              .setEnabled(entry.target.environmentId, true)
+              .pipe(Effect.catch(() => Effect.void));
+          }
+        }),
+      { concurrency: "unbounded", discard: true },
+    );
+  });
+
   return EnvironmentRegistry.of({
     entries,
     networkStatus,
@@ -882,6 +946,7 @@ export const make = Effect.gen(function* () {
     retryNow,
     setEnabled,
     setCompatibility,
+    recheckCompatibility,
     state,
     stateChanges,
     run,

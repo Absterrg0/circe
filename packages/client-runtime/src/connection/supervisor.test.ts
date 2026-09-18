@@ -202,7 +202,7 @@ const makeHarness = Effect.fn("TestConnectionHarness.make")(function* (options?:
     ),
     Layer.succeed(
       ConnectionDriver.ConnectionDriver,
-      ConnectionDriver.ConnectionDriver.of({ connect }),
+      ConnectionDriver.ConnectionDriver.of({ connect, probe: () => Effect.die("unused") }),
     ),
   );
 

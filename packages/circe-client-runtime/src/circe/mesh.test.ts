@@ -325,6 +325,7 @@ const makeMesh = Effect.fn("CirceMeshTest.makeMesh")(function* (nodes: ReadonlyA
     retryNow: () => Effect.void,
     setEnabled: () => Effect.void,
     setCompatibility: () => Effect.void,
+    recheckCompatibility: () => Effect.void,
     state: (environmentId) => {
       const node = nodes.find((candidate) => candidate.target.environmentId === environmentId);
       return node === undefined

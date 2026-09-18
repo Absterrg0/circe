@@ -39,6 +39,7 @@ import * as ConnectionDriver from "./driver.ts";
 import {
   ConnectionTransientError,
   ConnectionBlockedError,
+  type ConnectionAttemptError,
   BearerConnectionTarget,
   PrimaryConnectionTarget,
   RelayConnectionTarget,
@@ -151,6 +152,10 @@ const makeHarness = Effect.fn("TestEnvironmentRegistry.makeHarness")(function* (
       target: ConnectionTarget,
     ) => Effect.Effect<void, Persistence.ConnectionPersistenceError>;
     readonly initialDisabled?: ReadonlyArray<EnvironmentId>;
+    /** Override the resolution probe for one environment; default succeeds. */
+    readonly resolveProbe?: (
+      environmentId: EnvironmentId,
+    ) => Effect.Effect<PreparedConnection, ConnectionAttemptError>;
   },
 ) {
   const storedTargets = yield* Ref.make(
@@ -161,6 +166,7 @@ const makeHarness = Effect.fn("TestEnvironmentRegistry.makeHarness")(function* (
   const ownedDataClears = yield* Ref.make<ReadonlyArray<EnvironmentId>>([]);
   const sessions = yield* Ref.make<ReadonlyArray<SessionControl>>([]);
   const releasedSessions = yield* Ref.make(0);
+  const resolveCount = yield* Ref.make(0);
   const storedProfiles = yield* Ref.make(
     new Map(initialProfiles.map((profile) => [profile.connectionId, profile])),
   );
@@ -364,6 +370,18 @@ const makeHarness = Effect.fn("TestEnvironmentRegistry.makeHarness")(function* (
     disconnect: (target) => Ref.update(disconnectedSshTargets, (current) => [...current, target]),
   });
   const driver = ConnectionDriver.ConnectionDriver.of({
+    probe: (entry) =>
+      Effect.gen(function* () {
+        yield* Ref.update(resolveCount, (count) => count + 1);
+        const probe = options?.resolveProbe?.(entry.target.environmentId);
+        if (probe !== undefined) return yield* probe;
+        // Default to incompatible: a bare probe of a blocked entry must not
+        // silently unblock it, so a test that clears a block says so.
+        return yield* new ConnectionBlockedError({
+          reason: "unsupported",
+          detail: "Probe default is incompatible.",
+        });
+      }),
     connect: (entry, reportProgress) =>
       Effect.gen(function* () {
         const target = entry.target;
@@ -421,6 +439,7 @@ const makeHarness = Effect.fn("TestEnvironmentRegistry.makeHarness")(function* (
 
   return {
     layer,
+    resolveCount,
     storedTargets,
     shellCache,
     cacheClears,
@@ -1455,4 +1474,55 @@ describe("EnvironmentRegistry", () => {
       }).pipe(Effect.provide(harness.layer));
     }),
   );
+
+  it.effect("recheckCompatibility clears a block once the node matches again", () => {
+    // The regression: a node blocked for protocol incompatibility is disabled,
+    // so its supervisor never runs and nothing re-checks it. Upgrading the node
+    // used to leave it permanently and silently off.
+    let compatible = false;
+    const harness = makeHarness([], [], [], {
+      resolveProbe: () =>
+        compatible
+          ? Effect.succeed({
+              ...PREPARED,
+              environmentId: TARGET.environmentId,
+              label: TARGET.label,
+              target: TARGET,
+            })
+          : Effect.fail(
+              new ConnectionBlockedError({
+                reason: "unsupported",
+                detail: "Use a compatible client.",
+              }),
+            ),
+    });
+    return Effect.gen(function* () {
+      const runtime = yield* harness;
+      yield* Effect.gen(function* () {
+        const registry = yield* EnvironmentRegistry.EnvironmentRegistry;
+        const registration = new PrimaryConnectionRegistration({ target: TARGET });
+        yield* registry.registerPlatform(registration);
+        const error = new ConnectionBlockedError({
+          reason: "unsupported",
+          detail: "Use a compatible client.",
+        });
+        yield* registry.setCompatibility(TARGET.environmentId, error);
+        expect(
+          (yield* SubscriptionRef.get(registry.entries)).get(TARGET.environmentId),
+        ).toMatchObject({ enabled: false, unsupportedReason: error.message });
+
+        // Still incompatible: the block and the disabled state both survive.
+        yield* registry.recheckCompatibility();
+        expect(
+          (yield* SubscriptionRef.get(registry.entries)).get(TARGET.environmentId),
+        ).toMatchObject({ enabled: false, unsupportedReason: error.message });
+
+        // The node upgraded: the next re-check admits it and clears the block.
+        compatible = true;
+        yield* registry.recheckCompatibility();
+        const rechecked = (yield* SubscriptionRef.get(registry.entries)).get(TARGET.environmentId);
+        expect(rechecked?.unsupportedReason).toBeUndefined();
+      }).pipe(Effect.provide(runtime.layer));
+    });
+  });
 });

@@ -33,6 +33,15 @@ export class ConnectionDriver extends Context.Service<
       entry: ConnectionCatalogEntry,
       reportProgress: (progress: ConnectionDriverProgress) => Effect.Effect<void>,
     ) => Effect.Effect<EnvironmentConnectionLease, ConnectionAttemptError, Scope.Scope>;
+    /**
+     * Resolve the entry without opening a socket, so a disabled environment
+     * can still be probed for protocol compatibility. A fail with
+     * `ConnectionBlockedError` reason `unsupported` means the node is still
+     * incompatible; success means it now matches this client.
+     */
+    readonly probe: (
+      entry: ConnectionCatalogEntry,
+    ) => Effect.Effect<PreparedConnection, ConnectionAttemptError>;
   }
 >()("@circe/client/connection/driver/ConnectionDriver") {}
 
@@ -59,7 +68,11 @@ export const make = Effect.gen(function* () {
     return { prepared, session } satisfies EnvironmentConnectionLease;
   });
 
-  return ConnectionDriver.of({ connect });
+  const probe = Effect.fn("ConnectionDriver.probe")(function* (entry: ConnectionCatalogEntry) {
+    return yield* resolver.prepare(entry);
+  });
+
+  return ConnectionDriver.of({ connect, probe });
 });
 
 export const layer = Layer.effect(ConnectionDriver, make);

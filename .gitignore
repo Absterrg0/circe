@@ -40,3 +40,6 @@ node_modules/
 .env*
 !.env.example
 scripts/lib/*.d.ts
+
+# A stray literal "~" directory is never repo content.
+/~/ 
