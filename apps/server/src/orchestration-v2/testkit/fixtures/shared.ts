@@ -765,6 +765,9 @@ export function materializeFixtureInput(input: {
                 commandName: `rollback-${step.checkpointSuffix}`,
               }),
               threadId: ids.threadId,
+              // Replay scenarios run in a shared workspace and assert conversation
+              // rewind; file restoration requires an isolated worktree.
+              restoreFiles: false,
               scopeId,
               checkpointId: yield* idAllocator.allocate.checkpoint({
                 checkpointScopeId: scopeId,

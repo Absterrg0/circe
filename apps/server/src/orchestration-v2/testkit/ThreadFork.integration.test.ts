@@ -1165,6 +1165,9 @@ describe("orchestration V2 thread fork", () => {
               commandName: "rollback-source-to-alpha",
             }),
             threadId: sourceThreadId,
+            // The scenario runs in a shared workspace, so it rewinds the
+            // conversation without restoring files.
+            restoreFiles: false,
             scopeId: checkpointScopeId,
             checkpointId: firstCheckpointId,
           },
@@ -1366,6 +1369,9 @@ describe("orchestration V2 thread fork", () => {
               commandName: "rollback-fork-to-first",
             }),
             threadId: targetThreadId,
+            // The scenario runs in a shared workspace, so it rewinds the
+            // conversation without restoring files.
+            restoreFiles: false,
             scopeId: targetCheckpointScopeId,
             checkpointId: targetFirstCheckpointId,
           },

@@ -1,9 +1,12 @@
 import { assert, it } from "@effect/vitest";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import { migrationManifest, runMigrations } from "./Migrations.ts";
+import { ForeignDatabaseError, migrationManifest, runMigrations } from "./Migrations.ts";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
@@ -108,6 +111,34 @@ layer("MigrationRemap", (it) => {
 
       // A third run is a no-op: nothing re-applies.
       assert.deepEqual(yield* runMigrations(), []);
+    }),
+  );
+
+  it.effect("refuses a database whose recorded history belongs to another product", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`
+        CREATE TABLE effect_sql_migrations (
+          migration_id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL
+        )
+      `;
+      // Upstream records a different migration under Circe's shipped id 41.
+      yield* sql`
+        INSERT INTO effect_sql_migrations (migration_id, name)
+        VALUES (41, 'ThreadSummaryTimeline')
+      `;
+
+      const result = yield* runMigrations().pipe(Effect.exit);
+      assert.isTrue(Exit.isFailure(result));
+      if (Exit.isFailure(result)) {
+        const defect = Cause.dieOption(result.cause);
+        assert.isTrue(Option.isSome(defect));
+        if (Option.isSome(defect)) {
+          assert.instanceOf(defect.value, ForeignDatabaseError);
+          assert.strictEqual(defect.value.reason, "history_mismatch");
+        }
+      }
     }),
   );
 });
