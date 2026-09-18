@@ -326,6 +326,12 @@ export const COMPUTER_USE_DEFAULT_MAX_STEPS = 24;
 
 export type ComputerUseRunResult =
   | { readonly status: "done"; readonly steps: number; readonly summary: string }
+  /**
+   * The selector reported done without applying a single action. The claim is
+   * reported, not accepted: nothing observable backs it, so the caller must not
+   * present it as a completed task.
+   */
+  | { readonly status: "unverified"; readonly steps: number; readonly summary: string }
   | { readonly status: "budget-exhausted"; readonly steps: number }
   | { readonly status: "clarification"; readonly prompt: string; readonly steps: number }
   | { readonly status: "refused"; readonly reason: ComputerStepRefusal; readonly steps: number };
@@ -341,6 +347,7 @@ export const runComputerUse = <E = never>(
   Effect.gen(function* () {
     const maxSteps = input.maxSteps ?? COMPUTER_USE_DEFAULT_MAX_STEPS;
     const history: Array<string> = [];
+    let applied = 0;
     for (let index = 0; index < maxSteps; index += 1) {
       const surface = yield* input.runtime.capture();
       const request = buildComputerStepRequest({
@@ -360,7 +367,12 @@ export const runComputerUse = <E = never>(
       });
       if (input.onStep !== undefined) yield* input.onStep(step, index);
       if (step.kind === "done") {
-        return { status: "done", steps: index + 1, summary: step.summary } as const;
+        // Evidence-based completion: a done is only confirmed once the loop has
+        // applied at least one action. A done before any action is surfaced as
+        // unverified so a false claim never reads as success.
+        return applied === 0
+          ? ({ status: "unverified", steps: index + 1, summary: step.summary } as const)
+          : ({ status: "done", steps: index + 1, summary: step.summary } as const);
       }
       if (step.kind === "clarification") {
         return { status: "clarification", prompt: step.prompt, steps: index + 1 } as const;
@@ -369,6 +381,7 @@ export const runComputerUse = <E = never>(
         return { status: "refused", reason: step.reason, steps: index + 1 } as const;
       }
       yield* input.runtime.apply(step.action);
+      applied += 1;
       history.push(describeComputerAction(step.action));
     }
     return { status: "budget-exhausted", steps: maxSteps } as const;

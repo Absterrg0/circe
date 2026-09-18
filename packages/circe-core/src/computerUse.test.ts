@@ -208,6 +208,26 @@ describe("computer use runner", () => {
     expect(result).toEqual({ status: "budget-exhausted", steps: 2 });
   });
 
+  it("reports a done with no applied action as unverified", () => {
+    let applied = 0;
+    const result = Effect.runSync(
+      runComputerUse({
+        model: "m",
+        goal: "Open compose",
+        runtime: {
+          capture: () => Effect.succeed(surface),
+          select: () => Effect.succeed(selecting(["action", choice("done")])),
+          apply: () =>
+            Effect.sync(() => {
+              applied += 1;
+            }),
+        },
+      }),
+    );
+    expect(result).toEqual({ status: "unverified", steps: 1, summary: "Open compose" });
+    expect(applied).toBe(0);
+  });
+
   it("returns a refusal from composition without applying it", () => {
     let applied = 0;
     const result = Effect.runSync(
