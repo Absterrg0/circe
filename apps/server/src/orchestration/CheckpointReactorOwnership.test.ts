@@ -9,8 +9,15 @@ const orchestrationDir = NodePath.resolve(NodePath.dirname(NodeURL.fileURLToPath
 
 describe("checkpoint reactor ownership", () => {
   it("keeps Circe concepts out of generic checkpoint production and tests", () => {
-    for (const filename of ["CheckpointReactor.ts", "CheckpointReactor.test.ts"]) {
-      const path = NodePath.join(orchestrationDir, "Layers", filename);
+    for (const filename of [
+      "CheckpointService.ts",
+      "CheckpointCaptureService.ts",
+      "CheckpointRollbackService.ts",
+      "CheckpointService.test.ts",
+      "CheckpointCaptureService.test.ts",
+      "CheckpointRollbackService.test.ts",
+    ]) {
+      const path = NodePath.join(orchestrationDir, "..", "orchestration-v2", filename);
       expect(NodeFS.readFileSync(path, "utf8"), path).not.toMatch(/circe/iu);
     }
   });

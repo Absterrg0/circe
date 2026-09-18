@@ -6,7 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 const reactorPath = NodePath.resolve(
   NodePath.dirname(NodeURL.fileURLToPath(import.meta.url)),
-  "Layers/OrchestrationReactor.ts",
+  "../orchestration-v2/Orchestrator.ts",
 );
 
 describe("orchestration reactor ownership", () => {
