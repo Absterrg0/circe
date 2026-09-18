@@ -1,10 +1,8 @@
+import { buildComputerStepRequest, composeComputerStep } from "@circe/core/computerUse";
 import {
-  buildComputerStepRequest,
-  composeComputerStep,
-  type ComputerAction,
-  type ComputerSurface,
-} from "@circe/core/computerUse";
-import type { DesktopSnapshot, DesktopSurfaceAction } from "@circe/core/desktopSurface";
+  computerSurfaceFromSnapshot,
+  surfaceActionFromComputerAction,
+} from "@circe/core/desktopSurface";
 import * as Effect from "effect/Effect";
 
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
@@ -15,49 +13,12 @@ import { DesktopUseToolkit, type DesktopDecideResult } from "./tools.ts";
 
 const DECISION_MODEL = "jev-latest";
 
-const toComputerSurface = (snapshot: DesktopSnapshot): ComputerSurface => ({
-  kind: "desktop",
-  title: snapshot.title,
-  elements: snapshot.regions.map((region) => ({
-    id: region.id,
-    role: region.role,
-    name: region.name,
-    bounds: region.bounds,
-  })),
-});
-
-const toSurfaceAction = (captureId: string, action: ComputerAction): DesktopDecideResult => {
-  switch (action.kind) {
-    case "click":
-      return { status: "action", action: { kind: "click", captureId, regionId: action.elementId } };
-    case "type":
-      return {
-        status: "action",
-        action: {
-          kind: "type",
-          captureId,
-          ...(action.elementId === undefined ? {} : { regionId: action.elementId }),
-          text: action.text,
-        },
-      };
-    case "press":
-      return {
-        status: "action",
-        action: {
-          kind: "press",
-          captureId,
-          ...(action.elementId === undefined ? {} : { regionId: action.elementId }),
-          key: action.key,
-        },
-      };
-    case "scroll":
-      return {
-        status: "action",
-        action: { kind: "scroll", captureId, direction: action.direction },
-      };
-    case "wait":
-      return { status: "wait" };
-  }
+const toDecideResult = (
+  captureId: string,
+  action: Parameters<typeof surfaceActionFromComputerAction>[1],
+): DesktopDecideResult => {
+  const surfaceAction = surfaceActionFromComputerAction(captureId, action);
+  return surfaceAction === null ? { status: "wait" } : { status: "action", action: surfaceAction };
 };
 
 const make = Effect.gen(function* () {
@@ -186,7 +147,7 @@ const make = Effect.gen(function* () {
                 message: "That capture is no longer current; observe again.",
               };
             }
-            const computerSurface = toComputerSurface(snapshot);
+            const computerSurface = computerSurfaceFromSnapshot(snapshot);
             const request = buildComputerStepRequest({
               model: DECISION_MODEL,
               goal: input.goal,
@@ -209,7 +170,7 @@ const make = Effect.gen(function* () {
             if (step.kind === "refused") {
               return { status: "refused" as const, reason: step.reason };
             }
-            return toSurfaceAction(input.captureId, step.action);
+            return toDecideResult(input.captureId, step.action);
           }),
         ),
       ),

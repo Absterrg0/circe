@@ -136,6 +136,7 @@ import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
+import { DesktopSurfaceLive } from "./circe/desktopSurface/Layers/DesktopSurface.ts";
 import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
 import { CirceProjectMemoryLive } from "./circe/Layers/CirceProjectMemory.ts";
 import { CirceCoordinatorLive } from "./circe/Layers/CirceCoordinator.ts";
@@ -652,7 +653,11 @@ const makeRoutesLayer = Layer.mergeAll(
         // Browser missions run on this node's connected desktop host.
         Layer.provide(CirceBrowserUseLive),
         // Desktop missions run on this node's own screen.
-        Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
+        Layer.provide(
+          CirceComputerUseLive.pipe(
+            Layer.provide(DesktopSurfaceLive.pipe(Layer.provide(DesktopCommands.layer))),
+          ),
+        ),
         // Project memory is node-local, so coordinator turns and workers share one store.
         Layer.provide(CirceProjectMemoryLive),
         // The coordinator owns the project goal and pinned workspace context.

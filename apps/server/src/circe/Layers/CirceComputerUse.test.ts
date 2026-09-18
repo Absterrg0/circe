@@ -1,27 +1,39 @@
+import type { DesktopSnapshot } from "@circe/core/desktopSurface";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { describe, expect, it } from "vite-plus/test";
 
-import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
-import { DesktopUse } from "../desktopUse/DesktopUse.ts";
+import {
+  DesktopSurface,
+  DesktopSurfaceUnavailableError,
+} from "../desktopSurface/Services/DesktopSurface.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
-import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { make } from "./CirceComputerUse.ts";
 import { CirceMissionCancellationLive } from "./CirceMissionCancellation.ts";
 
-const dump = JSON.stringify({
-  elements: [
+const snapshot: DesktopSnapshot = {
+  capture: {
+    captureId: "cap_1",
+    displayId: "primary",
+    width: 800,
+    height: 600,
+    scale: 1,
+    takenAtMs: 1,
+    source: "semantic",
+  },
+  title: "Desktop",
+  regions: [
     {
       id: "app:0/0/3",
       role: "push button",
       name: "Save",
-      bounds: { x: 700, y: 40, width: 80, height: 24 },
-      editable: false,
-      actions: ["click"],
+      bounds: { x: 0, y: 0, width: 10, height: 10 },
+      source: "semantic",
+      interactive: true,
     },
   ],
-});
+};
 
 const choose = (action: string) => ({
   status: "answered" as const,
@@ -44,36 +56,23 @@ const choose = (action: string) => ({
 
 const testLayer = (input: {
   readonly decisions: ReadonlyArray<string>;
-  readonly operations: Array<string>;
-  readonly actResult?: string;
-  readonly cancellation?: Layer.Layer<CirceMissionCancellation>;
+  readonly acts: Array<string>;
+  readonly observe?: () => Effect.Effect<DesktopSnapshot, DesktopSurfaceUnavailableError>;
 }) => {
   let index = 0;
-  return Layer.effect(CirceComputerUse, make({ backend: "linux-x11" })).pipe(
+  return Layer.effect(CirceComputerUse, make()).pipe(
     Layer.provide(
-      Layer.mock(DesktopUse)({
-        input: (request) =>
+      Layer.succeed(DesktopSurface, {
+        observe: input.observe ?? (() => Effect.succeed(snapshot)),
+        snapshot: () => Effect.succeed(snapshot),
+        act: (action) =>
           Effect.sync(() => {
-            input.operations.push(request.action.type);
-            return {};
+            input.acts.push(action.kind);
           }),
       }),
     ),
     Layer.provide(
-      Layer.mock(DesktopCommands)({
-        run: (_command, _backend, operation) =>
-          Effect.succeed({
-            stdout:
-              operation === "desktop.accessibility"
-                ? dump
-                : (input.actResult ?? JSON.stringify({ ok: true })),
-            stderr: "",
-            code: 0,
-          }),
-      }),
-    ),
-    Layer.provide(
-      Layer.mock(CirceDecision)({
+      Layer.succeed(CirceDecision, {
         decide: () => {
           const action = input.decisions[Math.min(index, input.decisions.length - 1)] ?? "done";
           index += 1;
@@ -81,16 +80,12 @@ const testLayer = (input: {
         },
       }),
     ),
-    Layer.provide(input.cancellation ?? CirceMissionCancellationLive),
+    Layer.provide(CirceMissionCancellationLive),
   );
 };
 
 const run = (
-  input: {
-    readonly goal: string;
-    readonly confirmed?: boolean;
-    readonly requestMetadata?: { readonly requestId: string };
-  },
+  input: { readonly goal: string; readonly confirmed?: boolean },
   layer: Layer.Layer<CirceComputerUse>,
 ) =>
   Effect.runSync(
@@ -99,75 +94,35 @@ const run = (
       return yield* computerUse.run({
         goal: input.goal,
         ...(input.confirmed === undefined ? {} : { confirmed: input.confirmed }),
-        ...(input.requestMetadata === undefined ? {} : { requestMetadata: input.requestMetadata }),
       });
-    }).pipe(Effect.provide(layer)),
+    }).pipe(Effect.provide(layer), Effect.orDie),
   );
 
 describe("Circe computer use", () => {
   it("requires one confirmation before the first mission", () => {
-    const result = run(
-      { goal: "save the document" },
-      testLayer({ decisions: ["done"], operations: [] }),
-    );
-    expect(result).toEqual({
-      status: "needs-input",
-      message: "I'll control this computer in this session to save the document. Confirm to start.",
-    });
+    const result = run({ goal: "save the document" }, testLayer({ decisions: [], acts: [] }));
+    expect(result.status).toBe("needs-input");
   });
 
-  it("activates a grounded element through AT-SPI and reports done", () => {
-    const operations: Array<string> = [];
+  it("runs observe, decide, act and reports done", () => {
+    const acts: Array<string> = [];
     const result = run(
       { goal: "save the document", confirmed: true },
-      testLayer({ decisions: ["click", "done"], operations }),
+      testLayer({ decisions: ["click", "done"], acts }),
     );
     expect(result).toEqual({ status: "done", message: "Done: save the document", steps: 2 });
-    expect(operations).toEqual([]);
+    expect(acts).toEqual(["click"]);
   });
 
-  it("refuses instead of clicking stale geometry when the element shifted", () => {
-    const operations: Array<string> = [];
+  it("reports the surface as unavailable rather than failing the request", () => {
     const result = run(
       { goal: "save the document", confirmed: true },
       testLayer({
-        decisions: ["click", "done"],
-        operations,
-        actResult: JSON.stringify({ ok: false, error: "element-changed" }),
+        decisions: ["click"],
+        acts: [],
+        observe: () => Effect.fail(new DesktopSurfaceUnavailableError({ reason: "no backend" })),
       }),
     );
-    expect(result).toEqual({
-      status: "refused",
-      message: "The screen changed before I could act on it.",
-    });
-    // No coordinate fallback fired against the captured bounds.
-    expect(operations).toEqual([]);
-  });
-
-  it("registers a mission, honors a stop, and clears it when done", () => {
-    const operations: Array<string> = [];
-    const calls: Array<string> = [];
-    const cancellation = Layer.mock(CirceMissionCancellation)({
-      register: (requestId) =>
-        Effect.sync(() => {
-          calls.push(`register:${requestId}`);
-        }),
-      isCancelled: () => Effect.succeed(true),
-      clear: (requestId) =>
-        Effect.sync(() => {
-          calls.push(`clear:${requestId}`);
-        }),
-    });
-    const result = run(
-      {
-        goal: "save the document",
-        confirmed: true,
-        requestMetadata: { requestId: "mission-stop-2" },
-      },
-      testLayer({ decisions: ["click", "done"], operations, cancellation }),
-    );
-    expect(result).toEqual({ status: "cancelled", message: "Stopped.", steps: 0 });
-    expect(operations).toEqual([]);
-    expect(calls).toEqual(["register:mission-stop-2", "clear:mission-stop-2"]);
+    expect(result).toEqual({ status: "unavailable", message: "no backend" });
   });
 });

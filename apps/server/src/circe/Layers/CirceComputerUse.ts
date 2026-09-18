@@ -1,45 +1,32 @@
+import type { CirceComputerUseInput, CirceComputerUseResult } from "@circe/contracts";
 import type {
-  CirceComputerUseInput,
-  CirceComputerUseResult,
-  DesktopUseBackend,
-  DesktopUseError,
-  DesktopUsePolicyError,
-} from "@circe/contracts";
-import type { ComputerUseRunResult, ComputerStepRefusal } from "@circe/core/computerUse";
+  ComputerAction,
+  ComputerStepRefusal,
+  ComputerUseRunResult,
+} from "@circe/core/computerUse";
 import { runComputerUse } from "@circe/core/computerUse";
 import type { DecisionRequest } from "@circe/core/decision";
+import {
+  computerSurfaceFromSnapshot,
+  surfaceActionFromComputerAction,
+} from "@circe/core/desktopSurface";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Ref from "effect/Ref";
 
-import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
-import { DesktopUse } from "../desktopUse/DesktopUse.ts";
 import {
-  buildAccessibilityActionCommand,
-  decodeAccessibilityActionResultJson,
-  observeLinuxDesktop,
-  type AccessibilityCommandError,
-  type AccessibilityCommandRunner,
-} from "../desktopUse/linuxAccessibility.ts";
-import {
-  makeDesktopUseRuntime,
-  type DesktopActuator,
-  type DesktopScrollDirection,
-} from "../desktopUse/desktopUseRuntime.ts";
-import { detectDisplayServer, resolveBackend } from "../desktopUse/platforms.ts";
-import {
-  DesktopElementChangedError,
-  SurfaceDecisionUnavailableError,
-} from "../computerUse/SurfaceDecisionError.ts";
+  DesktopSurface,
+  type DesktopSurfaceError,
+} from "../desktopSurface/Services/DesktopSurface.ts";
+import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
 import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 
 const DECISION_MODEL = "jev-latest";
-const COMMAND_TIMEOUT_MS = 8_000;
-const SCROLL_DELTA_PX = 400;
 const WAIT_MS = 300;
 
-type MissionError = AccessibilityCommandError | DesktopUsePolicyError | DesktopUseError;
+type RunError = DesktopSurfaceError | SurfaceDecisionUnavailableError;
 
 const confirmationMessage = (goal: string): string =>
   `I'll control this computer in this session to ${goal}. Confirm to start.`;
@@ -77,111 +64,33 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceComputerUse
   }
 };
 
-const scrollDeltas = (
-  direction: DesktopScrollDirection,
-): { readonly deltaX?: number; readonly deltaY?: number } =>
-  direction === "up" || direction === "down"
-    ? { deltaY: direction === "down" ? SCROLL_DELTA_PX : -SCROLL_DELTA_PX }
-    : { deltaX: direction === "right" ? SCROLL_DELTA_PX : -SCROLL_DELTA_PX };
-
-const supportedBackend = (backend: DesktopUseBackend): boolean =>
-  backend === "linux-x11" || backend === "linux-wayland";
-
-export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
+/**
+ * The providerless desktop mission: a voice or WebSocket request with no
+ * provider session running drives the same observe -> TypeSafe -> act cycle
+ * the provider tools expose, in a bounded local loop. It shares one surface
+ * implementation with the tools, so a capture-bound action means the same
+ * thing either way.
+ */
+export const make = () =>
   Effect.gen(function* () {
-    const desktopUse = yield* DesktopUse;
-    const commands = yield* DesktopCommands;
+    const surface = yield* DesktopSurface;
     const decision = yield* CirceDecision;
     const cancellation = yield* CirceMissionCancellation;
-    const displayServer = detectDisplayServer(process.env);
-    const backend =
-      options.backend ?? resolveBackend({ platform: process.platform, displayServer });
-
-    const runCommand: AccessibilityCommandRunner = (command, operation) =>
-      commands.run(command, backend, operation, COMMAND_TIMEOUT_MS);
-    // A transport failure propagates. A decoded result distinguishes "no
-    // action interface", which allows the grounded coordinate fallback, from
-    // an identity change, which must refuse rather than click stale geometry.
-    const runAtspiAction = (
-      request: Parameters<typeof buildAccessibilityActionCommand>[0],
-    ): Effect.Effect<"ok" | "no-action" | "refuse", AccessibilityCommandError> =>
-      runCommand(buildAccessibilityActionCommand(request), "desktop.accessibility.act").pipe(
-        Effect.map(({ stdout }): "ok" | "no-action" | "refuse" => {
-          try {
-            const result = decodeAccessibilityActionResultJson(stdout);
-            if (result.ok) return "ok";
-            if (result.error === "element-changed" || result.error === "element-not-found") {
-              return "refuse";
-            }
-            return "no-action";
-          } catch {
-            // A helper that emitted garbage is treated as "no action
-            // interface", which allows the grounded coordinate fallback.
-            return "no-action";
-          }
-        }),
-      );
-
-    const expectation = (element: { readonly role: string | null; readonly name: string }) => ({
-      role: element.role,
-      name: element.name,
-    });
-
-    const runElementAction = (
-      element: { readonly id: string; readonly role: string | null; readonly name: string },
-      request:
-        | { readonly action: "activate" }
-        | { readonly action: "set-text"; readonly text: string },
-    ): Effect.Effect<boolean, MissionError | DesktopElementChangedError> =>
-      runAtspiAction({
-        path: element.id,
-        expect: expectation(element),
-        ...request,
-      }).pipe(
-        Effect.flatMap((outcome) =>
-          outcome === "refuse"
-            ? Effect.fail(new DesktopElementChangedError({ elementId: element.id }))
-            : Effect.succeed(outcome === "ok"),
-        ),
-      );
-
-    const actuator: DesktopActuator<MissionError | DesktopElementChangedError> = {
-      activate: (element) => runElementAction(element, { action: "activate" }),
-      setText: (element, text) => runElementAction(element, { action: "set-text", text }),
-      clickAt: (element) =>
-        desktopUse
-          .input({
-            action: {
-              type: "pointer.click",
-              x: element.bounds.x + element.bounds.width / 2,
-              y: element.bounds.y + element.bounds.height / 2,
-            },
-          })
-          .pipe(Effect.asVoid),
-      typeText: (text) =>
-        desktopUse.input({ action: { type: "keyboard.type", text } }).pipe(Effect.asVoid),
-      pressKey: (key) =>
-        desktopUse.input({ action: { type: "keyboard.key", key } }).pipe(Effect.asVoid),
-      scroll: (direction) =>
-        desktopUse
-          .input({ action: { type: "pointer.scroll", ...scrollDeltas(direction) } })
-          .pipe(Effect.asVoid),
-      wait: () => Effect.sleep(WAIT_MS),
-    };
 
     const run = Effect.fn("CirceComputerUse.run")(function* (input: CirceComputerUseInput) {
       if (input.confirmed !== true) {
         return { status: "needs-input", message: confirmationMessage(input.goal) } as const;
       }
-      if (!supportedBackend(backend)) {
-        return {
-          status: "unavailable",
-          message: "Desktop control is available on Linux for now.",
-        } as const;
-      }
       const requestId = input.requestMetadata?.requestId;
       if (requestId !== undefined) yield* cancellation.register(requestId);
-      const observe = () => observeLinuxDesktop(runCommand, { backend, title: "Desktop" });
+      // The action must name the capture the decision was made against.
+      const captureId = yield* Ref.make<string | null>(null);
+
+      const capture = () =>
+        surface.observe({ title: "Desktop" }).pipe(
+          Effect.tap((snapshot) => Ref.set(captureId, snapshot.capture.captureId)),
+          Effect.map(computerSurfaceFromSnapshot),
+        );
       const select = (request: DecisionRequest) =>
         decision
           .decide(request)
@@ -192,7 +101,23 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
                 : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
             ),
           );
-      type RunError = MissionError | SurfaceDecisionUnavailableError | DesktopElementChangedError;
+      const apply = (action: ComputerAction) =>
+        Effect.gen(function* () {
+          if (action.kind === "wait") {
+            yield* Effect.sleep(WAIT_MS);
+            return;
+          }
+          const id = yield* Ref.get(captureId);
+          if (id === null) {
+            return yield* Effect.fail(
+              new SurfaceDecisionUnavailableError({ reason: "no-capture" }),
+            );
+          }
+          const surfaceAction = surfaceActionFromComputerAction(id, action);
+          if (surfaceAction === null) return;
+          yield* surface.act(surfaceAction);
+        });
+
       return yield* runComputerUse<RunError>({
         model: DECISION_MODEL,
         goal: input.goal,
@@ -201,20 +126,22 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         ...(requestId === undefined
           ? {}
           : { shouldStop: () => cancellation.isCancelled(requestId) }),
-        runtime: makeDesktopUseRuntime<RunError>({
-          observe,
-          select,
-          actuator,
-        }),
+        runtime: { capture, select, apply },
       }).pipe(
         Effect.map((result) => mapResult(result, input.goal)),
         Effect.catchTag("SurfaceDecisionUnavailableError", (error) =>
           Effect.succeed({ status: "unavailable" as const, message: error.message }),
         ),
-        Effect.catchTag("DesktopElementChangedError", (error) =>
-          Effect.succeed({ status: "refused" as const, message: error.message }),
+        Effect.catchTag("DesktopSurfaceUnavailableError", (error) =>
+          Effect.succeed({ status: "unavailable" as const, message: error.reason }),
         ),
-        Effect.catch(() =>
+        Effect.catchTag("DesktopSurfaceStaleError", () =>
+          Effect.succeed({
+            status: "refused" as const,
+            message: "The desktop changed before I could act on it.",
+          }),
+        ),
+        Effect.catchTag("DesktopSurfaceBackendError", () =>
           Effect.succeed({
             status: "refused" as const,
             message: "I couldn't drive the desktop for that request.",

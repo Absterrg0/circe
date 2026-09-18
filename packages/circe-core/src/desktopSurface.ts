@@ -8,6 +8,8 @@
  * never learns which one it saw.
  */
 
+import type { ComputerAction, ComputerSurface } from "./computerUse.ts";
+
 export type DesktopSurfaceSource = "semantic" | "visual" | "semantic+visual";
 
 export interface DesktopRegionBounds {
@@ -131,4 +133,50 @@ export function validateDesktopSurfaceAction(
 /** A snapshot with at least one interactive region can be acted on at all. */
 export function desktopSnapshotIsActionable(snapshot: DesktopSnapshot): boolean {
   return snapshot.regions.some((region) => region.interactive);
+}
+
+/** The decision loop's view of a snapshot: the same elements, no capture ids. */
+export function computerSurfaceFromSnapshot(snapshot: DesktopSnapshot): ComputerSurface {
+  return {
+    kind: "desktop",
+    title: snapshot.title,
+    elements: snapshot.regions.map((region) => ({
+      id: region.id,
+      role: region.role,
+      name: region.name,
+      bounds: region.bounds,
+    })),
+  };
+}
+
+/**
+ * Bind a decision to the capture it was chosen against. Returns null for a
+ * wait, which needs no surface action.
+ */
+export function surfaceActionFromComputerAction(
+  captureId: string,
+  action: ComputerAction,
+): DesktopSurfaceAction | null {
+  switch (action.kind) {
+    case "click":
+      return { kind: "click", captureId, regionId: action.elementId };
+    case "type":
+      return {
+        kind: "type",
+        captureId,
+        ...(action.elementId === undefined ? {} : { regionId: action.elementId }),
+        text: action.text,
+      };
+    case "press":
+      return {
+        kind: "press",
+        captureId,
+        ...(action.elementId === undefined ? {} : { regionId: action.elementId }),
+        key: action.key,
+      };
+    case "scroll":
+      return { kind: "scroll", captureId, direction: action.direction };
+    case "wait":
+      return null;
+  }
 }
