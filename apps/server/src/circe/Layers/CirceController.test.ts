@@ -6,6 +6,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   ThreadId,
+  type CircePendingInteraction,
   type ModelSelection,
   type OrchestrationProjectShell,
   type OrchestrationThread,
@@ -30,6 +31,7 @@ import {
   CirceControllerInterpreter,
   type CirceClassifiedTurn,
   type CirceControllerError,
+  type CirceControllerInterpreterShape,
 } from "../Services/CirceController.ts";
 import { CirceFollowUpDispatcher } from "../Services/CirceFollowUpDispatcher.ts";
 import { CirceFollowUpQueue } from "../Services/CirceFollowUpQueue.ts";
@@ -158,7 +160,10 @@ interface Harness {
   readonly frames: Array<unknown>;
 }
 
-function program(turns: ReadonlyArray<CirceClassifiedTurn>) {
+function program(
+  turns: ReadonlyArray<CirceClassifiedTurn>,
+  propose?: NonNullable<CirceControllerInterpreterShape["propose"]>,
+) {
   let index = 0;
   return Layer.succeed(CirceControllerInterpreter, {
     interpret: () => Effect.die("interpret is not used by this test"),
@@ -167,6 +172,7 @@ function program(turns: ReadonlyArray<CirceClassifiedTurn>) {
       index += 1;
       return turn === undefined ? Effect.die("no programmed classification") : Effect.succeed(turn);
     },
+    ...(propose === undefined ? {} : { propose }),
   });
 }
 
@@ -177,11 +183,13 @@ function harness(input: {
     readonly available: ReadonlyArray<string>;
     readonly executors: import("@circe/core/controlDispatch").CirceNodeToolExecutors;
   };
+  readonly propose?: NonNullable<CirceControllerInterpreterShape["propose"]>;
+  readonly desk?: Layer.Layer<CirceTaskDesk>;
 }): Harness {
   const commands: Array<OrchestrationV2Command> = [];
   const frames: Array<unknown> = [];
   const details = new Map((input.details ?? []).map((entry) => [entry.id, entry]));
-  const layer = makeCirceControllerLive(program(input.turns)).pipe(
+  const layer = makeCirceControllerLive(program(input.turns, input.propose)).pipe(
     Layer.provideMerge(testFollowUpQueueLayer),
     Layer.provideMerge(testFollowUpDispatcherLayer),
     Layer.provideMerge(testLexiconLayer),
@@ -200,17 +208,18 @@ function harness(input: {
       Layer.mock(ProviderRegistry)({ getProviders: Effect.succeed([codexProvider]) }),
     ),
     Layer.provideMerge(
-      Layer.mock(CirceTaskDesk)({
-        get: () => Effect.succeed(emptyDesk),
-        focus: () => Effect.succeed(emptyDesk),
-        setPendingInteraction: ({ interaction }: { readonly interaction: unknown }) =>
-          Effect.sync(() => {
-            frames.push(interaction);
-            return emptyDesk;
-          }),
-        consumePendingInteraction: () => Effect.succeed(null),
-        clearPendingInteraction: () => Effect.succeed(emptyDesk),
-      }),
+      input.desk ??
+        Layer.mock(CirceTaskDesk)({
+          get: () => Effect.succeed(emptyDesk),
+          focus: () => Effect.succeed(emptyDesk),
+          setPendingInteraction: ({ interaction }: { readonly interaction: unknown }) =>
+            Effect.sync(() => {
+              frames.push(interaction);
+              return emptyDesk;
+            }),
+          consumePendingInteraction: () => Effect.succeed(null),
+          clearPendingInteraction: () => Effect.succeed(emptyDesk),
+        }),
     ),
     Layer.provideMerge(
       Layer.mock(ProjectionSnapshotQuery)({
@@ -573,5 +582,153 @@ describe("CirceController outcome dispatch", () => {
       expect(classified.outcome.kind).toBe("work");
       expect(classified.interpretation).toEqual(turn.interpretation);
     }).pipe(Effect.provide(program([turn])));
+  });
+});
+
+describe("CirceController durable lookup refinement", () => {
+  const createdAt = DateTime.makeUnsafe("2026-08-12T00:00:00.000Z");
+  const expiresAt = DateTime.makeUnsafe("2026-08-12T00:05:00.000Z");
+
+  const lookupFrame = (frameId: string): CircePendingInteraction => ({
+    kind: "lookup",
+    frame: {
+      frameId,
+      originalUtterance: "what's the weather",
+      lookupKind: "weather",
+      day: "now",
+      locationCandidates: [],
+      previousPrompt: "I couldn't tell which place you meant. Name the city.",
+      createdAt,
+      expiresAt,
+    },
+  });
+
+  const statefulDesk = () => {
+    let pending: CircePendingInteraction | null = null;
+    const snapshot = () => ({ ...emptyDesk, pendingInteraction: pending });
+    const layer = Layer.mock(CirceTaskDesk)({
+      get: () => Effect.succeed(snapshot()),
+      focus: () => Effect.succeed(snapshot()),
+      setPendingInteraction: ({ interaction }: { readonly interaction: CircePendingInteraction }) =>
+        Effect.sync(() => {
+          pending = interaction;
+          return snapshot();
+        }),
+      consumePendingInteraction: ({ expectedFrameId }: { readonly expectedFrameId?: string }) =>
+        Effect.sync(() => {
+          if (pending === null) return null;
+          if (expectedFrameId !== undefined && pending.frame.frameId !== expectedFrameId)
+            return null;
+          const consumed = pending;
+          pending = null;
+          return consumed;
+        }),
+      clearPendingInteraction: () =>
+        Effect.sync(() => {
+          pending = null;
+          return snapshot();
+        }),
+    });
+    return {
+      layer,
+      seed: (interaction: CircePendingInteraction) => {
+        pending = interaction;
+      },
+      pending: () => pending,
+    };
+  };
+
+  const interpret = (
+    layer: Harness["layer"],
+    input: Parameters<CirceController["Service"]["interpret"]>[0],
+  ) =>
+    Effect.gen(function* () {
+      const controller = yield* CirceController;
+      return yield* controller.interpret(input);
+    }).pipe(Effect.provide(layer));
+
+  const refinement = {
+    status: "refinement" as const,
+    kind: "lookup" as const,
+    reason: "unsupported-command" as const,
+    prompt: "I couldn't tell which place you meant. Name the city.",
+    candidates: ["London"],
+    lookupKind: "weather" as const,
+    day: "now" as const,
+  };
+
+  it.effect("stores a lookup refinement frame and returns its id", () => {
+    const desk = statefulDesk();
+    const test = harness({
+      turns: [],
+      propose: () => Effect.succeed(refinement),
+      desk: desk.layer,
+    });
+    return Effect.gen(function* () {
+      const result = yield* interpret(test.layer, {
+        utterance: "what's the weather",
+        projects: [],
+        tasks: [],
+        providers: [],
+        sessionId,
+      });
+      expect(result).toMatchObject({
+        status: "needs-input",
+        kind: "lookup",
+        prompt: refinement.prompt,
+      });
+      const stored = desk.pending();
+      expect(stored?.kind).toBe("lookup");
+      expect(stored?.frame.frameId).toBeDefined();
+      expect(stored?.frame.originalUtterance).toBe("what's the weather");
+    });
+  });
+
+  it.effect("resumes a bound lookup frame deterministically", () => {
+    const desk = statefulDesk();
+    desk.seed(lookupFrame("frame-lookup-1"));
+    const test = harness({ turns: [], desk: desk.layer });
+    return Effect.gen(function* () {
+      const result = yield* interpret(test.layer, {
+        utterance: "London",
+        clarificationFrameId: "frame-lookup-1",
+        projects: [],
+        tasks: [],
+        providers: [],
+        sessionId,
+      });
+      expect(result).toEqual({
+        action: "lookup",
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+        lookup: { kind: "weather", location: "London", day: "now" },
+      });
+      // A resumed frame is consumed, so it cannot answer twice.
+      expect(desk.pending()).toBeNull();
+    });
+  });
+
+  it.effect("rejects an answer bound to a stale frame", () => {
+    const desk = statefulDesk();
+    desk.seed(lookupFrame("frame-live"));
+    const test = harness({ turns: [], desk: desk.layer });
+    return Effect.gen(function* () {
+      const result = yield* interpret(test.layer, {
+        utterance: "London",
+        clarificationFrameId: "frame-gone",
+        projects: [],
+        tasks: [],
+        providers: [],
+        sessionId,
+      });
+      expect(result).toMatchObject({
+        status: "needs-input",
+        reason: "source-output-unavailable",
+      });
+      // A rejected answer never touches the live frame.
+      expect(desk.pending()?.frame.frameId).toBe("frame-live");
+    });
   });
 });

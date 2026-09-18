@@ -198,6 +198,43 @@ always available. Per-action confirmation was rejected as unusable for
 multi-step goals; a risk-tiered model can be layered on later without changing
 the session gate.
 
+## Project memory
+
+### Index and fetch, never injection
+
+A project's memory lives on the node that owns the project. A thread never
+receives the bodies. It receives a compact index (id, kind, source, title,
+tags, age, and an approximate token cost) and fetches a body on demand. This
+follows what Cursor and Claude Code converged on: Cursor keeps project context
+as files agents read on demand, and Claude Code stopped always injecting its
+memory index in favour of prefetching only what the current turn needs, under a
+byte cap. Blanket injection spends context on irrelevance and buries the task;
+progressive disclosure keeps the window for the work. The index is flat, not
+recursive: a second routing level has been measured to hurt.
+
+### Episodes are cheap, facts need evidence
+
+Memory is two shapes. An episode records what happened, append-only, with
+provenance and a timestamp; it is the source of truth and safe to keep. A fact
+records what is true, and is promoted only on explicit user confirmation or
+repeated corroboration. `system` content is never a fact source. Facts carry an
+expiry and are retired on contradiction; episodes do not expire. This is why
+`buildMemoryIndex` ranks facts above episodes and drops retired or expired
+entries.
+
+### The pinned layer is small and cacheable
+
+Only identity, safety policy, a short project brief, and the memory index are
+pinned into a thread. Retrieved bodies go last, after the stable prefix, so the
+prompt cache survives. Memory adds a fetching round trip on purpose; a wrong or
+stale injection is worse than one more tool call.
+
+### Reverse states from day one
+
+Every entry can be inspected and forgotten (`CirceMemoryForgetInput`), because
+memory that cannot be corrected accumulates poison. Provenance is stored so a
+bad source can be retracted as a unit.
+
 ## Open for review
 
 - Whether `CIRCE_*` CI secret renaming happens in this stack or a dedicated ops

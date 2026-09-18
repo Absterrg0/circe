@@ -7,7 +7,9 @@ import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { PreviewAutomationBroker } from "../../mcp/PreviewAutomationBroker.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { make } from "./CirceBrowserUse.ts";
+import { CirceMissionCancellationLive } from "./CirceMissionCancellation.ts";
 
 const snapshot: PreviewAutomationSnapshot = {
   url: "https://mail.example.com",
@@ -55,6 +57,7 @@ const choose = (choice: string) => ({
 const testLayer = (input: {
   readonly decisions: ReadonlyArray<string>;
   readonly operations: Array<string>;
+  readonly cancellation?: Layer.Layer<CirceMissionCancellation>;
 }) => {
   let index = 0;
   const invoke = <A>(request: { readonly operation: string }): Effect.Effect<A> => {
@@ -77,11 +80,16 @@ const testLayer = (input: {
         getEnvironmentId: Effect.succeed(EnvironmentId.make("node-1")),
       }),
     ),
+    Layer.provide(input.cancellation ?? CirceMissionCancellationLive),
   );
 };
 
 const run = (
-  input: { readonly goal: string; readonly confirmed?: boolean },
+  input: {
+    readonly goal: string;
+    readonly confirmed?: boolean;
+    readonly requestMetadata?: { readonly requestId: string };
+  },
   layer: Layer.Layer<CirceBrowserUse>,
 ) =>
   Effect.runSync(
@@ -90,6 +98,7 @@ const run = (
       return yield* browserUse.run({
         goal: input.goal,
         ...(input.confirmed === undefined ? {} : { confirmed: input.confirmed }),
+        ...(input.requestMetadata === undefined ? {} : { requestMetadata: input.requestMetadata }),
       });
     }).pipe(Effect.provide(layer)),
   );
@@ -114,5 +123,32 @@ describe("Circe browser use", () => {
     );
     expect(result).toEqual({ status: "done", message: "Done: open the docs", steps: 2 });
     expect(operations).toEqual(["snapshot", "click", "snapshot"]);
+  });
+
+  it("registers a mission, honors a stop, and clears it when done", () => {
+    const operations: Array<string> = [];
+    const calls: Array<string> = [];
+    const cancellation = Layer.mock(CirceMissionCancellation)({
+      register: (requestId) =>
+        Effect.sync(() => {
+          calls.push(`register:${requestId}`);
+        }),
+      isCancelled: () => Effect.succeed(true),
+      clear: (requestId) =>
+        Effect.sync(() => {
+          calls.push(`clear:${requestId}`);
+        }),
+    });
+    const result = run(
+      {
+        goal: "open the docs",
+        confirmed: true,
+        requestMetadata: { requestId: "mission-stop-1" },
+      },
+      testLayer({ decisions: ["click", "done"], operations, cancellation }),
+    );
+    expect(result).toEqual({ status: "cancelled", message: "Stopped.", steps: 0 });
+    expect(operations).toEqual([]);
+    expect(calls).toEqual(["register:mission-stop-1", "clear:mission-stop-1"]);
   });
 });

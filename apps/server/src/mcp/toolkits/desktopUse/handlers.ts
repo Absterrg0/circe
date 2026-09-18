@@ -102,10 +102,13 @@ const make = Effect.gen(function* () {
     // planners touch the desktop at once.
     desktop_run_goal: (input) =>
       requireCapability().pipe(
-        Effect.andThen(
+        Effect.flatMap((scope) =>
           circeComputerUse.run({
             goal: input.goal,
             confirmed: true,
+            // A provider-delegated mission is cancellable by the thread that
+            // asked for it, so `circe.cancelMission` can reach a running goal.
+            requestMetadata: { requestId: `thread:${scope.threadId}` },
             ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
             ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
           }),

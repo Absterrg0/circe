@@ -136,6 +136,9 @@ import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
+import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
+import { CirceProjectMemoryLive } from "./circe/Layers/CirceProjectMemory.ts";
+import { CirceCoordinatorLive } from "./circe/Layers/CirceCoordinator.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
@@ -650,6 +653,13 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CirceBrowserUseLive),
         // Desktop missions run on this node's own screen.
         Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
+        // Project memory is node-local, so coordinator turns and workers share one store.
+        Layer.provide(CirceProjectMemoryLive),
+        // The coordinator owns the project goal and pinned workspace context.
+        Layer.provide(CirceCoordinatorLive.pipe(Layer.provide(CirceProjectMemoryLive))),
+        // One stop registry per server: the WS canceller and the running
+        // mission must resolve the same instance.
+        Layer.provide(CirceMissionCancellationLive),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),

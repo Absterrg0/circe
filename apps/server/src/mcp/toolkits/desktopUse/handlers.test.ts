@@ -66,11 +66,16 @@ const makeHarness = () =>
       subscribeFrames: () => Stream.empty,
     });
     const goalRuns = yield* Ref.make<ReadonlyArray<string>>([]);
+    const missionIds = yield* Ref.make<ReadonlyArray<string>>([]);
     const computerUse = Layer.succeed(CirceComputerUse, {
       run: (input) =>
-        Ref.update(goalRuns, (existing) => [...existing, input.goal]).pipe(
-          Effect.as({ status: "done" as const, message: `Did: ${input.goal}`, steps: 1 }),
-        ),
+        Effect.all([
+          Ref.update(goalRuns, (existing) => [...existing, input.goal]),
+          Ref.update(missionIds, (existing) => [
+            ...existing,
+            input.requestMetadata?.requestId ?? "",
+          ]),
+        ]).pipe(Effect.as({ status: "done" as const, message: `Did: ${input.goal}`, steps: 1 })),
     });
     const toolkit = yield* DesktopUseToolkit.pipe(
       Effect.provide(
@@ -92,7 +97,7 @@ const makeHarness = () =>
         Effect.provide(service),
         Effect.provide(computerUse),
       );
-    return { calls, goalRuns, call };
+    return { calls, goalRuns, missionIds, call };
   });
 
 describe("desktop use toolkit handlers", () => {
@@ -178,6 +183,8 @@ describe("desktop use toolkit handlers", () => {
         steps: 1,
       });
       expect(yield* Ref.get(harness.goalRuns)).toEqual(["save the document"]);
+      // The provider mission registers under its thread so a stop can reach it.
+      expect(yield* Ref.get(harness.missionIds)).toEqual([`thread:${THREAD_ID}`]);
     }),
   );
 
