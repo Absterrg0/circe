@@ -7,7 +7,7 @@ import { useComposerDraftStore } from "../../composerDraftStore";
 import { isElectron } from "../../env";
 import { type CirceCommandTarget, onOpenCirce } from "../../circeBus";
 import { usePrimaryEnvironmentId } from "../../state/environments";
-import { useThread } from "../../state/entities";
+import { useThreadShell } from "../../state/entities";
 import type { AppRouter } from "../../router";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../../threadRoutes";
 import {
@@ -33,7 +33,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
       resolveThreadRouteTarget(state.matches[state.matches.length - 1]?.params ?? {}),
   });
   const routeThreadRef = routeTarget?.kind === "server" ? routeTarget.threadRef : null;
-  const activeThread = useThread(routeThreadRef);
+  const activeThread = useThreadShell(routeThreadRef);
   const activeDraftThread = useComposerDraftStore((store) => {
     if (!routeTarget) return null;
     return routeTarget.kind === "server"

@@ -41,11 +41,13 @@ describe("ServerProvider", () => {
         status: "authenticated",
       },
       checkedAt: "2026-04-10T00:00:00.000Z",
+      supportedRuntimeModes: ["approval-required", "future-mode", "full-access"],
       models: [],
     });
 
     expect(parsed.slashCommands).toEqual([]);
     expect(parsed.skills).toEqual([]);
+    expect(parsed.supportedRuntimeModes).toEqual(["approval-required", "full-access"]);
     expect(parsed.versionAdvisory).toBeUndefined();
     expect(parsed.updateState).toBeUndefined();
   });
@@ -205,6 +207,12 @@ describe("resolveEnvironmentMachineKind", () => {
         settings: decodeSettings({}),
       }),
     ).toBe("mac-mini");
+  });
+
+  it("uses detection from a bare descriptor before connecting", () => {
+    expect(resolveEnvironmentMachineKind({ environment: descriptor({ machine: "laptop" }) })).toBe(
+      "laptop",
+    );
   });
 
   it("falls back to a server for older servers and before connect", () => {

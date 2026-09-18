@@ -9,6 +9,8 @@ import * as Schema from "effect/Schema";
 
 import serverPackageJson from "../../apps/server/package.json" with { type: "json" };
 
+import { findEsmImportsOfExternalPackages } from "./cli-executable-imports.ts";
+
 import {
   CLI_RUNTIME_EXTERNAL_PREFIXES,
   findInlinedExternalPackages,
@@ -55,11 +57,6 @@ describe("shouldBundleCliDependency", () => {
     }
   });
 
-  it("leaves bun-only entry points external", () => {
-    assert.strictEqual(shouldBundleCliDependency("@effect/platform-bun"), false);
-    assert.strictEqual(shouldBundleCliDependency("@effect/sql-sqlite-bun"), false);
-  });
-
   // The real package is `node-gyp-build-optional-packages`, reached by prefix.
   // It is transitive to a selected dependency root, so the runtime closure test
   // below ensures it follows that root into the sidecar.
@@ -72,7 +69,6 @@ describe("selectCliRuntimeExternalDependencies", () => {
   it("keeps only runtime-external dependency roots for the Windows sidecar", () => {
     assert.deepStrictEqual(
       selectCliRuntimeExternalDependencies({
-        "@effect/platform-bun": "1.0.0",
         "@ff-labs/fff-node": "2.0.0",
         effect: "3.0.0",
         "node-pty": "4.0.0",
@@ -279,5 +275,64 @@ var x = 1;
     const result = findInlinedExternalPackages("var x = 1; // node_modules/detect-libc/lib.js");
     assert.strictEqual(result.regionCount, 0);
     assert.deepStrictEqual(result.inlined, []);
+  });
+});
+
+// The single-executable build can only `import` built-ins. A file-backed
+// import of an external package passes every bundler check and the regular
+// `node dist/bin.mjs` path, then fails inside the executable, so the scan
+// reads the emitted module graph instead.
+describe("findEsmImportsOfExternalPackages", () => {
+  it("flags static and dynamic imports of file-backed packages", () => {
+    const source = [
+      'import { FileFinder } from "@ff-labs/fff-node";',
+      'import * as fs from "fs";',
+      'import { createRequire } from "node:module";',
+      'const pty = () => import("node-pty");',
+      'const data = () => import("@ff-labs/fff-bin-linux-x64-gnu", { with: { type: "json" } });',
+      'const lazy = () => import(/* @vite-ignore */ "ffi-rs");',
+      'const local = () => import("./chunk-abc.mjs");',
+    ].join("\n");
+
+    assert.deepStrictEqual(findEsmImportsOfExternalPackages(source), [
+      "@ff-labs/fff-bin-linux-x64-gnu",
+      "@ff-labs/fff-node",
+      "ffi-rs",
+      "node-pty",
+    ]);
+  });
+
+  it("flags side-effect imports and re-exports too", () => {
+    const source = ['import "msgpackr-extract";', 'export { load } from "ffi-rs";'].join("\n");
+    assert.deepStrictEqual(findEsmImportsOfExternalPackages(source), [
+      "ffi-rs",
+      "msgpackr-extract",
+    ]);
+  });
+
+  it("ignores imports inside generated extension source and comments", () => {
+    const source = [
+      'const extension = `import { Type } from "typebox";\nimport type { ExtensionAPI } from "@earendil-works/pi-coding-agent";`;',
+      '// import "comment-only";',
+      "const example = 'import(\"string-only\")';",
+      'const interpolated = `source ${import("real-package")}`;',
+    ].join("\n");
+    assert.deepStrictEqual(findEsmImportsOfExternalPackages(source), ["real-package"]);
+  });
+
+  it("allows optional dynamic Bun built-ins but rejects static imports", () => {
+    assert.deepStrictEqual(
+      findEsmImportsOfExternalPackages('const load = () => import("bun:sqlite");'),
+      [],
+    );
+    assert.deepStrictEqual(
+      findEsmImportsOfExternalPackages('import { Database } from "bun:sqlite";'),
+      ["bun:sqlite"],
+    );
+  });
+
+  it("does not mistake createRequire calls for imports", () => {
+    const source = 'const { FileFinder } = createRequire(import.meta.url)("@ff-labs/fff-node");';
+    assert.deepStrictEqual(findEsmImportsOfExternalPackages(source), []);
   });
 });
