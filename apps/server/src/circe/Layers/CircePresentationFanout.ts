@@ -1,5 +1,6 @@
 import * as Cause from "effect/Cause";
 import * as Data from "effect/Data";
+import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
@@ -10,15 +11,11 @@ import * as Schedule from "effect/Schedule";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 
-import type { CircePresentationEvent } from "@t3tools/contracts";
+import type { CircePresentationEvent, OrchestrationV2DomainEvent } from "@t3tools/contracts";
 
-import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
-import {
-  buildCircePresentation,
-  isCircePresentationSource,
-  isPresentationForOrigin,
-} from "../presentation.ts";
+import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
+import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
+import { buildV2TurnPresentation, isPresentationForOrigin } from "../presentation.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 
 /**
@@ -89,8 +86,9 @@ export const withPresentationResubscribe = <A, E, R>(
 export const CircePresentationFanoutLive = Layer.effect(
   CircePresentationFanout,
   Effect.gen(function* () {
-    const orchestration = yield* OrchestrationEngineService;
-    const projections = yield* ProjectionSnapshotQuery;
+    const orchestration = yield* OrchestratorV2;
+    const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
+    const executionNodeId = yield* serverEnvironment.getEnvironmentId;
     const hub = yield* PubSub.sliding<CircePresentationEvent>(FANOUT_CAPACITY);
     // Own the pump lifetime like VcsStatusBroadcaster: the fiber dies with
     // this layer instead of leaking Scope into every consumer's requirements.
@@ -99,28 +97,38 @@ export const CircePresentationFanoutLive = Layer.effect(
     );
 
     const pump = orchestration.streamDomainEvents.pipe(
-      Stream.filter(isCircePresentationSource),
+      Stream.filter(
+        (
+          event,
+        ): event is Extract<
+          OrchestrationV2DomainEvent,
+          { readonly type: "provider-turn.updated" }
+        > =>
+          event.type === "provider-turn.updated" &&
+          (event.payload.status === "completed" || event.payload.status === "failed"),
+      ),
       Stream.mapEffect((event) =>
         Effect.gen(function* () {
-          if (event.type !== "thread.activity-appended" && event.type !== "thread.session-set") {
-            return Option.none();
-          }
-          const threadId = event.payload.threadId;
-          const detail = yield* projections.getThreadDetailById(threadId);
-          if (Option.isNone(detail)) return Option.none();
-          const project = yield* projections.getProjectShellById(detail.value.projectId);
-          const presentation = buildCircePresentation(
-            event,
-            detail.value,
-            Option.isSome(project) ? project.value.title : "this project",
-          );
-          return presentation === null ? Option.none() : Option.some(presentation);
+          const projection = yield* orchestration
+            .getThreadProjection(event.threadId)
+            .pipe(Effect.orElseSucceed(() => undefined));
+          if (projection === undefined) return Option.none<CircePresentationEvent>();
+          const presentation = buildV2TurnPresentation({
+            projection,
+            providerTurnId: event.payload.id,
+            presentationId: event.id,
+            executionNodeId,
+            occurredAt: DateTime.formatIso(event.occurredAt),
+          });
+          return presentation === null
+            ? Option.none<CircePresentationEvent>()
+            : Option.some(presentation);
         }).pipe(
           Effect.catchCause((cause) =>
             Effect.logWarning("Failed to build Circe presentation", {
-              aggregateId: event.aggregateId,
+              aggregateId: event.threadId,
               cause,
-            }).pipe(Effect.as(Option.none())),
+            }).pipe(Effect.as(Option.none<CircePresentationEvent>())),
           ),
         ),
       ),

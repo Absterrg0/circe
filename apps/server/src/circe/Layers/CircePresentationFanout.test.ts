@@ -4,14 +4,17 @@ import {
   MessageId,
   ProjectId,
   ProviderInstanceId,
+  ProviderThreadId,
+  ProviderTurnId,
+  RunAttemptId,
+  RunId,
   ThreadId,
-  TurnId,
-  type OrchestrationEvent,
-  type OrchestrationThread,
+  type OrchestrationV2DomainEvent,
+  type OrchestrationV2ThreadProjection,
 } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildCircePresentation } from "../presentation.ts";
+import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
@@ -23,163 +26,141 @@ import * as Schedule from "effect/Schedule";
 import * as Stream from "effect/Stream";
 import { it as itEffect } from "@effect/vitest";
 
-import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
-import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
+import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
+import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
+import { buildV2TurnPresentation } from "../presentation.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import {
   CircePresentationFanoutLive,
   withPresentationResubscribe,
 } from "./CircePresentationFanout.ts";
 
-const threadFor = (threadId: string, originInteractionId: string): OrchestrationThread => ({
-  id: ThreadId.make(threadId),
-  projectId: ProjectId.make("project-fanout"),
-  title: "Fanout task",
-  modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.6-sol" },
-  runtimeMode: "approval-required",
-  interactionMode: "default",
-  branch: null,
-  worktreePath: null,
-  latestTurn: null,
-  createdAt: "2026-08-30T00:00:00.000Z",
-  updatedAt: "2026-08-30T00:01:00.000Z",
-  archivedAt: null,
-  settledOverride: null,
-  settledAt: null,
-  pullRequests: [],
-  deletedAt: null,
-  messages: [
-    {
-      id: MessageId.make(`message-user-${threadId}`),
-      role: "user",
-      text: "Do the thing.",
-      turnId: null,
-      streaming: false,
-      createdAt: "2026-08-30T00:00:00.000Z",
-      updatedAt: "2026-08-30T00:00:00.000Z",
+const NODE_ID = EnvironmentId.make("node-fanout");
+
+/**
+ * Focused V2 projection fixture. Only the fields the fanout reads are real;
+ * the rest is an empty shape.
+ */
+const projectionFor = (
+  threadId: string,
+  originInteractionId: string,
+): OrchestrationV2ThreadProjection => {
+  const id = ThreadId.make(threadId);
+  const runId = RunId.make(`run-${threadId}`);
+  const attemptId = RunAttemptId.make(`attempt-${threadId}`);
+  const providerTurnId = ProviderTurnId.make(`turn-${threadId}`);
+  return {
+    thread: {
+      createdBy: "user",
+      creationSource: "server",
+      id,
+      projectId: ProjectId.make("project-fanout"),
+      title: "Fanout task",
+      providerInstanceId: ProviderInstanceId.make("codex"),
+      modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.6-sol" },
+      activeProviderThreadId: null,
+      circe: { originInteractionId },
     },
-    {
-      id: MessageId.make(`message-final-${threadId}`),
-      role: "assistant",
-      text: `Done for ${originInteractionId}.`,
-      turnId: TurnId.make(`turn-${threadId}`),
-      streaming: false,
-      createdAt: "2026-08-30T00:01:00.000Z",
-      updatedAt: "2026-08-30T00:01:00.000Z",
-    },
-  ],
-  activities: [
-    {
-      id: EventId.make(`event-origin-${threadId}`),
-      tone: "info",
-      kind: "circe.task.created",
-      summary: "Started by Circe",
-      payload: {
-        objective: "Do the thing.",
-        messageId: MessageId.make(`message-user-${threadId}`),
-        taskRef: {
-          executionNodeId: EnvironmentId.make("node-fanout"),
-          threadId: ThreadId.make(threadId),
-        },
-        requestMetadata: {
-          requestId: `request-${threadId}`,
-          origin: { originInteractionId },
-        },
+    runs: [],
+    attempts: [{ id: attemptId, runId, providerTurnId }],
+    nodes: [],
+    subagents: [],
+    providerSessions: [],
+    providerThreads: [],
+    providerTurns: [
+      {
+        id: providerTurnId,
+        runAttemptId: attemptId,
+        status: "completed",
       },
-      turnId: null,
-      createdAt: "2026-08-30T00:00:00.000Z",
-    },
-  ],
-  proposedPlans: [],
-  checkpoints: [],
-  session: null,
-});
+    ],
+    runtimeRequests: [],
+    messages: [
+      {
+        id: MessageId.make(`message-final-${threadId}`),
+        threadId: id,
+        runId,
+        role: "assistant",
+        text: `Done for ${originInteractionId}.`,
+        attachments: [],
+        streaming: false,
+      },
+    ],
+    plans: [],
+    turnItems: [],
+    checkpointScopes: [],
+    checkpoints: [],
+    contextHandoffs: [],
+    contextTransfers: [],
+    visibleTurnItems: [],
+    updatedAt: DateTime.makeUnsafe("2026-08-30T00:01:00.000Z"),
+  } as unknown as OrchestrationV2ThreadProjection;
+};
 
 const completionEvent = (
   threadId: string,
-): Extract<OrchestrationEvent, { type: "thread.activity-appended" }> => ({
-  sequence: 2,
-  eventId: EventId.make(`event-completed-${threadId}`),
-  aggregateKind: "thread",
-  aggregateId: ThreadId.make(threadId),
-  occurredAt: "2026-08-30T00:02:00.000Z",
-  commandId: null,
-  causationEventId: null,
-  correlationId: null,
-  metadata: {},
-  type: "thread.activity-appended",
-  payload: {
+): Extract<OrchestrationV2DomainEvent, { readonly type: "provider-turn.updated" }> =>
+  ({
+    id: EventId.make(`event-completed-${threadId}`),
     threadId: ThreadId.make(threadId),
-    activity: {
-      id: EventId.make(`event-completed-${threadId}`),
-      tone: "info",
-      kind: "provider.turn.result-finalized",
-      summary: "Turn completed",
-      payload: {
-        turnId: `turn-${threadId}`,
-        userMessageId: `message-user-${threadId}`,
-        assistantMessageId: `message-final-${threadId}`,
-        state: "completed",
-      },
-      turnId: TurnId.make(`turn-${threadId}`),
-      createdAt: "2026-08-30T00:02:00.000Z",
+    occurredAt: DateTime.makeUnsafe("2026-08-30T00:02:00.000Z"),
+    type: "provider-turn.updated",
+    payload: {
+      id: ProviderTurnId.make(`turn-${threadId}`),
+      providerThreadId: ProviderThreadId.make(`provider-thread-${threadId}`),
+      nodeId: `node-${threadId}`,
+      runAttemptId: RunAttemptId.make(`attempt-${threadId}`),
+      nativeTurnRef: null,
+      ordinal: 1,
+      status: "completed",
+      startedAt: DateTime.makeUnsafe("2026-08-30T00:00:00.000Z"),
+      completedAt: DateTime.makeUnsafe("2026-08-30T00:02:00.000Z"),
     },
-  },
-});
+  }) as unknown as Extract<OrchestrationV2DomainEvent, { readonly type: "provider-turn.updated" }>;
 
-const harness = (threads: ReadonlyArray<OrchestrationThread>) =>
+const harness = (threads: ReadonlyArray<OrchestrationV2ThreadProjection>) =>
   Effect.gen(function* () {
-    const liveEvents = yield* PubSub.unbounded<OrchestrationEvent>();
+    const liveEvents = yield* PubSub.unbounded<OrchestrationV2DomainEvent>();
     const detailReads = yield* Ref.make(0);
-    const engineLayer = Layer.mock(OrchestrationEngineService)({
-      dispatch: () => Effect.die("dispatch is not stubbed in the fanout test"),
-      readEvents: () => Stream.empty,
+    const orchestratorLayer = Layer.mock(OrchestratorV2)({
       streamDomainEvents: Stream.fromPubSub(liveEvents),
-      latestSequence: Effect.succeed(0),
-    });
-    const projectionsLayer = Layer.mock(ProjectionSnapshotQuery)({
-      getThreadDetailById: (threadId: ThreadId) =>
+      getThreadProjection: (threadId: ThreadId) =>
         Effect.gen(function* () {
           yield* Ref.update(detailReads, (count) => count + 1);
-          const thread = threads.find((candidate) => candidate.id === threadId);
-          return thread === undefined ? Option.none() : Option.some(thread);
+          const projection = threads.find((candidate) => candidate.thread.id === threadId);
+          return (
+            projection ?? (yield* Effect.die(new Error(`No projection fixture for ${threadId}`)))
+          );
         }),
-      getProjectShellById: () =>
-        Effect.succeed(
-          Option.some({
-            id: ProjectId.make("project-fanout"),
-            title: "Fanout project",
-            workspaceRoot: "/work/fanout",
-            defaultModelSelection: null,
-            scripts: [],
-            createdAt: "2026-08-30T00:00:00.000Z",
-            updatedAt: "2026-08-30T00:00:00.000Z",
-          }),
-        ),
-      getShellSnapshot: () => Effect.die("shell snapshot is not stubbed in the fanout test"),
+    });
+    const environmentLayer = Layer.mock(ServerEnvironment.ServerEnvironment)({
+      getEnvironmentId: Effect.succeed(NODE_ID),
     });
     const layer = CircePresentationFanoutLive.pipe(
-      Layer.provideMerge(engineLayer),
-      Layer.provideMerge(projectionsLayer),
+      Layer.provideMerge(orchestratorLayer),
+      Layer.provideMerge(environmentLayer),
     );
     return { liveEvents, detailReads, layer };
   });
 
 describe("Circe presentation fanout", () => {
   it("builds a completion presentation from the fixture", () => {
-    const presentation = buildCircePresentation(
-      completionEvent("thread-one"),
-      threadFor("thread-one", "interaction-one"),
-      "Fanout project",
-    );
+    const presentation = buildV2TurnPresentation({
+      projection: projectionFor("thread-one", "interaction-one"),
+      providerTurnId: ProviderTurnId.make("turn-thread-one"),
+      presentationId: "event-completed-thread-one",
+      executionNodeId: NODE_ID,
+      occurredAt: "2026-08-30T00:02:00.000Z",
+    });
     expect(presentation).not.toBeNull();
+    expect(presentation?.text).toBe("Done for interaction-one.");
   });
 
   itEffect.live("projects each event once and routes it to the matching origin only", () =>
     Effect.gen(function* () {
       const setup = yield* harness([
-        threadFor("thread-one", "interaction-one"),
-        threadFor("thread-two", "interaction-two"),
+        projectionFor("thread-one", "interaction-one"),
+        projectionFor("thread-two", "interaction-two"),
       ]);
       const { liveEvents, detailReads, layer } = setup;
       yield* Effect.gen(function* () {
@@ -218,7 +199,7 @@ describe("Circe presentation fanout", () => {
 
   itEffect.live("gives late subscribers future events without replaying past speech", () =>
     Effect.gen(function* () {
-      const setup = yield* harness([threadFor("thread-one", "interaction-one")]);
+      const setup = yield* harness([projectionFor("thread-one", "interaction-one")]);
       const { liveEvents, layer } = setup;
       yield* Effect.gen(function* () {
         const fanout = yield* CircePresentationFanout;

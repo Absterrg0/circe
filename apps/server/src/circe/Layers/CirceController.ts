@@ -941,7 +941,24 @@ export const makeCirceControllerLive = <R>(
         // (`createdBy`/`creationSource`) rather than a separate Circe activity.
         // Circe is a server-side controller acting for the user, so its
         // messages are user-created and server-sourced.
-        const circeCreation = { createdBy: "user", creationSource: "server" } as const;
+        const circeOrigin = input.requestMetadata?.origin;
+        const circeCreation = {
+          createdBy: "user",
+          creationSource: "server",
+          ...(circeOrigin?.originInteractionId === undefined
+            ? {}
+            : {
+                circe: {
+                  originInteractionId: circeOrigin.originInteractionId,
+                  ...(circeOrigin.originNodeId === undefined
+                    ? {}
+                    : { originNodeId: circeOrigin.originNodeId }),
+                  ...(input.requestMetadata?.requestId === undefined
+                    ? {}
+                    : { requestId: input.requestMetadata.requestId }),
+                },
+              }),
+        } as const;
 
         // The controller is the turn owner: read the desk, node catalogs, and
         // request context once before deciding which ordinary T3 command to emit.
@@ -2102,7 +2119,8 @@ export const makeCirceControllerLive = <R>(
             return {
               status: "needs-input" as const,
               reason: "control-target-required" as const,
-              prompt: "I couldn't interrupt the source task safely. Choose a current task to reroute.",
+              prompt:
+                "I couldn't interrupt the source task safely. Choose a current task to reroute.",
               choices: [],
             };
           }

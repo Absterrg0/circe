@@ -1,7 +1,9 @@
 import {
   type CircePresentationEvent,
+  type EnvironmentId,
   type OrchestrationEvent,
   type OrchestrationThread,
+  type OrchestrationV2ThreadProjection,
 } from "@t3tools/contracts";
 
 import {
@@ -56,6 +58,66 @@ export function buildCircePresentation(
     return buildSessionPresentation(thread, event.payload.session, event.eventId);
   }
   return null;
+}
+
+/**
+ * V2-native presentation. The routing identity lives on the app thread
+ * (`thread.circe`), and completion comes from a terminal provider turn. The
+ * assistant message for that run supplies the spoken result; operator-facing
+ * detail stays in T3.
+ */
+export function buildV2TurnPresentation(input: {
+  readonly projection: OrchestrationV2ThreadProjection;
+  readonly providerTurnId: string;
+  readonly presentationId: string;
+  readonly executionNodeId: EnvironmentId;
+  readonly occurredAt: string;
+}): CircePresentationEvent | null {
+  const route = input.projection.thread.circe;
+  const originInteractionId = route?.originInteractionId;
+  if (route === undefined || originInteractionId === undefined) return null;
+  const turn = input.projection.providerTurns.find(
+    (candidate) => candidate.id === input.providerTurnId,
+  );
+  if (turn === undefined) return null;
+  if (turn.status === "interrupted" || turn.status === "cancelled") return null;
+  const attempt = input.projection.attempts.find((candidate) => candidate.id === turn.runAttemptId);
+  const runId = attempt?.runId ?? null;
+  const message = input.projection.messages
+    .filter(
+      (candidate) =>
+        candidate.role === "assistant" &&
+        !candidate.streaming &&
+        (runId === null || candidate.runId === runId),
+    )
+    .at(-1);
+  const kind = turn.status === "completed" ? "completed" : "failed";
+  const rawText = message?.text.trim() ?? "";
+  const text =
+    rawText.length > 0
+      ? rawText.slice(0, 600)
+      : kind === "completed"
+        ? "The agent finished the task."
+        : "The provider turn failed.";
+  return {
+    presentationId: input.presentationId,
+    projectId: input.projection.thread.projectId,
+    threadId: input.projection.thread.id,
+    taskRef: {
+      executionNodeId: input.executionNodeId,
+      threadId: input.projection.thread.id,
+    },
+    origin: {
+      originInteractionId,
+      ...(route.originNodeId === undefined ? {} : { originNodeId: route.originNodeId }),
+    },
+    ...(route.requestId === undefined ? {} : { requestId: route.requestId }),
+    kind,
+    threadTitle: input.projection.thread.title,
+    providerName: input.projection.thread.modelSelection.instanceId,
+    text,
+    createdAt: input.occurredAt,
+  };
 }
 
 export function isPresentationForOrigin(
