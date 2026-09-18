@@ -43,6 +43,7 @@ import { circeWebsiteUrl } from "@circe/core/website";
 import { deriveCirceTaskState } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
+import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
@@ -286,6 +287,7 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeRegisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeUnregisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -301,6 +303,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
     const executionNodeId = yield* serverEnvironment.getEnvironmentId;
     const circe = yield* CirceController.CirceController;
+    const browserUse = yield* CirceBrowserUse;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
     const projectLexicon = yield* CirceProjectLexicon;
@@ -416,6 +419,10 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 ),
                 { "rpc.aggregate": "circe.quick" },
               ),
+            [WS_METHODS.circeBrowserUse]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeBrowserUse, browserUse.run(input), {
+                "rpc.aggregate": "circe.browser",
+              }),
             // Release is intentionally not gated on presetOffersVoice like start
             // is: it is a cleanup path, and a session minted before a preset
             // change (or by a stale client) must still be closable. Release is

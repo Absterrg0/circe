@@ -4,6 +4,19 @@ Circe is the product shipped from this repository. It adds deterministic voice c
 
 This fork ships Full, Controller, and Headless as the only Circe capability presets. Full and Controller own speech and control.
 
+### Interface priority
+
+The desktop app and the mobile app are the main interfaces. The desktop app
+(orb overlay, tray, hotkey, native voice) is the primary surface; mobile is the
+second. They control each other and headless nodes. The web UI is a last resort
+for capability and interaction work, never the surface to build first. When a
+feature touches several clients, implement and verify desktop and mobile before
+web, and do not spend design effort on browser-tab-only behavior.
+
+Speech, hotkeys, the orb, and the tray are desktop capabilities. Desktop use and
+browser use execute on the target node; the origin is the user's current device.
+Headless nodes execute too, but have no screen, tray, or voice.
+
 ## What makes Circe special?
 
 ### 1. One product
