@@ -6,6 +6,17 @@ to the controller's machine or depend on the Electron renderer. Provider and orc
 internals do not own desktop policy. Full and Controller provide desktop capability; Headless
 refuses every desktop operation before discovering or spawning helpers.
 
+## Surface and tools
+
+The driver below is only capture and input. Desktop work goes through the surface contract:
+`desktop_observe` returns a capture-bound snapshot of addressable elements,
+`desktop_decide` asks TypeSafe for one step over exactly those elements, and `desktop_act`
+performs one capture-bound action, refusing as stale when the desktop changed since the
+observation. The provider's own harness owns the loop; the node runs no step loop for a
+delegated goal. Accessibility is the surface, with optional perception adding visual regions.
+The layers, the platform adapter seam, and the licensing boundary are in
+[circe-desktop-surface.md](./circe-desktop-surface.md).
+
 ## Input ownership
 
 All MCP and RPC input shares one node-local queue. A drag owns its button through completion or

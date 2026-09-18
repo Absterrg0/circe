@@ -108,7 +108,7 @@ The client-runtime catalog and lifecycle owner for paired environments. `Environ
 
 #### Desktop use
 
-The in-house capability that lets a node capture its own display and inject pointer and keyboard events. A node drives only the machine it runs on; there is no cloud or virtual-desktop execution path. Agents reach it through the `t3-code` MCP toolkit and controllers reach it through the `desktopUse.*` WebSocket RPCs. See [desktop-use.md](./desktop-use.md).
+The in-house capability that lets a node capture its own display and inject pointer and keyboard events. A node drives only the machine it runs on; there is no cloud or virtual-desktop execution path. Agents drive it through the capture-bound `desktop_observe` / `desktop_decide` / `desktop_act` MCP tools; the surface snapshot and its staleness rules live in `@circe/core/desktopSurface`. See [desktop-use.md](./desktop-use.md) and [circe-desktop-surface.md](./circe-desktop-surface.md).
 
 #### Multi-node catalog
 
