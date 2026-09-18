@@ -70,6 +70,7 @@ export interface RunBrowserGoalInput<E = never> extends BrowserUseRuntimeInput<E
     step: import("./computerUse.ts").ComputerStep,
     index: number,
   ) => Effect.Effect<void, E>;
+  readonly shouldStop?: () => Effect.Effect<boolean, E>;
 }
 
 /** Plan-free browser loop: the selector chooses each grounded action. */
@@ -84,4 +85,5 @@ export const runBrowserGoal = <E = never>(
     ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
     ...(input.maxElements === undefined ? {} : { maxElements: input.maxElements }),
     ...(input.onStep === undefined ? {} : { onStep: input.onStep }),
+    ...(input.shouldStop === undefined ? {} : { shouldStop: input.shouldStop }),
   });

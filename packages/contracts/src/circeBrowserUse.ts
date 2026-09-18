@@ -44,6 +44,12 @@ export const CirceBrowserUseResult = Schema.Union([
     message: TrimmedNonEmptyString,
     steps: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
   }),
+  /** The user stopped the mission; it ran this many steps and then halted. */
+  Schema.Struct({
+    status: Schema.Literal("cancelled"),
+    message: TrimmedNonEmptyString,
+    steps: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  }),
   /** The step layer refused, e.g. nothing groundable or a low-confidence pick. */
   Schema.Struct({ status: Schema.Literal("refused"), message: TrimmedNonEmptyString }),
   /** Starting needs confirmation, or the model asked a question. */

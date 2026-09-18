@@ -251,6 +251,27 @@ describe("computer use runner", () => {
     expect(result).toEqual({ status: "refused", reason: "unknown-element", steps: 1 });
   });
 
+  it("stops between steps when shouldStop reports stop", () => {
+    let checks = 0;
+    const result = Effect.runSync(
+      runComputerUse({
+        model: "m",
+        goal: "Open compose",
+        runtime: {
+          capture: () => Effect.succeed(surface),
+          select: () => Effect.succeed(selecting(["action", choice("wait")])),
+          apply: () => Effect.void,
+        },
+        shouldStop: () =>
+          Effect.sync(() => {
+            checks += 1;
+            return checks >= 2;
+          }),
+      }),
+    );
+    expect(result).toEqual({ status: "cancelled", steps: 1 });
+  });
+
   it("returns a refusal from composition without applying it", () => {
     let applied = 0;
     const result = Effect.runSync(
