@@ -20,7 +20,7 @@ const websiteCandidates = ["YouTube"];
 const offered = (): ReadonlyArray<CirceTool> =>
   offeredCirceTools({
     nodeTools: ["weather", "time", "task-status", "list-projects"],
-    clientTools: ["open-website", "open-app", "media", "clipboard", "computer"],
+    clientTools: ["open-website", "open-app", "media", "clipboard"],
     locationCandidates,
     websiteCandidates,
   });
@@ -52,9 +52,8 @@ describe("offered tools", () => {
     expect(names).toContain("open-website");
     // An optional text argument is still closed: media can run without a target.
     expect(names).toContain("media");
-    // A required app or residual argument has no candidate set, so it is not offered.
+    // A required app argument has no candidate set, so it is not offered.
     expect(names).not.toContain("open-app");
-    expect(names).not.toContain("computer");
   });
 
   it("offers a tool once the client supplies the client-owned candidate set", () => {
@@ -305,13 +304,15 @@ describe("proposal to outcome", () => {
     ...input,
   });
 
-  it("maps a lookup proposal to a node tool answer", () => {
+  it("maps a lookup proposal to a node tool answer when the place is a candidate", () => {
     const outcome = circeOutcomeFromProposal({
       proposal: proposal({
         action: "lookup",
         lookup: { kind: "weather", location: "Paris", day: "now" },
       }),
       tools,
+      source: "weather in Paris",
+      locationCandidates: ["Paris"],
     });
     expect(outcome).toEqual({
       kind: "tool-answer",
@@ -322,14 +323,39 @@ describe("proposal to outcome", () => {
     });
   });
 
-  it("maps a website proposal to a client action", () => {
+  it("refuses a lookup place the host never derived from the source", () => {
+    const outcome = circeOutcomeFromProposal({
+      proposal: proposal({
+        action: "lookup",
+        lookup: { kind: "weather", location: "Atlantis", day: "now" },
+      }),
+      tools,
+      source: "weather in Paris",
+      locationCandidates: ["Paris"],
+    });
+    expect(outcome).toEqual({ kind: "refused", reason: "unsupported-command" });
+  });
+
+  it("maps a website proposal to a client action when it is grounded", () => {
     const outcome = circeOutcomeFromProposal({
       proposal: proposal({ action: "open-website", website: "YouTube" }),
       tools,
+      source: "open YouTube",
+      websiteCandidates: ["youtube"],
     });
     expect(outcome.kind).toBe("client-action");
     if (outcome.kind !== "client-action") return;
     expect(outcome.speech).toBe("Opening YouTube.");
+  });
+
+  it("refuses a website the source never named", () => {
+    const outcome = circeOutcomeFromProposal({
+      proposal: proposal({ action: "open-website", website: "https://evil.example" }),
+      tools,
+      source: "open YouTube",
+      websiteCandidates: ["youtube"],
+    });
+    expect(outcome).toEqual({ kind: "refused", reason: "unsupported-command" });
   });
 
   it("maps a converse proposal to a bounded conversation", () => {

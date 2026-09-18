@@ -82,5 +82,6 @@ export const runBrowserGoal = <E = never>(
     runtime: makeBrowserUseRuntime(input),
     ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
     ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+    ...(input.maxElements === undefined ? {} : { maxElements: input.maxElements }),
     ...(input.onStep === undefined ? {} : { onStep: input.onStep }),
   });

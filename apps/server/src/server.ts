@@ -58,6 +58,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
+import * as DesktopCommands from "./circe/desktopUse/DesktopCommands.ts";
 import * as DesktopUse from "./circe/desktopUse/DesktopUse.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { deviceHubProxyRouteLayer } from "./device/DeviceHubProxy.ts";
@@ -134,6 +135,7 @@ import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
+import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
@@ -646,6 +648,8 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CircePresentationFanoutLive),
         // Browser missions run on this node's connected desktop host.
         Layer.provide(CirceBrowserUseLive),
+        // Desktop missions run on this node's own screen.
+        Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),

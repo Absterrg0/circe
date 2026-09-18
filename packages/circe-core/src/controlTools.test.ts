@@ -19,13 +19,7 @@ describe("the bounded tool catalog", () => {
     const node = CIRCE_TOOLS.filter((tool) => tool.host === "node").map((tool) => tool.name);
     const client = CIRCE_TOOLS.filter((tool) => tool.host === "client").map((tool) => tool.name);
     expect(node).toEqual(["weather", "time", "task-status", "list-projects"]);
-    expect(client).toEqual([
-      "open-website",
-      "open-app",
-      "media",
-      "clipboard",
-      "computer",
-    ]);
+    expect(client).toEqual(["open-website", "open-app", "media", "clipboard"]);
   });
 
   it("offers only tools whose host advertised the capability", () => {
@@ -33,15 +27,17 @@ describe("the bounded tool catalog", () => {
     // work. The classifier must simply never see a tool the host cannot run.
     const offered = availableCirceTools({ nodeTools: ["weather"], clientTools: ["open-website"] });
     expect(offered.map((tool) => tool.name)).toEqual(["weather", "open-website"]);
-    expect(findCirceTool("computer")).toBeDefined();
-    expect(offered.find((tool) => tool.name === "computer")).toBeUndefined();
+    expect(findCirceTool("open-app")).toBeDefined();
+    expect(offered.find((tool) => tool.name === "open-app")).toBeUndefined();
   });
 
   it("keeps the tool choice closed with an explicit none", () => {
-    const criteria = circeToolChoiceCriteria(availableCirceTools({
-      nodeTools: ["weather", "time", "task-status", "list-projects"],
-      clientTools: ["open-website"],
-    }));
+    const criteria = circeToolChoiceCriteria(
+      availableCirceTools({
+        nodeTools: ["weather", "time", "task-status", "list-projects"],
+        clientTools: ["open-website"],
+      }),
+    );
     expect(Object.keys(criteria)).toContain(NONE_TOOL);
     expect(criteria[NONE_TOOL]).toBeTruthy();
     for (const key of Object.keys(criteria)) expect(criteria[key]).toBeTruthy();

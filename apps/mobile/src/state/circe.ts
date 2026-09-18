@@ -1,5 +1,9 @@
 import { lookupCirceQuickAnswer } from "@circe/client-runtime/operations/circeLiveVoice";
-import { executeCirceInstruction } from "@circe/client-runtime/operations/circe";
+import {
+  executeCirceInstruction,
+  useCirceBrowser,
+  useCirceComputer,
+} from "@circe/client-runtime/operations/circe";
 import {
   createEnvironmentCommand,
   createEnvironmentRpcSubscriptionAtomFamily,
@@ -18,6 +22,14 @@ export const circeEnvironment = {
   execute: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:execute",
     execute: (input: CirceExecuteInput) => executeCirceInstruction(input),
+  }),
+  browserUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:browser-use",
+    execute: (input: import("@circe/contracts").CirceBrowserUseInput) => useCirceBrowser(input),
+  }),
+  computerUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:computer-use",
+    execute: (input: import("@circe/contracts").CirceComputerUseInput) => useCirceComputer(input),
   }),
   presentations: createEnvironmentRpcSubscriptionAtomFamily(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:presentation-stream",
