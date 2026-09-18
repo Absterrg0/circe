@@ -243,6 +243,7 @@ export function useOpenChangeRequestLink(
               ...previous,
               involvement: previous.involvement ?? "all",
               state: previous.state ?? "all",
+              environmentId: project.environmentId,
               repository,
               number: parsed.number,
               selectedHost: parsed.authority ?? parsed.host,

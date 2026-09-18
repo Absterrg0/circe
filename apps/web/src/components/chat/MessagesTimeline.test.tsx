@@ -457,14 +457,14 @@ describe("MessagesTimeline", () => {
   );
 
   it("renders elapsed time for a completed turn", () => {
-    const turnId = TurnId.make("turn-with-fold");
+    const runId = RunId.make("turn-with-fold");
     const assistantEntry = buildAssistantTimelineEntry("Done.");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
         {...buildProps()}
-        latestTurn={{
-          turnId,
-          state: "completed",
+        latestRun={{
+          runId,
+          status: "completed",
           startedAt: "2026-03-17T19:12:20.000Z",
           completedAt: "2026-03-17T19:12:28.000Z",
         }}
@@ -476,7 +476,7 @@ describe("MessagesTimeline", () => {
             entry: {
               id: "work-with-fold",
               createdAt: "2026-03-17T19:12:22.000Z",
-              turnId,
+              runId,
               label: "Ran command",
               tone: "tool",
               toolLifecycleStatus: "completed",
@@ -484,7 +484,7 @@ describe("MessagesTimeline", () => {
           },
           {
             ...assistantEntry,
-            message: { ...assistantEntry.message, turnId },
+            message: { ...assistantEntry.message, runId },
           },
         ]}
       />,
@@ -495,13 +495,13 @@ describe("MessagesTimeline", () => {
 
   it("keeps assistant changed-files headers sticky below the thread header", () => {
     const assistantMessageId = MessageId.make("message-assistant-with-files");
-    const turnId = TurnId.make("turn-with-files");
+    const runId = RunId.make("turn-with-files");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
         {...buildProps()}
-        latestTurn={{
-          turnId,
-          state: "completed",
+        latestRun={{
+          runId,
+          status: "completed",
           startedAt: MESSAGE_CREATED_AT,
           completedAt: MESSAGE_CREATED_AT,
         }}
@@ -514,7 +514,7 @@ describe("MessagesTimeline", () => {
               id: assistantMessageId,
               role: "assistant",
               text: "Updated the fixture.",
-              turnId,
+              runId,
               createdAt: MESSAGE_CREATED_AT,
               updatedAt: MESSAGE_CREATED_AT,
               streaming: false,
@@ -523,7 +523,7 @@ describe("MessagesTimeline", () => {
         ]}
         turnDiffSummaries={[
           {
-            turnId,
+            runId,
             checkpointTurnCount: 1,
             checkpointRef: CheckpointRef.make("checkpoint-with-files"),
             status: "ready",
@@ -897,20 +897,20 @@ describe("MessagesTimeline", () => {
   });
 
   it("keeps reserved end space when tool work starts while reading history", () => {
-    const turnId = TurnId.make("turn-with-active-tool");
+    const runId = RunId.make("turn-with-active-tool");
     const firstEntry = buildUserTimelineEntry("Run the command.");
     const markup = renderToStaticMarkup(
       <MessagesTimeline
         {...buildProps()}
         isWorking
         activeTurnStartedAt={MESSAGE_CREATED_AT}
-        latestTurn={{
-          turnId,
-          state: "running",
+        latestRun={{
+          runId,
+          status: "running",
           startedAt: MESSAGE_CREATED_AT,
           completedAt: null,
         }}
-        runningTurnId={turnId}
+        runningRunId={runId}
         anchorMessageId={firstEntry.message.id}
         liveFollowEnabled={false}
         timelineEntries={[
@@ -922,7 +922,7 @@ describe("MessagesTimeline", () => {
             entry: {
               id: "work-active-tool",
               createdAt: MESSAGE_CREATED_AT,
-              turnId,
+              runId,
               toolCallId: "call-active-tool",
               label: "Run command",
               tone: "tool",
@@ -1878,7 +1878,7 @@ describe("MessagesTimeline", () => {
         runId: "run-1",
         nodeId: null,
         providerThreadId: null,
-        providerTurnId: null,
+        providerRunId: null,
         nativeItemRef: null,
         parentItemId: null,
         ordinal: 0,
@@ -2030,7 +2030,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: null,
                 providerThreadId: null,
-                providerTurnId: null,
+                providerRunId: null,
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 0,
@@ -2101,7 +2101,7 @@ describe("MessagesTimeline", () => {
           runId: "run-2",
           nodeId: null,
           providerThreadId: null,
-          providerTurnId: null,
+          providerRunId: null,
           nativeItemRef: null,
           parentItemId: null,
           ordinal: 0,
@@ -2217,7 +2217,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-1",
                 providerThreadId: null,
-                providerTurnId: null,
+                providerRunId: null,
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2360,7 +2360,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2415,7 +2415,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2471,7 +2471,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2525,7 +2525,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2578,7 +2578,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2631,7 +2631,7 @@ describe("MessagesTimeline", () => {
                 runId: "run-1",
                 nodeId: "node-subagent-1",
                 providerThreadId: "provider-thread-1",
-                providerTurnId: "provider-turn-1",
+                providerRunId: "provider-turn-1",
                 nativeItemRef: null,
                 parentItemId: null,
                 ordinal: 1,
@@ -2669,7 +2669,7 @@ describe("MessagesTimeline", () => {
       runId: "run-1",
       nodeId: null,
       providerThreadId: "provider-thread-1",
-      providerTurnId: "provider-turn-1",
+      providerRunId: "provider-turn-1",
       nativeItemRef: null,
       parentItemId: null,
       ordinal: 99,
@@ -2749,7 +2749,7 @@ describe("MessagesTimeline", () => {
       runId: null,
       nodeId: null,
       providerThreadId: null,
-      providerTurnId: null,
+      providerRunId: null,
       nativeItemRef: null,
       parentItemId: null,
       ordinal: 0,
@@ -2822,7 +2822,7 @@ describe("MessagesTimeline", () => {
       runId: null,
       nodeId: null,
       providerThreadId: null,
-      providerTurnId: null,
+      providerRunId: null,
       nativeItemRef: null,
       parentItemId: null,
       ordinal: 0,
