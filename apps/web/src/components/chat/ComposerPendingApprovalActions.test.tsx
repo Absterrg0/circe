@@ -23,7 +23,7 @@ describe("ComposerPendingApprovalActions", () => {
     expect(markup).toContain("sm:text-[11px]");
   });
 
-  it("keeps secondary provider labels out of the compact action row", () => {
+  it("shows the approval choices advertised by an MCP server", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
         requestId={RuntimeRequestId.make("approval-safari")}
@@ -38,12 +38,12 @@ describe("ComposerPendingApprovalActions", () => {
       />,
     );
 
-    expect(markup).not.toContain("Always allow Safari");
+    expect(markup).toContain("Always allow Safari");
     expect(markup).toContain(">Approve<");
     expect(markup).not.toContain("Always allow this session");
   });
 
-  it("preserves provider labels for the main decisions", () => {
+  it("marks an option that carries a provider warning", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
         requestId={RuntimeRequestId.make("approval-1")}
@@ -51,15 +51,37 @@ describe("ComposerPendingApprovalActions", () => {
         isResponding={false}
         options={[
           { decision: "accept", label: "Allow once" },
+          {
+            decision: "acceptForSession",
+            label: "Allow for this thread",
+            warning: "Untrusted files could re-run this action without asking.",
+          },
           { decision: "decline", label: "Deny" },
         ]}
         onRespondToApproval={async () => undefined}
       />,
     );
 
-    expect(markup).toContain("Allow once");
-    expect(markup).toContain("Deny");
-    expect(markup).not.toContain(">Approve<");
-    expect(markup).not.toContain(">Decline<");
+    expect(markup).toContain(
+      'aria-description="Untrusted files could re-run this action without asking."',
+    );
+    expect(markup).toContain("text-warning");
+    expect(markup).toContain("Allow for this thread");
+  });
+
+  it("limits provider-supplied approval labels so narrow rows can wrap", () => {
+    const label = "Allow ".repeat(40).trim();
+    const markup = renderToStaticMarkup(
+      <ComposerPendingApprovalActions
+        requestId={RuntimeRequestId.make("approval-long-label")}
+        canRespond
+        isResponding={false}
+        options={[{ decision: "acceptAlways", label }]}
+        onRespondToApproval={async () => undefined}
+      />,
+    );
+
+    expect(markup).toContain('class="max-w-40 truncate"');
+    expect(markup).toContain(label);
   });
 });
