@@ -5539,6 +5539,10 @@ describe("AcpAdapterV2", () => {
           );
         }).pipe(Effect.provideService(Clock.Clock, blockingClock));
       }).pipe(Effect.provide(testLayer), Effect.scoped),
+    // Spawns a real child process and shares the file with 100+ sibling tests;
+    // a loaded CI runner can exceed the global 120s budget before the mock
+    // agent's finalization window opens.
+    { timeout: 240_000 },
   );
 
   it.effect(

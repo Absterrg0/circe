@@ -490,13 +490,14 @@ export function runOrchestratorV2Scenario(
       const releaseReplayGate = (
         label: string,
         attemptsRemaining = SCENARIO_WAIT_ATTEMPTS,
+        deadlineAt = scenarioWaitDeadline(),
       ): Effect.Effect<void, OrchestratorV2ScenarioStepError> =>
         Effect.gen(function* () {
           if (options.replayGate?.hasReached(label) ?? false) {
             options.replayGate?.release(label);
             return;
           }
-          if (attemptsRemaining <= 0) {
+          if (scenarioWaitExhausted(attemptsRemaining, deadlineAt)) {
             options.replayGate?.release(label);
             return yield* new OrchestratorV2ScenarioStepError({
               scenario: scenario.name,
@@ -504,7 +505,7 @@ export function runOrchestratorV2Scenario(
             });
           }
           yield* yieldToRuntime;
-          return yield* releaseReplayGate(label, attemptsRemaining - 1);
+          return yield* releaseReplayGate(label, attemptsRemaining - 1, deadlineAt);
         });
 
       for (const step of scenarioSteps(scenario)) {
