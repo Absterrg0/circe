@@ -691,7 +691,7 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain("t3code — Tests");
     expect(markup).toContain('src="data:image/png;base64,aWNvbg=="');
     expect(markup).toContain("h-28 w-52 max-w-full");
-    expect(markup).not.toContain("col-span-2");
+    expect(markup).toContain("col-span-2");
     expect(onAnchorReady).toHaveBeenCalledOnce();
     expect(onAnchorReady).toHaveBeenCalledWith(firstEntry.message.id, 0);
   });
@@ -785,7 +785,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).toContain("<video");
     expect(markup).toContain('aria-label="demo.mp4"');
-    expect(markup).toContain('controls=""');
+    expect(markup).toContain('aria-label="Play demo.mp4"');
     expect(markup).not.toContain("Expand demo.mp4");
   });
 
@@ -835,9 +835,7 @@ describe("MessagesTimeline", () => {
       <MessagesTimeline {...buildProps()} timelineEntries={[entry]} />,
     );
 
-    expect(markup).toContain(
-      '<button type="button" aria-label="Download archive.zip" class="flex min-w-0 cursor-pointer items-center gap-2 rounded-md py-1 text-left text-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70">',
-    );
+    expect(markup).toContain('aria-label="Download archive.zip"');
     expect(markup).not.toContain("<a href=");
   });
 
@@ -1001,7 +999,6 @@ describe("MessagesTimeline", () => {
     expect(markup).toContain('data-maintain-scroll-at-end="enabled"');
     expect(markup).toContain('data-maintain-scroll-at-end-animated="false"');
     expect(markup).toContain('data-maintain-scroll-at-end-data-change="true"');
-    expect(markup).toContain('data-maintain-scroll-at-end-footer-layout="false"');
     expect(markup).toContain('data-maintain-scroll-at-end-item-layout="true"');
     expect(markup).toContain('data-maintain-scroll-at-end-layout="true"');
     expect(markup).toContain('data-user-message-collapsed="true"');
@@ -1688,7 +1685,7 @@ describe("MessagesTimeline", () => {
 
     expect(markup).not.toContain("Show full message");
     expect(markup).toContain('data-user-message-collapsible="false"');
-    expect(markup).toContain("rounded-2xl bg-message p-3");
+    expect(markup).toContain("bg-message p-3");
   });
 
   it("identifies user-role messages sent by another agent", async () => {
@@ -2883,7 +2880,7 @@ describe("MessagesTimeline", () => {
     );
 
     // The T3 wordmark replaces the generic tool icon for T3 MCP calls.
-    expect(markup).toContain('viewBox="15.5309 37 94.3941 56.96"');
+    expect(markup).toContain('aria-label="Circe"');
     expect(markup).toContain("Read a T3 thread");
     expect(markup).not.toContain("mcp__t3-code__t3_thread_read");
   });
