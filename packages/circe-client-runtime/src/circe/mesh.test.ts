@@ -309,7 +309,7 @@ const makeMesh = Effect.fn("CirceMeshTest.makeMesh")(function* (nodes: ReadonlyA
     new Map(
       nodes.map((node) => [
         node.target.environmentId,
-        { target: node.target, profile: Option.none() },
+        { target: node.target, profile: Option.none(), enabled: true },
       ]),
     ),
   );
@@ -323,6 +323,8 @@ const makeMesh = Effect.fn("CirceMeshTest.makeMesh")(function* (nodes: ReadonlyA
     remove: () => Effect.void,
     removeRelayEnvironments: () => Effect.void,
     retryNow: () => Effect.void,
+    setEnabled: () => Effect.void,
+    setCompatibility: () => Effect.void,
     state: (environmentId) => {
       const node = nodes.find((candidate) => candidate.target.environmentId === environmentId);
       return node === undefined
