@@ -32,7 +32,7 @@ const readConfig = (server: ServerConfig.ServerConfig["Service"]): CirceDecision
   const configured = server.circeDecision;
   if (configured === undefined) return CIRCE_DECISION_DEFAULT;
   return {
-    enabled: configured.enabled === true,
+    enabled: configured.enabled,
     apiKey: configured.apiKey ?? "",
     model:
       configured.model !== undefined && configured.model.trim().length > 0
@@ -65,8 +65,10 @@ const stateSize = (state: unknown): number => {
  *
  * The node prefers a local `CIRCE_TYPESAFE_API_KEY`. When none is configured
  * and the node is linked to Circe Mesh, the same request is carried by the
- * relay, which holds the deployment key. The relay is a pass-through: state and
- * questions cross it in memory only and are never persisted, logged, or traced.
+ * relay, which holds the deployment key, so the managed tier is on by default
+ * with no setup. An explicit `CIRCE_TYPESAFE_ENABLED=false` turns the tier off
+ * entirely. The relay is a pass-through: state and questions cross it in memory
+ * only and are never persisted, logged, or traced.
  */
 export const CirceDecisionLive = Layer.effect(
   CirceDecision,
@@ -148,18 +150,17 @@ export const CirceDecisionLive = Layer.effect(
     };
 
     const decide = (request: DecisionRequest): Effect.Effect<CirceDecisionOutcome> => {
+      // `enabled: false` is a hard off: no local key, no relay, no outbound.
+      // An unset `enabled` is managed: local key first, then the linked relay.
+      if (config.enabled === false) {
+        return Effect.succeed(decline("decision-disabled"));
+      }
       const questionCount = Object.keys(request.questions).length;
       if (questionCount === 0 || questionCount > MAX_QUESTIONS) {
         return Effect.succeed(decline("decision-invalid-response"));
       }
       if (stateSize(request.state) > MAX_STATE_CHARS) {
         return Effect.succeed(decline("source-too-large"));
-      }
-      // An explicit `CIRCE_TYPESAFE_ENABLED=false` wins even when a local key
-      // is present. A keyless default (unset config) falls through to the
-      // managed relay route.
-      if (config.enabled !== true && config.apiKey.trim().length > 0) {
-        return Effect.succeed(decline("decision-disabled"));
       }
       const model = request.model.trim().length > 0 ? request.model.trim() : config.model;
       const payload = { state: request.state, model, questions: request.questions };
@@ -175,7 +176,7 @@ export const CirceDecisionLive = Layer.effect(
       return Effect.gen(function* () {
         const route = yield* readRelayRoute();
         if (route === null) {
-          return decline(config.enabled ? "decision-unconfigured" : "decision-disabled");
+          return decline(config.enabled === true ? "decision-unconfigured" : "decision-disabled");
         }
         return yield* post(
           HttpClientRequest.post(route.endpoint).pipe(

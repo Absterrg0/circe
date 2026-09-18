@@ -417,20 +417,21 @@ export const resolveServerConfig = (
         Option.fromUndefinedOr(persistedCirceNodePreset),
       ),
     );
-    // System One decision tier: opt-in by configuring the key (or by an
-    // explicit enabled flag). Absent means no outbound request and a decline
-    // to the ordinary provider path.
+    // System One decision tier. Unset `enabled` is the managed default: a
+    // linked node uses the relay's deployment key with no setup. An explicit
+    // `CIRCE_TYPESAFE_ENABLED=false` turns the tier off entirely, and an
+    // explicit `true` requires a local key or a link.
     const circeDecisionApiKey = env.circeDecisionApiKey?.trim() ?? "";
     const circeDecisionModel = env.circeDecisionModel?.trim() ?? "";
     const circeDecisionEndpoint = env.circeDecisionEndpoint?.trim() ?? "";
-    const circeDecisionEnabled = env.circeDecisionEnabled ?? circeDecisionApiKey.length > 0;
+    const circeDecisionEnabled = env.circeDecisionEnabled;
     const circeDecision =
-      circeDecisionEnabled || circeDecisionApiKey.length > 0
+      circeDecisionEnabled !== undefined || circeDecisionApiKey.length > 0
         ? {
             enabled: circeDecisionEnabled,
             apiKey: circeDecisionApiKey,
             model: circeDecisionModel.length > 0 ? circeDecisionModel : "jev-latest",
-            timeoutMs: env.circeDecisionTimeoutMs ?? 1_500,
+            timeoutMs: env.circeDecisionTimeoutMs ?? 5_000,
             endpoint:
               circeDecisionEndpoint.length > 0 ? circeDecisionEndpoint : "https://api.typesafe.ai",
           }

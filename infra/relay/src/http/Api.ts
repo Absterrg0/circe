@@ -55,6 +55,10 @@ import {
   RelayLiveVoiceUsageLimitError,
   RelayTypeSafeNotConfiguredError,
   RelayTypeSafeUpstreamError,
+  RelayTypeSafeEnvironmentDisabledError,
+  RelayTypeSafeUsageLimitError,
+  RelayTypeSafeOverloadedError,
+  RelayTypeSafeInvalidRequestError,
   type RelayEnvironmentConnectRequest,
   type RelayDpopAccessTokenScope,
   RelayInternalError,
@@ -82,6 +86,7 @@ import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublis
 import * as MobileRegistrations from "../agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "../voice/LiveVoiceSessions.ts";
 import * as TypeSafeUpstream from "../decision/TypeSafeUpstream.ts";
+import * as TypeSafeUsage from "../decision/TypeSafeUsage.ts";
 import { withSpanAttributes } from "../observability.ts";
 import * as RelayDb from "../db.ts";
 
@@ -934,6 +939,22 @@ export const dpopClientApi = HttpApiBuilder.group(
   }),
 );
 
+const MAX_TYPESAFE_STATE_CHARS = 16_000;
+const MAX_TYPESAFE_QUESTIONS = 64;
+
+/**
+ * Mirrors the node's own bound at the relay boundary, so a linked but buggy or
+ * malicious node cannot push an unbounded body through the deployment key.
+ */
+const stateSize = (state: unknown): number => {
+  if (typeof state === "string") return state.length;
+  try {
+    return JSON.stringify(state ?? null).length;
+  } catch {
+    return Number.POSITIVE_INFINITY;
+  }
+};
+
 export const serverApi = HttpApiBuilder.group(
   RelayApi,
   "server",
@@ -942,6 +963,7 @@ export const serverApi = HttpApiBuilder.group(
     const publishSignatures = yield* EnvironmentPublishSignatures.EnvironmentPublishSignatures;
     const liveVoice = yield* LiveVoiceSessions.LiveVoiceSessions;
     const typesafeUpstream = yield* TypeSafeUpstream.TypeSafeUpstream;
+    const typesafeUsage = yield* TypeSafeUsage.TypeSafeUsage;
     return handlers
       .handle(
         "publishAgentActivity",
@@ -1209,24 +1231,64 @@ export const serverApi = HttpApiBuilder.group(
       )
       .handle(
         "runTypeSafeDecision",
-        Effect.fn("relay.api.server.runTypeSafeDecision")(
-          function* (args) {
-            const { params, payload } = args;
-            const principal = yield* RelayEnvironmentPrincipal;
-            if (principal.environmentId !== params.environmentId) {
-              return yield* new HttpApiError.Unauthorized({});
-            }
-            // The relay carries state and questions in memory only. It never
-            // persists, logs, or traces the body or the answer.
-            const config = yield* RelayConfiguration.RelayConfiguration;
-            const typesafe = config.typesafe;
-            if (typesafe === undefined || typesafe.apiKey === null) {
-              return yield* new RelayTypeSafeNotConfiguredError({
-                code: "typesafe_not_configured",
-                traceId: yield* currentTraceId,
-              });
-            }
-            return yield* typesafeUpstream.run({
+        Effect.fn("relay.api.server.runTypeSafeDecision")(function* (args) {
+          const { params, payload } = args;
+          const principal = yield* RelayEnvironmentPrincipal;
+          if (principal.environmentId !== params.environmentId) {
+            return yield* new HttpApiError.Unauthorized({});
+          }
+          const traceId = yield* currentTraceId;
+          // Managed decisions are account-scoped and on by default, so the
+          // relay is the only gate: a user who turned this device off, or a
+          // shared environment with no single owner, is rejected here.
+          const links = yield* EnvironmentLinks.EnvironmentLinks;
+          const owners = yield* links.listOwnersForEnvironment({
+            environmentId: params.environmentId,
+          });
+          if (owners.length !== 1 || owners[0]?.enabled !== true) {
+            return yield* new RelayTypeSafeEnvironmentDisabledError({
+              code: "typesafe_environment_disabled",
+              traceId,
+            });
+          }
+          const config = yield* RelayConfiguration.RelayConfiguration;
+          const typesafe = config.typesafe;
+          if (typesafe === undefined || typesafe.apiKey === null) {
+            return yield* new RelayTypeSafeNotConfiguredError({
+              code: "typesafe_not_configured",
+              traceId,
+            });
+          }
+          if (
+            stateSize(payload.state) > MAX_TYPESAFE_STATE_CHARS ||
+            Object.keys(payload.questions).length > MAX_TYPESAFE_QUESTIONS
+          ) {
+            return yield* new RelayTypeSafeInvalidRequestError({
+              code: "typesafe_invalid_request",
+              traceId,
+            });
+          }
+          // The relay carries state and questions in memory only. It never
+          // persists, logs, or traces the body or the answer; only identity
+          // and time reach the usage row.
+          yield* typesafeUsage.reserve({ environmentId: params.environmentId }).pipe(
+            Effect.catchTags({
+              TypeSafeUsageLimitExceeded: () =>
+                Effect.fail(
+                  new RelayTypeSafeUsageLimitError({ code: "typesafe_usage_limit", traceId }),
+                ),
+              TypeSafeUsagePersistenceFailed: () =>
+                Effect.fail(
+                  new RelayInternalError({
+                    code: "internal_error",
+                    reason: "persistence_failed",
+                    traceId,
+                  }),
+                ),
+            }),
+          );
+          return yield* typesafeUpstream
+            .run({
               apiKey: typesafe.apiKey,
               baseUrl: typesafe.baseUrl,
               body: {
@@ -1234,14 +1296,20 @@ export const serverApi = HttpApiBuilder.group(
                 model: payload.model,
                 questions: payload.questions,
               },
-            });
-          },
-          mapErrorTags({
-            TypeSafeUpstreamFailed: (_error, traceId) =>
-              new RelayTypeSafeUpstreamError({ code: "typesafe_upstream_failed", traceId }),
-          }),
-          mapRelayCommonApiErrors("not_authorized"),
-        ),
+            })
+            .pipe(
+              Effect.catchTag("TypeSafeUpstreamFailed", (error) =>
+                Effect.fail(
+                  error.outcome === "overloaded"
+                    ? new RelayTypeSafeOverloadedError({ code: "typesafe_overloaded", traceId })
+                    : new RelayTypeSafeUpstreamError({
+                        code: "typesafe_upstream_failed",
+                        traceId,
+                      }),
+                ),
+              ),
+            );
+        }, mapRelayCommonApiErrors("not_authorized")),
       );
   }),
 );

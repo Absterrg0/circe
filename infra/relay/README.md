@@ -34,9 +34,11 @@ credential, or authorization behavior.
 `POST /v1/environments/:environmentId/typesafe/systemone` carries one System One decision request
 and returns the upstream body. Request and response bodies are held in memory only: no database,
 KV, queue, or filesystem write, no body in logs or OTLP span attributes, and no `Authorization`
-header in any trace. Only method, route, status, and timing are observable. Keep the route out of
-every persistence service; the tests in `src/decision/` and `src/http/Api.test.ts` cover the
-behavior.
+header in any trace. Only method, route, status, and timing are observable. The
+route stores one usage row per decision (id, environment, timestamp) for the
+per-device quota; nothing else leaves memory. Keep the route out of every other
+persistence service; the tests in `src/decision/` cover the upstream and usage
+boundaries.
 
 ## Code Map
 

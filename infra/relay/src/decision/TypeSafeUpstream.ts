@@ -18,7 +18,7 @@ import { RelayTypeSafeDecisionResponse } from "@t3tools/contracts/relay";
 
 export const TYPESAFE_DEFAULT_BASE_URL = "https://api.typesafe.ai";
 const SYSTEM_ONE_PATH = "/v1/systemone";
-const REQUEST_TIMEOUT = "10 seconds";
+const REQUEST_TIMEOUT = "4 seconds";
 
 export class TypeSafeUpstreamFailed extends Schema.TaggedError<TypeSafeUpstreamFailed>()(
   "TypeSafeUpstreamFailed",

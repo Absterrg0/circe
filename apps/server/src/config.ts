@@ -62,13 +62,13 @@ export interface DeriveServerPathsOptions {
 }
 
 /**
- * System One decision tier runtime config. Disabled by default: absent or
- * `enabled: false` means no outbound request and a decline to the ordinary
- * provider path. The API key is server-side only and never reaches a client
- * bundle.
+ * System One decision tier runtime config. `enabled` is tri-state: unset uses
+ * the managed relay when the node is linked, explicit `false` disables the tier
+ * entirely, and explicit `true` requires a local key or a link. The API key is
+ * server-side only and never reaches a client bundle.
  */
 export interface CirceDecisionRuntimeConfig {
-  readonly enabled: boolean;
+  readonly enabled: boolean | undefined;
   readonly apiKey: string;
   readonly model: string;
   readonly timeoutMs: number;

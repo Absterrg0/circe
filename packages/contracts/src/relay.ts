@@ -658,6 +658,58 @@ export class RelayTypeSafeUpstreamError extends Schema.TaggedError<RelayTypeSafe
   }
 }
 
+export class RelayTypeSafeEnvironmentDisabledError extends Schema.TaggedError<RelayTypeSafeEnvironmentDisabledError>()(
+  "RelayTypeSafeEnvironmentDisabledError",
+  {
+    code: Schema.Literal("typesafe_environment_disabled"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 403 },
+) {
+  override get message(): string {
+    return "The managed decision tier is turned off for this device";
+  }
+}
+
+export class RelayTypeSafeUsageLimitError extends Schema.TaggedError<RelayTypeSafeUsageLimitError>()(
+  "RelayTypeSafeUsageLimitError",
+  {
+    code: Schema.Literal("typesafe_usage_limit"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 429 },
+) {
+  override get message(): string {
+    return "This device reached its managed decision limit for today";
+  }
+}
+
+export class RelayTypeSafeOverloadedError extends Schema.TaggedError<RelayTypeSafeOverloadedError>()(
+  "RelayTypeSafeOverloadedError",
+  {
+    code: Schema.Literal("typesafe_overloaded"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 429 },
+) {
+  override get message(): string {
+    return "The managed decision tier is busy; try again";
+  }
+}
+
+export class RelayTypeSafeInvalidRequestError extends Schema.TaggedError<RelayTypeSafeInvalidRequestError>()(
+  "RelayTypeSafeInvalidRequestError",
+  {
+    code: Schema.Literal("typesafe_invalid_request"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 400 },
+) {
+  override get message(): string {
+    return "The managed decision request was outside its bounds";
+  }
+}
+
 export class RelayLiveVoiceEnvironmentDisabledError extends Schema.TaggedError<RelayLiveVoiceEnvironmentDisabledError>()(
   "RelayLiveVoiceEnvironmentDisabledError",
   {
@@ -806,6 +858,10 @@ const RelayLiveVoiceSessionErrors = [
 const RelayTypeSafeDecisionErrors = [
   RelayAuthInvalidError,
   RelayTypeSafeNotConfiguredError,
+  RelayTypeSafeEnvironmentDisabledError,
+  RelayTypeSafeUsageLimitError,
+  RelayTypeSafeOverloadedError,
+  RelayTypeSafeInvalidRequestError,
   RelayTypeSafeUpstreamError,
   RelayInternalError,
 ] as const;

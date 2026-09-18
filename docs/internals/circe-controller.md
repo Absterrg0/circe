@@ -142,30 +142,42 @@ thread through the Director's `flow: "conversation"`.
 
 #### Managed decision tier over the relay
 
-A node with no local `CIRCE_TYPESAFE_API_KEY` uses the relay when it is linked
-to Circe Mesh. `Layers/CirceDecision.ts` reads the link's URL and environment
-credential, then sends the same System One request to
+The decision tier is managed by default. `Layers/CirceDecision.ts` resolves a
+path in order: an explicit `CIRCE_TYPESAFE_ENABLED=false` disables the tier
+entirely; a local `CIRCE_TYPESAFE_API_KEY` is used when present; otherwise a
+node linked to Circe Mesh sends the same System One request to
 `POST /v1/environments/:environmentId/typesafe/systemone`. The relay holds the
 deployment key (`TYPESAFE_API_KEY`) and calls TypeSafe; the node never sees the
-key and the relay never interprets the decision.
+key and the relay never interprets the decision. An unset `enabled` is the
+managed default, and `true` requires a path and otherwise declines as
+unconfigured.
 
 The relay is a pass-through and must stay one. Request and response bodies cross
 it in memory only:
 
-- no database, KV, queue, or filesystem write on the decision path;
+- no database, KV, queue, or filesystem write on the decision path; the only
+  persistence is the per-environment usage row, which stores an id, the
+  environment id, and a timestamp, never the body;
 - no request or response body in logs or OTLP span attributes; only method,
   route, status, and timing are observable;
 - the `Authorization` header is never logged;
 - the upstream response is decoded into `RelayTypeSafeDecisionResponse` before
-  returning, so unexpected upstream fields never reach the node.
+  returning, so unexpected top-level upstream fields never reach the node.
+  `answers` stays opaque and is parsed by the node.
+
+The route also enforces what the operator pays for: it requires the environment
+link to be enabled, applies the node's own bounds (16k state characters, 64
+questions) at the relay, and counts each decision against a rolling 24-hour
+per-environment quota of 1000. Over-quota returns a 429, and an overloaded
+upstream passes through as a 429 so the node's retry applies.
 
 This is the whole reason the managed path is acceptable: users can say anything
 and the operator cannot later read it. The relay persists agent-activity state
 for notifications, so the decision route is deliberately kept out of every
 persistence service. `infra/relay/src/decision/TypeSafeUpstream.test.ts` runs
 the upstream with only an `HttpClient` in its requirements, which is the
-mechanical proof that no persistence service is involved; the route itself is
-covered in `infra/relay/src/http/Api.test.ts`.
+mechanical proof that no persistence service is involved; `TypeSafeUsage.test.ts`
+covers the quota boundary.
 
 Exact task focus and named-task resolution are specified separately in [Circe task desk](./circe-task-desk.md). The desk keeps only qualified recent identity and one pending interaction; T3 supplies live task state.
 

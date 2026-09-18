@@ -76,6 +76,7 @@ import * as MobileRegistrations from "./agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "./voice/LiveVoiceSessions.ts";
 import * as LiveVoiceUpstream from "./voice/LiveVoiceUpstream.ts";
 import * as TypeSafeUpstream from "./decision/TypeSafeUpstream.ts";
+import * as TypeSafeUsage from "./decision/TypeSafeUsage.ts";
 
 const webcryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -247,7 +248,12 @@ export const ApiLive = Api.make(
 
     const runtimeLayer = Layer.empty.pipe(
       Layer.provideMerge(
-        Layer.mergeAll(MobileRegistrations.layer, LiveVoiceSessions.layer, TypeSafeUpstream.layer),
+        Layer.mergeAll(
+          MobileRegistrations.layer,
+          LiveVoiceSessions.layer,
+          TypeSafeUpstream.layer,
+          TypeSafeUsage.layer,
+        ),
       ),
       Layer.provideMerge(AgentActivityPublisher.layer),
       Layer.provideMerge(EnvironmentConnector.layer),
