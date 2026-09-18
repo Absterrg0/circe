@@ -83,6 +83,12 @@ export const CirceSemanticProposalAction = Schema.Literals([
    */
   "open-website",
   /**
+   * Operate a website toward a goal over several grounded steps. The goal is
+   * the user's own instruction; the origin client confirms once per session
+   * and the node runs the TypeSafe step loop against its browser host.
+   */
+  "browse",
+  /**
    * Explicit refusal to act as one turn: compounds naming two independent
    * controls, and anything that needs no project or task work beyond a
    * clarification. The host always answers it with needs-input, so the
@@ -168,6 +174,10 @@ export const CirceSemanticProposal = Schema.Struct({
   /** Present only when action is open-website: a named site or web URL. */
   website: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
+  ),
+  /** Present only when action is browse: the bounded mission goal. */
+  browserGoal: Schema.optional(
+    Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),
   /**
    * Ordered independent commands for `sequence`; bounded and never nested. A

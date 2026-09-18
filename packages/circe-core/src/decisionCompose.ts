@@ -405,6 +405,7 @@ export function composeDecision(input: ComposeDecisionInput): DecisionCompositio
       if (
         composed.action === "lookup" ||
         composed.action === "open-website" ||
+        composed.action === "browse" ||
         composed.action === "unsupported" ||
         composed.action === "sequence"
       ) {

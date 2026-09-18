@@ -5,11 +5,7 @@ import * as NodeHttp from "node:http";
 
 import * as NodeHttpServer from "@effect/platform-node/NodeHttpServer";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import {
-  EnvironmentHttpApi,
-  ProviderDriverKind,
-  type RepositoryIdentity,
-} from "@circe/contracts";
+import { EnvironmentHttpApi, ProviderDriverKind, type RepositoryIdentity } from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Deferred from "effect/Deferred";
@@ -137,6 +133,7 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
+import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
@@ -647,6 +644,8 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CircePushRegistrationsLive),
         // One shared projection fans out to every presentation listener.
         Layer.provide(CircePresentationFanoutLive),
+        // Browser missions run on this node's connected desktop host.
+        Layer.provide(CirceBrowserUseLive),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),
