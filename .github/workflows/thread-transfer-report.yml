@@ -1,0 +1,95 @@
+name: Thread Transfer Report
+
+on:
+  workflow_dispatch:
+    inputs:
+      workflow_run_id:
+        description: "Completed CI workflow run ID to report"
+        required: true
+        type: string
+
+permissions:
+  actions: read
+  contents: read
+  pull-requests: write
+
+jobs:
+  publish:
+    name: Publish PR comment
+    runs-on: ubuntu-24.04
+    concurrency:
+      group: thread-transfer-report-${{ inputs.workflow_run_id }}
+      cancel-in-progress: true
+    steps:
+      # The manual run has a write-capable token. Only load the publisher from
+      # the trusted default branch and never execute code from the reported PR.
+      - name: Checkout trusted publisher
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          sparse-checkout: .github/scripts
+
+      - name: Test trusted publisher
+        run: node --test .github/scripts/thread-transfer-report.test.cjs
+
+      - id: resolve
+        name: Resolve PR and baseline artifacts
+        uses: actions/github-script@v8
+        env:
+          SOURCE_WORKFLOW_RUN_ID: ${{ inputs.workflow_run_id }}
+        with:
+          script: |
+            const reporter = require("./.github/scripts/thread-transfer-report.cjs");
+            const workflowRunId = Number(process.env.SOURCE_WORKFLOW_RUN_ID);
+            if (!Number.isSafeInteger(workflowRunId) || workflowRunId <= 0) {
+              core.setFailed("workflow_run_id must be a positive integer.");
+              return;
+            }
+            const workflowRun = (
+              await github.rest.actions.getWorkflowRun({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: workflowRunId,
+              })
+            ).data;
+            const sourceContext = {
+              ...context,
+              payload: { ...context.payload, workflow_run: workflowRun },
+            };
+            await reporter.resolve({ github, context: sourceContext, core });
+
+      - name: Download PR result
+        if: steps.resolve.outputs.publish == 'true' && steps.resolve.outputs.pr_artifact == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: thread-transfer-results
+          path: ${{ runner.temp }}/thread-transfer/pr
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.resolve.outputs.pr_run_id }}
+
+      - name: Download main baseline
+        if: steps.resolve.outputs.publish == 'true' && steps.resolve.outputs.baseline_artifact == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          name: thread-transfer-results
+          path: ${{ runner.temp }}/thread-transfer/main
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          run-id: ${{ steps.resolve.outputs.baseline_run_id }}
+
+      - name: Update thread transfer comment
+        if: steps.resolve.outputs.publish == 'true'
+        uses: actions/github-script@v8
+        env:
+          PR_NUMBER: ${{ steps.resolve.outputs.pull_number }}
+          PR_SHA: ${{ steps.resolve.outputs.pr_sha }}
+          PR_CONCLUSION: ${{ steps.resolve.outputs.pr_conclusion }}
+          PR_RUN_ID: ${{ steps.resolve.outputs.pr_run_id }}
+          PR_RESULT_DIR: ${{ runner.temp }}/thread-transfer/pr
+          BASELINE_SHA: ${{ steps.resolve.outputs.baseline_sha }}
+          BASELINE_MATCHES_BASE: ${{ steps.resolve.outputs.baseline_matches_base }}
+          BASELINE_RUN_ID: ${{ steps.resolve.outputs.baseline_run_id }}
+          BASELINE_RESULT_DIR: ${{ runner.temp }}/thread-transfer/main
+        with:
+          script: |
+            const reporter = require("./.github/scripts/thread-transfer-report.cjs");
+            await reporter.publish({ github, context, core });
