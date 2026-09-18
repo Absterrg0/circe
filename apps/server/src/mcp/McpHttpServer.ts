@@ -19,6 +19,11 @@ import * as ServerConfig from "../config.ts";
 import * as DesktopUse from "../circe/desktopUse/DesktopUse.ts";
 import * as DesktopCommands from "../circe/desktopUse/DesktopCommands.ts";
 import { DesktopSurfaceLive } from "../circe/desktopSurface/Layers/DesktopSurface.ts";
+import {
+  CIRCE_DESKTOP_VISION_UNAVAILABLE_MESSAGE,
+  modelSupportsImageInput,
+} from "@circe/core/modelVision";
+import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as DeviceService from "../device/DeviceService.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
@@ -489,6 +494,7 @@ const registerDesktopScreenshot = Effect.fn("McpHttpServer.registerDesktopScreen
   function* () {
     const server = yield* McpServer.McpServer;
     const desktopUse = yield* DesktopUse.DesktopUse;
+    const projections = yield* ProjectionSnapshotQuery.ProjectionSnapshotQuery;
     const tool = DesktopScreenshotTool;
     yield* server.addTool({
       tool: new McpSchema.Tool({
@@ -515,26 +521,52 @@ const registerDesktopScreenshot = Effect.fn("McpHttpServer.registerDesktopScreen
           );
           return McpInvocationContext.requireMcpCapability("desktop-use").pipe(
             Effect.provideService(McpInvocationContext.McpInvocationContext, invocation),
-            Effect.andThen(desktopUse.capture({ displayId: payload?.displayId })),
-            Effect.map((frame) => {
-              const png = new Uint8Array(Buffer.from(frame.data, "base64"));
-              const { data: _data, ...metadata } = frame;
-              const pointer =
-                frame.cursor === undefined
-                  ? ""
-                  : `; pointer at ${Math.round(frame.cursor.x)},${Math.round(frame.cursor.y)}`;
-              return new McpSchema.CallToolResult({
-                isError: false,
-                structuredContent: metadata,
-                content: [
-                  {
-                    type: "text" as const,
-                    text: `Desktop screenshot ${frame.width}x${frame.height} on display ${frame.displayId}${pointer}.`,
-                  },
-                  { type: "image" as const, data: png, mimeType: frame.mimeType },
-                ],
-              });
-            }),
+            Effect.andThen(
+              Effect.gen(function* () {
+                // A screenshot is only useful to a model that can see it. The
+                // selected model decides that; a text-only model gets a clear
+                // message instead of an image it cannot read.
+                const shell = yield* projections
+                  .getThreadShellById(invocation.threadId)
+                  .pipe(Effect.orElseSucceed(() => Option.none()));
+                const model = Option.isSome(shell) ? shell.value.modelSelection.model : null;
+                if (model === null || !modelSupportsImageInput(model)) {
+                  return new McpSchema.CallToolResult({
+                    isError: true,
+                    structuredContent: {
+                      error: {
+                        tag: "vision-unavailable",
+                        message: CIRCE_DESKTOP_VISION_UNAVAILABLE_MESSAGE,
+                      },
+                    },
+                    content: [
+                      {
+                        type: "text" as const,
+                        text: CIRCE_DESKTOP_VISION_UNAVAILABLE_MESSAGE,
+                      },
+                    ],
+                  });
+                }
+                const frame = yield* desktopUse.capture({ displayId: payload?.displayId });
+                const png = new Uint8Array(Buffer.from(frame.data, "base64"));
+                const { data: _data, ...metadata } = frame;
+                const pointer =
+                  frame.cursor === undefined
+                    ? ""
+                    : `; pointer at ${Math.round(frame.cursor.x)},${Math.round(frame.cursor.y)}`;
+                return new McpSchema.CallToolResult({
+                  isError: false,
+                  structuredContent: metadata,
+                  content: [
+                    {
+                      type: "text" as const,
+                      text: `Desktop screenshot ${frame.width}x${frame.height} on display ${frame.displayId}${pointer}.`,
+                    },
+                    { type: "image" as const, data: png, mimeType: frame.mimeType },
+                  ],
+                });
+              }),
+            ),
             Effect.matchCauseEffect({
               onFailure: desktopScreenshotFailure,
               onSuccess: Effect.succeed,

@@ -4,6 +4,7 @@ import {
   type DesktopRegion,
   type DesktopSnapshot,
   type DesktopSurfaceAction,
+  type DesktopSurfaceSource,
 } from "@circe/core/desktopSurface";
 import * as Clock from "effect/Clock";
 import * as Effect from "effect/Effect";
@@ -15,6 +16,7 @@ import { DesktopUse } from "../../desktopUse/DesktopUse.ts";
 import { type AccessibilityCommandRunner } from "../../desktopUse/linuxAccessibility.ts";
 import { detectDisplayServer, resolveBackend } from "../../desktopUse/platforms.ts";
 import { accessibilityAdapterFor } from "../accessibility.ts";
+import { DesktopPerception, DesktopPerceptionNone } from "../Services/DesktopPerception.ts";
 import {
   DesktopSurface,
   DesktopSurfaceBackendError,
@@ -59,6 +61,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     const displayServer = detectDisplayServer(process.env);
     const backend =
       options.backend ?? resolveBackend({ platform: process.platform, displayServer });
+    const perception = yield* DesktopPerception;
     const adapter = accessibilityAdapterFor(backend);
     const cache = yield* Ref.make<CachedSnapshot | null>(null);
     let sequence = 0;
@@ -95,7 +98,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
       sequence += 1;
       const captureId = `cap_${sequence}`;
       const targets = new Map<string, CachedTarget>();
-      const regions: Array<DesktopRegion> = surface.elements.map((element) => {
+      const semanticRegions: Array<DesktopRegion> = surface.elements.map((element) => {
         targets.set(element.id, {
           path: element.id,
           role: element.role,
@@ -111,6 +114,20 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
           interactive: true,
         };
       });
+      // Visual regions are additive: accessibility ids stay actionable, and a
+      // perceiver (when one is configured) only adds targets it grounded.
+      let regions: ReadonlyArray<DesktopRegion> = semanticRegions;
+      let source: DesktopSurfaceSource = "semantic";
+      if (input.includeVisual === true) {
+        const frame = yield* desktopUse
+          .capture(display === undefined ? {} : { displayId: display.id })
+          .pipe(Effect.mapError((cause) => backendError("capture", cause)));
+        const visual = yield* perception.regions({ frame, title: surface.title });
+        if (visual.length > 0) {
+          regions = [...semanticRegions, ...visual];
+          source = "semantic+visual";
+        }
+      }
       const snapshot: DesktopSnapshot = {
         capture: {
           captureId,
@@ -119,7 +136,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
           height: display?.height ?? 0,
           scale: display?.scale ?? 1,
           takenAtMs: yield* Clock.currentTimeMillis,
-          source: "semantic",
+          source,
         },
         title: surface.title,
         regions,
@@ -249,4 +266,4 @@ export const layer = (options: { readonly backend?: DesktopUseBackend } = {}) =>
   Layer.effect(DesktopSurface, make(options));
 
 /** The node's own desktop: backend resolved from the running platform. */
-export const DesktopSurfaceLive = layer();
+export const DesktopSurfaceLive = layer().pipe(Layer.provide(DesktopPerceptionNone));

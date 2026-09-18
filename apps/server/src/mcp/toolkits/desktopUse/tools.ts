@@ -320,7 +320,15 @@ const DesktopSurfaceToolError = Schema.Union([
 export const DesktopObserveTool = Tool.make("desktop_observe", {
   description:
     "Read this node's desktop as a bounded, addressable snapshot: a captureId plus the interactive elements (id, role, name, bounds) the accessibility tree offers. Act only on an id this snapshot listed, and pass its captureId back so a changed screen is refused instead of mis-clicked. Prefer this over raw coordinates whenever the app exposes an accessibility tree.",
-  parameters: Schema.Struct({ displayId: DisplayTarget }),
+  parameters: Schema.Struct({
+    displayId: DisplayTarget,
+    includeVisual: Schema.optional(
+      Schema.Boolean.annotate({
+        description:
+          "Also merge visual regions from the node's perception provider, when one is configured. Accessibility ids are always included.",
+      }),
+    ),
+  }),
   success: DesktopSurfaceSnapshotResult,
   failure: DesktopSurfaceToolError,
   dependencies: observeDependencies,
@@ -355,7 +363,7 @@ export const DesktopDecideTool = Tool.make("desktop_decide", {
 export const DesktopActTool = Tool.make("desktop_act", {
   description:
     "Perform exactly one capture-bound desktop action chosen from the current snapshot. A click, type, or key names an element id from that snapshot; type, key, and scroll may instead act on the focused element. The action is refused as stale when the desktop changed since it was observed.",
-  parameters: DesktopSurfaceActionSchema,
+  parameters: Schema.Struct({ action: DesktopSurfaceActionSchema }),
   success: DesktopActResult,
   failure: DesktopSurfaceToolError,
   dependencies: observeDependencies,

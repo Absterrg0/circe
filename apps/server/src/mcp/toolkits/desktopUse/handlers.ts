@@ -156,19 +156,23 @@ const make = Effect.gen(function* () {
     // The provider's harness owns the loop: observe, decide, act. The node
     // holds one capture per observe and refuses an action when the desktop
     // moved on, so a step can never land on a target the provider did not see.
-    desktop_observe: () =>
+    desktop_observe: (input) =>
       requireCapability().pipe(
         Effect.andThen(
-          surface.observe().pipe(
-            Effect.map((snapshot) => ({
-              captureId: snapshot.capture.captureId,
-              displayId: snapshot.capture.displayId,
-              title: snapshot.title,
-              width: snapshot.capture.width,
-              height: snapshot.capture.height,
-              regions: snapshot.regions,
-            })),
-          ),
+          surface
+            .observe(
+              input.includeVisual === undefined ? {} : { includeVisual: input.includeVisual },
+            )
+            .pipe(
+              Effect.map((snapshot) => ({
+                captureId: snapshot.capture.captureId,
+                displayId: snapshot.capture.displayId,
+                title: snapshot.title,
+                width: snapshot.capture.width,
+                height: snapshot.capture.height,
+                regions: snapshot.regions,
+              })),
+            ),
         ),
       ),
     desktop_decide: (input) =>
@@ -211,7 +215,7 @@ const make = Effect.gen(function* () {
       ),
     desktop_act: (input) =>
       requireCapability().pipe(
-        Effect.andThen(surface.act(input).pipe(Effect.as({ applied: true }))),
+        Effect.andThen(surface.act(input.action).pipe(Effect.as({ applied: true }))),
       ),
   });
 });

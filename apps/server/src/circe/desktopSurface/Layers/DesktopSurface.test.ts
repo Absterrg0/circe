@@ -4,6 +4,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import { DesktopCommands } from "../../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../../desktopUse/DesktopUse.ts";
+import { DesktopPerceptionNone } from "../Services/DesktopPerception.ts";
 import {
   DesktopSurface,
   type DesktopSurfaceError,
@@ -54,6 +55,7 @@ const testLayer = (operations: Array<string>) =>
           }),
       }),
     ),
+    Layer.provide(DesktopPerceptionNone),
   );
 
 const runWithSurface = <A>(

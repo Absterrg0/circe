@@ -5,10 +5,12 @@ import {
   ThreadId,
   type DesktopUseFrame,
   type DesktopUseStatus,
+  type OrchestrationThreadShell,
 } from "@circe/contracts";
 import { expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Stream from "effect/Stream";
 import { McpSchema, McpServer } from "effect/unstable/ai";
 
@@ -16,6 +18,7 @@ import * as ServerConfig from "../config.ts";
 import * as DesktopUse from "../circe/desktopUse/DesktopUse.ts";
 import * as DesktopCommands from "../circe/desktopUse/DesktopCommands.ts";
 import { CirceDecision } from "../circe/Services/CirceDecision.ts";
+import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 
@@ -65,6 +68,19 @@ const TestLayer = McpHttpServer.DesktopUseToolkitRegistration.pipe(
   Layer.provideMerge(
     Layer.mock(DesktopCommands)({
       run: () => Effect.succeed({ stdout: JSON.stringify({ elements: [] }), stderr: "", code: 0 }),
+    }),
+  ),
+  Layer.provideMerge(
+    Layer.mock(ProjectionSnapshotQuery.ProjectionSnapshotQuery)({
+      getThreadShellById: () =>
+        Effect.succeed(
+          Option.some({
+            modelSelection: {
+              instanceId: ProviderInstanceId.make("codex"),
+              model: "gpt-5.4",
+            },
+          } as OrchestrationThreadShell),
+        ),
     }),
   ),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-desktop-mcp-" })),

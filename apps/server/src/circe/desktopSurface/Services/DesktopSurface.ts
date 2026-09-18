@@ -32,6 +32,8 @@ export type DesktopSurfaceError =
 
 export interface DesktopObserveInput {
   readonly title?: string;
+  /** Merge visual regions from the configured perception provider, if any. */
+  readonly includeVisual?: boolean;
 }
 
 /**

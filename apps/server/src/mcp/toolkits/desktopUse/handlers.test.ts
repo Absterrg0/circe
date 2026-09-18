@@ -254,9 +254,11 @@ describe("desktop use toolkit handlers", () => {
     Effect.gen(function* () {
       const harness = yield* makeHarness();
       const error = yield* harness
-        .call("desktop_act", { kind: "click", captureId: "cap_1", regionId: "app:0/0/3" }, [
-          "preview",
-        ])
+        .call(
+          "desktop_act",
+          { action: { kind: "click", captureId: "cap_1", regionId: "app:0/0/3" } },
+          ["preview"],
+        )
         .pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "McpCapabilityUnavailableError",
