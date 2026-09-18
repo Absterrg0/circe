@@ -32,6 +32,8 @@ import { renderMemoryIndex } from "@circe/core/projectMemory";
  * `AGENTS.md` that providers already read carries a managed map.
  */
 const FACT_TTL_DAYS = 90;
+/** Marks an unconfirmed fact claim retained as an episode until corroborated. */
+const PENDING_FACT_TAG = "fact-pending";
 
 const normalizeTitle = (title: string): string => title.trim().toLowerCase().replace(/\s+/gu, " ");
 
@@ -186,39 +188,44 @@ export const make = Effect.gen(function* () {
       const now = yield* DateTime.now;
       const titleKey = normalizeTitle(input.title);
       const entries = yield* readEntries(input.projectId, root);
-      const existing = entries.find(
-        (entry) =>
-          entry.kind === input.kind &&
-          entry.status === "active" &&
-          normalizeTitle(entry.title) === titleKey,
+      const sameTitle = entries.filter(
+        (entry) => entry.status === "active" && normalizeTitle(entry.title) === titleKey,
       );
+      // A fact claim can also be corroborated by the pending episode retained
+      // from an earlier refused claim, so an agent fact becomes reachable.
+      const existing =
+        sameTitle.find((entry) => entry.kind === input.kind) ??
+        (input.kind === "fact" ? sameTitle.find((entry) => entry.kind === "episode") : undefined);
       const corroborationCount = existing === undefined ? 0 : existing.corroborationCount + 1;
-      if (
-        input.kind === "fact" &&
-        !memoryMayBeFact({
+      const promoted =
+        input.kind === "episode" ||
+        memoryMayBeFact({
           source: input.source,
           corroborationCount,
           confirmed: input.confirmed === true,
-        })
-      ) {
-        return yield* Effect.fail(
-          new CirceMemoryPromotionError({ projectId: input.projectId, title: input.title }),
-        );
-      }
+        });
       const id = existing?.id ?? `mem_${yield* crypto.randomUUIDv4.pipe(Effect.orDie)}`;
       const entry: CirceMemoryEntry = {
         id,
         projectId: input.projectId,
-        kind: input.kind,
+        // An unconfirmed fact claim is retained as an episode so a repeated
+        // claim can accumulate the evidence that promotes it.
+        kind: input.kind === "fact" && !promoted ? "episode" : input.kind,
         source: input.source,
         title: input.title,
         body: input.body,
-        tags: input.tags === undefined ? [] : [...input.tags],
+        tags:
+          input.kind === "fact" && !promoted
+            ? [...(input.tags ?? []), PENDING_FACT_TAG]
+            : input.tags === undefined
+              ? []
+              : [...input.tags],
         corroborationCount,
         status: "active",
         createdAt: existing?.createdAt ?? now,
         updatedAt: now,
-        expiresAt: input.kind === "fact" ? DateTime.add(now, { days: FACT_TTL_DAYS }) : null,
+        expiresAt:
+          input.kind === "fact" && promoted ? DateTime.add(now, { days: FACT_TTL_DAYS }) : null,
       };
       yield* fs
         .makeDirectory(memoryDir(root), { recursive: true })
@@ -237,6 +244,11 @@ export const make = Effect.gen(function* () {
         root,
         entries.filter((candidate) => candidate.id !== id).concat(entry),
       );
+      if (input.kind === "fact" && !promoted) {
+        return yield* Effect.fail(
+          new CirceMemoryPromotionError({ projectId: input.projectId, title: input.title }),
+        );
+      }
       return entry;
     },
   );

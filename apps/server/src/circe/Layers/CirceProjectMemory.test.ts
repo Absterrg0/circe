@@ -100,6 +100,45 @@ it.effect("refuses an uncorroborated agent fact and allows a confirmed one", () 
   ),
 );
 
+it.effect("retains a refused agent fact so a repeated claim can promote it", () =>
+  withWorkspace((memory) =>
+    Effect.gen(function* () {
+      const claim = (title: string) =>
+        memory
+          .remember({
+            projectId,
+            kind: "fact",
+            source: "agent",
+            title,
+            body: "The release job runs Friday.",
+          })
+          .pipe(Effect.exit);
+
+      const first = yield* claim("Deploys on Fridays");
+      assert.equal(first._tag, "Failure");
+      // The refused claim is retained as pending evidence rather than dropped.
+      const afterFirst = yield* memory.list(projectId);
+      assert.equal(afterFirst.length, 1);
+      assert.equal(afterFirst[0]?.kind, "episode");
+
+      const second = yield* claim("deploys ON fridays");
+      assert.equal(second._tag, "Failure");
+      assert.equal((yield* memory.list(projectId))[0]?.corroborationCount, 1);
+
+      const promoted = yield* memory.remember({
+        projectId,
+        kind: "fact",
+        source: "agent",
+        title: " Deploys on Fridays ",
+        body: "The release job runs Friday.",
+      });
+      assert.equal(promoted.kind, "fact");
+      assert.equal(promoted.corroborationCount, 2);
+      assert.isNotNull(promoted.expiresAt);
+    }),
+  ),
+);
+
 it.effect("corroborates a repeated claim instead of duplicating it", () =>
   withWorkspace((memory) =>
     Effect.gen(function* () {
