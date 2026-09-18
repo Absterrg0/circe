@@ -71,6 +71,7 @@ import {
 import { circeErrorMessage } from "./CirceManager.logic";
 import { buildCirceVoiceWaitingView } from "@circe/client-runtime/circe/voiceWaiting";
 import { CirceLiveAgents } from "./CirceLiveAgents";
+import { CirceMemories } from "./CirceMemories";
 import { CirceMeshDevices } from "./CirceMeshDevices";
 import { CirceNodeAgentSettings } from "./CirceNodeAgentSettings";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
@@ -823,6 +824,11 @@ export function CirceControlCenter() {
                       }
                     />
                     <ProjectSection projects={selectedDevice.projects} />
+                    <CirceMemories
+                      projects={selectedDevice.projects}
+                      environmentId={selectedDevice.node.nodeId}
+                      enabled={selectedDevice.node.nodeId === primaryEnvironmentId}
+                    />
                     <CirceNodeAgentSettings
                       key={selectedDevice.node.nodeId}
                       environmentId={selectedDevice.node.nodeId}

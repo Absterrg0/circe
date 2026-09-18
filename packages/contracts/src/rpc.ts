@@ -4,6 +4,8 @@ import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUs
 import {
   CirceMemoryFetchInput,
   CirceMemoryFetchResult,
+  CirceMemoryForgetInput,
+  CirceMemoryForgetResult,
   CirceMemoryIndex,
   CirceMemoryIndexInput,
 } from "./projectMemory.ts";
@@ -399,6 +401,7 @@ export const WS_METHODS = {
   circeComputerUse: "circe.computerUse",
   circeMemoryIndex: "circe.memoryIndex",
   circeMemoryFetch: "circe.memoryFetch",
+  circeMemoryForget: "circe.memoryForget",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
@@ -716,6 +719,12 @@ const WsCirceMemoryIndexRpc = Rpc.make(WS_METHODS.circeMemoryIndex, {
 const WsCirceMemoryFetchRpc = Rpc.make(WS_METHODS.circeMemoryFetch, {
   payload: CirceMemoryFetchInput,
   success: CirceMemoryFetchResult,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceMemoryForgetRpc = Rpc.make(WS_METHODS.circeMemoryForget, {
+  payload: CirceMemoryForgetInput,
+  success: CirceMemoryForgetResult,
   error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
 });
 
@@ -1886,6 +1895,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceComputerUseRpc,
   WsCirceMemoryIndexRpc,
   WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -1909,6 +1919,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceComputerUseRpc,
   WsCirceMemoryIndexRpc,
   WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2104,6 +2115,7 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceComputerUseRpc,
   WsCirceMemoryIndexRpc,
   WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2130,6 +2142,7 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeComputerUse,
   WS_METHODS.circeMemoryIndex,
   WS_METHODS.circeMemoryFetch,
+  WS_METHODS.circeMemoryForget,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,

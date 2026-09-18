@@ -302,6 +302,7 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeMemoryIndex]: AuthOrchestrationReadScope,
   [WS_METHODS.circeMemoryFetch]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeMemoryForget]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -439,9 +440,17 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
             [WS_METHODS.circeCancelMission]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeCancelMission,
-                missionCancellation
-                  .requestStop(input.requestId)
-                  .pipe(Effect.map((cancelled) => ({ cancelled }))),
+                missionCancellation.requestStop(input.requestId).pipe(
+                  // A provider-delegated desktop goal registers under its
+                  // thread, so a stop may name either the mission or the thread.
+                  Effect.flatMap((cancelled) =>
+                    cancelled
+                      ? Effect.succeed({ cancelled })
+                      : missionCancellation
+                          .requestStop(`thread:${input.requestId}`)
+                          .pipe(Effect.map((threadCancelled) => ({ cancelled: threadCancelled }))),
+                  ),
+                ),
                 { "rpc.aggregate": "circe.mission" },
               ),
             [WS_METHODS.circeQuickLookup]: (input) =>
@@ -520,6 +529,22 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                       new CirceExecutionError({
                         code: "dispatch-failed",
                         message: "Circe could not read project memory.",
+                      }),
+                  ),
+                ),
+                { "rpc.aggregate": "circe.memory" },
+              ),
+            // Forgetting retires an entry to `retired/` so provenance survives;
+            // it is the reverse state for a memory the user no longer wants.
+            [WS_METHODS.circeMemoryForget]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryForget,
+                projectMemory.forget(input).pipe(
+                  Effect.mapError(
+                    () =>
+                      new CirceExecutionError({
+                        code: "dispatch-failed",
+                        message: "Circe could not forget that memory.",
                       }),
                   ),
                 ),

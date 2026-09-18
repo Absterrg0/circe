@@ -4,6 +4,7 @@ import {
   type CirceCancelMissionInput,
   type CirceCancelRequestInput,
   type CirceMemoryFetchInput,
+  type CirceMemoryForgetInput,
   type CirceMemoryIndexInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
@@ -92,6 +93,13 @@ export const fetchCirceMemory = Effect.fn("Circe.memoryFetch")(function* (
   input: CirceMemoryFetchInput,
 ) {
   return yield* request(WS_METHODS.circeMemoryFetch, input);
+});
+
+/** Retire one memory entry, keeping it in retired/ so provenance survives. */
+export const forgetCirceMemory = Effect.fn("Circe.memoryForget")(function* (
+  input: CirceMemoryForgetInput,
+) {
+  return yield* request(WS_METHODS.circeMemoryForget, input);
 });
 
 /** Read the authenticated device's Host-owned task focus and bounded history. */
