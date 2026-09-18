@@ -29,8 +29,9 @@
  * - `uMouse*`, fan mode, light-mode replacement, and grain are gone. A phone
  *   has no hover, the orb composites over a transparent canvas, and grain is a
  *   per-pixel hash the orb's own particle layer already covers.
- * - `iTime` is the orb's accumulated flow phase in radians. Wrapping at 2π is
- *   seamless because every term is periodic over that interval.
+ * - `iTime` is the orb's dedicated thread phase in radians, already scaled by
+ *   `timeScale` and wrapped at 2π. Every term is a whole-number harmonic of
+ *   that phase, so the seam is invisible.
  * - `uEnergy` (microphone energy) brightens and spreads the threads the way
  *   the microphone used to open the silk ribbon.
  *
@@ -56,10 +57,11 @@ export const WEB_THREADS_TUNING = {
   thickness: 1.0,
   brightness: 2.5,
   /**
-   * Slow-down applied to the orb's flow phase. The phase is driven at the
-   * ribbon's speed, which was tuned for a single narrow bundle; the same rate
-   * across a whole woven field reads as a fast liquid slosh. Scaling time here
-   * slows the threads without touching the shared clock.
+   * Slow-down applied when the orb accumulates the thread phase. The phase is
+   * driven at the ribbon's speed, which was tuned for a single narrow bundle;
+   * the same rate across a whole woven field reads as a fast liquid slosh. The
+   * orb applies this factor before wrapping, so the shader's `iTime` and the
+   * 2π seam stay in step.
    */
   timeScale: 0.45,
 } as const;
@@ -111,8 +113,11 @@ float4 circeThreadField(
     if (i < n) {
       float amplitude = amplitudeScale * (1.0 + i * taper);
       // A slow, small undulation per thread. Anything faster or larger reads as
-      // wobbling jelly rather than a woven web drifting in place.
-      float shimmer = sin(t * 0.55 + i * 1.3) * 0.12;
+      // wobbling jelly rather than a woven web drifting in place. The time
+      // coefficient is a whole number so the term repeats every 2π alongside
+      // the drift; a fractional coefficient would make the field jump at the
+      // phase wrap.
+      float shimmer = sin(t + i * 1.3) * 0.12;
       float phase = (t + i * tauOverN) * mirror + shimmer;
       float sdf = abs(p.y + sin(xFreq + phase) * amplitude) * invThickness;
       float g = circeThreadGlow(sdf, falloff, glow);

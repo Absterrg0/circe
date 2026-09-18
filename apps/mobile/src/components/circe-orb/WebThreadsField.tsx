@@ -12,15 +12,15 @@ import { WEB_THREADS_FIELD_SKSL, WEB_THREADS_TUNING } from "./shaders/webThreads
  *
  * This is the prototype counterpart to `OrbRibbonField` and shares its
  * contract: drawn behind the whole sphere, so the opaque base is the only
- * thing that hides a thread, and revealed by a group transform rather than by
- * rebuilding geometry. Unlike the ribbon it replaces no paths at all — the
- * threads live entirely in the fragment shader, so travel is a uniform update
- * on the UI thread and the documented "paths cannot be animated" trap does not
- * apply here.
+ * thing that hides a thread, and revealed by a group transform plus the
+ * shader's own opacity, never by rebuilding geometry. Unlike the ribbon it
+ * replaces no paths at all — the threads live entirely in the fragment shader,
+ * so travel is a uniform update on the UI thread and the documented "paths
+ * cannot be animated" trap does not apply here.
  *
- * `phaseSV` is the orb's accumulated flow phase in radians, not a 0..1 value.
- * The shader consumes it as time; wrapping at 2π is seamless because every
- * term is periodic over that interval.
+ * `phaseSV` is the orb's thread phase in radians, already scaled by
+ * `WEB_THREADS_TUNING.timeScale` and wrapped at 2π. Every term in the shader is
+ * a whole-number harmonic of that phase, so the wrap is seamless.
  */
 export function OrbWebThreadsField({
   canvasWidth,
@@ -66,7 +66,7 @@ export function OrbWebThreadsField({
     () => ({
       center: [centerX, centerY],
       radius,
-      iTime: phaseSV.value * WEB_THREADS_TUNING.timeScale,
+      iTime: phaseSV.value,
       uThreadCount: WEB_THREADS_TUNING.threadCount,
       uFrequency: WEB_THREADS_TUNING.frequency,
       uSpread: WEB_THREADS_TUNING.spread,
@@ -75,7 +75,11 @@ export function OrbWebThreadsField({
       uFalloff: WEB_THREADS_TUNING.falloff,
       uThickness: WEB_THREADS_TUNING.thickness,
       uBrightness: WEB_THREADS_TUNING.brightness,
-      uOpacity: params.fieldAlpha.value * ORB_APPEARANCE[appearance].fieldAlphaScale,
+      // Reveal is folded into the shader's opacity instead of a `Group
+      // opacity`. Group opacity makes Skia allocate a full-canvas layer, which
+      // some Android GPUs draw as a soft-edged square.
+      uOpacity:
+        params.fieldAlpha.value * ORB_APPEARANCE[appearance].fieldAlphaScale * revealSV.value,
       uEnergy: energySV.value,
       // Threads gather at the hull and are gone before the canvas edge, so the
       // field belongs to the orb instead of reading as a wallpaper.
@@ -85,10 +89,9 @@ export function OrbWebThreadsField({
       uColor2: colors.peach,
       uColor3: colors.hot,
     }),
-    [appearance, centerX, centerY, colors, energySV, params.fieldAlpha, phaseSV, radius],
+    [appearance, centerX, centerY, colors, energySV, params.fieldAlpha, phaseSV, radius, revealSV],
   );
 
-  const revealOpacity = useDerivedValue(() => revealSV.value, [revealSV]);
   const revealTransform = useDerivedValue(
     () => [{ scale: 0.55 + 0.45 * revealSV.value }],
     [revealSV],
@@ -97,7 +100,7 @@ export function OrbWebThreadsField({
   if (effect === null) return null;
 
   return (
-    <Group origin={{ x: centerX, y: centerY }} transform={revealTransform} opacity={revealOpacity}>
+    <Group origin={{ x: centerX, y: centerY }} transform={revealTransform}>
       <Rect x={0} y={0} width={canvasWidth} height={canvasHeight}>
         <Shader source={effect} uniforms={uniforms} />
       </Rect>

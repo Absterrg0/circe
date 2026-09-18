@@ -188,6 +188,7 @@ function Filament({
   radius,
   flowTransform,
   energySV,
+  revealSV,
   params,
   appearance,
 }: {
@@ -198,6 +199,7 @@ function Filament({
   readonly radius: number;
   readonly flowTransform: SharedValue<TranslateTransform>;
   readonly energySV: SharedValue<number>;
+  readonly revealSV: SharedValue<number>;
   readonly params: OrbAnimatedParams;
   readonly appearance: OrbAppearance;
 }) {
@@ -223,16 +225,19 @@ function Filament({
     ],
     [energySV, params.energyResponse, params.fieldAmplitude],
   );
-  // Brightness is deliberately not multiplied by the reveal here: the field's
-  // own group already fades the whole ribbon in, and doing it twice made the
-  // strands quadratic through the transition and hollow at the halfway point.
+  // The strand carries the reveal instead of the field using a `Group opacity`.
+  // Group opacity makes Skia allocate a full-canvas layer, which some Android
+  // GPUs draw as a soft-edged square; applying the reveal in both places also
+  // made the strands quadratic through the transition and hollow at the
+  // halfway point. It lives here once.
   const liveAlpha = useDerivedValue(
     () =>
       filament.alpha *
       params.fieldAlpha.value *
       ORB_APPEARANCE[appearance].fieldAlphaScale *
+      revealSV.value *
       (1 + energySV.value * 0.8 * params.energyResponse.value),
-    [appearance, energySV, filament.alpha, params.energyResponse, params.fieldAlpha],
+    [appearance, energySV, filament.alpha, params.energyResponse, params.fieldAlpha, revealSV],
   );
 
   const restY = centerY + filament.yOffset;
@@ -304,7 +309,6 @@ export function OrbRibbonField({
     [flowSV],
   );
 
-  const revealOpacity = useDerivedValue(() => revealSV.value, [revealSV]);
   const revealTransform = useDerivedValue(
     () => [{ scale: 0.55 + 0.45 * revealSV.value }],
     [revealSV],
@@ -320,13 +324,14 @@ export function OrbRibbonField({
       radius={radius}
       flowTransform={flowTransform}
       energySV={energySV}
+      revealSV={revealSV}
       params={params}
       appearance={appearance}
     />
   ));
 
   return (
-    <Group origin={{ x: centerX, y: centerY }} transform={revealTransform} opacity={revealOpacity}>
+    <Group origin={{ x: centerX, y: centerY }} transform={revealTransform}>
       {strands}
     </Group>
   );

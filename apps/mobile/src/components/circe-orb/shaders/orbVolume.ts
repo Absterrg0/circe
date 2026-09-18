@@ -39,14 +39,19 @@ half4 main(float2 xy) {
   // reflection high on the lit side. The reference lighting is not radially
   // symmetric, and without the key term the outer field alone reads as a ring
   // rather than as light collecting on a surface.
+  //
+  // Every base is wrapped in abs on purpose: GLSL/SkSL pow is undefined for a
+  // negative base, and the lobe offsets go negative over much of the disc. The
+  // exponent is even, so abs is exactly equivalent where pow is defined and
+  // avoids the NaN/black lobes some Android drivers produce.
   float lowerGlow = exp(
-    -pow((uv.x - 0.12) / 0.78, 2.0) - pow((uv.y - 0.34) / 0.55, 2.0)
+    -pow(abs((uv.x - 0.12) / 0.78), 2.0) - pow(abs((uv.y - 0.34) / 0.55), 2.0)
   );
   float sideGlow = exp(
-    -pow((uv.x + 0.52) / 0.42, 2.0) - pow((uv.y + 0.08) / 0.70, 2.0)
+    -pow(abs((uv.x + 0.52) / 0.42), 2.0) - pow(abs((uv.y + 0.08) / 0.70), 2.0)
   );
   float keyGlow = exp(
-    -pow((uv.x + 0.55) / 0.36, 2.0) - pow((uv.y + 0.72) / 0.34, 2.0)
+    -pow(abs((uv.x + 0.55) / 0.36), 2.0) - pow(abs((uv.y + 0.72) / 0.34), 2.0)
   );
 
   // Every lobe is pushed out toward the hull on purpose, and masked again by

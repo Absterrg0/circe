@@ -20,6 +20,7 @@ import { OrbThreadsRefraction } from "./OrbThreadsRefraction";
 import { OrbThreadsRim } from "./OrbThreadsRim";
 import { OrbWebThreadsField } from "./WebThreadsField";
 import { ORB_APPEARANCE, ORB_MOTION, type OrbAppearance } from "./orbTokens";
+import { WEB_THREADS_TUNING } from "./shaders/webThreads";
 
 import { useOrbTransition } from "./orbTransition";
 import type { CirceOrbProps } from "./types";
@@ -130,6 +131,10 @@ export function CirceOrb({
   // phase sideways mid-transition. Accumulating by elapsed time also keeps the
   // drift identical on a 60 Hz and a 120 Hz display.
   const flowPhase = useSharedValue(0);
+  // The thread field reads its phase as shader time. It travels at the ribbon
+  // rate scaled by `timeScale`, so it keeps a separate wrapped phase; see the
+  // frame callback.
+  const threadPhase = useSharedValue(0);
 
   useFrameCallback((frame) => {
     const t = clock.value / 1000;
@@ -152,8 +157,14 @@ export function CirceOrb({
 
     const cycleSeconds = params.fieldCycleSeconds.value;
     if (motion > 0 && Number.isFinite(cycleSeconds) && cycleSeconds > 0) {
-      const next = flowPhase.value + dt * ((2 * Math.PI) / cycleSeconds) * motion;
-      flowPhase.value = next % (2 * Math.PI);
+      const rate = ((2 * Math.PI) / cycleSeconds) * motion;
+      flowPhase.value = (flowPhase.value + dt * rate) % (2 * Math.PI);
+      // The shader samples its phase as `iTime` and every term is a whole-number
+      // harmonic of it, so wrapping this phase at 2π is seamless. Scaling the
+      // shared ribbon phase at read time instead jumped `iTime` by
+      // `2π * timeScale` every wrap and made the field visibly snap.
+      threadPhase.value =
+        (threadPhase.value + dt * rate * WEB_THREADS_TUNING.timeScale) % (2 * Math.PI);
     }
   });
 
@@ -219,7 +230,7 @@ export function CirceOrb({
               centerX={centerX}
               centerY={centerY}
               radius={radius}
-              phaseSV={flowPhase}
+              phaseSV={threadPhase}
               energySV={energySV}
               revealSV={revealSV}
               params={params}
@@ -265,7 +276,7 @@ export function CirceOrb({
               centerX={centerX}
               centerY={centerY}
               radius={radius}
-              phaseSV={flowPhase}
+              phaseSV={threadPhase}
               energySV={energySV}
               interiorThreads={params.interiorThreads}
               appearance={appearance}
@@ -288,7 +299,7 @@ export function CirceOrb({
               centerX={centerX}
               centerY={centerY}
               radius={radius}
-              phaseSV={flowPhase}
+              phaseSV={threadPhase}
               energySV={energySV}
               params={params}
               appearance={appearance}
