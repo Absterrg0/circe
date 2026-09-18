@@ -319,6 +319,8 @@ export interface ComputerUseRunInput<E = never> {
   readonly maxSteps?: number;
   readonly maxElements?: number;
   readonly onStep?: (step: ComputerStep, index: number) => Effect.Effect<void, E>;
+  /** Checked between steps so a user can stop a running mission. */
+  readonly shouldStop?: () => Effect.Effect<boolean, E>;
 }
 
 export const COMPUTER_USE_DEFAULT_MAX_STEPS = 24;
@@ -332,6 +334,7 @@ export type ComputerUseRunResult =
    */
   | { readonly status: "unverified"; readonly steps: number; readonly summary: string }
   | { readonly status: "budget-exhausted"; readonly steps: number }
+  | { readonly status: "cancelled"; readonly steps: number }
   | { readonly status: "refused"; readonly reason: ComputerStepRefusal; readonly steps: number };
 
 /**
@@ -348,6 +351,10 @@ export const runComputerUse = <E = never>(
     const history: Array<string> = [];
     let applied = 0;
     for (let index = 0; index < maxSteps; index += 1) {
+      // A stop lands between steps, so it never interrupts an action mid-flight.
+      if (input.shouldStop !== undefined && (yield* input.shouldStop())) {
+        return { status: "cancelled", steps: index } as const;
+      }
       // Bound the surface once and share it with composition, so an answer can
       // only name an element the request actually offered.
       const captured = yield* input.runtime.capture();

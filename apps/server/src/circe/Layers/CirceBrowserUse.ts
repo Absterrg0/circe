@@ -57,6 +57,8 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceBrowserUseR
         status: "refused",
         message: `The model reported ${goal} done, but no action was taken, so I couldn't confirm it.`,
       };
+    case "cancelled":
+      return { status: "cancelled", message: "Stopped.", steps: result.steps };
     case "refused":
       return { status: "refused", message: refusalMessage(result.reason) };
   }
