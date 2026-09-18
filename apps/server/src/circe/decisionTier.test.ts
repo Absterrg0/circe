@@ -1,7 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import { readDecisionResponse, type DecisionRequest } from "@circe/core/decision";
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";

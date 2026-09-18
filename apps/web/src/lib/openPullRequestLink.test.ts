@@ -165,7 +165,7 @@ describe("matchesLinkedPullRequestUrl", () => {
     expect(
       matchesLinkedPullRequestUrl(
         linkedPullRequest,
-        "https://github.com/PingDotGG/T3Code/pull/42/files",
+        "https://github.com/Absterrg0/circe/pull/42/files",
       ),
     ).toBe(true);
   });

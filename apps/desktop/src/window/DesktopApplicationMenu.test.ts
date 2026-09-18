@@ -135,7 +135,6 @@ describe("DesktopApplicationMenu", () => {
   it("uses Circe branding in the update dialog", () => {
     const message = DesktopApplicationMenu.formatDesktopUpToDateMessage("Circe (Nightly)", "1.2.3");
     assert.equal(message, "Circe (Nightly) 1.2.3 is currently the newest version available.");
-    assert.notInclude(message, "Circe");
   });
 
   it.effect("installs the native menu and routes Settings through DesktopWindow", () =>
