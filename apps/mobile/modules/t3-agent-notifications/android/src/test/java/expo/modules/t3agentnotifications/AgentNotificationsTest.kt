@@ -48,7 +48,7 @@ class AgentNotificationsTest {
       }
     )
     AgentNotifications.clear(context)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", true)
   }
 
   private fun update(alertId: String, active: Boolean) = mapOf(
@@ -160,7 +160,7 @@ class AgentNotificationsTest {
     val alert = manager.activeNotifications.single()
     assertEquals("5 agents finished", alert.notification.extras.getString(Notification.EXTRA_TITLE))
     assertEquals(titles, alert.notification.extras.getString(Notification.EXTRA_BIG_TEXT))
-    assertEquals("t3code-dev://", shadowOf(alert.notification.contentIntent).savedIntent.dataString)
+    assertEquals("circe-dev://", shadowOf(alert.notification.contentIntent).savedIntent.dataString)
   }
 
   @Test
@@ -182,10 +182,10 @@ class AgentNotificationsTest {
   fun reopeningSameAccountPreservesCardsDeduplicationAndDismissal() {
     val message = update("attention", true)
     AgentNotifications.receive(context, message)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", true)
     assertEquals(2, manager.activeNotifications.size)
     AgentNotifications.dismiss(context)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", true)
     AgentNotifications.receive(context, message)
     assertEquals("t3-agent-alert", manager.activeNotifications.single().tag)
   }
@@ -193,10 +193,10 @@ class AgentNotificationsTest {
   @Test
   fun changingAccountOrDeviceClearsOldCardsAndRejectsOldPushes() {
     AgentNotifications.receive(context, update("attention", true))
-    AgentNotifications.configure(context, "device", "different-user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "different-user", "circe-dev", true)
     AgentNotifications.receive(context, update("attention", true))
     assertTrue(manager.activeNotifications.isEmpty())
-    AgentNotifications.configure(context, "different-device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "different-device", "user", "circe-dev", true)
     AgentNotifications.receive(context, update("attention", true))
     assertTrue(manager.activeNotifications.isEmpty())
     AgentNotifications.clear(context)
@@ -223,7 +223,7 @@ class AgentNotificationsTest {
     val card = manager.activeNotifications.single().notification
     assertEquals(lines.joinToString("\n"), card.extras.getString(Notification.EXTRA_BIG_TEXT))
     assertEquals(
-      "t3code-dev://threads/environment/thread",
+      "circe-dev://threads/environment/thread",
       shadowOf(card.contentIntent).savedIntent.dataString
     )
   }
@@ -274,7 +274,7 @@ class AgentNotificationsTest {
     assertTrue(manager.activeNotifications.isEmpty())
     AgentNotifications.receive(context, update("new-work", true))
     assertEquals("t3-agent-activity", manager.activeNotifications.single().tag)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", false)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", false)
     assertTrue(manager.activeNotifications.isEmpty())
   }
 
@@ -357,13 +357,13 @@ class AgentNotificationsTest {
     AgentNotifications.receive(context, update("work", true))
     AgentNotifications.dismiss(context)
     assertTrue(alarms.scheduledAlarms.isEmpty())
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", false)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", false)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", true)
     AgentNotifications.receive(context, update("work", true))
     assertEquals(1, alarms.scheduledAlarms.size)
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", false)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", false)
     assertTrue(alarms.scheduledAlarms.isEmpty())
-    AgentNotifications.configure(context, "device", "user", "t3code-dev", true)
+    AgentNotifications.configure(context, "device", "user", "circe-dev", true)
     AgentNotifications.receive(context, update("work", true))
     AgentNotifications.clear(context)
     assertTrue(alarms.scheduledAlarms.isEmpty())

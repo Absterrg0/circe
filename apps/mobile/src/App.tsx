@@ -50,18 +50,9 @@ void SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 const appLinking = {
-  // Legacy `t3code*` schemes stay registered as aliases: links already shared
-  // in QR codes, widgets, and push payloads must keep resolving after the
-  // rename to Circe. New links use the Circe scheme.
-  prefixes: [
-    Linking.createURL("/"),
-    "circe://",
-    "circe-dev://",
-    "circe-preview://",
-    "t3code://",
-    "t3code-dev://",
-    "t3code-preview://",
-  ],
+  // Circe's own schemes only. This fork is the product: deep links, QR codes,
+  // widget taps, and push payloads all carry `circe*`.
+  prefixes: [Linking.createURL("/"), "circe://", "circe-dev://", "circe-preview://"],
   // See `isNavigableDeepLink`: launcher URLs, share wake-ups, and auth
   // callbacks all arrive looking like links but belong to other machinery, and
   // any of them that reaches the router lands on the NotFound route.

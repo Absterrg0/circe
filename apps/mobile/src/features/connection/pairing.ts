@@ -78,9 +78,7 @@ export function extractPairingUrlFromQrPayload(payload: string): string {
 
   try {
     const url = new URL(trimmed);
-    // Legacy `t3code:` links stay accepted so pairing codes printed before the
-    // rename keep working.
-    if (url.protocol === "circe:" || url.protocol === "t3code:") {
+    if (url.protocol === "circe:") {
       const pairingUrl = url.searchParams.get(MOBILE_PAIRING_URL_PARAM)?.trim() ?? "";
       if (pairingUrl.length > 0) {
         return pairingUrl;
