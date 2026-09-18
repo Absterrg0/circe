@@ -64,6 +64,11 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceComputerUse
         message: `I took ${result.steps} steps but couldn't finish ${goal}.`,
         steps: result.steps,
       };
+    case "unverified":
+      return {
+        status: "refused",
+        message: `The model reported ${goal} done, but no action was taken, so I couldn't confirm it.`,
+      };
     case "refused":
       return { status: "refused", message: refusalMessage(result.reason) };
   }
