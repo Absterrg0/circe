@@ -154,6 +154,17 @@ emit an element id, coordinate, key, or direction outside a supplied finite
 set. Typing is the one field that cannot be closed, so the provider plan
 supplies the text and the selector only chooses when and where.
 
+### Linux desktop grounding reads AT-SPI, not pixels
+
+`apps/server/src/circe/desktopUse/linuxAccessibility.ts` reads the OS
+accessibility tree through a short embedded Python helper and maps it to the
+same bounded element catalog the browser observer produces. AT-SPI is a D-Bus
+protocol with no Node binding here, so the helper is embedded and run through
+the desktop command runner rather than packaged as a script. The accessibility
+state set is not reliable across compositors, so visible bounds are the
+grounding proxy. macOS and Windows need their own observers behind the same
+surface shape; the step layer does not change.
+
 ### Perception is separate from decision
 
 The TypeSafe decision model is not multimodal, which is not a blocker because
