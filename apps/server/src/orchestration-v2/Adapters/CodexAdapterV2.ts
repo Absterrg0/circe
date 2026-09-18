@@ -1429,6 +1429,7 @@ export const codexAppServerClientFactoryFromSettingsLayer: Layer.Layer<
           const command = yield* makeCodexAppServerSpawnCommand({
             command: input.settings.binaryPath || "codex",
             args: ["app-server"],
+            ...(input.runtimePolicy.cwd === null ? {} : { cwd: input.runtimePolicy.cwd }),
             env: environment,
           });
           const handle = yield* spawner.spawn(command).pipe(
