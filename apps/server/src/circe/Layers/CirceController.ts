@@ -166,8 +166,8 @@ function buildMeshSemanticPrompt(input: {
     "A leading negation rules out the named control or target: Don't, do not, and never mark ruled-out names excluded, never a destination. 'Don't stop the auth task, tell status' is status, never stop. 'Check auth but not in Fable' cites Fable excluded, never destination, and keeps the full wording. 'excluding the billing endpoint' cites the endpoint excluded.",
     "When a heard project mention is shown, it is advisory evidence only. Cite the heard text exactly as written when routing to it. A typo or mishearing ('Rivvil' for Rivvl, 'Rival' for Rivvl) never spells a catalog name: cite what was heard as subject or excluded, or omit refs and let the host clarify. Established aliases resolve, but only when cited exactly as heard.",
     "A question about, or follow-up to, the focused task that names no other task or project continues it: use continue, not start. A general question unrelated to any listed project or task uses converse with the question answered in answer; answer is required for converse, null otherwise.",
-    "Actions: start creates new work; continue adds a new turn to a ready task; steer adds direction to running work; queue schedules a follow-up; stop interrupts; status reports state; review creates a review task; reroute recreates a task in another project; focus-project changes the project for new work; focus-task changes the selected task; list-projects lists the catalog; converse answers a general question that needs no project or task; lookup answers weather or local time in a named place; open-website opens a named website or web URL on the user's device; unsupported marks a request Circe cannot do as one action. The host decides steer versus continuation from the task's live state, not from hidden wording.",
-    "Quick actions take no project or task. A weather or local-time question uses action lookup with lookup {kind: weather|time, location, day: now|today|tomorrow}; copy location verbatim from the transcript and use day now unless the user says today or tomorrow. A request to open a site uses action open-website with website set to the named site or URL. Never use lookup or open-website for work that edits, deploys, or investigates a project. A request that combines a lookup or website launch with any other work is unsupported: quick actions never take refs and never combine.",
+    "Actions: start creates new work; continue adds a new turn to a ready task; steer adds direction to running work; queue schedules a follow-up; stop interrupts; status reports state; review creates a review task; reroute recreates a task in another project; focus-project changes the project for new work; focus-task changes the selected task; list-projects lists the catalog; converse answers a general question that needs no project or task; lookup answers weather or local time in a named place; open-website opens a named website or web URL on the user's device; browse operates a website toward a goal over several steps; unsupported marks a request Circe cannot do as one action. The host decides steer versus continuation from the task's live state, not from hidden wording.",
+    "Quick actions take no project or task. A weather or local-time question uses action lookup with lookup {kind: weather|time, location, day: now|today|tomorrow}; copy location verbatim from the transcript and use day now unless the user says today or tomorrow. A request to open a site uses action open-website with website set to the named site or URL. Never use lookup or open-website for work that edits, deploys, or investigates a project. A request that combines a lookup or website launch with any other work is unsupported: quick actions never take refs and never combine. A request that needs several steps inside a website (find something, fill it in, submit it) uses action browse with browserGoal set to the user's own instruction to the same effect and no refs; the origin client confirms before it starts, and the node grounds every step.",
     "A pending approval or question is answered by continuing its task: a bare verdict ('yes', 'allow it', 'deny it') or an answer to the waiting question uses continue, never stop, status, or converse. The host binds the reply to the live request; never invent request identity.",
     "Use null when the user did not specify model, effort, or answer. The host dispatches the original transcript minus cited destination spans and composes acceptance speech from the accepted target; proposals carry no wording and no acknowledgement.",
     "Examples:",
@@ -241,6 +241,9 @@ function planStepEntry(result: CirceExecutionResult): CirceExecutionPlanStep {
   }
   if (result.status === "needs-input") {
     return { action: "needs-input", status: "needs-input", message: result.prompt.slice(0, 400) };
+  }
+  if (result.status === "tool-answer" || result.status === "client-action") {
+    return { action: result.tool, status: "acknowledged", message: result.speech.slice(0, 400) };
   }
   if (result.status === "plan") {
     return { action: "plan", status: "acknowledged", message: result.message.slice(0, 400) };
@@ -1261,9 +1264,10 @@ export const makeCirceControllerLive = <R>(
             ? null
             : Effect.sync((): CirceClassifiedTurn => {
                 let interpretation: CirceCommandInterpretation;
+                let proposal: typeof CirceSemanticProposal.Type | undefined;
+                const source = input.sourceUtterance ?? input.utterance;
                 try {
-                  const proposal = decodeCirceSemanticProposal(input.semanticProposal);
-                  const source = input.sourceUtterance ?? input.utterance;
+                  proposal = decodeCirceSemanticProposal(input.semanticProposal);
                   interpretation = !/[\p{Letter}\p{Number}]/u.test(source)
                     ? {
                         status: "needs-input",
@@ -1286,7 +1290,34 @@ export const makeCirceControllerLive = <R>(
                     choices: [],
                   };
                 }
-                return { interpretation, outcome: circeOutcomeFromInterpretation(interpretation) };
+                // A bounded tool proposal resolves to a typed outcome here,
+                // before the Director's ordinary work interpretation. The
+                // Director refuses lookup and website launches because it
+                // cannot run them; the node and the origin client own those
+                // tools, so the proposal's tool outcome wins when the host
+                // offered it.
+                const offered = offeredCirceTools({
+                  nodeTools: nodeTools.available,
+                  clientTools: input.clientTools ?? [],
+                  locationCandidates: extractLocationCandidates(source),
+                  websiteCandidates: extractWebsiteCandidates(source),
+                  ...(input.clientToolCandidates?.apps === undefined
+                    ? {}
+                    : { appCandidates: input.clientToolCandidates.apps }),
+                  ...(input.clientToolCandidates?.mediaTargets === undefined
+                    ? {}
+                    : { mediaCandidates: input.clientToolCandidates.mediaTargets }),
+                });
+                const toolOutcome =
+                  proposal === undefined
+                    ? undefined
+                    : circeOutcomeFromProposal({ proposal, tools: offered });
+                const outcome =
+                  toolOutcome !== undefined &&
+                  (toolOutcome.kind === "tool-answer" || toolOutcome.kind === "client-action")
+                    ? toolOutcome
+                    : circeOutcomeFromInterpretation(interpretation);
+                return { interpretation, outcome };
               });
         const classifiedEffect =
           deterministicPendingReply !== null
@@ -1342,9 +1373,9 @@ export const makeCirceControllerLive = <R>(
           });
           if (execution.status === "ok") {
             return {
-              status: "acknowledged" as const,
-              action: "conversed" as const,
-              message: execution.speech,
+              status: "tool-answer" as const,
+              tool: outcome.tool,
+              speech: execution.speech,
             };
           }
           if (execution.status === "needs-input") {
@@ -1367,9 +1398,13 @@ export const makeCirceControllerLive = <R>(
         // acceptance speech so the caller can speak and route it.
         if (outcome.kind === "client-action") {
           return {
-            status: "acknowledged" as const,
-            action: "conversed" as const,
-            message: outcome.speech,
+            status: "client-action" as const,
+            tool: outcome.tool,
+            args: outcome.args,
+            speech: outcome.speech,
+            ...(input.requestMetadata === undefined
+              ? {}
+              : { requestId: input.requestMetadata.requestId }),
           };
         }
         // Every general question lives in the dedicated Conversations project,

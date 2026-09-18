@@ -569,6 +569,16 @@ export type CirceExecutionFeedback = {
 
 /** Converts an authoritative Director result into user-facing feedback. */
 export function circeExecutionFeedback(result: CirceExecutionResult): CirceExecutionFeedback {
+  // A bounded tool result is the turn outcome: a node tool speaks its grounded
+  // result, and a client action speaks the node's acceptance until the origin
+  // client replaces it with the real outcome.
+  if (result.status === "client-action" || result.status === "tool-answer") {
+    return {
+      cue: false,
+      speech: result.speech,
+      visual: { state: "Circe", detail: result.speech, kind: "completed" },
+    };
+  }
   if (result.status === "needs-input") {
     return {
       cue: false,

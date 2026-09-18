@@ -2611,7 +2611,7 @@ describe("v1 simple-command hardening", () => {
     expect(result.command.projectId).toBe(circe.id);
   });
 
-  it("refuses a lookup or website proposal that reaches the Director", () => {
+  it("refuses a lookup, website, or browse proposal that reaches the Director", () => {
     // The originating client runs these bounded actions; a proposal that
     // arrives here must never be misread as a new coding task.
     const lookup = interpret(
@@ -2626,6 +2626,15 @@ describe("v1 simple-command hardening", () => {
       proposal("open-website", "Open YouTube", [], { website: "YouTube" }),
     );
     expect(website).toMatchObject({ status: "needs-input", reason: "unsupported-command" });
+    // A browse mission is confirmed and run by the origin client, so it never
+    // reaches the Director as dispatchable work either.
+    const browse = interpret(
+      context({ utterance: "On United, find the cheapest flight to Lisbon" }),
+      proposal("browse", "On United, find the cheapest flight to Lisbon", [], {
+        browserGoal: "find the cheapest flight to Lisbon",
+      }),
+    );
+    expect(browse).toMatchObject({ status: "needs-input", reason: "unsupported-command" });
   });
 
   it("falls back to the first available provider when no default is set", () => {

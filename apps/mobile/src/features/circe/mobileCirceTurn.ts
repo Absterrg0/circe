@@ -1,5 +1,7 @@
 import type {
   EnvironmentId,
+  CirceClientToolCandidates,
+  CirceClientToolName,
   CirceExecutionResult,
   CirceExpectedReply,
   CirceProjectRef,
@@ -180,6 +182,10 @@ export type MobileCirceExecuteInput = {
   readonly referenceThreadId?: ThreadId;
   readonly expectedReply?: CirceExpectedReply | null;
   readonly clarificationFrameId?: string;
+  /** Client tools this phone can execute, advertised on the execute wire. */
+  readonly clientTools?: ReadonlyArray<CirceClientToolName>;
+  /** Client-owned bounded candidate sets for app and media tool parameters. */
+  readonly clientToolCandidates?: CirceClientToolCandidates;
   readonly requestMetadata: CirceRequestMetadata;
 };
 
@@ -198,6 +204,8 @@ export function buildMobileCirceExecuteInput(input: {
   readonly modelSelection?: ModelSelection;
   readonly clarificationFrameId?: string;
   readonly requestId: string;
+  readonly clientTools?: ReadonlyArray<CirceClientToolName>;
+  readonly clientToolCandidates?: CirceClientToolCandidates;
 }): MobileCirceExecuteInput {
   // One bounded copy of the utterance feeds the top-level source field when
   // a proposal travels with it: an unbounded copy would double a huge
@@ -222,6 +230,10 @@ export function buildMobileCirceExecuteInput(input: {
       ? {}
       : { clarificationFrameId: input.clarificationFrameId }),
     ...(input.modelSelection === undefined ? {} : { modelSelection: input.modelSelection }),
+    ...(input.clientTools === undefined ? {} : { clientTools: input.clientTools }),
+    ...(input.clientToolCandidates === undefined
+      ? {}
+      : { clientToolCandidates: input.clientToolCandidates }),
     requestMetadata: {
       requestId: input.requestId,
       origin: { originInteractionId: input.turn.originInteractionId },

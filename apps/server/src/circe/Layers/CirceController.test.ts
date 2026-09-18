@@ -343,12 +343,46 @@ describe("CirceController outcome dispatch", () => {
     return Effect.gen(function* () {
       const result = yield* execute(test.layer, "open YouTube");
       expect(result).toEqual({
-        status: "acknowledged",
-        action: "conversed",
-        message: "Opening YouTube.",
+        status: "client-action",
+        tool: "open-website",
+        args: { website: "YouTube" },
+        speech: "Opening YouTube.",
       });
       expect(test.commands).toEqual([]);
     });
+  });
+
+  it.effect("emits a typed client action for a website proposal the host offered", () => {
+    // Proposal-first path: the client sends the semantic proposal and its
+    // advertised client tools; the node revalidates and returns the typed
+    // action instead of accepting speech the client cannot route.
+    const test = harness({ turns: [] });
+    return Effect.gen(function* () {
+      const controller = yield* CirceController;
+      const result = yield* controller.execute({
+        sessionId,
+        executionNodeId,
+        projectId: project.id,
+        utterance: "open YouTube",
+        sourceUtterance: "open YouTube",
+        semanticProposal: {
+          action: "open-website",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          website: "YouTube",
+        },
+        clientTools: ["open-website"],
+      });
+      expect(result).toEqual({
+        status: "client-action",
+        tool: "open-website",
+        args: { website: "YouTube" },
+        speech: "Opening YouTube.",
+      });
+      expect(test.commands).toEqual([]);
+    }).pipe(Effect.provide(test.layer));
   });
 
   it.effect("runs a node tool through controlDispatch and speaks its result", () => {
@@ -383,9 +417,9 @@ describe("CirceController outcome dispatch", () => {
     return Effect.gen(function* () {
       const result = yield* execute(test.layer, "weather in Paris");
       expect(result).toEqual({
-        status: "acknowledged",
-        action: "conversed",
-        message: "Weather for Paris.",
+        status: "tool-answer",
+        tool: "weather",
+        speech: "Weather for Paris.",
       });
     });
   });

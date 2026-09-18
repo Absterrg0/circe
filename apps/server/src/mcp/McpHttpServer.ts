@@ -17,6 +17,8 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstab
 import packageJson from "../../package.json" with { type: "json" };
 import * as ServerConfig from "../config.ts";
 import * as DesktopUse from "../circe/desktopUse/DesktopUse.ts";
+import { CirceBrowserUseLive } from "../circe/Layers/CirceBrowserUse.ts";
+import { CirceMissionCancellationLive } from "../circe/Layers/CirceMissionCancellation.ts";
 import * as DeviceService from "../device/DeviceService.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
@@ -36,10 +38,12 @@ import * as PreviewAutomationBroker from "./PreviewAutomationBroker.ts";
 import { OrchestratorToolkitHandlersLive } from "./toolkits/orchestrator/handlers.ts";
 import { OrchestratorToolkit } from "./toolkits/orchestrator/tools.ts";
 import {
+  PreviewGoalToolkitHandlersLive,
   PreviewSnapshotToolkitHandlersLive,
   PreviewStandardToolkitHandlersLive,
 } from "./toolkits/preview/handlers.ts";
 import {
+  PreviewGoalToolkit,
   PreviewSnapshotTool,
   PreviewSnapshotToolkit,
   PreviewStandardToolkit,
@@ -712,6 +716,23 @@ const PreviewSnapshotRegistrationLive = Layer.effectDiscard(registerPreviewSnaps
   Layer.provide(PreviewSnapshotToolkitHandlersLive),
 );
 
+// The run-goal tool delegates to the mission service, so its handler layer
+// carries the mission and the broker scope it needs. The mission mints its own
+// Circe-owned automation scope; the provider session only authorizes the call.
+const PreviewGoalToolkitHandlers = PreviewGoalToolkitHandlersLive.pipe(
+  Layer.provide(CirceBrowserUseLive),
+  Layer.provide(CirceMissionCancellationLive),
+);
+
+/**
+ * Registered at the server layer, not with the preview toolkit, because it
+ * carries the mission service and the decision tier. A node without those
+ * still serves the observation and stepping tools.
+ */
+export const PreviewGoalToolkitRegistrationLive = McpServer.toolkit(PreviewGoalToolkit).pipe(
+  Layer.provide(PreviewGoalToolkitHandlers),
+);
+
 export const PreviewToolkitRegistrationLive = Layer.mergeAll(
   PreviewStandardToolkitRegistrationLive,
   PreviewSnapshotRegistrationLive,
@@ -774,6 +795,7 @@ const McpTransportLive = McpServer.layerHttp({
 
 export const layer = Layer.mergeAll(
   PreviewToolkitRegistrationLive,
+  PreviewGoalToolkitRegistrationLive,
   OrchestratorToolkitRegistrationLive,
   ThreadToolkitRegistrationLive,
   AttachmentRegistrationLive,

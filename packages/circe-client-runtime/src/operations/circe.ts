@@ -1,5 +1,7 @@
 import {
   WS_METHODS,
+  type CirceBrowserUseInput,
+  type CirceCancelMissionInput,
   type CirceCancelRequestInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
@@ -38,6 +40,28 @@ export const cancelCirceRequest = Effect.fn("Circe.cancelRequest")(function* (
   input: CirceCancelRequestInput,
 ) {
   return yield* request(WS_METHODS.circeCancelRequest, input);
+});
+
+/**
+ * Run one bounded browser mission on an explicit node. The node drives its
+ * connected desktop browser host through the TypeSafe step loop; the origin
+ * client confirms once per session before the first mission.
+ */
+export const useCirceBrowser = Effect.fn("Circe.browserUse")(function* (
+  input: CirceBrowserUseInput,
+) {
+  return yield* request(WS_METHODS.circeBrowserUse, input);
+});
+
+/**
+ * Stop one running mission on its node by the request id it registered under.
+ * `cancelled` is true when a live mission held the id and will halt at its next
+ * step boundary; false means it had already settled.
+ */
+export const cancelCirceMission = Effect.fn("Circe.cancelMission")(function* (
+  input: CirceCancelMissionInput,
+) {
+  return yield* request(WS_METHODS.circeCancelMission, input);
 });
 
 /** Read the authenticated device's Host-owned task focus and bounded history. */

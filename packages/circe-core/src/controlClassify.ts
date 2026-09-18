@@ -50,6 +50,10 @@ export interface CirceOfferInput {
   readonly clientTools: ReadonlyArray<string>;
   readonly locationCandidates?: ReadonlyArray<string>;
   readonly websiteCandidates?: ReadonlyArray<string>;
+  /** Installed-app names the origin client can launch; client-supplied. */
+  readonly appCandidates?: ReadonlyArray<string>;
+  /** Media targets the origin client can address; client-supplied. */
+  readonly mediaCandidates?: ReadonlyArray<string>;
 }
 
 /**
@@ -58,27 +62,30 @@ export interface CirceOfferInput {
  * written for it and free-text tool arguments are forbidden.
  */
 export function offeredCirceTools(input: CirceOfferInput): ReadonlyArray<CirceTool> {
-  const locationCandidates = input.locationCandidates ?? [];
-  const websiteCandidates = input.websiteCandidates ?? [];
+  const candidateSets: CirceCandidateSets = {
+    locationCandidates: input.locationCandidates ?? [],
+    websiteCandidates: input.websiteCandidates ?? [],
+    appCandidates: input.appCandidates ?? [],
+    mediaCandidates: input.mediaCandidates ?? [],
+  };
   return availableCirceTools({
     nodeTools: input.nodeTools,
     clientTools: input.clientTools,
   }).filter((tool) =>
-    tool.parameters.every((parameter) =>
-      parameterIsOfferable(parameter, {
-        locationCandidates,
-        websiteCandidates,
-      }),
-    ),
+    tool.parameters.every((parameter) => parameterIsOfferable(parameter, candidateSets)),
   );
 }
 
+type CirceCandidateSets = {
+  readonly locationCandidates: ReadonlyArray<string>;
+  readonly websiteCandidates: ReadonlyArray<string>;
+  readonly appCandidates: ReadonlyArray<string>;
+  readonly mediaCandidates: ReadonlyArray<string>;
+};
+
 function parameterIsOfferable(
   parameter: CirceToolParameter,
-  candidates: {
-    readonly locationCandidates: ReadonlyArray<string>;
-    readonly websiteCandidates: ReadonlyArray<string>;
-  },
+  candidates: CirceCandidateSets,
 ): boolean {
   if (parameter.kind !== "text" || !parameter.required) return true;
   switch (parameter.candidates.kind) {
@@ -87,7 +94,9 @@ function parameterIsOfferable(
     case "website":
       return candidates.websiteCandidates.length > 0;
     case "app":
+      return candidates.appCandidates.length > 0;
     case "media-target":
+      return candidates.mediaCandidates.length > 0;
     case "residual":
       return false;
   }
@@ -104,7 +113,9 @@ function candidatesFor(
     case "website":
       return input.websiteCandidates ?? [];
     case "app":
+      return input.appCandidates ?? [];
     case "media-target":
+      return input.mediaCandidates ?? [];
     case "residual":
       return [];
   }
@@ -305,7 +316,10 @@ function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): C
     const text = readTextArgument(input.answers, id, input.source);
     if ("missing" in text) {
       if (!parameter.required) continue;
-      return { kind: "clarification", clarification: toolArgumentClarification(tool, parameter, input) };
+      return {
+        kind: "clarification",
+        clarification: toolArgumentClarification(tool, parameter, input),
+      };
     }
     entries.push([parameter.name, text.value]);
   }

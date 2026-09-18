@@ -27,6 +27,10 @@
       "types": "./src/circe/routeGrounding.ts",
       "default": "./src/circe/routeGrounding.ts"
     },
+    "./circe/clientActions": {
+      "types": "./src/circe/clientActions.ts",
+      "default": "./src/circe/clientActions.ts"
+    },
     "./circe/planPresentation": {
       "types": "./src/circe/planPresentation.ts",
       "default": "./src/circe/planPresentation.ts"

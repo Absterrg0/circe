@@ -27,9 +27,15 @@ import {
 } from "../../../attachmentStore.ts";
 import { resolveAttachmentRelativePath } from "../../../attachmentPaths.ts";
 import * as ServerConfig from "../../../config.ts";
+import { CirceBrowserUse } from "../../../circe/Services/CirceBrowserUse.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
-import { PreviewSnapshotToolkit, PreviewStandardToolkit, PreviewToolkit } from "./tools.ts";
+import {
+  PreviewGoalToolkit,
+  PreviewSnapshotToolkit,
+  PreviewStandardToolkit,
+  PreviewToolkit,
+} from "./tools.ts";
 
 /**
  * Collapses the `show` alias onto `open` and defaults tab reuse.
@@ -236,4 +242,21 @@ export const PreviewStandardToolkitHandlersLive = PreviewStandardToolkit.toLayer
 
 export const PreviewSnapshotToolkitHandlersLive = PreviewSnapshotToolkit.toLayer({
   preview_snapshot,
+});
+
+// A provider delegates a grounded goal to the TypeSafe loop instead of stepping
+// itself. The call is synchronous, so no two planners touch the tab at once,
+// and the node's own mission service owns the per-session confirmation.
+export const PreviewGoalToolkitHandlersLive = PreviewGoalToolkit.toLayer({
+  preview_run_goal: (input) =>
+    Effect.gen(function* () {
+      yield* McpInvocationContext.requireMcpCapability("preview");
+      const browserUse = yield* CirceBrowserUse;
+      return yield* browserUse.run({
+        goal: input.goal,
+        confirmed: true,
+        ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
+        ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+      });
+    }),
 });

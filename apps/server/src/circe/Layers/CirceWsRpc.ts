@@ -43,7 +43,9 @@ import { circeWebsiteUrl } from "@circe/core/website";
 import { deriveCirceTaskState } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
+import * as CirceBrowserUse from "../Services/CirceBrowserUse.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
 import { CirceTaskDesk } from "../Services/CirceTaskDesk.ts";
@@ -278,6 +280,8 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeExecute]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeInterpret]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeCancelRequest]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeCancelMission]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetTaskDesk]: AuthOrchestrationReadScope,
   [WS_METHODS.circeFocusTask]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetProjectVocabulary]: AuthOrchestrationReadScope,
@@ -301,6 +305,8 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const serverEnvironment = yield* ServerEnvironment.ServerEnvironment;
     const executionNodeId = yield* serverEnvironment.getEnvironmentId;
     const circe = yield* CirceController.CirceController;
+    const browserUse = yield* CirceBrowserUse.CirceBrowserUse;
+    const missionCancellation = yield* CirceMissionCancellation;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
     const projectLexicon = yield* CirceProjectLexicon;
@@ -406,6 +412,30 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 WS_METHODS.circeCancelRequest,
                 circe.cancelRequest({ ...input, executionNodeId }),
                 { "rpc.aggregate": "circe" },
+              ),
+            // Surface missions need a screen. A Headless node owns execution
+            // but no desktop, so it refuses rather than driving a machine
+            // nobody is watching.
+            [WS_METHODS.circeBrowserUse]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeBrowserUse,
+                (config.circeNodePreset ?? "full") === "headless"
+                  ? Effect.succeed({
+                      status: "unavailable" as const,
+                      message: "This node has no desktop surface.",
+                    })
+                  : browserUse.run(input),
+                { "rpc.aggregate": "circe.browser" },
+              ),
+            // A stop reaches a running browser mission on this node. `cancelled`
+            // is false when the mission already settled.
+            [WS_METHODS.circeCancelMission]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeCancelMission,
+                missionCancellation
+                  .requestStop(input.requestId)
+                  .pipe(Effect.map((cancelled) => ({ cancelled }))),
+                { "rpc.aggregate": "circe.mission" },
               ),
             [WS_METHODS.circeQuickLookup]: (input) =>
               context.observeRpcEffect(

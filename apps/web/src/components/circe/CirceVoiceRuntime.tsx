@@ -19,6 +19,11 @@ import {
 } from "@circe/client-runtime/circe/commandContext";
 import { circePlanTargetOutcomes } from "@circe/client-runtime/circe/planPresentation";
 import {
+  circeClientActionSpeech,
+  runCirceClientAction,
+} from "@circe/client-runtime/circe/clientActions";
+import { circeClientActionCapabilities, circeClientActionExecutors } from "./circeClientActions";
+import {
   formatCirceVoiceDispatching,
   formatCirceVoiceReceipt,
   resolveCirceVoiceCancelMessage,
@@ -34,6 +39,7 @@ import {
   type CirceModelDraft,
 } from "@circe/core/modelChoice";
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
+import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
 import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
 import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import type {
@@ -262,6 +268,14 @@ export function CirceVoiceRuntime({
     reportFailure: false,
     reportDefect: false,
   });
+  const browserUse = useAtomCommand(circeLiveVoiceEnvironment.browserUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const cancelMission = useAtomCommand(circeLiveVoiceEnvironment.cancelMission, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const executeInstruction = useAtomCommand(circeMeshEnvironment.execute, {
     reportFailure: false,
     reportDefect: false,
@@ -436,6 +450,20 @@ export function CirceVoiceRuntime({
     [speakFeedbackText],
   );
   const voiceClarificationRef = useRef<CircePendingClarification | null>(null);
+  // Desktop-only surface mission state. The first mission of a session parks
+  // for one spoken yes; confirmation is client consent, not authorization, and
+  // the node treats `confirmed` as an assertion.
+  const surfaceConfirmedRef = useRef(false);
+  const pendingSurfaceRef = useRef<{
+    readonly goal: string;
+    readonly nodeId: EnvironmentId;
+  } | null>(null);
+  // The one running surface mission, addressed by the request id its loop polls
+  // for a stop. Cleared when the mission settles.
+  const activeMissionRef = useRef<{
+    readonly requestId: string;
+    readonly nodeId: EnvironmentId;
+  } | null>(null);
   const voiceSubmissionReadyRef = useRef(false);
   const submitVoiceInstructionRef = useRef<
     (submission: CirceVoiceSubmission) => Promise<void | "complete" | "pause">
@@ -455,7 +483,8 @@ export function CirceVoiceRuntime({
   const syncPending = useCallback(() => {
     const queue = voiceSubmissionQueueRef.current;
     const busy = submissionBusyRef.current || (queue?.isRunning() ?? false);
-    const awaitingAnswer = voiceClarificationRef.current !== null;
+    const awaitingAnswer =
+      voiceClarificationRef.current !== null || pendingSurfaceRef.current !== null;
     const pending = busy || awaitingAnswer || (queue?.size() ?? 0) > 0;
     publishCirceCommandState({
       pending,
@@ -1086,6 +1115,27 @@ export function CirceVoiceRuntime({
           activeInterpretRef.current = null;
         }
       }
+      // A running browser mission is stopped by request id on its node; the
+      // loop halts at its next step boundary and reports cancelled.
+      const activeMission = activeMissionRef.current;
+      if (activeMission !== null) {
+        emitFeedback({
+          inputMode: action.inputMode,
+          kind: "working",
+          text: "Stopping the mission…",
+          speak: false,
+        });
+        syncPending();
+        try {
+          await cancelMission({
+            environmentId: activeMission.nodeId,
+            input: { requestId: activeMission.requestId },
+          });
+        } catch {
+          // Best-effort: a mission that already settled stays settled.
+        }
+        return;
+      }
       const active = activeRequestRef.current;
       if ((queue?.isRunning() ?? false) && active !== null) {
         // Real pre-accept cancel by the exact identity on the wire. The
@@ -1153,7 +1203,14 @@ export function CirceVoiceRuntime({
       });
       syncPending();
     },
-    [cancelInteractionSpeech, cancelPendingClarification, cancelRequest, emitFeedback, syncPending],
+    [
+      cancelInteractionSpeech,
+      cancelMission,
+      cancelPendingClarification,
+      cancelRequest,
+      emitFeedback,
+      syncPending,
+    ],
   );
   useEffect(
     () =>
@@ -1280,6 +1337,46 @@ export function CirceVoiceRuntime({
   };
 
   /**
+   * Desktop-only: runs one confirmed browser mission on the target node. The
+   * first mission of a session parks for a spoken yes before this is reached.
+   */
+  const startSurfaceMission = useCallback(
+    async (goal: string, nodeId: EnvironmentId, inputMode: SubmissionInputMode) => {
+      surfaceConfirmedRef.current = true;
+      const requestId = randomUUID();
+      const captureId = `circe-browser-${requestId}`;
+      emitFeedback({
+        text: `Working on the browser: ${goal}`,
+        kind: "working",
+        inputMode,
+        captureId,
+        requestId,
+        speak: false,
+      });
+      const requestMetadata = {
+        requestId,
+        origin: { originInteractionId: circeReporterIdentity() },
+      };
+      activeMissionRef.current = { requestId, nodeId };
+      const result = await browserUse({
+        environmentId: nodeId,
+        input: { goal, confirmed: true, requestMetadata },
+      }).catch(() => null);
+      activeMissionRef.current = null;
+      const value = result !== null && result._tag === "Success" ? result.value : null;
+      emitFeedback({
+        text: value?.message ?? "I couldn't run that mission.",
+        kind: value === null ? "error" : "done",
+        inputMode,
+        captureId,
+        requestId,
+      });
+      syncPending();
+    },
+    [browserUse, emitFeedback, syncPending],
+  );
+
+  /**
    * The single entry point for every submission: native transcripts, browser
    * speech results, and composer text share one cancel and resume policy.
    */
@@ -1294,6 +1391,35 @@ export function CirceVoiceRuntime({
   ): void => {
     const trimmed = text.trim();
     if (trimmed.length === 0) return;
+    // A parked browser mission waits for one spoken yes. Anything else is a
+    // fresh instruction that supersedes the prompt.
+    const pendingSurface = pendingSurfaceRef.current;
+    if (pendingSurface !== null) {
+      pendingSurfaceRef.current = null;
+      const verdict = isExplicitSpokenApprovalAnswer(trimmed);
+      if (verdict === "accept") {
+        submissionBusyRef.current = true;
+        syncPending();
+        void startSurfaceMission(
+          pendingSurface.goal,
+          pendingSurface.nodeId,
+          options.inputMode,
+        ).finally(() => {
+          submissionBusyRef.current = false;
+          syncPending();
+        });
+        return;
+      }
+      if (verdict === "decline") {
+        emitFeedback({
+          text: "Okay, I won't control it.",
+          kind: "done",
+          inputMode: options.inputMode,
+          captureId: options.captureId,
+        });
+        return;
+      }
+    }
     const pendingClarification = voiceClarificationRef.current;
     if (pendingClarification !== null) {
       if (isCirceVoiceClarificationDiscard(trimmed)) {
@@ -1776,6 +1902,40 @@ export function CirceVoiceRuntime({
                 requestId: turnRequestId,
               });
               syncPending();
+              return;
+            }
+            // A multi-step browser mission runs on the target node, not in the
+            // browser tab. It is a desktop capability: the Electron app owns
+            // the screen and the origin interaction, so a plain web tab skips
+            // it rather than half-owning a mission.
+            if (
+              typeof window !== "undefined" &&
+              window.desktopBridge !== undefined &&
+              interpretedProposal.action === "browse" &&
+              typeof interpretedProposal.browserGoal === "string"
+            ) {
+              const goal = interpretedProposal.browserGoal;
+              // Prefer a node that advertises the surface capability, the same
+              // way a lookup picks its node, so a headless node never receives
+              // a mission it can only refuse.
+              const nodeId =
+                selectCirceQuickLookupNode(submissionCatalog, [
+                  primaryEnvironmentId,
+                  semanticNode.nodeId,
+                ])?.nodeId ?? semanticNode.nodeId;
+              if (!surfaceConfirmedRef.current) {
+                pendingSurfaceRef.current = { goal, nodeId };
+                emitFeedback({
+                  text: `I'll control the browser in this session to ${goal}. Say yes to start.`,
+                  kind: "needs-input",
+                  inputMode,
+                  captureId: voiceSubmission.captureId,
+                  requestId: turnRequestId,
+                });
+                syncPending();
+                return;
+              }
+              await startSurfaceMission(goal, nodeId, inputMode);
               return;
             }
             // Converse is model-decided, never a pre-inference shortcut. Run
@@ -2451,6 +2611,10 @@ export function CirceVoiceRuntime({
             // inference. Verbatim source preserves span offsets.
             ...(meshProposal === undefined ? {} : { semanticProposal: meshProposal }),
             ...(meshProposal === undefined ? {} : { sourceUtterance: meshSource.slice(0, 16_000) }),
+            // Advertise the bounded tools this client can actually run, so the
+            // node offers the classifier only executable device actions.
+            clientTools: circeClientActionCapabilities().tools,
+            clientToolCandidates: circeClientActionCapabilities().candidates,
             utterance: instruction,
           };
           // A dispatch binds the full request, including an unknown/null pin.
@@ -2541,6 +2705,49 @@ export function CirceVoiceRuntime({
             // correction that superseded it.
             speak: false,
           });
+          syncPending();
+          return;
+        }
+        if (result.status === "client-action") {
+          // A bounded action the origin client owns. The node authorized it
+          // and spoke the acceptance; the client performs it and reports the
+          // real result. A missing executor can only be a wiring bug.
+          voiceSubmissionSnapshotsRef.current.delete(voiceSubmission.captureId);
+          if (pendingVoiceClarification?.captureId !== undefined) {
+            voiceSubmissionSnapshotsRef.current.delete(pendingVoiceClarification.captureId);
+          }
+          if (pendingVoiceClarification !== null) voiceClarificationRef.current = null;
+          const actionResult = await runCirceClientAction({
+            tool: result.tool,
+            args: result.args,
+            executors: circeClientActionExecutors,
+          });
+          emitFeedback({
+            text: circeClientActionSpeech({ acceptance: result.speech, result: actionResult }),
+            kind: actionResult.status === "ok" ? "done" : "error",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            requestId,
+          });
+          onTargetConsumed();
+          syncPending();
+          return;
+        }
+        if (result.status === "tool-answer") {
+          // A bounded node tool ran and its grounded result is the outcome.
+          voiceSubmissionSnapshotsRef.current.delete(voiceSubmission.captureId);
+          if (pendingVoiceClarification?.captureId !== undefined) {
+            voiceSubmissionSnapshotsRef.current.delete(pendingVoiceClarification.captureId);
+          }
+          if (pendingVoiceClarification !== null) voiceClarificationRef.current = null;
+          emitFeedback({
+            text: result.speech,
+            kind: "done",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            requestId,
+          });
+          onTargetConsumed();
           syncPending();
           return;
         }
@@ -2803,6 +3010,7 @@ export function CirceVoiceRuntime({
       refreshMesh,
       refreshMeshNode,
       resolveVoiceModelAnswer,
+      startSurfaceMission,
       storeServerClarification,
       target,
       taskDesks,

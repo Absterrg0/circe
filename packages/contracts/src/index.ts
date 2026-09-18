@@ -54,6 +54,7 @@ export * from "./previewAutomation.ts";
 export * from "./resourceTelemetry.ts";
 export * from "./usage.ts";
 export * from "./circe.ts";
+export * from "./circeBrowserUse.ts";
 export * from "./circeLiveVoice.ts";
 export * from "./circeQuickActions.ts";
 export * from "./scheduledTask.ts";

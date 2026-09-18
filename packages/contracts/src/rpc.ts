@@ -333,6 +333,8 @@ import {
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
 import {
+  CirceCancelMissionInput,
+  CirceCancelMissionResult,
   CirceCancelRequestInput,
   CirceCancelRequestResult,
   CirceExecuteInput,
@@ -352,6 +354,7 @@ import {
   CircePushRegistrationResult,
   CircePushRegistrationError,
 } from "./circe.ts";
+import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
@@ -368,6 +371,8 @@ export const WS_METHODS = {
   circeExecute: "circe.execute",
   circeInterpret: "circe.interpret",
   circeCancelRequest: "circe.cancelRequest",
+  circeBrowserUse: "circe.browserUse",
+  circeCancelMission: "circe.cancelMission",
   circeGetTaskDesk: "circe.getTaskDesk",
   circeFocusTask: "circe.focusTask",
   circeGetProjectVocabulary: "circe.getProjectVocabulary",
@@ -591,6 +596,24 @@ const WsCirceCancelRequestRpc = Rpc.make(WS_METHODS.circeCancelRequest, {
   payload: CirceCancelRequestInput,
   success: CirceCancelRequestResult,
   error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+/**
+ * Run one bounded browser mission on this node. The node runs the TypeSafe
+ * step loop against its connected desktop browser host; the origin interaction
+ * confirms once per session before the first mission.
+ */
+const WsCirceBrowserUseRpc = Rpc.make(WS_METHODS.circeBrowserUse, {
+  payload: CirceBrowserUseInput,
+  success: CirceBrowserUseResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** Stop one running node mission by the request id it registered under. */
+const WsCirceCancelMissionRpc = Rpc.make(WS_METHODS.circeCancelMission, {
+  payload: CirceCancelMissionInput,
+  success: CirceCancelMissionResult,
+  error: EnvironmentAuthorizationError,
 });
 
 const WsCirceInterpretRpc = Rpc.make(WS_METHODS.circeInterpret, {
@@ -1799,6 +1822,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
+  WsCirceBrowserUseRpc,
+  WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
   WsCirceGetProjectVocabularyRpc,
@@ -2001,6 +2026,8 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
+  WsCirceBrowserUseRpc,
+  WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
   WsCirceGetProjectVocabularyRpc,
@@ -2019,6 +2046,8 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeExecute,
   WS_METHODS.circeInterpret,
   WS_METHODS.circeCancelRequest,
+  WS_METHODS.circeBrowserUse,
+  WS_METHODS.circeCancelMission,
   WS_METHODS.circeGetTaskDesk,
   WS_METHODS.circeFocusTask,
   WS_METHODS.circeGetProjectVocabulary,
