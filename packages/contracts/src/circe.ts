@@ -307,7 +307,6 @@ export const CirceClientToolName = Schema.Literals([
   "open-app",
   "media",
   "clipboard",
-  "notifications",
   "computer",
 ]);
 export type CirceClientToolName = typeof CirceClientToolName.Type;

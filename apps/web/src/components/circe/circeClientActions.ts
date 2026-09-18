@@ -113,39 +113,19 @@ const clipboard: CirceClientActionExecutor = async (args) => {
   return { status: "failed", speech: "I didn't catch the clipboard command." };
 };
 
-const notifications: CirceClientActionExecutor = async (args) => {
-  if (typeof Notification === "undefined") {
-    return { status: "failed", speech: "This browser has no notification support." };
-  }
-  const title = circeClientActionTextArg(args, "title") ?? "Circe";
-  const body = circeClientActionTextArg(args, "body") ?? "";
-  let permission = Notification.permission;
-  if (permission === "default") permission = await Notification.requestPermission();
-  if (permission !== "granted") {
-    return { status: "failed", speech: "Notifications are blocked for this app." };
-  }
-  new Notification(title, body.length === 0 ? undefined : { body });
-  return { status: "ok", speech: "Notified." };
-};
-
 export const circeClientActionExecutors: CirceClientActionExecutors = {
   "open-website": openWebsite,
   media,
   clipboard,
-  notifications,
 };
 
 /**
  * Tools this client can run. Browser clients own the web launcher, clipboard,
- * notifications, and in-page media; app launching needs a native catalog the
- * browser cannot provide, so it is not advertised here.
+ * and in-page media; app launching needs a native catalog the browser cannot
+ * provide. Task-lifecycle notifications are dispatched by the node from
+ * orchestration events, so the model never asks a client to raise one.
  */
 export function circeClientActionCapabilities(): CirceClientActionCapabilities {
-  const tools: ReadonlyArray<CirceClientToolName> = [
-    "open-website",
-    "clipboard",
-    "notifications",
-    "media",
-  ];
+  const tools: ReadonlyArray<CirceClientToolName> = ["open-website", "clipboard", "media"];
   return { tools, candidates: {} };
 }

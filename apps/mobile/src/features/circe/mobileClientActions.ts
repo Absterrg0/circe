@@ -8,7 +8,6 @@ import type { CirceClientToolName } from "@circe/contracts";
 import { circeWebsiteUrl } from "@circe/core/website";
 import * as Clipboard from "expo-clipboard";
 import * as Linking from "expo-linking";
-import * as Notifications from "expo-notifications";
 
 /**
  * The mobile client executor table. The node authorizes a bounded action;
@@ -50,35 +49,18 @@ const clipboard: CirceClientActionExecutor = async (args) => {
   return { status: "failed", speech: "I didn't catch the clipboard command." };
 };
 
-const notifications: CirceClientActionExecutor = async (args) => {
-  const title = circeClientActionTextArg(args, "title") ?? "Circe";
-  const body = circeClientActionTextArg(args, "body") ?? "";
-  const current = await Notifications.getPermissionsAsync();
-  let granted = current.granted;
-  if (!granted) {
-    const requested = await Notifications.requestPermissionsAsync();
-    granted = requested.granted;
-  }
-  if (!granted) return { status: "failed", speech: "Notifications are blocked for this app." };
-  await Notifications.scheduleNotificationAsync({
-    content: { title, ...(body.length === 0 ? {} : { body }) },
-    trigger: null,
-  });
-  return { status: "ok", speech: "Notified." };
-};
-
 export const mobileClientActionExecutors: CirceClientActionExecutors = {
   "open-website": openWebsite,
   clipboard,
-  notifications,
 };
 
 /**
  * Tools this phone can run. App launching and media control need a live
  * catalog the client does not build yet, so they stay unadvertised instead of
- * being refused at run time.
+ * being refused at run time. Task-lifecycle notifications are dispatched by the
+ * node from orchestration events, not requested by the model.
  */
 export function mobileClientActionCapabilities(): CirceClientActionCapabilities {
-  const tools: ReadonlyArray<CirceClientToolName> = ["open-website", "clipboard", "notifications"];
+  const tools: ReadonlyArray<CirceClientToolName> = ["open-website", "clipboard"];
   return { tools, candidates: {} };
 }
