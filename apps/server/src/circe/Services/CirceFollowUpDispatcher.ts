@@ -3,7 +3,7 @@ import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";
 
-import type { OrchestrationDispatchError } from "../../orchestration/Errors.ts";
+import type { OrchestratorV2Error } from "../../orchestration-v2/Orchestrator.ts";
 import type { ProjectionRepositoryError } from "../../persistence/Errors.ts";
 
 export interface CirceFollowUpDispatcherShape {
@@ -15,7 +15,7 @@ export interface CirceFollowUpDispatcherShape {
     readonly createdAt: string;
   }) => Effect.Effect<
     { readonly interrupted: boolean; readonly cancelledFollowUps: number },
-    OrchestrationDispatchError | ProjectionRepositoryError
+    OrchestratorV2Error | ProjectionRepositoryError
   >;
   readonly drain: Effect.Effect<void>;
 }

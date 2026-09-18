@@ -246,10 +246,19 @@ export const makePiTextGeneration = Effect.fn("makePiTextGeneration")(function* 
       } satisfies TextGeneration.ThreadTitleGenerationResult;
     });
 
+  const generateStructured: TextGeneration.TextGeneration["Service"]["generateStructured"] =
+    Effect.fn("PiTextGeneration.generateStructured")(function* () {
+      return yield* new TextGenerationError({
+        operation: "generateStructured",
+        detail: "Pi does not provide application structured generation.",
+      });
+    });
+
   return {
     generateCommitMessage,
     generatePrContent,
     generateBranchName,
     generateThreadTitle,
+    generateStructured,
   } satisfies TextGeneration.TextGeneration["Service"];
 });
