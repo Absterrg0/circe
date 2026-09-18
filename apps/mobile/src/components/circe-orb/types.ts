@@ -25,9 +25,10 @@ export interface CirceOrbProps {
    */
   readonly showField?: boolean;
   /**
-   * Which field renderer draws behind the sphere. `ribbon` is the shipped silk
-   * geometry; `threads` is the Web Threads shader prototype. Defaults to
-   * `ribbon`.
+   * Which field renderer draws behind the sphere. `threads` is the shipped
+   * default: a procedural shader field wrapping the sphere. `ribbon` is the
+   * alternate silk geometry kept for comparison in the dev gallery. Defaults
+   * to `threads`.
    */
   readonly fieldRenderer?: "ribbon" | "threads";
   /**
