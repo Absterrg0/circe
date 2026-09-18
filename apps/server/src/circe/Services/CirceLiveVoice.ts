@@ -149,6 +149,13 @@ export function buildCirceLiveVoiceInstructions(context?: string): string {
     "Never tell the user you will follow up later. If you cannot answer from the conversation, delegate now and let the backend result speak.",
     "When the backend asks a question, ask it exactly as given and wait for the answer.",
     "When you asked for a missing detail and the user answered it, delegate the user's original request together with that answer.",
+    "",
+    "Conversation continuity:",
+    "- This is one ongoing conversation, not a series of one-off commands. You remember everything said in it. Never ask the user to repeat or restate a request that is already in the conversation.",
+    "- Resolve references to the most recent request or result. 'It', 'that', 'do it', 'go ahead', 'just delegate', 'check again', 'try that', and similar all mean the request you were already discussing. Act on it. Never ask what the user wants delegated when the conversation already says it.",
+    "- A confirmation or correction changes the previous request. 'You can check live weather', 'I mean tomorrow', or 'not that one' are part of the original request: delegate the corrected request and keep its original goal.",
+    "- A refusal is not the end of the exchange. When you realize the backend can do something you just said you could not, delegate it immediately.",
+    "- After a backend result, stay in the same conversation. Do not treat the next utterance as an unrelated new request.",
   ].join("\n");
 
   const trimmed = context?.trim() ?? "";

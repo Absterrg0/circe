@@ -1,16 +1,19 @@
 import { assert, it } from "@effect/vitest";
+import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
+import * as Result from "effect/Result";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
-import { migrationManifest, runMigrations } from "./Migrations.ts";
+import { ForeignDatabaseError, migrationManifest, runMigrations } from "./Migrations.ts";
 import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
 
 const layer = it.layer(Layer.mergeAll(NodeSqliteClient.layerMemory()));
 
 /**
  * IDs 41-58 shipped on the Circe line and are never renumbered. Upstream
- * migrations that landed after the fork point (upstream 044-050) are
+ * migrations that landed after the fork point (upstream 044-053) are
  * re-registered above 58 so every migration applies exactly once.
  */
 const EXPECTED_MANIFEST: ReadonlyArray<readonly [number, string]> = [
@@ -40,6 +43,9 @@ const EXPECTED_MANIFEST: ReadonlyArray<readonly [number, string]> = [
   [64, "ProjectionThreadsActiveOrderKey"],
   [65, "ProjectionThreadPullRequests"],
   [66, "CirceLiveVoiceSessions"],
+  [67, "ProjectionThreadMessageContext"],
+  [68, "ProjectionThreadTitleState"],
+  [69, "OrchestrationV2"],
 ];
 
 layer("MigrationRemap", (it) => {
@@ -47,10 +53,10 @@ layer("MigrationRemap", (it) => {
     Effect.gen(function* () {
       const ids = migrationManifest.map(([id]) => id as number);
       const names = migrationManifest.map(([, name]) => name as string);
-      // Contiguous 1..66: no gaps, no duplicates, no renumbered slots.
+      // Contiguous 1..69: no gaps, no duplicates, no renumbered slots.
       assert.deepEqual(
         ids,
-        Array.from({ length: 66 }, (_, index) => index + 1),
+        Array.from({ length: 69 }, (_, index) => index + 1),
       );
       assert.equal(new Set(names).size, names.length);
       for (const [id, name] of EXPECTED_MANIFEST) {
@@ -59,7 +65,7 @@ layer("MigrationRemap", (it) => {
     }),
   );
 
-  it.effect("upgrades a shipped 1-58 database by applying only 59-66", () =>
+  it.effect("upgrades a shipped 1-58 database by applying only 59-69", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
 
@@ -69,7 +75,7 @@ layer("MigrationRemap", (it) => {
       const second = yield* runMigrations();
       assert.deepEqual(
         second.map(([id]) => Number(id)),
-        [59, 60, 61, 62, 63, 64, 65, 66],
+        [59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69],
       );
 
       // The shifted 47/48/49 rows keep the names databases recorded before
@@ -77,7 +83,7 @@ layer("MigrationRemap", (it) => {
       const recorded = yield* sql<{ readonly migration_id: number; readonly name: string }>`
         SELECT migration_id, name FROM effect_sql_migrations ORDER BY migration_id
       `;
-      assert.equal(recorded.length, 66);
+      assert.equal(recorded.length, 69);
       assert.deepEqual(
         recorded.slice(46, 49).map((row) => [Number(row.migration_id), row.name]),
         [
@@ -97,11 +103,43 @@ layer("MigrationRemap", (it) => {
           [64, "ProjectionThreadsActiveOrderKey"],
           [65, "ProjectionThreadPullRequests"],
           [66, "CirceLiveVoiceSessions"],
+          [67, "ProjectionThreadMessageContext"],
+          [68, "ProjectionThreadTitleState"],
+          [69, "OrchestrationV2"],
         ],
       );
 
       // A third run is a no-op: nothing re-applies.
       assert.deepEqual(yield* runMigrations(), []);
+    }),
+  );
+
+  it.effect("refuses a database whose recorded history belongs to another product", () =>
+    Effect.gen(function* () {
+      const sql = yield* SqlClient.SqlClient;
+      yield* sql`DROP TABLE IF EXISTS effect_sql_migrations`;
+      yield* sql`
+        CREATE TABLE effect_sql_migrations (
+          migration_id INTEGER PRIMARY KEY,
+          name TEXT NOT NULL
+        )
+      `;
+      // Upstream records a different migration under Circe's shipped id 41.
+      yield* sql`
+        INSERT INTO effect_sql_migrations (migration_id, name)
+        VALUES (41, 'ThreadSummaryTimeline')
+      `;
+
+      const result = yield* runMigrations().pipe(Effect.exit);
+      assert.isTrue(Exit.isFailure(result));
+      if (Exit.isFailure(result)) {
+        const defect = Cause.findDefect(result.cause);
+        assert.isTrue(Result.isSuccess(defect));
+        if (Result.isSuccess(defect)) {
+          assert.instanceOf(defect.success, ForeignDatabaseError);
+          assert.strictEqual(defect.success.reason, "history_mismatch");
+        }
+      }
     }),
   );
 });

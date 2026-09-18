@@ -14,11 +14,14 @@ Circe is the product name and the only name used across visible copy, code, pack
 - Migrations keep numeric IDs 41 through 58 and their `Circe*` names.
 - Relay resources, Clerk audience, and OTLP variables are Circe-named (`circe-relay`, `CIRCE_RELAY_URL`).
 
-## Upstream T3 names that stay
+## Legacy T3 names being renamed
 
-- `T3CODE_*` settings that predate the fork.
-- `t3code:*` storage keys and the upstream mobile schemes.
-- The `t3 triage` playbook copy that must stay byte-identical to `.github/triage/PLAYBOOK.md`.
+There is no upstream. `T3CODE_*` settings, `t3code:*` storage keys, `t3code`
+URL schemes, and `@t3tools/*` package names inherited from the foundation are
+legacy identifiers renamed in phases. Compat-sensitive renames (schemes,
+storage keys, package names, D-Bus names, desktop entry IDs) keep the old
+identifier working as an alias or migrate stored state; display names change
+outright. User-visible copy must say Circe.
 
 ## Example catalog names
 

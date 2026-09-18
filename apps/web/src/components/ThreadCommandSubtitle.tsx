@@ -36,11 +36,14 @@ function WorkspaceIcon(props: { variant: ThreadCommandSubtitleVariant; isWorktre
 export function ThreadCommandSubtitle(props: {
   project: ProjectFaviconProject | null;
   projectTitle: string | null;
+  environmentLabel?: string | null;
   branch: string | null;
   worktreePath: string | null;
   isCurrent: boolean;
   driverKind?: ProviderDriverKind | null;
   providerDisplayName?: string | null;
+  acpRegistryAgentId?: string | undefined;
+  acpRegistryIconUrl?: string | undefined;
   variant?: ThreadCommandSubtitleVariant;
   className?: string;
 }) {
@@ -69,6 +72,12 @@ export function ThreadCommandSubtitle(props: {
             <ProjectFavicon project={props.project} className="size-3 shrink-0" />
           ) : null}
           <span className="min-w-0 truncate">{projectLabel}</span>
+          {props.environmentLabel ? (
+            <>
+              <CommandPaletteMetaDot />
+              <span className="shrink-0">{props.environmentLabel}</span>
+            </>
+          ) : null}
         </span>
       ) : null}
 
@@ -88,6 +97,8 @@ export function ThreadCommandSubtitle(props: {
           <ProviderInstanceIcon
             driverKind={props.driverKind}
             displayName={props.providerDisplayName ?? props.driverKind}
+            acpRegistryAgentId={props.acpRegistryAgentId}
+            acpRegistryIconUrl={props.acpRegistryIconUrl}
             iconClassName="size-3 shrink-0 opacity-70"
           />
         </>

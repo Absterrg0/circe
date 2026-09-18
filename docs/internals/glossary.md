@@ -64,9 +64,9 @@ The product layer this fork ships over the T3 foundation.
 
 The canonical product name for this fork. Circe adds deterministic voice control, task navigation, multi-node routing, and spoken reports to the T3 coding foundation. Provider CLIs still do the coding work. See [Circe identity](./circe-identity.md).
 
-#### Upstream T3 names
+#### Legacy T3 names
 
-Names inherited from the T3 foundation that stay T3: the `circe` CLI, `T3CODE_*` settings, `t3code:*` storage keys, and the upstream mobile schemes. Circe does not rename upstream contracts it depends on. See [Circe identity](./circe-identity.md).
+Names inherited from the foundation that are being renamed in phases: `T3CODE_*` settings, `t3code:*` storage keys, `t3code` URL schemes, and `@t3tools/*` package names. They are legacy identifiers, not a boundary. See [Circe identity](./circe-identity.md).
 
 ### Multi-device Circe
 

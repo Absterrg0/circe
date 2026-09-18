@@ -10,7 +10,6 @@ import {
 import type { CirceMeshCatalog, CirceMeshNode } from "@circe/client-runtime/circe/mesh";
 import { useNavigate } from "@tanstack/react-router";
 import {
-  BotIcon,
   MicIcon,
   ArrowUpIcon,
   ChevronDownIcon,
@@ -69,7 +68,7 @@ import { buildCirceVoiceWaitingView } from "@circe/client-runtime/circe/voiceWai
 import { CirceLiveAgents } from "./CirceLiveAgents";
 import { CirceMeshDevices } from "./CirceMeshDevices";
 import { CirceNodeAgentSettings } from "./CirceNodeAgentSettings";
-import { PROVIDER_ICON_BY_PROVIDER } from "../chat/providerIconUtils";
+import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { circePresenceMode } from "./CircePresence.logic";
 import "./CirceControlCenter.css";
 
@@ -186,7 +185,6 @@ function ProviderSection({
       ) : (
         <div className="circe-provider-list">
           {providers.map((provider) => {
-            const ProviderIcon = PROVIDER_ICON_BY_PROVIDER[provider.snapshot.driver] ?? BotIcon;
             const state = provider.available
               ? "Ready"
               : !provider.snapshot.enabled
@@ -195,7 +193,11 @@ function ProviderSection({
             return (
               <div className="circe-provider-row" key={provider.snapshot.instanceId}>
                 <span className="circe-provider-icon">
-                  <ProviderIcon className="size-[18px]" />
+                  <ProviderInstanceIcon
+                    driverKind={provider.snapshot.driver}
+                    displayName={provider.snapshot.displayName ?? provider.snapshot.driver}
+                    iconClassName="size-[18px]"
+                  />
                 </span>
                 <span className="circe-provider-name">
                   {provider.snapshot.displayName ?? provider.snapshot.driver}

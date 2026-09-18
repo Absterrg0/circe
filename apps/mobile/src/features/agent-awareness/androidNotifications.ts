@@ -1,10 +1,11 @@
 import Constants from "expo-constants";
 import { requireOptionalNativeModule } from "expo";
-import { Platform } from "react-native";
+import { Linking, Platform } from "react-native";
 
 interface AndroidAgentNotifications {
   configure(deviceId: string, userId: string, scheme: string, ongoingEnabled: boolean): void;
   clear(): void;
+  openLiveUpdateSettings?(): boolean;
 }
 
 const native =
@@ -25,11 +26,21 @@ export function configureAndroidAgentNotifications(
   native?.configure?.(
     deviceId,
     userId,
-    (Array.isArray(scheme) ? scheme[0] : scheme) ?? "t3code",
+    (Array.isArray(scheme) ? scheme[0] : scheme) ?? "circe",
     ongoingEnabled,
   );
 }
 
 export function clearAndroidAgentNotifications(): void {
   native?.clear?.();
+}
+
+export function supportsAndroidLiveUpdateSettings(): boolean {
+  return Platform.OS === "android" && Number(Platform.Version) >= 36;
+}
+
+export async function openAndroidLiveUpdateSettings(): Promise<void> {
+  if (!native?.openLiveUpdateSettings?.()) {
+    await Linking.openSettings();
+  }
 }

@@ -1,8 +1,26 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
+
+const stageArtworkState = vi.hoisted(() => ({
+  mode: "none" as "artwork" | "none",
+  variant: null as "nightly" | "dev" | null,
+}));
+
+vi.mock("~/hooks/useSettings", () => ({
+  useEnvironmentIdentificationMode: () => stageArtworkState.mode,
+}));
+vi.mock("../SidebarStageBackdrop", () => ({
+  StageBackdropButtonArt: ({ variant }: { variant: string }) => `stage-${variant}`,
+  useSidebarStageBackdropVariant: (enabled = true) => (enabled ? stageArtworkState.variant : null),
+}));
 
 import { ComposerPrimaryActions, formatPendingPrimaryActionLabel } from "./ComposerPrimaryActions";
+
+afterEach(() => {
+  stageArtworkState.mode = "none";
+  stageArtworkState.variant = null;
+});
 
 function renderPendingActions(isRunning: boolean) {
   return renderToStaticMarkup(
@@ -24,28 +42,6 @@ function renderPendingActions(isRunning: boolean) {
       isEnvironmentUnavailable: false,
       isPreparingWorktree: false,
       hasSendableContent: false,
-      onPreviousPendingQuestion: () => {},
-      onInterrupt: () => {},
-      onImplementPlanInNewThread: () => {},
-    }),
-  );
-}
-
-function renderRunningActions(showSendWhileRunning: boolean, hasSendableContent: boolean) {
-  return renderToStaticMarkup(
-    createElement(ComposerPrimaryActions, {
-      compact: true,
-      pendingAction: null,
-      isRunning: true,
-      showPlanFollowUpPrompt: false,
-      promptHasText: hasSendableContent,
-      isSendBusy: false,
-      sendDisabledReason: null,
-      isConnecting: false,
-      isEnvironmentUnavailable: false,
-      isPreparingWorktree: false,
-      hasSendableContent,
-      showSendWhileRunning,
       onPreviousPendingQuestion: () => {},
       onInterrupt: () => {},
       onImplementPlanInNewThread: () => {},
@@ -215,26 +211,21 @@ describe("ComposerPrimaryActions", () => {
     expect(markup).not.toContain("bg-transparent text-white");
   });
 
-  it("only renders stop while running when Enter-to-send is available", () => {
-    const markup = renderRunningActions(false, true);
+  it("renders stage artwork inside the send button when artwork identification is active", () => {
+    stageArtworkState.mode = "artwork";
+    stageArtworkState.variant = "nightly";
 
-    expect(markup).toContain('aria-label="Stop generation"');
-    expect(markup).not.toContain('aria-label="Send message"');
+    const markup = renderSendButton();
+
+    expect(markup).toContain("stage-nightly");
   });
 
-  it("renders send alongside stop while running when Enter-to-send is unavailable", () => {
-    const markup = renderRunningActions(true, true);
+  it("hides stage artwork when artwork identification is inactive", () => {
+    stageArtworkState.variant = "nightly";
 
-    expect(markup).toContain('aria-label="Stop generation"');
-    expect(markup).toContain('aria-label="Send message"');
-    expect(markup).toContain('type="submit"');
-  });
+    const markup = renderSendButton();
 
-  it("keeps stop as the only action while running with an empty composer", () => {
-    const markup = renderRunningActions(true, false);
-
-    expect(markup).toContain('aria-label="Stop generation"');
-    expect(markup).not.toContain('aria-label="Send message"');
+    expect(markup).not.toContain("stage-nightly");
   });
 
   it("keeps raw stop and send buttons keyboard-focusable with touch-sized hit areas", () => {

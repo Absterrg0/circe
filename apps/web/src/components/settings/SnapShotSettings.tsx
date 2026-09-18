@@ -268,7 +268,7 @@ export function SnapShotSettings() {
   const shortcutStatus = recording
     ? "Press your shortcut. Esc cancels."
     : candidateConflict
-      ? `T3 Code already uses this for "${commandLabel(candidateConflict)}".`
+      ? `Circe already uses this for "${commandLabel(candidateConflict)}".`
       : shortcutCheck.status === "checking"
         ? "Checking shortcut…"
         : shortcutCheck.availability
@@ -320,7 +320,7 @@ export function SnapShotSettings() {
     try {
       if (state?.macPermissions) {
         saveSnapShotSetupResume(wizard?.wasEnabled ?? settings.snapShotEnabled);
-        if (!bridge?.setupSnapShot) throw new Error("Restart T3 Code to finish capture setup.");
+        if (!bridge?.setupSnapShot) throw new Error("Restart Circe to finish capture setup.");
         await bridge.setupSnapShot("test-mac-capture");
       }
       if (state?.mode === "direct")
@@ -337,11 +337,6 @@ export function SnapShotSettings() {
       setSetupBusy(false);
     }
   };
-
-  const refreshSetup = useCallback(() => {
-    setSetupError(null);
-    return refreshState();
-  }, [refreshState]);
 
   const closeSetup = async (completed: boolean) => {
     if (!wizard || setupBusy) return;
@@ -612,7 +607,7 @@ export function SnapShotSettings() {
           onSaveShortcut={saveShortcut}
           onEnable={enableForSetup}
           onAction={setup}
-          onRefresh={refreshSetup}
+          onRefresh={refreshState}
           onClose={closeSetup}
           onLeaveStep={stopRecording}
         />

@@ -1,5 +1,6 @@
 import {
   BUILT_IN_THEMES,
+  T3_CHAT_THEME,
   getThemeColorsForAppearance,
   MOBILE_DEFAULT_THEME_ID,
   MOBILE_THEME_IDS as SHARED_MOBILE_THEME_IDS,
@@ -30,7 +31,9 @@ export const MOBILE_THEME_OPTIONS: ReadonlyArray<{
   ...BUILT_IN_THEMES.map((theme) => ({ id: theme.id as MobileThemeId, label: theme.label })),
 ];
 
-export type MobileThemeVariable = `--color-${string}`;
+// Closed set: every key `createMobileThemeVariables` writes. Reads of a
+// misspelled variable then fail to compile instead of yielding undefined.
+export type MobileThemeVariable = keyof ReturnType<typeof createMobileThemeVariables>;
 export type MobileThemeVariables = Readonly<Record<MobileThemeVariable, string>>;
 
 export function normalizeMobileThemeId(value: unknown): MobileThemeId {
@@ -137,9 +140,27 @@ function withAlpha(color: string, alpha: number): string {
 
 function rgbChannels(color: string): readonly [number, number, number] | null {
   const match = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
-  return match
-    ? [Number.parseInt(match[1], 16), Number.parseInt(match[2], 16), Number.parseInt(match[3], 16)]
-    : null;
+  if (!match) return null;
+  const [, red = "0", green = "0", blue = "0"] = match;
+  return [Number.parseInt(red, 16), Number.parseInt(green, 16), Number.parseInt(blue, 16)];
+}
+
+/**
+ * An opaque form of a theme colour, composited over the surface behind it. Native chip drawing
+ * parses only opaque hex — an `rgba()` string falls back to a default that is nothing like the
+ * colour asked for — so a translucent role like `--color-border` has to be flattened first.
+ */
+export function flattenThemeColor(color: string, surface: string): string {
+  const match = /^rgba?\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)(?:[,\s/]+([\d.]+))?\s*\)$/i.exec(
+    color.trim(),
+  );
+  if (!match) return color;
+  const alpha = match[4] === undefined ? 1 : Number(match[4]);
+  const behind = rgbChannels(surface) ?? [0, 0, 0];
+  const channels = [match[1], match[2], match[3]].map((channel, index) =>
+    Math.max(0, Math.min(255, Math.round(Number(channel) * alpha + behind[index]! * (1 - alpha)))),
+  );
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
 }
 
 function relativeLuminance(channels: readonly [number, number, number]): number {
@@ -199,18 +220,15 @@ function readableMessageAccent(accent: string, surface: string): string {
 }
 
 export function themeColorWithAlpha(color: string, alpha: number): string {
-  const hex = /^#([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(color);
-  if (hex) {
-    return `rgba(${Number.parseInt(hex[1], 16)}, ${Number.parseInt(hex[2], 16)}, ${Number.parseInt(hex[3], 16)}, ${alpha})`;
+  const channels = rgbChannels(color);
+  if (channels) {
+    return `rgba(${channels[0]}, ${channels[1]}, ${channels[2]}, ${alpha})`;
   }
   const rgb = /^rgba?\(\s*([\d.]+)\s*,\s*([\d.]+)\s*,\s*([\d.]+)/.exec(color);
   return rgb ? `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})` : color;
 }
 
-export function createMobileThemeVariables(
-  colors: ThemeColors,
-  appearance: MobileThemeAppearance,
-): MobileThemeVariables {
+export function createMobileThemeVariables(colors: ThemeColors, appearance: MobileThemeAppearance) {
   const c = nativeColors(colors);
   return {
     "--color-screen": c.canvas,
@@ -294,11 +312,32 @@ export function createMobileThemeVariables(
     "--color-dot-separator": withAlpha(c.textMuted, 0.35),
     "--color-wordmark": c.text,
     "--color-chevron": withAlpha(c.textMuted, 0.42),
+    // Circe reference tokens, v1.0. Static per appearance so every generated
+    // theme carries the same set and Circe chrome stays consistent.
+    "--color-circe-copper": "#e08a63",
+    "--color-circe-copper-deep": appearance === "dark" ? "#f0a078" : "#a5482c",
+    "--color-circe-copper-bright": "#f0a078",
+    "--color-circe-peach": "#ffd8bd",
+    "--color-circe-blush": appearance === "dark" ? "#33231f" : "#f7cfb8",
+    "--color-circe-stone": appearance === "dark" ? "#2a2622" : "#f2e8de",
+    "--color-circe-success": appearance === "dark" ? "#83d7a3" : "#3f8f63",
+    "--color-circe-warning": appearance === "dark" ? "#e6a066" : "#b4703a",
+    "--color-circe-danger": appearance === "dark" ? "#f0646e" : "#c2454f",
+    "--color-circe-neutral": appearance === "dark" ? "#a1a7af" : "#77736f",
+    "--color-circe-canvas": appearance === "dark" ? "#0c0d0e" : "#fcf9f4",
+    "--color-circe-surface": appearance === "dark" ? "#121415" : "#fffdfa",
+    "--color-circe-surface-raised": appearance === "dark" ? "#191b1d" : "#f6f0e9",
+    "--color-circe-card": appearance === "dark" ? "#121415" : "#fffdfa",
+    "--color-circe-ink": appearance === "dark" ? "#f4f1ed" : "#151311",
+    "--color-circe-copy": appearance === "dark" ? "#b1afad" : "#696b70",
+    "--color-circe-tabbar": appearance === "dark" ? "#121415" : "#fffdfa",
+    "--color-circe-tabbar-border":
+      appearance === "dark" ? "rgba(255, 255, 255, 0.065)" : "rgba(56, 43, 35, 0.07)",
   };
 }
 
 export const MOBILE_THEME_VARIABLE_NAMES = Object.keys(
-  createMobileThemeVariables(BUILT_IN_THEMES[0].colors, "light"),
+  createMobileThemeVariables(T3_CHAT_THEME.colors, "light"),
 ) as ReadonlyArray<MobileThemeVariable>;
 
 export function getMobileThemeVariables(
@@ -306,7 +345,7 @@ export function getMobileThemeVariables(
   appearance: MobileThemeAppearance,
   overrides: Partial<MobileThemeVariables> | null = null,
 ): MobileThemeVariables {
-  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? BUILT_IN_THEMES[0];
+  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? T3_CHAT_THEME;
   const colors = getThemeColorsForAppearance(theme, appearance) ?? theme.colors;
   const baseVariables = createMobileThemeVariables(colors, appearance);
 
@@ -320,7 +359,7 @@ export function getMobileThemePreviewColors(
 ): ThemePreviewColors {
   if (themeId === DEFAULT_MOBILE_THEME_ID || themeId === "material-you")
     return STANDARD_THEME_PREVIEW_COLORS[appearance];
-  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? BUILT_IN_THEMES[0];
+  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? T3_CHAT_THEME;
   const colors = getThemeColorsForAppearance(theme, appearance) ?? theme.colors;
   return {
     canvas: themeColorToNativeColor(colors.canvas),

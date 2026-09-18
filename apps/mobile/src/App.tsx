@@ -1,8 +1,10 @@
-import { BlurTargetView } from "expo-blur";
+import * as Font from "expo-font";
 import * as Linking from "expo-linking";
+
+import { isNavigableDeepLink } from "./lib/deepLinkRouting";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect } from "react";
-import { StatusBar } from "react-native";
+import { StatusBar, View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -22,8 +24,9 @@ import {
 import { RootStack } from "./Stack";
 import { appAtomRegistry } from "./state/atom-registry";
 import { OverlayPortalHost } from "./components/OverlayPortal";
-import { appBlurTargetRef } from "./lib/appBlurTarget";
+import { shouldHandleAppLink } from "./lib/appLinking";
 import { useMobileNavigationTheme } from "./lib/useMobileNavigationTheme";
+import { SubscriptionUsageCoordinator } from "./widgets/SubscriptionUsageCoordinator";
 
 import "../global.css";
 
@@ -31,20 +34,40 @@ if (process.env.EXPO_PUBLIC_SHOWCASE === "1") {
   prepareNativeShowcaseCapture();
 }
 
+// The Circe display serif is also registered natively in app.config.ts, which
+// is what release builds use. Loading it here as well keeps the font available
+// in a dev client that was built before the native registration existed, so the
+// welcome hero can be judged without a full native rebuild. Loading an already
+// registered family is a no-op.
+void Font.loadAsync({
+  "InstrumentSerif-Regular": require("@expo-google-fonts/instrument-serif/400Regular/InstrumentSerif_400Regular.ttf"),
+}).catch(() => {
+  // Falls back to the stack in --font-circe-serif.
+});
+
 void SplashScreen.preventAutoHideAsync().catch(() => {
   // The native module can be unavailable in non-native test environments.
 });
 
 const appLinking = {
-  prefixes: [Linking.createURL("/"), "t3code://", "t3code-dev://", "t3code-preview://"],
-  // The Expo dev client launches the app via
-  // <scheme>://expo-development-client/?url=<packager> — that URL addresses
-  // the launcher, not app navigation. Without this filter it falls through
-  // to the NotFound wildcard route on every dev launch.
-  // expo-sharing uses a private lifecycle URL only to wake the app. The
-  // persisted share inbox below owns navigation once the payload is durable.
-  filter: (url: string) =>
-    !url.includes("expo-development-client") && !url.includes("://expo-sharing"),
+  // Legacy `t3code*` schemes stay registered as aliases: links already shared
+  // in QR codes, widgets, and push payloads must keep resolving after the
+  // rename to Circe. New links use the Circe scheme.
+  prefixes: [
+    Linking.createURL("/"),
+    "circe://",
+    "circe-dev://",
+    "circe-preview://",
+    "t3code://",
+    "t3code-dev://",
+    "t3code-preview://",
+  ],
+  // Keep the compact thread list available beneath a directly opened thread.
+  config: { initialRouteName: "Home" },
+  // Launcher URLs, share wake-ups, auth callbacks, and scheme-only wake-ups all
+  // arrive looking like links but belong to other machinery, and any of them
+  // that reaches the router lands on the NotFound route.
+  filter: (url: string) => isNavigableDeepLink(url) && shouldHandleAppLink(url),
 };
 
 const Navigation = createStaticNavigation(RootStack);
@@ -78,6 +101,7 @@ function AppContent() {
   return (
     <>
       <SplashScreenCoordinator />
+      <SubscriptionUsageCoordinator />
       <GestureHandlerRootView className="flex-1">
         <KeyboardProvider statusBarTranslucent>
           <SafeAreaProvider>
@@ -90,8 +114,7 @@ function AppContent() {
                 this, React Navigation defaults to its light theme and every native
                 header (glass buttons, title, materials) is forced light even when
                 the system is in dark mode. */}
-            {/* Blur target for Android dropdown backdrops — see appBlurTarget.ts. */}
-            <BlurTargetView ref={appBlurTargetRef} style={{ flex: 1 }}>
+            <View style={{ flex: 1 }}>
               <IncomingShareProvider>
                 <CirceMobileProvider>
                   <Navigation linking={appLinking} theme={navigationTheme} />
@@ -99,7 +122,7 @@ function AppContent() {
               </IncomingShareProvider>
               <ConfirmDialogHost />
               <ThreadArrangementHost />
-            </BlurTargetView>
+            </View>
             {/* Anchored-menu overlays render here — in-window, so the
                 keyboard stays up while a dropdown is open. */}
             <OverlayPortalHost />

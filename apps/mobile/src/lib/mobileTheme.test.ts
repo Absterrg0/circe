@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { BUILT_IN_THEME_IDS, BUILT_IN_THEMES } from "@t3tools/shared/themePalettes";
+import { BUILT_IN_THEME_IDS, BUILT_IN_THEMES, T3_CHAT_THEME } from "@t3tools/shared/themePalettes";
 import { readDefaultMobileThemeVariables } from "./mobileTheme.test-support";
 
 import {
@@ -49,7 +49,7 @@ function compositeOver(overlay: string, background: string): string {
 
 describe("mobile themes", () => {
   it("declares every runtime theme variable in the static stylesheet", () => {
-    const generatedVariables = createMobileThemeVariables(BUILT_IN_THEMES[0].colors, "light");
+    const generatedVariables = createMobileThemeVariables(T3_CHAT_THEME.colors, "light");
     expect(Object.keys(readDefaultMobileThemeVariables("light")).sort()).toEqual(
       Object.keys(generatedVariables).sort(),
     );
@@ -66,15 +66,37 @@ describe("mobile themes", () => {
     }
   });
 
-  it("uses the Circe graphite palette as the default", () => {
-    expect(readDefaultMobileThemeVariables("light")["--color-screen"]).toBe("#faf7f1");
-    expect(readDefaultMobileThemeVariables("dark")["--color-screen"]).toBe("#16181b");
-    expect(readDefaultMobileThemeVariables("light")["--color-user-bubble-skill-foreground"]).toBe(
-      "#e9c46a",
-    );
-    expect(readDefaultMobileThemeVariables("dark")["--color-user-bubble-skill-foreground"]).toBe(
-      "#7a5b0a",
-    );
+  it("uses the Circe design system palette as the default", () => {
+    const light = readDefaultMobileThemeVariables("light");
+    const dark = readDefaultMobileThemeVariables("dark");
+
+    // Design system v1: warm ivory paper in light, layered warm near-black in
+    // dark. Pure black is explicitly out, and so is a cool blue-gray.
+    expect(light["--color-circe-canvas"]).toBe("#fcf9f4");
+    expect(dark["--color-circe-canvas"]).toBe("#0c0d0e");
+
+    // Light is warm paper, which is testable: red leads blue.
+    const [lightRed, , lightBlue] = light["--color-circe-canvas"]!.slice(1)
+      .match(/.{2}/g)!
+      .map((channel) => Number.parseInt(channel, 16));
+    expect(lightRed!).toBeGreaterThan(lightBlue!);
+
+    // Dark is a layered near-black: never pure black, and never saturated
+    // enough to read as a colored slate. The channels stay close together.
+    const darkChannels = dark["--color-circe-canvas"]!.slice(1)
+      .match(/.{2}/g)!
+      .map((channel) => Number.parseInt(channel, 16));
+    expect(dark["--color-circe-canvas"]).not.toBe("#000000");
+    expect(Math.max(...darkChannels) - Math.min(...darkChannels)).toBeLessThanOrEqual(4);
+
+    // Copper is the one brand accent, and it is the same hue in both modes.
+    expect(light["--color-circe-copper"]).toBe("#e08a63");
+    expect(dark["--color-circe-copper"]).toBe("#e08a63");
+
+    // Dark mode leans on the bright copper for text; light mode uses the deep
+    // tone so it stays legible on paper.
+    expect(light["--color-circe-copper-deep"]).toBe("#a5482c");
+    expect(dark["--color-circe-copper-deep"]).toBe("#f0a078");
   });
 
   it("keeps the default theme surfaces solid so first paint matches themed paint", () => {
@@ -177,16 +199,36 @@ describe("mobile themes", () => {
 
   it("maps semantic palette roles onto every mobile color variable", () => {
     const variables = createMobileThemeVariables(BUILT_IN_THEMES[0].colors, "light");
-    expect(Object.keys(variables)).toHaveLength(75);
+
+    // The Circe design system tokens are additive to the shared palette. They
+    // must all be declared, because Circe-owned chrome reads them directly.
+    for (const token of [
+      "--color-circe-copper",
+      "--color-circe-copper-deep",
+      "--color-circe-copper-bright",
+      "--color-circe-peach",
+      "--color-circe-success",
+      "--color-circe-warning",
+      "--color-circe-danger",
+      "--color-circe-neutral",
+      "--color-circe-canvas",
+      "--color-circe-surface",
+      "--color-circe-surface-raised",
+      "--color-circe-ink",
+      "--color-circe-copy",
+    ] as const) {
+      expect(variables[token]).toMatch(/^#/);
+    }
+    expect(Object.keys(variables).length).toBeGreaterThanOrEqual(75);
 
     expect(variables["--color-sheet-solid"]).toBe(
-      themeColorToNativeColor(BUILT_IN_THEMES[0].colors.chrome),
+      themeColorToNativeColor(T3_CHAT_THEME.colors.chrome),
     );
     expect(variables["--color-warning"]).toBe(
-      themeColorToNativeColor(BUILT_IN_THEMES[0].colors.warningSurface),
+      themeColorToNativeColor(T3_CHAT_THEME.colors.warningSurface),
     );
     expect(variables["--color-warning-foreground"]).toBe(
-      themeColorToNativeColor(BUILT_IN_THEMES[0].colors.warningForeground),
+      themeColorToNativeColor(T3_CHAT_THEME.colors.warningForeground),
     );
     expect(variables["--color-primary"]).not.toBe(variables["--color-screen"]);
     expect(variables["--color-primary-shadow"]).toBe("#000000");
@@ -242,5 +284,52 @@ describe("mobile themes", () => {
         ).toBeGreaterThanOrEqual(4.5);
       }
     }
+  });
+
+  // The default palette lives in global.css rather than BUILT_IN_THEMES, so the loops above
+  // never reached it; it kept an unreadable hardcoded bubble until this covered it.
+  it("keeps the default user bubble readable in both appearances", () => {
+    for (const appearance of ["light", "dark"] as const) {
+      const variables = readDefaultMobileThemeVariables(appearance);
+      const bubble = variables["--color-user-bubble"];
+      expect(
+        contrastRatio(variables["--color-user-bubble-foreground"], bubble),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(
+        contrastRatio(variables["--color-user-bubble-skill-foreground"], bubble),
+      ).toBeGreaterThanOrEqual(4.5);
+      expect(variables["--color-user-bubble-skill-foreground"]).not.toBe(
+        variables["--color-user-bubble-foreground"],
+      );
+      const fenceSurface = compositeOver(variables["--color-md-user-fence-bg"], bubble);
+      expect(fenceSurface).not.toBe(bubble);
+      expect(
+        contrastRatio(variables["--color-md-user-fence-text"], fenceSurface),
+      ).toBeGreaterThanOrEqual(4.5);
+      const codeSurface = compositeOver(variables["--color-md-user-code-bg"], bubble);
+      expect(
+        contrastRatio(variables["--color-md-user-code-text"], codeSurface),
+      ).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+});
+
+describe("flattenThemeColor", () => {
+  it("composites a translucent border over its surface", async () => {
+    const { flattenThemeColor } = await import("./mobileTheme");
+    // `--color-border` in the dark theme, over the surface a chip sits on. Native chip drawing
+    // parses opaque hex only, so this has to resolve before it crosses the bridge.
+    expect(flattenThemeColor("rgba(255, 255, 255, 0.06)", "#171717")).toBe("#252525");
+    expect(flattenThemeColor("rgba(0, 0, 0, 0.08)", "#ffffff")).toBe("#ebebeb");
+  });
+
+  it("leaves an already opaque colour alone", async () => {
+    const { flattenThemeColor } = await import("./mobileTheme");
+    expect(flattenThemeColor("#171717", "#ffffff")).toBe("#171717");
+  });
+
+  it("treats a colour with no alpha as fully opaque", async () => {
+    const { flattenThemeColor } = await import("./mobileTheme");
+    expect(flattenThemeColor("rgb(255, 0, 0)", "#000000")).toBe("#ff0000");
   });
 });

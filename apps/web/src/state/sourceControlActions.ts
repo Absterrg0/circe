@@ -191,7 +191,7 @@ export function useVcsPullAction(scope: SourceControlActionScope) {
   }, [pull, scope]);
   return useAction({
     kind: "pull",
-    label: "Pulling latest changes",
+    label: "Pulling latest changes...",
     scope,
     action,
     onSuccess: status.refresh,
@@ -269,7 +269,7 @@ export function useSourceControlPublishRepositoryAction(scope: SourceControlActi
   );
   const action = useCallback(
     async (input: {
-      provider: "github" | "gitlab" | "bitbucket" | "azure-devops";
+      provider: "github" | "gitlab" | "forgejo" | "bitbucket" | "azure-devops";
       repository: string;
       visibility: SourceControlRepositoryVisibility;
       remoteName: string;

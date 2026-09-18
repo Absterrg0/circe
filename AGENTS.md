@@ -49,7 +49,7 @@ Use the repro to find the violated invariant and the deeper architectural cause.
 ## A small glossary
 
 - **Circe** is the only product shipped by this fork.
-- **T3** is the inherited coding foundation: orchestration, providers, Git, terminals, approvals, contracts, and the detailed coding UI.
+- **T3** is the name of the inherited coding foundation (orchestration, providers, Git, terminals, approvals, contracts, detailed coding UI). It is legacy vocabulary for code Circe owns, not a separate product or boundary.
 - **node** means one running server and the machine, projects, provider credentials, and state it owns.
 - **Full** means desktop workspace, local execution, tray, hotkey, and supported speech capabilities.
 - **Controller** means desktop control, remote connections, tray, hotkey, and supported speech, without local execution.
@@ -59,35 +59,23 @@ Use the repro to find the violated invariant and the deeper architectural cause.
 - **task** means the Circe-facing reference to work in a thread, including its execution node.
 - **turn** means one user-to-agent cycle, including follow-up work such as checkpointing and reporting.
 
-## The Circe/T3 boundary
+## Product ownership
 
-### Default work scope
+Circe is the sole product shipped from this repository. There is no upstream:
+inherited implementations (orchestration, persistence, providers, Git,
+terminals, connection infrastructure, coding UI) are Circe code and may be
+audited, refactored, optimized, or replaced like any other part of the product.
+A request to review the "whole app" or improve performance means everything.
 
-Review, simplify, optimize, and implement the Circe layer. A request to review the "whole app" or improve performance means all Circe-owned behavior across server adapters, core and client runtimes, web and mobile surfaces, desktop voice and control, contracts, presets, and product packaging. Ownership matters more than directory names: Circe composition code can live in a shared entrypoint.
+`T3`, `t3code`, `T3CODE_*`, `t3code:*`, and `@t3tools/*` names still found in
+code, storage keys, schemes, and package names are legacy identifiers being
+renamed in phases, not a boundary. User-visible copy must say Circe. renames
+that break compat (URL schemes, storage keys, package names, D-Bus names,
+desktop entry IDs) keep the old identifier working as an alias or migrate
+stored state; display names change outright.
 
-Treat inherited T3 implementations as upstream dependencies that we will rebase onto. Do not audit, refactor, optimize, or replace upstream orchestration, persistence, providers, Git, terminals, generic connection infrastructure, or coding UI unless the developer explicitly asks for that scope. Read their public contracts only as needed to understand an Circe caller. An expensive Circe call is a reason to improve the Circe caller using existing public seams, not permission to redesign T3.
-
-Keep review findings and proposed fixes within Circe ownership. If an Circe requirement cannot be satisfied through existing public seams, identify the upstream constraint separately and ask before proposing or making a T3 implementation change. The integration points and documented exceptions below permit necessary Circe composition; they are not blanket authorization to change upstream code. Do not create a parallel Circe implementation of T3 behavior to evade this rule.
-
-The dependency direction is deliberate: Circe may use public T3 contracts and services. T3 provider, session, Git, terminal, and approval implementations must not import or understand Circe voice, mesh, task-desk, report, or product concepts.
-
-Use these integration points:
-
-1. Typed contracts in `packages/contracts`.
-2. Public T3 service interfaces and adapters.
-3. Top-level composition in server, web, and desktop entrypoints.
-4. Shallow startup, capability-discovery, build, packaging, and branding hooks.
-
-Do not add Circe callbacks or special cases inside provider, session, Git, terminal, or approval internals. Do not put Circe fields into a generic domain model just to save an adapter. Do not invent probe endpoints, extension bags, or a callback framework for one Circe caller. If the public seam is missing, identify the constraint first. With explicit authorization for a seam change, use either a narrow generic interface with a real T3 meaning or one explicit Circe composition patch.
-
-The documented exceptions are intentional:
-
-- `ExecutionEnvironmentCapabilities.circeNode` is a public capability marker.
-- Circe preset fields in central server configuration are startup plumbing.
-- Shared wire contracts may name Circe when the message itself is public product behavior.
-- Circe migrations 41 through 46 and upstream migration 47 are shipped IDs. Never renumber them.
-
-There is no acceptance requirement for a standalone pure-T3 build from this fork. There is a requirement that the T3 behavior Circe depends on still works after an upstream merge. Read `docs/internals/circe-t3-boundary.md` before changing this boundary or resolving upstream conflicts.
+There is no pure-T3 build and no upstream merge to preserve. Migration numeric
+IDs are shipped IDs. Never renumber them.
 
 ## The three ways to hurt yourself
 

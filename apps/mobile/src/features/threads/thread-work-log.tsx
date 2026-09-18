@@ -1,4 +1,8 @@
 import { QuestionAnswerHistory } from "./QuestionAnswerHistory";
+import {
+  getQuestionAnswerPreview,
+  hasQuestionAnswer,
+} from "@t3tools/client-runtime/work-log/user-input";
 import * as Haptics from "expo-haptics";
 import { Image } from "expo-image";
 import { type AppSymbolName, SymbolView } from "../../components/AppSymbol";
@@ -32,7 +36,7 @@ import type { EnvironmentId, ToolActivityIcon } from "@t3tools/contracts";
 import { toolActivityFaviconUrl } from "@t3tools/shared/favicon";
 
 import { AppText as Text } from "../../components/AppText";
-import { T3Wordmark } from "../../components/T3Wordmark";
+import { CirceWordmark } from "../../components/CirceWordmark";
 import { cn } from "../../lib/cn";
 import { THREAD_WORK_ROW_MIN_HEIGHT, type deriveThreadWorkLogSizing } from "../../lib/layout";
 import {
@@ -76,7 +80,7 @@ export const THREAD_DISCLOSURE_TRANSITION_MS = 180;
 const WORK_LOG_LAYOUT_TRANSITION = LinearTransition.duration(THREAD_DISCLOSURE_TRANSITION_MS);
 const WORK_LOG_DETAIL_ENTER_TRANSITION = FadeIn.duration(140);
 const WORK_LOG_DETAIL_EXIT_TRANSITION = FadeOut.duration(120);
-type WorkContentIcon = AppSymbolName | "browser" | "t3-code" | "pull-request";
+type WorkContentIcon = AppSymbolName | "browser" | "device" | "t3-code" | "pull-request";
 
 function WorkLogIcon(props: {
   readonly icon: WorkContentIcon;
@@ -86,9 +90,7 @@ function WorkLogIcon(props: {
 }) {
   const colorClassName = props.highlighted ? "accent-foreground" : props.colorClassName;
   if (props.icon === "t3-code") {
-    return (
-      <T3Wordmark height={10} {...(colorClassName ? { colorClassName } : { color: props.color })} />
-    );
+    return <CirceWordmark height={10} />;
   }
   return (
     <SymbolView
@@ -97,7 +99,9 @@ function WorkLogIcon(props: {
           ? "arrow.triangle.pull"
           : props.icon === "browser"
             ? { ios: "globe", android: "public" }
-            : props.icon
+            : props.icon === "device"
+              ? { ios: "iphone", android: "smartphone" }
+              : props.icon
       }
       size={14}
       weight="medium"
@@ -743,8 +747,13 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
   const viewedImagePath = workEntryViewedImagePath(row.workEntry);
   const toolPresentation = resolveWorkEntryToolPresentation(row.workEntry);
   const previewText = workEntryRowLabel(row.workEntry);
+  const answerPreview = row.workEntry.questionAnswer
+    ? getQuestionAnswerPreview(row.workEntry.questionAnswer)
+    : null;
+  const accessiblePreview = [previewText, answerPreview].filter(Boolean).join(": ");
   const displayText = workEntryRowLabel(row.workEntry, expanded);
-  const iconIsDestructive = row.icon === "alert" || row.icon === "warning";
+  const isSystemNotice = row.projectedItem.item.type === "system_notice";
+  const iconIsDestructive = !isSystemNotice && (row.icon === "alert" || row.icon === "warning");
   const failed = row.status === "failure";
   const toolIcon = row.workEntry.toolIcon ?? row.workEntry.toolSource?.icon;
   const icon = toolPresentation?.icon ?? workRowSymbolName(row.icon);
@@ -757,7 +766,7 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
     >
       <Pressable
         accessibilityRole={canExpand ? "button" : undefined}
-        accessibilityLabel={failed ? `${previewText}, tool call failed` : previewText}
+        accessibilityLabel={failed ? `${accessiblePreview}, tool call failed` : accessiblePreview}
         accessibilityHint={
           canExpand
             ? `Double tap to ${expanded ? "hide" : "show"} full details. Long press to copy.`
@@ -817,7 +826,18 @@ const ThreadWorkLogRow = memo(function ThreadWorkLogRow(
                 )}
                 numberOfLines={expanded ? undefined : 1}
               >
-                {displayText}
+                {isSystemNotice ? row.summary : displayText}
+                {answerPreview ? (
+                  <Text
+                    className={
+                      !expanded &&
+                      row.workEntry.questionAnswer &&
+                      hasQuestionAnswer(row.workEntry.questionAnswer)
+                        ? "text-foreground"
+                        : "text-foreground-subtle"
+                    }
+                  >{`  ${answerPreview}`}</Text>
+                ) : null}
               </Text>
             </>
           )}
@@ -899,7 +919,7 @@ export function ThreadWorkGroupToggle(props: {
   readonly iconSubtleColor: import("react-native").ColorValue;
   readonly summary: string;
   readonly summaryKind: ToolGroupSummaryKind;
-  readonly summaryToolIcon?: "browser" | "t3-code" | "pull-request";
+  readonly summaryToolIcon?: "browser" | "device" | "t3-code" | "pull-request" | "brain";
   readonly themeAppearance: "light" | "dark";
   readonly toolSurface?: import("@t3tools/contracts").ToolActivitySurface;
   readonly toolIcon?: ToolActivityIcon;
@@ -1246,8 +1266,12 @@ function toolGroupSummarySymbolName(kind: ToolGroupSummaryKind): AppSymbolName {
       return { ios: "eye", android: "visibility" };
     case "edit":
       return { ios: "square.and.pencil", android: "edit" };
+    case "thread-create":
+      return { ios: "bubble.left", android: "chat" };
     case "command":
       return { ios: "terminal", android: "terminal" };
+    case "device":
+      return { ios: "iphone", android: "smartphone" };
     case "browser":
     case "search":
       return { ios: "globe", android: "public" };
