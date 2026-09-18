@@ -75,6 +75,8 @@ import * as DeviceLimits from "./agentActivity/DeviceLimits.ts";
 import * as MobileRegistrations from "./agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "./voice/LiveVoiceSessions.ts";
 import * as LiveVoiceUpstream from "./voice/LiveVoiceUpstream.ts";
+import * as TypeSafeUpstream from "./decision/TypeSafeUpstream.ts";
+import * as TypeSafeUsage from "./decision/TypeSafeUsage.ts";
 
 const webcryptoLayer = Layer.succeed(
   Crypto.Crypto,
@@ -185,6 +187,15 @@ export const ApiLive = Api.make(
     const liveVoiceVoice = yield* Config.string("LIVE_VOICE_VOICE").pipe(
       Config.withDefault(CIRCE_LIVE_VOICE_DEFAULT_VOICE),
     );
+    const typesafeApiKey = Option.getOrUndefined(
+      Option.filter(
+        yield* Config.option(Config.redacted("TYPESAFE_API_KEY")),
+        (value) => Redacted.value(value).trim().length > 0,
+      ),
+    );
+    const typesafeBaseUrl = yield* Config.string("TYPESAFE_BASE_URL").pipe(
+      Config.withDefault(TypeSafeUpstream.TYPESAFE_DEFAULT_BASE_URL),
+    );
 
     const cloudMintPrivateKey = yield* cloudMintKeyPair.privateKey;
     const cloudMintPublicKey = yield* cloudMintKeyPair.publicKey;
@@ -220,6 +231,10 @@ export const ApiLive = Api.make(
           model: liveVoiceModel,
           voice: liveVoiceVoice,
         },
+        typesafe: {
+          apiKey: typesafeApiKey ?? null,
+          baseUrl: typesafeBaseUrl,
+        },
       });
     });
 
@@ -232,7 +247,14 @@ export const ApiLive = Api.make(
     );
 
     const runtimeLayer = Layer.empty.pipe(
-      Layer.provideMerge(Layer.mergeAll(MobileRegistrations.layer, LiveVoiceSessions.layer)),
+      Layer.provideMerge(
+        Layer.mergeAll(
+          MobileRegistrations.layer,
+          LiveVoiceSessions.layer,
+          TypeSafeUpstream.layer,
+          TypeSafeUsage.layer,
+        ),
+      ),
       Layer.provideMerge(AgentActivityPublisher.layer),
       Layer.provideMerge(EnvironmentConnector.layer),
       Layer.provideMerge(EnvironmentLinker.layer),
