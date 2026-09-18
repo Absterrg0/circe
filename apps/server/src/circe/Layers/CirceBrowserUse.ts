@@ -53,6 +53,11 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceBrowserUseR
       };
     case "clarification":
       return { status: "needs-input", message: result.prompt };
+    case "unverified":
+      return {
+        status: "refused",
+        message: `The model reported ${goal} done, but no action was taken, so I couldn't confirm it.`,
+      };
     case "refused":
       return { status: "refused", message: refusalMessage(result.reason) };
   }
