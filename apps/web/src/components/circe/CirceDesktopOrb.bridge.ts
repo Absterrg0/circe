@@ -122,11 +122,10 @@ export function buildDesktopCirceOrbAgents(
       | "archivedAt"
       | "hasPendingApprovals"
       | "hasPendingUserInput"
-      | "backgroundLiveness"
       | "modelSelection"
-    > & {
-      readonly session: Pick<NonNullable<EnvironmentThreadShell["session"]>, "status"> | null;
-    }
+      | "runtime"
+      | "pendingBackgroundTasks"
+    >
   >,
   catalog: CirceMeshCatalog | null,
 ): NonNullable<DesktopCirceOrbCatalog["agents"]> {
@@ -147,16 +146,23 @@ export function buildDesktopCirceOrbAgents(
     if (thread.archivedAt !== null) return [];
     const node = nodes.get(thread.environmentId);
     if (!node) return [];
+    // V2 states: a run that has not started yet is "starting", an active run is
+    // "running", and a thread whose only work is background tasks is
+    // "monitoring". A settled run with no background work has no orb status.
     const status =
       thread.hasPendingApprovals || thread.hasPendingUserInput
         ? "waiting"
-        : thread.session?.status === "starting"
+        : thread.runtime?.status === "preparing" ||
+            thread.runtime?.status === "queued" ||
+            thread.runtime?.status === "starting"
           ? "starting"
-          : thread.session?.status === "running" || thread.backgroundLiveness === "working"
+          : thread.runtime?.status === "running"
             ? "running"
-            : thread.backgroundLiveness === "monitoring"
-              ? "monitoring"
-              : null;
+            : thread.runtime?.status === "waiting"
+              ? "waiting"
+              : thread.pendingBackgroundTasks.length > 0
+                ? "monitoring"
+                : null;
     if (status === null) return [];
     return [
       {
