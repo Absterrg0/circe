@@ -1,10 +1,7 @@
-import { ConnectionOnboarding } from "@t3tools/client-runtime/connection";
-import {
-  createAtomCommandScheduler,
-  createRuntimeCommand,
-} from "@t3tools/client-runtime/state/runtime";
-import type { DesktopSshEnvironmentTarget } from "@t3tools/contracts";
-import type { BearerConnectionUpdateInput } from "@t3tools/client-runtime/connection";
+import { ConnectionOnboarding } from "@circe/client/connection";
+import { createAtomCommandScheduler, createRuntimeCommand } from "@circe/client/state/runtime";
+import type { DesktopSshEnvironmentTarget } from "@circe/contracts";
+import type { BearerConnectionUpdateInput } from "@circe/client/connection";
 import * as Effect from "effect/Effect";
 
 import { connectionAtomRuntime } from "./runtime";

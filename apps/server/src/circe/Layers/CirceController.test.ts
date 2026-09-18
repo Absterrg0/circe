@@ -11,7 +11,7 @@ import {
   type OrchestrationThread,
   type OrchestrationV2Command,
   type ServerProvider,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

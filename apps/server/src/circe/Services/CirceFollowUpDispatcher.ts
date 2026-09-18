@@ -1,4 +1,4 @@
-import type { CommandId, ThreadId } from "@t3tools/contracts";
+import type { CommandId, ThreadId } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
 import type * as Scope from "effect/Scope";

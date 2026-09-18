@@ -1,5 +1,5 @@
 import * as Option from "effect/Option";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
 import {
   ANTIGRAVITY_DEFAULT_MODEL,
   type AssetCreateUrlInput,
@@ -22,22 +22,19 @@ import {
   type ThreadLinkedPullRequest,
   type RunId,
   type WorktreeSetupSnapshot,
-} from "@t3tools/contracts";
-import { worktreeSetupAgentStarted } from "@t3tools/client-runtime/worktree-setup";
+} from "@circe/contracts";
+import { worktreeSetupAgentStarted } from "@circe/client/worktree-setup";
 import * as DateTime from "effect/DateTime";
-import { parseScopedThreadKey } from "@t3tools/client-runtime/environment";
-import { resolveAssetUrl } from "@t3tools/client-runtime/state/assets";
-import {
-  squashAtomCommandFailure,
-  type AtomCommandResult,
-} from "@t3tools/client-runtime/state/runtime";
-import { videoMimeType } from "@t3tools/shared/video";
+import { parseScopedThreadKey } from "@circe/client/environment";
+import { resolveAssetUrl } from "@circe/client/state/assets";
+import { squashAtomCommandFailure, type AtomCommandResult } from "@circe/client/state/runtime";
+import { videoMimeType } from "@circe/shared/video";
 import {
   appendCodexArtifactTemplateUsePrompt,
   codexArtifactTemplateUsePrompt,
   type CodexArtifactTemplate,
-} from "@t3tools/client-runtime/codex-artifact-templates";
-import { presentThreadShell } from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/codex-artifact-templates";
+import { presentThreadShell } from "@circe/client/state/shell";
 import {
   type ChatMessage,
   isImageAttachment,
@@ -276,7 +273,7 @@ export function toolGroupConsumesUpwardNavigation(target: EventTarget | null): b
 export {
   findRecordedWorktreeSetup,
   resolveVisibleWorktreeSetup,
-} from "@t3tools/client-runtime/worktree-setup";
+} from "@circe/client/worktree-setup";
 
 /** Keep setup visible across local dispatch, durable preparation, and the live stream. */
 export function resolveWorktreeSetupProgress(input: {

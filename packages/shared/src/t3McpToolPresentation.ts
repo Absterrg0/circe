@@ -21,9 +21,9 @@ export type T3McpToolSummaryAction =
   | "thread-wait"
   | "thread-interrupt";
 
-const T3_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code"]);
+const CIRCE_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code", "circe"]);
 
-const T3_MCP_TOOLS: Record<
+const CIRCE_MCP_TOOLS: Record<
   string,
   { readonly displayName: string; readonly summaryAction?: T3McpToolSummaryAction }
 > = {
@@ -106,7 +106,7 @@ const T3_MCP_TOOLS: Record<
  * The T3 orchestration tool inventory, used to gate loose name matching on
  * both the server (ACP MCP identity recovery) and the client (logo branding).
  */
-export const T3_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(T3_MCP_TOOLS));
+export const CIRCE_MCP_TOOL_NAMES: ReadonlySet<string> = new Set(Object.keys(CIRCE_MCP_TOOLS));
 
 function normalizeT3McpToolLabel(value: string): string {
   return value.replace(/\s+(?:complete|completed)\s*$/i, "").trim();
@@ -126,19 +126,21 @@ function resolveT3McpToolName(value: string): string | null {
     const { server, tool } = mcpMatch.groups;
     return server !== undefined &&
       tool !== undefined &&
-      T3_MCP_SERVER_ALIASES.has(server.toLowerCase())
+      CIRCE_MCP_SERVER_ALIASES.has(server.toLowerCase())
       ? tool
       : null;
   }
 
-  const namespaceMatch = /^(?<server>t3-code|t3_code|t3code)[.:/](?<tool>.+)$/i.exec(label);
+  const namespaceMatch = /^(?<server>t3-code|t3_code|t3code|circe)[.:/](?<tool>.+)$/i.exec(label);
   if (namespaceMatch?.groups) {
     return namespaceMatch.groups.tool ?? null;
   }
 
-  const prefixed = /^(?:mcp[-_]{1,2})?t3[-_ ]?code(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
+  const prefixed = /^(?:mcp[-_]{1,2})?(?:t3[-_ ]?code|circe)(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(
+    label,
+  );
   const candidate = prefixed?.groups?.tool ?? label;
-  return Object.hasOwn(T3_MCP_TOOLS, candidate) ? candidate : null;
+  return Object.hasOwn(CIRCE_MCP_TOOLS, candidate) ? candidate : null;
 }
 
 export function resolveT3McpToolPresentation(
@@ -149,7 +151,7 @@ export function resolveT3McpToolPresentation(
   if (resolvedToolName === null) {
     return null;
   }
-  const displayName = T3_MCP_TOOLS[resolvedToolName]?.displayName;
+  const displayName = CIRCE_MCP_TOOLS[resolvedToolName]?.displayName;
   if (displayName === undefined) {
     return null;
   }
@@ -163,5 +165,5 @@ export function resolveT3McpToolSummaryAction(
   toolName: string | null | undefined,
 ): T3McpToolSummaryAction | null {
   const name = toolName == null ? null : resolveT3McpToolName(toolName);
-  return name === null ? null : (T3_MCP_TOOLS[name]?.summaryAction ?? null);
+  return name === null ? null : (CIRCE_MCP_TOOLS[name]?.summaryAction ?? null);
 }

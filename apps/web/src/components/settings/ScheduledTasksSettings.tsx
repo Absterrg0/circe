@@ -13,12 +13,9 @@ import type {
   ScheduledTaskSchedule,
   ScheduledTaskUpsertInput,
   ThreadId,
-} from "@t3tools/contracts";
-import { ProviderInstanceId } from "@t3tools/contracts";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+} from "@circe/contracts";
+import { ProviderInstanceId } from "@circe/contracts";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 
 import { cn } from "../../lib/utils";
 import { formatRelativeTime } from "../../timestampFormat";

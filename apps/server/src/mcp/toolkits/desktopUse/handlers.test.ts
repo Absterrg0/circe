@@ -4,7 +4,7 @@ import {
   ThreadId,
   type DesktopUseInputRequest,
   type DesktopUseStatus,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";

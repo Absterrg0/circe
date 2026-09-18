@@ -1,6 +1,6 @@
 import * as NodeOS from "node:os";
 
-import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
+import { parsePersistedServerObservabilitySettings } from "@circe/shared/serverSettings";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -62,7 +62,7 @@ export class DesktopBackendConfiguration extends Context.Service<
     // backend that actually resolved to Windows.
     readonly resolvePrimaryLabel: Effect.Effect<string>;
   }
->()("@t3tools/desktop/backend/DesktopBackendConfiguration") {}
+>()("@circe/desktop/backend/DesktopBackendConfiguration") {}
 
 interface BackendObservabilitySettings {
   readonly otlpTracesUrl: Option.Option<string>;
@@ -75,34 +75,34 @@ const emptyBackendObservabilitySettings: BackendObservabilitySettings = {
 };
 
 const DESKTOP_BACKEND_ENV_NAMES = [
-  "T3CODE_PORT",
-  "T3CODE_MODE",
-  "T3CODE_NO_BROWSER",
-  "T3CODE_HOST",
-  "T3CODE_DESKTOP_WS_URL",
-  "T3CODE_DESKTOP_LAN_ACCESS",
-  "T3CODE_DESKTOP_LAN_HOST",
-  "T3CODE_DESKTOP_HTTPS_ENDPOINTS",
-  "T3CODE_TAILSCALE_SERVE",
-  "T3CODE_TAILSCALE_SERVE_PORT",
+  "CIRCE_PORT",
+  "CIRCE_MODE",
+  "CIRCE_NO_BROWSER",
+  "CIRCE_HOST",
+  "CIRCE_DESKTOP_WS_URL",
+  "CIRCE_DESKTOP_LAN_ACCESS",
+  "CIRCE_DESKTOP_LAN_HOST",
+  "CIRCE_DESKTOP_HTTPS_ENDPOINTS",
+  "CIRCE_TAILSCALE_SERVE",
+  "CIRCE_TAILSCALE_SERVE_PORT",
   "CIRCE_NODE_PRESET",
 ] as const;
 
-const T3CODE_CODEX_LAUNCH_ARGS_ENV = "T3CODE_CODEX_LAUNCH_ARGS";
+const CIRCE_CODEX_LAUNCH_ARGS_ENV = "CIRCE_CODEX_LAUNCH_ARGS";
 const CIRCE_CODEX_DEFAULT_LAUNCH_ARGS = "--disable apps";
 
 const resolveCirceCodexDefaultLaunchArgs = (
   distribution: DesktopEnvironment.DesktopDistribution,
 ): string | undefined =>
   distribution === "unified-circe" || distribution === "official-circe"
-    ? process.env[T3CODE_CODEX_LAUNCH_ARGS_ENV]?.trim() || CIRCE_CODEX_DEFAULT_LAUNCH_ARGS
+    ? process.env[CIRCE_CODEX_LAUNCH_ARGS_ENV]?.trim() || CIRCE_CODEX_DEFAULT_LAUNCH_ARGS
     : undefined;
 
 const resolveCirceCodexDefaultEnvironment = (
   distribution: DesktopEnvironment.DesktopDistribution,
 ): Record<string, string> => {
   const launchArgs = resolveCirceCodexDefaultLaunchArgs(distribution);
-  return launchArgs === undefined ? {} : { [T3CODE_CODEX_LAUNCH_ARGS_ENV]: launchArgs };
+  return launchArgs === undefined ? {} : { [CIRCE_CODEX_LAUNCH_ARGS_ENV]: launchArgs };
 };
 
 // Sensitive env vars that the WSL backend needs but Windows process.env won't
@@ -112,8 +112,8 @@ const resolveCirceCodexDefaultEnvironment = (
 const WSL_FORWARDED_ENV_NAMES = [
   "OPENAI_API_KEY",
   "ANTHROPIC_API_KEY",
-  "T3CODE_OTLP_HEADERS",
-  "T3CODE_OTLP_PROTOCOL",
+  "CIRCE_OTLP_HEADERS",
+  "CIRCE_OTLP_PROTOCOL",
 ] as const;
 
 const WSL_SERVER_SYSTEM_PATH = "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin";
@@ -171,7 +171,7 @@ const logBackendObservabilitySettingsReadFailure = (
 };
 
 function resourceMonitorBinaryName(platform: NodeJS.Platform): string {
-  return platform === "win32" ? "t3-resource-monitor.exe" : "t3-resource-monitor";
+  return platform === "win32" ? "circe-resource-monitor.exe" : "circe-resource-monitor";
 }
 
 const resolveResourceMonitorPath = Effect.fn(
@@ -565,7 +565,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         ...resolveCirceCodexDefaultEnvironment(environment.distribution),
         ELECTRON_RUN_AS_NODE: "1",
       },
-      // Primary wants process.env (PATH, dev-runner's T3CODE_HOME, etc.).
+      // Primary wants process.env (PATH, dev-runner's CIRCE_HOME, etc.).
       extendEnv: true,
       bootstrap,
       bootstrapDelivery: "fd3",
@@ -707,14 +707,14 @@ const resolveWslStartConfig = Effect.fn("desktop.backendConfiguration.resolveWsl
     }
   }
 
-  // Build an explicit copy of process.env minus T3CODE_HOME (dev-runner
+  // Build an explicit copy of process.env minus CIRCE_HOME (dev-runner
   // exports the Windows-side base dir for the primary; if it leaks into
   // the WSL backend the Linux side ends up sharing C:\Users\...\.t3 via
   // /mnt/c, which means both backends read/write the same database and
   // their env-ids collide).
   const parentEnvWithoutT3Home: Record<string, string | undefined> = {};
   for (const [key, value] of Object.entries(process.env)) {
-    if (key === "T3CODE_HOME") continue;
+    if (key === "CIRCE_HOME") continue;
     parentEnvWithoutT3Home[key] = value;
   }
   const wslEnv = mergeWslEnv(parentEnvWithoutT3Home.WSLENV, forwardedEnvNames);
@@ -731,7 +731,7 @@ const resolveWslStartConfig = Effect.fn("desktop.backendConfiguration.resolveWsl
       ...resolveCirceCodexDefaultEnvironment(environment.distribution),
       ...(wslEnv !== undefined ? { WSLENV: wslEnv } : {}),
     },
-    // env is already a complete process.env minus T3CODE_HOME; pass it
+    // env is already a complete process.env minus CIRCE_HOME; pass it
     // verbatim instead of letting the spawner re-merge process.env on top.
     extendEnv: false,
     bootstrap,
@@ -788,7 +788,7 @@ const resolveWslStartConfig = Effect.fn("desktop.backendConfiguration.resolveWsl
   const codexDefaultEnvArgs =
     codexDefaultLaunchArgs === undefined
       ? []
-      : [`${T3CODE_CODEX_LAUNCH_ARGS_ENV}=${codexDefaultLaunchArgs}`];
+      : [`${CIRCE_CODEX_LAUNCH_ARGS_ENV}=${codexDefaultLaunchArgs}`];
 
   return {
     ...baseConfig,

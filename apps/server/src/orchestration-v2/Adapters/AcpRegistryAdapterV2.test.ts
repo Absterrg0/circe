@@ -1,6 +1,6 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
-import { ProviderInstanceId, ProviderSessionId, ThreadId } from "@t3tools/contracts";
+import { ProviderInstanceId, ProviderSessionId, ThreadId } from "@circe/contracts";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Crypto from "effect/Crypto";
@@ -125,8 +125,8 @@ describe("AcpRegistryAdapterV2", () => {
         instanceId,
         settings,
         environment: {
-          T3_ACP_SESSION_LIFECYCLE: "1",
-          T3_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "750",
+          CIRCE_ACP_SESSION_LIFECYCLE: "1",
+          CIRCE_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "750",
         },
         childProcessSpawner,
         fileSystem,

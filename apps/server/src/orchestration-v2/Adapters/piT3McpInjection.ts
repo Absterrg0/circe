@@ -1,4 +1,4 @@
-import { tokenizeCliArgs } from "@t3tools/shared/cliArgs";
+import { tokenizeCliArgs } from "@circe/shared/cliArgs";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 
@@ -6,9 +6,9 @@ import type { McpProviderSessionConfig } from "../../mcp/McpProviderSession.ts";
 import {
   PI_T3_MCP_EXTENSION_FILENAME,
   PI_T3_MCP_EXTENSION_SOURCE,
-  T3_MCP_BEARER_ENV,
-  T3_MCP_URL_ENV,
-  T3_PI_RUNTIME_MODE_ENV,
+  CIRCE_MCP_BEARER_ENV,
+  CIRCE_MCP_URL_ENV,
+  CIRCE_PI_RUNTIME_MODE_ENV,
 } from "./piT3McpExtensionSource.ts";
 
 const RESERVED_PI_LAUNCH_ARGUMENTS = new Set([
@@ -116,7 +116,7 @@ export function resolvePiLaunchArgs(launchArgs: string): PiLaunchArgsResolution 
     if (reserved !== undefined) {
       return {
         ok: false,
-        message: `Pi launch argument '${reserved}' is controlled by T3 Code and cannot be overridden.`,
+        message: `Pi launch argument '${reserved}' is controlled by Circe and cannot be overridden.`,
       };
     }
     if (arg === "--") {
@@ -149,7 +149,7 @@ export function resolvePiLaunchArgs(launchArgs: string): PiLaunchArgsResolution 
       continue;
     }
     if (arg.startsWith("-")) {
-      return { ok: false, message: `Pi launch argument '${arg}' is not supported by T3 Code.` };
+      return { ok: false, message: `Pi launch argument '${arg}' is not supported by Circe.` };
     }
     return {
       ok: false,
@@ -279,8 +279,8 @@ export function buildPiRpcLaunch(input: {
   const environment = { ...input.environment };
   // These values belong to the current T3 session. Never let a Pi child reuse
   // credentials inherited from the server or a parent provider process.
-  delete environment[T3_MCP_URL_ENV];
-  delete environment[T3_MCP_BEARER_ENV];
+  delete environment[CIRCE_MCP_URL_ENV];
+  delete environment[CIRCE_MCP_BEARER_ENV];
 
   return {
     args,
@@ -288,14 +288,14 @@ export function buildPiRpcLaunch(input: {
       ...environment,
       ...(hasT3Extension && input.runtimeMode !== undefined
         ? {
-            [T3_PI_RUNTIME_MODE_ENV]:
+            [CIRCE_PI_RUNTIME_MODE_ENV]:
               input.runtimeMode === "auto" ? "approval-required" : input.runtimeMode,
           }
         : {}),
       ...(hasT3Mcp && input.mcpSession !== undefined
         ? {
-            [T3_MCP_URL_ENV]: input.mcpSession.endpoint,
-            [T3_MCP_BEARER_ENV]: bearerTokenFromAuthorizationHeader(
+            [CIRCE_MCP_URL_ENV]: input.mcpSession.endpoint,
+            [CIRCE_MCP_BEARER_ENV]: bearerTokenFromAuthorizationHeader(
               input.mcpSession.authorizationHeader,
             ),
           }

@@ -11,13 +11,13 @@ const reactorPath = NodePath.resolve(
 
 describe("orchestration reactor ownership", () => {
   it("keeps Circe concepts out of the generic reactor", () => {
-    // Stripping the package-qualified Effect tag key first; the generic module
-    // carries `@absterrg0/circe/...` as its DI identifier, and only a Circe
-    // *concept* in the body is a boundary violation.
-    const source = NodeFS.readFileSync(reactorPath, "utf8").replace(
-      /"@absterrg0\/circe\/[^"]*"/gu,
-      "",
-    );
+    // Stripping the package-qualified Effect tag keys and the workspace package
+    // scope first; the generic module carries `@absterrg0/circe/...` as its DI
+    // identifier and imports `@circe/...` modules, and only a Circe *concept*
+    // in the body is a boundary violation.
+    const source = NodeFS.readFileSync(reactorPath, "utf8")
+      .replace(/"@absterrg0\/circe\/[^"]*"/gu, "")
+      .replace(/"@circe\/[^"]*"/gu, "");
     expect(source, reactorPath).not.toMatch(/circe/iu);
   });
 });

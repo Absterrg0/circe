@@ -5,7 +5,7 @@ import type {
   ProjectId,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 const CIRCE_OPEN_EVENT = "t3code:open-circe";
 
@@ -72,7 +72,7 @@ export function getCirceLastCommandFeedback(): CirceCommandFeedback | null {
 }
 
 export interface CirceTargetSnapshot {
-  readonly projectRef: import("@t3tools/contracts").CirceProjectRef | null;
+  readonly projectRef: import("@circe/contracts").CirceProjectRef | null;
   readonly projectTitle?: string;
   readonly nodeLabel?: string;
   /** Bounded recent-work summary so the voice model knows what exists. */
@@ -113,13 +113,13 @@ export function getCirceTargetSnapshot(): CirceTargetSnapshot | null {
 export type CirceTargetRequest =
   | {
       readonly type: "select-project";
-      readonly projectRef: import("@t3tools/contracts").CirceProjectRef;
+      readonly projectRef: import("@circe/contracts").CirceProjectRef;
       readonly projectTitle?: string;
       readonly nodeLabel?: string;
     }
   | {
       readonly type: "select-task";
-      readonly projectRef: import("@t3tools/contracts").CirceProjectRef;
+      readonly projectRef: import("@circe/contracts").CirceProjectRef;
       readonly threadId: ThreadId;
       readonly title?: string;
       readonly taskRef?: CirceTaskRef;

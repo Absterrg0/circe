@@ -1,4 +1,4 @@
-import { planPinnedMove } from "@t3tools/client-runtime/state/thread-sort";
+import { planPinnedMove } from "@circe/client/state/thread-sort";
 import {
   createPendingThreadOrder,
   createThreadMovePlanner,
@@ -7,9 +7,9 @@ import {
   reconcilePendingThreadOrder,
   type PendingThreadOrder,
 } from "./threadOrder";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
-import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
-import { resolveSnoozePresets } from "@t3tools/client-runtime/state/thread-settled";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
+import { threadSearchMatchKey } from "@circe/client/state/thread-search";
+import { resolveSnoozePresets } from "@circe/client/state/thread-settled";
 import {
   CommandId,
   EnvironmentId,
@@ -18,7 +18,7 @@ import {
   ProviderInstanceId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { PendingNewTask } from "../../state/use-pending-new-tasks";
@@ -51,9 +51,9 @@ const NOW = "2026-06-02T00:00:00.000Z";
 
 const linkedPullRequest = {
   projectId: ProjectId.make("project-1"),
-  repository: "pingdotgg/t3code",
+  repository: "Absterrg0/circe",
   number: 42,
-  url: "https://github.com/pingdotgg/t3code/pull/42",
+  url: "https://github.com/Absterrg0/circe/pull/42",
 };
 
 describe("resolveThreadListV2SnoozeMenuSelection", () => {

@@ -27,7 +27,7 @@ import * as ElectronApp from "../electron/ElectronApp.ts";
 import * as ElectronWindow from "../electron/ElectronWindow.ts";
 import * as DesktopClerk from "./DesktopClerk.ts";
 import * as DesktopEnvironment from "./DesktopEnvironment.ts";
-import { clerkFrontendApiHostnameFromPublishableKey } from "@t3tools/shared/relayAuth";
+import { clerkFrontendApiHostnameFromPublishableKey } from "@circe/shared/relayAuth";
 
 const makeDesktopClerkLayer = (isDevelopment = true, events: string[] = []) => {
   const environment = DesktopEnvironment.DesktopEnvironment.of({
@@ -63,9 +63,9 @@ describe("DesktopClerk", () => {
   });
 
   it("derives the Clerk Frontend API hostname used by the desktop CSP", () => {
-    const publishableKey = `pk_test_${btoa("clerk.t3.codes$")}`;
+    const publishableKey = `pk_test_${btoa("clerk.heycirce.com$")}`;
 
-    assert.equal(clerkFrontendApiHostnameFromPublishableKey(publishableKey), "clerk.t3.codes");
+    assert.equal(clerkFrontendApiHostnameFromPublishableKey(publishableKey), "clerk.heycirce.com");
     assert.throws(() => clerkFrontendApiHostnameFromPublishableKey(""));
     assert.throws(() => clerkFrontendApiHostnameFromPublishableKey("invalid"));
   });

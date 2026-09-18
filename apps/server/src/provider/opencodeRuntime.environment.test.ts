@@ -5,7 +5,7 @@ import {
   HostProcessEnvironment,
   HostProcessExecutablePath,
   HostProcessPlatform,
-} from "@t3tools/shared/hostProcess";
+} from "@circe/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
 import * as FileSystem from "effect/FileSystem";
@@ -203,8 +203,8 @@ server.listen(0, "127.0.0.1", () => {
           [
             ...(isWindows ? ["@echo off"] : ["#!/bin/sh"]),
             isWindows
-              ? '"%T3_TEST_NODE_BINARY%" "%T3_TEST_OPENCODE_SCRIPT%" %*'
-              : 'exec "$T3_TEST_NODE_BINARY" "$T3_TEST_OPENCODE_SCRIPT" "$@"',
+              ? '"%CIRCE_TEST_NODE_BINARY%" "%CIRCE_TEST_OPENCODE_SCRIPT%" %*'
+              : 'exec "$CIRCE_TEST_NODE_BINARY" "$CIRCE_TEST_OPENCODE_SCRIPT" "$@"',
             "",
           ].join("\n"),
         );
@@ -219,8 +219,8 @@ server.listen(0, "127.0.0.1", () => {
           port: 0,
           environment: {
             ...environment,
-            T3_TEST_NODE_BINARY: executablePath,
-            T3_TEST_OPENCODE_SCRIPT: scriptPath,
+            CIRCE_TEST_NODE_BINARY: executablePath,
+            CIRCE_TEST_OPENCODE_SCRIPT: scriptPath,
           },
         });
         const response = yield* HttpClient.get(`${server.url}/output`);

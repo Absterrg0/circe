@@ -4,7 +4,7 @@ import {
   HostProcessExecutablePath,
   HostProcessPlatform,
   HostProcessUserId,
-} from "@t3tools/shared/hostProcess";
+} from "@circe/shared/hostProcess";
 import * as ConfigProvider from "effect/ConfigProvider";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
@@ -24,7 +24,7 @@ import {
   serviceStateHasPendingUpdate,
 } from "./serviceProtocol.ts";
 
-const linuxRuntime = "/home/theo/.t3/runtime/versions/1.2.3/t3";
+const linuxRuntime = "/home/theo/.t3/runtime/versions/1.2.3/circe";
 const linuxPlan = {
   program: [linuxRuntime, "__service-launcher"],
   baseDir: "/home/theo/.t3",
@@ -74,7 +74,7 @@ it("survives the kernel OOM-killing a greedy agent child", () => {
   expect(unit).toContain("OOMPolicy=continue");
 });
 
-const macRuntime = "/Users/theo/.t3/runtime/versions/1.2.3/t3";
+const macRuntime = "/Users/theo/.t3/runtime/versions/1.2.3/circe";
 const macPlan = {
   program: [macRuntime, "__service-launcher"],
   baseDir: "/Users/theo/.t3",
@@ -502,7 +502,7 @@ it.layer(NodeServices.layer)("boot service install", (it) => {
         protocol: SERVICE_LAUNCHER_PROTOCOL,
         activeVersion: "1.2.4",
       });
-      expect(yield* fs.readFileString(plan.unitPath)).toContain("versions/1.2.4/t3");
+      expect(yield* fs.readFileString(plan.unitPath)).toContain("versions/1.2.4/circe");
       expect(
         commands.filter(
           (command) => command.startsWith("systemctl ") && !command.includes("show-environment"),

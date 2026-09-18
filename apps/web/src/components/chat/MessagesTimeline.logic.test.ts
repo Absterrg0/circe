@@ -1,10 +1,10 @@
-import { ThreadId, type WorktreeSetupSnapshot } from "@t3tools/contracts";
+import { ThreadId, type WorktreeSetupSnapshot } from "@circe/contracts";
 import {
   CheckpointRef,
   TurnItemId,
   RuntimeRequestId,
   type OrchestrationV2ProjectedTurnItem,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import {
   deriveTimelineEntriesFromVisibleTurnItems,
@@ -14,7 +14,7 @@ import {
 import { makeStreamingTimelineFixture } from "../../test-fixtures";
 import type { TurnDiffSummary } from "../../types";
 import { describe, expect, it } from "vite-plus/test";
-import { MessageId, RunId } from "@t3tools/contracts";
+import { MessageId, RunId } from "@circe/contracts";
 import {
   computeStableMessagesTimelineRows,
   computeMessageDurationStart,

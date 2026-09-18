@@ -1,7 +1,4 @@
-import {
-  createAtomCommandScheduler,
-  createRuntimeCommand,
-} from "@t3tools/client-runtime/state/runtime";
+import { createAtomCommandScheduler, createRuntimeCommand } from "@circe/client/state/runtime";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 import {

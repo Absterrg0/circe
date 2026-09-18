@@ -1,7 +1,7 @@
 import * as WorktreeSetupTracker from "../project/WorktreeSetupTracker.ts";
 import * as ProjectCloneTracker from "../project/ProjectCloneTracker.ts";
 import * as TerminalManager from "../terminal/Manager.ts";
-import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { resolveProjectSettings } from "@circe/shared/projectSettings";
 import {
   CommandId,
   type ChatAttachment,
@@ -18,7 +18,7 @@ import {
   type RuntimeMode,
   type ScheduledTaskId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as Context from "effect/Context";
 import * as Effect from "effect/Effect";
@@ -28,7 +28,7 @@ import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as Scope from "effect/Scope";
-import { buildTemporaryWorktreeBranchName, isTemporaryWorktreeBranch } from "@t3tools/shared/git";
+import { buildTemporaryWorktreeBranchName, isTemporaryWorktreeBranch } from "@circe/shared/git";
 
 import * as GitWorkflow from "../git/GitWorkflowService.ts";
 import * as ProjectService from "../project/ProjectService.ts";
@@ -61,7 +61,7 @@ export interface ThreadLaunchInitialMessage {
   readonly scheduledTaskId?: ScheduledTaskId;
   readonly text: string;
   readonly attachments: ReadonlyArray<ChatAttachment>;
-  readonly context?: import("@t3tools/contracts").OrchestrationMessageContext | undefined;
+  readonly context?: import("@circe/contracts").OrchestrationMessageContext | undefined;
 }
 
 export interface ThreadLaunchInput {

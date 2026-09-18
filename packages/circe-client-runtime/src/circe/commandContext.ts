@@ -4,7 +4,7 @@ import type {
   CirceTaskPendingReply,
   CirceTaskRef,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 /** Minimal node-qualified task shape shared by desk views and turn snapshots. */
 export type CirceClientContextTask = {

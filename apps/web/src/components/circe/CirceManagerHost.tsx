@@ -1,5 +1,5 @@
-import { scopeThreadRef } from "@t3tools/client-runtime/environment";
-import type { EnvironmentId, ThreadId } from "@t3tools/contracts";
+import { scopeThreadRef } from "@circe/client/environment";
+import type { EnvironmentId, ThreadId } from "@circe/contracts";
 import { useRouterState } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 

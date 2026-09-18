@@ -4,7 +4,7 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
-import * as NodeSqliteClient from "@t3tools/shared/nodeSqliteClient";
+import * as NodeSqliteClient from "@circe/shared/nodeSqliteClient";
 
 import { ForeignDatabaseError, runMigrations } from "./Migrations.ts";
 
@@ -14,7 +14,7 @@ const isForeignDatabaseError = Schema.is(ForeignDatabaseError);
 
 /**
  * The CLI and server historically defaulted to `~/.t3`, which is the separate
- * T3 Code product's home. Opening that database runs Circe's renumbered
+ * Circe product's home. Opening that database runs Circe's renumbered
  * migrations against an upstream history and fails midway. The runner must
  * refuse before applying anything.
  */

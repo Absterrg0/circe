@@ -13,10 +13,10 @@ import {
   type PiSettings,
   type ServerProvider,
   type ServerProviderModel,
-} from "@t3tools/contracts";
-import { causeErrorTag } from "@t3tools/shared/observability";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
-import { compareSemverVersions } from "@t3tools/shared/semver";
+} from "@circe/contracts";
+import { causeErrorTag } from "@circe/shared/observability";
+import { resolveSpawnCommand } from "@circe/shared/shell";
+import { compareSemverVersions } from "@circe/shared/semver";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
@@ -201,7 +201,7 @@ export function buildInitialPiProviderSnapshot(
           version: null,
           status: "warning",
           auth: { status: "unknown" },
-          message: "Pi is disabled in T3 Code settings.",
+          message: "Pi is disabled in Circe settings.",
         },
       });
     }
@@ -240,7 +240,7 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
         version: null,
         status: "warning",
         auth: { status: "unknown" },
-        message: "Pi is disabled in T3 Code settings.",
+        message: "Pi is disabled in Circe settings.",
       },
     });
   }
@@ -315,7 +315,7 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
         version: null,
         status: "error",
         auth: { status: "unknown" },
-        message: `T3 Code could not determine the Pi version. Pi ${MINIMUM_PI_VERSION} or newer is required.`,
+        message: `Circe could not determine the Pi version. Pi ${MINIMUM_PI_VERSION} or newer is required.`,
       },
     });
   }
@@ -374,7 +374,7 @@ export const checkPiProviderStatus = Effect.fn("checkPiProviderStatus")(function
         status: "ready",
         auth: { status: "unknown" },
         message:
-          "Pi is available, but T3 Code could not refresh its models and commands. The live session will retry startup.",
+          "Pi is available, but Circe could not refresh its models and commands. The live session will retry startup.",
       },
     });
   }

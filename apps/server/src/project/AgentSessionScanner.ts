@@ -27,7 +27,7 @@ import {
   type AgentSessionProjectGit,
   type AgentSessionScanResult,
   type ProviderInstanceConfig,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -43,9 +43,9 @@ import {
   normalizeGitRemoteUrl,
   parseGitHubRepositoryNameWithOwnerFromRemoteUrl,
   parseOriginUrlFromGitConfig,
-} from "@t3tools/shared/git";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { normalizeProjectPathForComparison } from "@t3tools/shared/path";
+} from "@circe/shared/git";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { normalizeProjectPathForComparison } from "@circe/shared/path";
 
 import * as ServerConfig from "../config.ts";
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
@@ -536,7 +536,7 @@ function shouldRetainDecodedRecord(
 }
 
 /**
- * T3 Code runs its own agent sessions inside disposable worktrees. Their
+ * Circe runs its own agent sessions inside disposable worktrees. Their
  * transcripts look exactly like user sessions, but re-importing the app's own
  * sandboxes as projects is never right. Matches this server's configured
  * worktrees directory plus the conventional `.t3/worktrees` layout, which

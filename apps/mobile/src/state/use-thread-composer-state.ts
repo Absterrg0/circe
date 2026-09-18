@@ -1,11 +1,11 @@
 import type { ComposerTextPaste } from "../native/T3ComposerEditor.types";
 import { useAtomValue } from "@effect/atom-react";
-import { threadRuntimeIsActive } from "@t3tools/client-runtime/state/shell";
+import { threadRuntimeIsActive } from "@circe/client/state/shell";
 import {
   deriveThreadActivityRun,
   deriveThreadRuntime,
   threadRuntimeHasInterruptibleRun,
-} from "@t3tools/client-runtime/state/thread-execution";
+} from "@circe/client/state/thread-execution";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert } from "react-native";
 
@@ -20,17 +20,17 @@ import {
   type ProviderInteractionMode,
   type RuntimeMode,
   type ThreadId,
-} from "@t3tools/contracts";
-import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
-import { clampFileAttachmentUploadBytes } from "@t3tools/client-runtime/state/attachments";
-import { nextPastedTextFileName, pastedTextDisposition } from "@t3tools/client-runtime/text-paste";
+} from "@circe/contracts";
+import { safeErrorLogAttributes } from "@circe/client/errors";
+import { clampFileAttachmentUploadBytes } from "@circe/client/state/attachments";
+import { nextPastedTextFileName, pastedTextDisposition } from "@circe/client/text-paste";
 import {
   parseCodexFeedbackCommand,
   submitCodexFeedback,
   type CodexFeedbackSubmission,
-} from "@t3tools/client-runtime/state/threads";
-import { resolveThreadWorkingStartedAt } from "@t3tools/client-runtime/state/models";
-import { upgradeLegacyContextMessage } from "@t3tools/shared/composerContextLegacy";
+} from "@circe/client/state/threads";
+import { resolveThreadWorkingStartedAt } from "@circe/client/state/models";
+import { upgradeLegacyContextMessage } from "@circe/shared/composerContextLegacy";
 import { composerContextSendBlockReason, reidentifyComposerContext } from "../lib/composerContext";
 import { uuidv4 } from "../lib/uuid";
 
@@ -78,7 +78,7 @@ import {
 import {
   resolveComposerDispatchMode,
   type ActiveTurnComposerAction,
-} from "@t3tools/client-runtime/state/composer-dispatch";
+} from "@circe/client/state/composer-dispatch";
 import { Atom } from "effect/unstable/reactivity";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { prepareTurnAttachments } from "../lib/attachmentUpload";

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { EnvironmentId } from "@t3tools/contracts";
+import { EnvironmentId } from "@circe/contracts";
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 
 import { describeCirceRouteNodeIssues } from "./mobileNodeReadiness";

@@ -2,12 +2,9 @@ import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
 import type { FileDiffContentsLoader, FileDiffMetadata } from "@pierre/diffs";
 import { useParams } from "@tanstack/react-router";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
-import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
-import type { ScopedThreadRef, RunId } from "@t3tools/contracts";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
+import { safeErrorLogAttributes } from "@circe/client/errors";
+import type { ScopedThreadRef, RunId } from "@circe/contracts";
 import {
   ArrowRightIcon,
   CheckIcon,

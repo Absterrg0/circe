@@ -1,10 +1,10 @@
 import {
-  T3_PROJECT_FILE_NAME,
+  CIRCE_PROJECT_FILE_NAME,
   type EnvironmentId,
   type T3ProjectFile,
   type T3ProjectFileScript,
-} from "@t3tools/contracts";
-import { parseT3ProjectFile } from "@t3tools/shared/t3ProjectFile";
+} from "@circe/contracts";
+import { parseT3ProjectFile } from "@circe/shared/t3ProjectFile";
 import { useMemo } from "react";
 
 import { useProjectFileQuery } from "~/components/files/projectFilesQueryState";
@@ -33,7 +33,12 @@ export function useT3ProjectFileState(
   environmentId: EnvironmentId,
   cwd: string | null,
 ): T3ProjectFileState {
-  const query = useProjectFileQuery(environmentId, cwd ?? "", T3_PROJECT_FILE_NAME, cwd !== null);
+  const query = useProjectFileQuery(
+    environmentId,
+    cwd ?? "",
+    CIRCE_PROJECT_FILE_NAME,
+    cwd !== null,
+  );
   const contents = query.data && !query.data.truncated ? query.data.contents : null;
   const isPending = query.isPending;
   return useMemo(() => {

@@ -13,7 +13,7 @@ import {
   type ModelSelection,
   type ThreadId,
   type TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import type { CirceOutcome } from "@circe/core/controlOutcome";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";

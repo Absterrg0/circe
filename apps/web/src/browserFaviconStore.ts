@@ -1,9 +1,5 @@
-import {
-  scopedProjectKey,
-  scopedThreadKey,
-  scopeProjectRef,
-} from "@t3tools/client-runtime/environment";
-import type { DesktopPreviewFavicon, ScopedProjectRef, ScopedThreadRef } from "@t3tools/contracts";
+import { scopedProjectKey, scopedThreadKey, scopeProjectRef } from "@circe/client/environment";
+import type { DesktopPreviewFavicon, ScopedProjectRef, ScopedThreadRef } from "@circe/contracts";
 import * as Option from "effect/Option";
 import { useMemo } from "react";
 import { create } from "zustand";

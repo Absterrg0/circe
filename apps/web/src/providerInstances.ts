@@ -23,12 +23,12 @@ import {
   type ServerProviderModel,
   type ServerSettings,
   type ServerProviderState,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   normalizeProviderAccentColor,
   resolveProviderInstanceDisplayName,
   shouldShowInstanceBadge,
-} from "@t3tools/client-runtime/state/provider-instance-display";
+} from "@circe/client/state/provider-instance-display";
 
 export { normalizeProviderAccentColor, shouldShowInstanceBadge };
 

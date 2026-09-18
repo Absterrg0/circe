@@ -7,22 +7,19 @@ import {
   type ToolActivityIcon,
   type OrchestrationV2TurnItem,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   resolveT3McpToolSummaryAction,
   type T3McpToolSummaryAction,
-} from "@t3tools/shared/t3McpToolPresentation";
-import { classifyMarkdownImageSource } from "@t3tools/client-runtime/markdown-images";
-import { resolveMediaSource } from "@t3tools/client-runtime/media-source";
-import { parseChangeRequestUrl } from "@t3tools/shared/changeRequestUrl";
-import { isWorkspaceImagePreviewPath } from "@t3tools/shared/filePreview";
-import { formatTokens } from "@t3tools/shared/usageFormat";
-import { toolOutputIndicatesFailure } from "@t3tools/shared/toolOutput";
+} from "@circe/shared/t3McpToolPresentation";
+import { classifyMarkdownImageSource } from "@circe/client/markdown-images";
+import { resolveMediaSource } from "@circe/client/media-source";
+import { parseChangeRequestUrl } from "@circe/shared/changeRequestUrl";
+import { isWorkspaceImagePreviewPath } from "@circe/shared/filePreview";
+import { formatTokens } from "@circe/shared/usageFormat";
+import { toolOutputIndicatesFailure } from "@circe/shared/toolOutput";
 
-import {
-  summarizeT3ToolCalls,
-  type T3ToolSummaryCall,
-} from "@t3tools/client-runtime/t3ToolSummary";
+import { summarizeT3ToolCalls, type T3ToolSummaryCall } from "@circe/client/t3ToolSummary";
 
 export type WorkLogToolLifecycleStatus = RuntimeItemStatus | "stopped" | "idle";
 
@@ -70,7 +67,7 @@ export function contextCompactionLabel(
 }
 
 export interface WorkLogPresentationEntry {
-  readonly questionAnswer?: import("@t3tools/contracts").UserInputAttachmentAnswerPayload;
+  readonly questionAnswer?: import("@circe/contracts").UserInputAttachmentAnswerPayload;
   readonly id: string;
   readonly createdAt: string;
   readonly label: string;
@@ -118,7 +115,7 @@ export function normalizeCompactToolLabel(value: string): string {
   return value.replace(/\s+(?:complete|completed)\s*$/i, "").trim();
 }
 
-const T3_MCP_TOOL_LABELS: Record<
+const CIRCE_MCP_TOOL_LABELS: Record<
   string,
   readonly [action: string, running: string, completed: string, detail: string]
 > = {
@@ -188,9 +185,9 @@ function resolveT3McpToolPresentation(
     /^(?:mcp__(?:t3-code|t3_code|t3code)__|(?:t3-code|t3_code|t3code)(?:[.:/]|\s*·\s*))/i,
     "",
   );
-  if (!Object.hasOwn(T3_MCP_TOOL_LABELS, name)) return null;
+  if (!Object.hasOwn(CIRCE_MCP_TOOL_LABELS, name)) return null;
 
-  const [action, running, completed, detail] = T3_MCP_TOOL_LABELS[name]!;
+  const [action, running, completed, detail] = CIRCE_MCP_TOOL_LABELS[name]!;
   const verb =
     status === "inProgress"
       ? running

@@ -5,19 +5,16 @@ import {
   type LegendListRef,
   type LegendListRenderItemProps,
 } from "@legendapp/list/react-native";
-import {
-  type EnvironmentProject,
-  type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+import { type EnvironmentProject, type EnvironmentThreadShell } from "@circe/client/state/shell";
 import {
   threadSearchMatchKey,
   type EnvironmentThreadSearchMatch,
-} from "@t3tools/client-runtime/state/thread-search";
+} from "@circe/client/state/thread-search";
 import {
   type EnvironmentId,
   type SidebarProjectGroupingMode,
   type SidebarThreadSortOrder,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { useAtomSet, useAtomValue } from "@effect/atom-react";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { useFocusEffect } from "@react-navigation/native";

@@ -16,7 +16,7 @@ import {
   type OrchestrationV2AppThread,
   type OrchestrationV2ProviderThread,
   type OrchestrationV2ProviderTurn,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
@@ -464,9 +464,9 @@ describe("PiAdapterV2", () => {
       );
       assert.isFalse(spawn.args.includes("--no-extensions"));
       assert.isTrue(extensions.some((path) => path?.endsWith("pi-t3-mcp-extension.ts")));
-      assert.equal(spawn.env.T3_MCP_URL, "http://127.0.0.1:43123/mcp");
-      assert.equal(spawn.env.T3_MCP_BEARER_TOKEN, "secret-pi-token");
-      assert.equal(spawn.env.T3_PI_RUNTIME_MODE, "full-access");
+      assert.equal(spawn.env.CIRCE_MCP_URL, "http://127.0.0.1:43123/mcp");
+      assert.equal(spawn.env.CIRCE_MCP_BEARER_TOKEN, "secret-pi-token");
+      assert.equal(spawn.env.CIRCE_PI_RUNTIME_MODE, "full-access");
     }).pipe(
       Effect.ensuring(Effect.sync(() => McpProviderSession.clearMcpProviderSession(THREAD_ID))),
       Effect.scoped,

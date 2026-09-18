@@ -1,8 +1,8 @@
 import { executeCirceInstruction } from "@circe/client-runtime/operations/circe";
-import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
-import { createEnvironmentRpcSubscriptionAtomFamily } from "@t3tools/client-runtime/state/runtime";
-import { WS_METHODS } from "@t3tools/contracts";
-import type { CirceExecuteInput } from "@t3tools/contracts";
+import { createEnvironmentCommand } from "@circe/client/state/runtime";
+import { createEnvironmentRpcSubscriptionAtomFamily } from "@circe/client/state/runtime";
+import { WS_METHODS } from "@circe/contracts";
+import type { CirceExecuteInput } from "@circe/contracts";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

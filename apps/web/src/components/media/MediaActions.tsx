@@ -1,11 +1,8 @@
-import type { MediaActionId } from "@t3tools/client-runtime/media-actions";
-import {
-  mediaReferenceFileName,
-  type MediaReference,
-} from "@t3tools/client-runtime/media-reference";
-import { resolveAssetUrl } from "@t3tools/client-runtime/state/assets";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
-import type { AssetResource, ContextMenuItem, EnvironmentId } from "@t3tools/contracts";
+import type { MediaActionId } from "@circe/client/media-actions";
+import { mediaReferenceFileName, type MediaReference } from "@circe/client/media-reference";
+import { resolveAssetUrl } from "@circe/client/state/assets";
+import { squashAtomCommandFailure } from "@circe/client/state/runtime";
+import type { AssetResource, ContextMenuItem, EnvironmentId } from "@circe/contracts";
 import { useCallback, useRef, useState, type ReactElement } from "react";
 
 import { writeTextToClipboard } from "../../hooks/useCopyToClipboard";

@@ -1,4 +1,4 @@
-import { ProjectId } from "@t3tools/contracts";
+import { ProjectId } from "@circe/contracts";
 import { expect, it } from "vite-plus/test";
 import * as DateTime from "effect/DateTime";
 

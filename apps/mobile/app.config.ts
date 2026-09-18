@@ -30,12 +30,12 @@ const CLERK_RELYING_PARTY =
   repoEnv.EXPO_PUBLIC_CLERK_PASSKEY_RP_DOMAIN?.trim() ||
   clerkRelyingPartyFromPublishableKey(repoEnv.EXPO_PUBLIC_CLERK_PUBLISHABLE_KEY) ||
   "";
-const isIosPersonalTeamBuild = repoEnv.T3CODE_IOS_PERSONAL_TEAM === "1";
+const isIosPersonalTeamBuild = repoEnv.CIRCE_IOS_PERSONAL_TEAM === "1";
 const runtimeVersionPolicy =
   process.env.MOBILE_VERSION_POLICY ??
   (APP_VARIANT === "development" ? "appVersion" : "fingerprint");
 
-const personalTeamBundleIdentifier = repoEnv.T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID?.trim();
+const personalTeamBundleIdentifier = repoEnv.CIRCE_IOS_PERSONAL_TEAM_BUNDLE_ID?.trim();
 const IOS_BUNDLE_IDENTIFIER_PATTERN = /^[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+$/;
 
 const fromRepoRoot = (relativePath: string) => `../../${relativePath}`;
@@ -50,7 +50,7 @@ if (
     !IOS_BUNDLE_IDENTIFIER_PATTERN.test(personalTeamBundleIdentifier))
 ) {
   throw new Error(
-    "T3CODE_IOS_PERSONAL_TEAM_BUNDLE_ID must be a reverse-DNS identifier such as com.example.t3code when T3CODE_IOS_PERSONAL_TEAM=1.",
+    "CIRCE_IOS_PERSONAL_TEAM_BUNDLE_ID must be a reverse-DNS identifier such as com.example.t3code when CIRCE_IOS_PERSONAL_TEAM=1.",
   );
 }
 
@@ -171,7 +171,7 @@ const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
       {
         name: "SubscriptionUsage",
         displayName: "Subscription usage",
-        description: "Subscription quotas from your connected T3 Code environments.",
+        description: "Subscription quotas from your connected Circe environments.",
         configuration: {
           title: "Subscription usage",
           description:
@@ -265,8 +265,7 @@ const config: ExpoConfig = {
   updates: {
     // OTA must follow the Circe-owned EAS project, never a baked-in upstream
     // endpoint. Without a project there is no channel, so updates stay off.
-    enabled:
-      repoEnv.T3CODE_MOBILE_UPDATES_ENABLED !== "0" && expoOwnership.updatesUrl !== undefined,
+    enabled: repoEnv.CIRCE_MOBILE_UPDATES_ENABLED !== "0" && expoOwnership.updatesUrl !== undefined,
     ...(expoOwnership.updatesUrl === undefined ? {} : { url: expoOwnership.updatesUrl }),
 
     checkAutomatically: "ON_LOAD",
@@ -277,7 +276,7 @@ const config: ExpoConfig = {
     supportsTablet: true,
     // Multitasking-capable iPad apps cannot rotate programmatically, so the
     // showcase capture build requires full screen (see infoPlist below).
-    requireFullScreen: process.env.T3_SHOWCASE_CAPTURE_BUILD === "1",
+    requireFullScreen: process.env.CIRCE_SHOWCASE_CAPTURE_BUILD === "1",
     bundleIdentifier: iosBundleIdentifier,
     // Pin code signing to the T3 Tools team so non-interactive `expo run:ios`
     // does not fall back to a personal team (which cannot sign app groups,
@@ -304,7 +303,7 @@ const config: ExpoConfig = {
       // Simulator menu scripting needs), and iPadOS ignores programmatic
       // orientation requests for multitasking-capable apps — so the capture
       // build opts out of multitasking and declares landscape support.
-      ...(process.env.T3_SHOWCASE_CAPTURE_BUILD === "1"
+      ...(process.env.CIRCE_SHOWCASE_CAPTURE_BUILD === "1"
         ? {
             "UISupportedInterfaceOrientations~ipad": [
               "UIInterfaceOrientationPortrait",

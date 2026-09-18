@@ -1,4 +1,4 @@
-import type { CirceCancelRequestInput } from "@t3tools/contracts";
+import type { CirceCancelRequestInput } from "@circe/contracts";
 import { CirceMesh, type CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 import type {
   CirceMeshConverseInput,
@@ -7,8 +7,8 @@ import type {
   CirceMeshInterpretInput,
   CirceMeshManageProjectAliasInput,
 } from "@circe/client-runtime/circe/mesh";
-import { createRuntimeCommand } from "@t3tools/client-runtime/state/runtime";
-import type { EnvironmentId } from "@t3tools/contracts";
+import { createRuntimeCommand } from "@circe/client/state/runtime";
+import type { EnvironmentId } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Stream from "effect/Stream";
 import * as Option from "effect/Option";

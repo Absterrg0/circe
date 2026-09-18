@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /**
  * Packages the server single-executable into a self-contained per-platform
- * archive: the `t3` binary, the web client, the resource monitor, and a
+ * archive: the `circe` binary, the web client, the resource monitor, and a
  * production install of the native packages the bundle keeps external. The
  * archive is the unit every runtime installer downloads, so nothing in it may
  * require Node, npm, or a compiler on the machine that unpacks it.
@@ -9,7 +9,7 @@
  * Layout inside the archive (a single top-level directory named after the
  * archive stem):
  *
- *   t3 | t3.exe          the single-executable
+ *   circe | circe.exe    the single-executable
  *   client/              web app served by the server
  *   resource-monitor/    per-platform Rust helper, same paths as the npm package
  *   node_modules/        runtime externals (node-pty, msgpackr-extract, fff)
@@ -28,9 +28,9 @@ import * as Schema from "effect/Schema";
 import { Command, Flag } from "effect/unstable/cli";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { fromYaml } from "@t3tools/shared/schemaYaml";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { fromYaml } from "@circe/shared/schemaYaml";
+import { resolveSpawnCommand } from "@circe/shared/shell";
 import rootPackageJson from "../package.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
@@ -98,7 +98,7 @@ export function cliArchivePlatformKey(platform: BuildPlatform, arch: BuildArch):
 }
 
 export function cliArchiveStem(version: string, platform: BuildPlatform, arch: BuildArch): string {
-  return `t3-${version}-${cliArchivePlatformKey(platform, arch)}`;
+  return `circe-${version}-${cliArchivePlatformKey(platform, arch)}`;
 }
 
 export function cliArchiveFileName(version: string, platform: BuildPlatform, arch: BuildArch) {
@@ -184,7 +184,7 @@ const stageRuntimeExternals = Effect.fn("stageRuntimeExternals")(function* (inpu
   yield* fs.writeFileString(
     path.join(input.stageDir, "package.json"),
     `${yield* encodeJsonString({
-      name: "t3-runtime",
+      name: "circe-runtime",
       version: input.version,
       private: true,
       packageManager: rootPackageJson.packageManager,
@@ -283,7 +283,7 @@ const stageWebClient = Effect.fn("stageWebClient")(function* (source: string, ta
 });
 
 const MacSigningConfig = Config.all({
-  identity: Config.string("T3CODE_CLI_MAC_SIGN_IDENTITY").pipe(Config.option),
+  identity: Config.string("CIRCE_CLI_MAC_SIGN_IDENTITY").pipe(Config.option),
   appleApiKey: Config.string("APPLE_API_KEY").pipe(Config.option),
   appleApiKeyId: Config.string("APPLE_API_KEY_ID").pipe(Config.option),
   appleApiIssuer: Config.string("APPLE_API_ISSUER").pipe(Config.option),
@@ -313,7 +313,7 @@ const signMacArchiveContents = Effect.fn("signMacArchiveContents")(function* (in
         entry.endsWith(".node") ||
         entry.endsWith(".dylib") ||
         entry.endsWith("spawn-helper") ||
-        entry.endsWith("t3-resource-monitor"),
+        entry.endsWith("circe-resource-monitor"),
     )
     .map((entry) => path.join(input.contentDir, entry));
 
@@ -331,7 +331,7 @@ const signMacArchiveContents = Effect.fn("signMacArchiveContents")(function* (in
     );
   }
   if (identity === "-") {
-    yield* Effect.log("[cli-archive] Signed ad hoc (no T3CODE_CLI_MAC_SIGN_IDENTITY).");
+    yield* Effect.log("[cli-archive] Signed ad hoc (no CIRCE_CLI_MAC_SIGN_IDENTITY).");
     return;
   }
 
@@ -421,7 +421,7 @@ const stripStaleAuthenticodeEntry = Effect.fn("stripStaleAuthenticodeEntry")(fun
   );
 });
 
-/** Signs t3.exe through the same Azure Trusted Signing setup the installer uses. */
+/** Signs circe.exe through the same Azure Trusted Signing setup the installer uses. */
 const signWindowsExecutable = Effect.fn("signWindowsExecutable")(function* (
   executablePath: string,
 ) {
@@ -451,9 +451,9 @@ const signWindowsExecutable = Effect.fn("signWindowsExecutable")(function* (
   ].join(" ");
   yield* runCommand(
     ChildProcess.make("pwsh", ["-NoProfile", "-NonInteractive", "-Command", script]),
-    "Invoke-TrustedSigning t3.exe",
+    "Invoke-TrustedSigning circe.exe",
   );
-  yield* Effect.log("[cli-archive] Signed t3.exe (Azure Trusted Signing).");
+  yield* Effect.log("[cli-archive] Signed circe.exe (Azure Trusted Signing).");
 });
 
 const buildCliArchive = Effect.fn("buildCliArchive")(function* (input: {
@@ -467,14 +467,14 @@ const buildCliArchive = Effect.fn("buildCliArchive")(function* (input: {
   const path = yield* Path.Path;
   const repoRoot = yield* RepoRoot;
   const serverDir = path.join(repoRoot, "apps/server");
-  const executableName = input.platform === "win" ? "t3.exe" : "t3";
-  // tsdown suffixes cross-built executables with their target (t3-darwin-x64);
-  // a host build is plain t3. Prefer the exact target when both exist.
+  const executableName = input.platform === "win" ? "circe.exe" : "circe";
+  // tsdown suffixes cross-built executables with their target (circe-darwin-x64);
+  // a host build is plain circe. Prefer the exact target when both exist.
   const targetKey = `${input.platform === "mac" ? "darwin" : input.platform}-${input.arch}`;
   const targetExecutable = path.join(
     serverDir,
     "dist-exe",
-    `t3-${targetKey}${input.platform === "win" ? ".exe" : ""}`,
+    `circe-${targetKey}${input.platform === "win" ? ".exe" : ""}`,
   );
   // The unsuffixed host build is only a valid stand-in when it was built for
   // this platform and architecture; otherwise a missing target must fail.
@@ -494,7 +494,10 @@ const buildCliArchive = Effect.fn("buildCliArchive")(function* (input: {
     builtExecutable,
     `Run \`node apps/server/scripts/cli.ts build-exe --target ${targetKey}\` first.`,
   );
-  yield* requireInput(path.join(webClient, "index.html"), "Run `vp run --filter t3 build` first.");
+  yield* requireInput(
+    path.join(webClient, "index.html"),
+    "Run `vp run --filter @circe/web build` first.",
+  );
   yield* requireInput(
     resourceMonitorDir,
     "Build the resource monitor or pass --resource-monitor-dir.",
@@ -581,7 +584,7 @@ const command = Command.make(
     ),
   },
   (input) => buildCliArchive(input).pipe(Effect.scoped),
-).pipe(Command.withDescription("Package the t3 single-executable into a per-platform archive."));
+).pipe(Command.withDescription("Package the circe single-executable into a per-platform archive."));
 
 if (import.meta.main) {
   Command.run(command, { version: "0.0.0" }).pipe(

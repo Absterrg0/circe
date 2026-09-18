@@ -3,7 +3,7 @@ import type {
   DesktopCirceLiveVoiceStatus,
   DesktopCirceOrbCatalog,
   DesktopCirceOrbSelection,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 /** Expanded window footprint: orb plus the provider and running-agent lists. */
 export const DESKTOP_CIRCE_ORB_WINDOW_WIDTH = 384;

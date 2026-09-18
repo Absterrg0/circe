@@ -18,10 +18,10 @@ import {
   RunAttemptId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { assert, describe, it } from "@effect/vitest";
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { SpawnExecutableResolution } from "@t3tools/shared/shell";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
+import { SpawnExecutableResolution } from "@circe/shared/shell";
 import * as CodexClient from "effect-codex-app-server/client";
 import * as CodexReplay from "effect-codex-app-server/replay";
 import * as DateTime from "effect/DateTime";
@@ -1300,7 +1300,7 @@ function codexReplayPreamble(input: {
         id: 1,
         method: "initialize",
         params: {
-          clientInfo: { name: "t3code_desktop", title: "T3 Code Desktop", version: "0.1.0" },
+          clientInfo: { name: "t3code_desktop", title: "Circe Desktop", version: "0.1.0" },
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],

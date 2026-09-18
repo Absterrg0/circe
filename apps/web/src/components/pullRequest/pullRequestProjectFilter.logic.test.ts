@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { findScopedProject } from "./pullRequestList.logic";
@@ -14,7 +14,7 @@ const labels = new Map([
 function project(
   id: string,
   environmentId = nucbox,
-  canonicalKey: string | null = "github.com/pingdotgg/t3code",
+  canonicalKey: string | null = "github.com/Absterrg0/circe",
 ) {
   return {
     id: ProjectId.make(id),
@@ -61,7 +61,7 @@ describe("pull request project filter choices", () => {
 
   it("matches canonical repositories regardless of casing", () => {
     const main = project("main");
-    const worktree = project("worktree", nucbox, "GitHub.com/PingDotGG/T3Code");
+    const worktree = project("worktree", nucbox, "GitHub.com/Absterrg0/Circe");
 
     expect(pullRequestFilterProjects([main, worktree], labels)).toEqual([main]);
   });
@@ -89,7 +89,7 @@ describe("pull request project filter choices", () => {
 
   it("keeps repositories on different hosts separate", () => {
     const choices = pullRequestFilterProjects(
-      [project("github"), project("enterprise", nucbox, "git.example.com/pingdotgg/t3code")],
+      [project("github"), project("enterprise", nucbox, "git.example.com/Absterrg0/circe")],
       labels,
     );
 

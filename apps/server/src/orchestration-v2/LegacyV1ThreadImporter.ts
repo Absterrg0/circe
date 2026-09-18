@@ -1,7 +1,4 @@
-import {
-  threadPullRequestKeysEqual,
-  threadPullRequestsOf,
-} from "@t3tools/shared/threadPullRequests";
+import { threadPullRequestKeysEqual, threadPullRequestsOf } from "@circe/shared/threadPullRequests";
 import {
   ChatAttachment,
   OrchestrationMessageContext,
@@ -20,7 +17,7 @@ import {
   ThreadLinkedPullRequest,
   ThreadPullRequestLink,
   TurnItemId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

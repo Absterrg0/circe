@@ -8,10 +8,10 @@ import {
   type ServerLifecycleWelcomePayload,
   type ServerProvider,
   type ServerSettings,
-} from "@t3tools/contracts";
-import { createServerEnvironmentAtoms } from "@t3tools/client-runtime/state/server";
-import { createEnvironmentServerConfigsAtom } from "@t3tools/client-runtime/state/shell";
-import { mergeWithDefaultKeybindings } from "@t3tools/shared/keybindings";
+} from "@circe/contracts";
+import { createServerEnvironmentAtoms } from "@circe/client/state/server";
+import { createEnvironmentServerConfigsAtom } from "@circe/client/state/shell";
+import { mergeWithDefaultKeybindings } from "@circe/shared/keybindings";
 import * as Option from "effect/Option";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 

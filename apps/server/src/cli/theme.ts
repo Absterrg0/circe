@@ -22,9 +22,9 @@ import {
   EnvironmentThemeFile,
   EnvironmentThemeId,
   environmentThemeFileHasColors,
-} from "@t3tools/contracts";
-import { fromJsonStringPretty, fromLenientJson } from "@t3tools/shared/schemaJson";
-import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@t3tools/shared/themePalettes";
+} from "@circe/contracts";
+import { fromJsonStringPretty, fromLenientJson } from "@circe/shared/schemaJson";
+import { BUILT_IN_THEME_IDS, UNPUBLISHABLE_THEME_IDS } from "@circe/shared/themePalettes";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -107,7 +107,7 @@ export class ThemeFileInvalidError extends Schema.TaggedError<ThemeFileInvalidEr
   { filePath: Schema.String, cause: Schema.Defect() },
 ) {
   override get message(): string {
-    return `${this.filePath} is not a valid theme file. Use a theme exported from T3 Code, or a seeded file with name, appearance, canvas, and accent.`;
+    return `${this.filePath} is not a valid theme file. Use a theme exported from Circe, or a seeded file with name, appearance, canvas, and accent.`;
   }
 }
 
@@ -178,11 +178,11 @@ export class ThemeTargetMissingError extends Schema.TaggedError<ThemeTargetMissi
   }
 }
 
-const envT3Home = Config.string("T3CODE_HOME").pipe(Config.option);
+const envT3Home = Config.string("CIRCE_HOME").pipe(Config.option);
 
 const resolveThemePaths = Effect.fn(function* (explicitBaseDir: Option.Option<string>) {
-  // Same precedence as the rest of the CLI: --base-dir, then T3CODE_HOME,
-  // then the default home. A provisioning script exporting T3CODE_HOME must
+  // Same precedence as the rest of the CLI: --base-dir, then CIRCE_HOME,
+  // then the default home. A provisioning script exporting CIRCE_HOME must
   // not have this one command silently target the default install.
   const envHome = Option.filter(yield* envT3Home, (value) => value.trim().length > 0);
   const configuredBaseDir = Option.orElse(explicitBaseDir, () => envHome);

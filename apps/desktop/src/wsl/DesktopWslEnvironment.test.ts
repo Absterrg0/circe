@@ -161,7 +161,7 @@ describe("WSL runtime cache", () => {
 
   it("installs through a temporary directory and only reuses valid completed caches", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "1.2.3-x64",
       "b".repeat(64),
     );
@@ -181,7 +181,7 @@ describe("WSL runtime cache", () => {
     // The release archive wraps everything in one `t3-<version>-linux-x64/`
     // directory; stripping it puts the executable at `$runtime_root/t3`.
     expect(script).toContain(
-      "tar -xzf '/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz' -C \"$runtime_tmp\" --strip-components=1",
+      "tar -xzf '/mnt/c/Program Files/Circe/wsl-runtime.tar.gz' -C \"$runtime_tmp\" --strip-components=1",
     );
     expect(script).toContain('if ! runtime_entry_runs "$runtime_tmp"; then');
     expect(script).toContain('mv -T "$runtime_tmp" "$runtime_root"');
@@ -201,7 +201,7 @@ describe("WSL runtime cache", () => {
 
       expect(reason).toContain("packaged Linux node-pty binary was not included");
       expect(reason).toContain("--wsl-prebuild");
-      expect(reason).not.toContain("T3 Code");
+      expect(reason).not.toContain("Circe");
     });
 
     it("leaves other node-pty load failures to the compatibility diagnostic", () => {
@@ -211,14 +211,14 @@ describe("WSL runtime cache", () => {
 
   it("verifies the archive digest before extracting, and only on a cache miss", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "1.2.3-x64",
       "b".repeat(64),
     );
 
     const expected = "b".repeat(64);
     expect(script).toContain(
-      "archive_sha=$(sha256sum '/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz' | cut -d ' ' -f 1)",
+      "archive_sha=$(sha256sum '/mnt/c/Program Files/Circe/wsl-runtime.tar.gz' | cut -d ' ' -f 1)",
     );
     expect(script).toContain(`if [ "$archive_sha" != '${expected}' ]; then`);
 
@@ -240,7 +240,7 @@ describe("WSL runtime cache", () => {
   // the install path has to refuse too.
   it("moves an in-use runtime aside instead of deleting it under a live backend", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "sha256-" + "c".repeat(64),
       "b".repeat(64),
     );
@@ -269,7 +269,7 @@ describe("WSL runtime cache", () => {
 
   it("treats a runtime whose executable no longer runs as a cache miss", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "1.2.3-x64",
       "b".repeat(64),
     );
@@ -294,7 +294,7 @@ describe("WSL runtime cache", () => {
   // The digest the install records is what turns that into a miss.
   it("re-hashes the executable against the digest the install recorded", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "1.2.3-x64",
       "b".repeat(64),
     );
@@ -324,7 +324,7 @@ describe("WSL runtime cache", () => {
 
   it("refuses to mark an archive whose executable does not run as ready", () => {
     const script = buildWslRuntimeInstallScript(
-      "/mnt/c/Program Files/T3 Code/wsl-runtime.tar.gz",
+      "/mnt/c/Program Files/Circe/wsl-runtime.tar.gz",
       "1.2.3-x64",
       "b".repeat(64),
     );
@@ -590,9 +590,9 @@ describe.skipIf(posixShellRunner === null)("WSL runtime install script (executed
         ': > "$work/tar-calls"',
         'PATH="$work/bin:$PATH"',
         "export PATH",
-        `cat > "$work/install.sh" <<'T3CODE_INSTALL_SCRIPT'`,
+        `cat > "$work/install.sh" <<'CIRCE_INSTALL_SCRIPT'`,
         fixture.installScript(),
-        "T3CODE_INSTALL_SCRIPT",
+        "CIRCE_INSTALL_SCRIPT",
         // Both racers run the same file, and neither file path contains the
         // runtime root, so the script's own /proc scan cannot see them.
         'sh "$work/install.sh" > "$work/first.out" 2>&1 &',
@@ -681,9 +681,9 @@ describe.skipIf(posixShellRunner === null)("WSL runtime install script (executed
         'printf ready > "$runtime_parent/sha256-previous/.t3code-wsl-runtime-ready"',
         `touch -d "10 minutes ago" ${sh(fixture.runtimeRoot)}`,
         'touch -d "1 minute ago" "$runtime_parent/sha256-previous"',
-        `cat > ${sh(`${fixture.work}/select.sh`)} <<'T3CODE_SELECT_SCRIPT'`,
+        `cat > ${sh(`${fixture.work}/select.sh`)} <<'CIRCE_SELECT_SCRIPT'`,
         fixture.installScript(),
-        "T3CODE_SELECT_SCRIPT",
+        "CIRCE_SELECT_SCRIPT",
         `sh ${sh(`${fixture.work}/select.sh`)}`,
         `HOME=${sh(`${fixture.work}/home`)}`,
         "export HOME",

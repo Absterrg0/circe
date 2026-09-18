@@ -1,11 +1,11 @@
-import { HostProcessEnvironment, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
 import {
   listLoginShellCandidates,
   mergePathEntries,
   readPathFromLoginShell,
   readPathFromLaunchctl,
   resolveWindowsEnvironment,
-} from "@t3tools/shared/shell";
+} from "@circe/shared/shell";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
@@ -106,7 +106,7 @@ export const expandHomePath = Effect.fn(function* (input: string) {
 const FOREIGN_PRODUCT_HOMES = [".t3", ".jarvis"] as const;
 
 /**
- * The user's separate T3 Code (or pre-rebrand Jarvis) install must never be
+ * The user's separate Circe (or pre-rebrand Jarvis) install must never be
  * opened as a Circe data directory. Refuse instead of migrating their database.
  */
 export class ForeignBaseDirectoryError extends Schema.TaggedError<ForeignBaseDirectoryError>()(
@@ -122,7 +122,7 @@ export class ForeignBaseDirectoryError extends Schema.TaggedError<ForeignBaseDir
 
 export const resolveBaseDir = Effect.fn(function* (raw: string | undefined) {
   const { join, resolve } = yield* Path.Path;
-  // Circe owns `.circe`. `.t3` is the separate T3 Code product's home and
+  // Circe owns `.circe`. `.t3` is the separate Circe product's home and
   // `.jarvis` is the pre-rebrand install; opening either would run Circe
   // migrations against another app's database.
   if (!raw || raw.trim().length === 0) {

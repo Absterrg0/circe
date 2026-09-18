@@ -1,6 +1,6 @@
 import { circeLiveVoiceEnvironment } from "../../state/circeLiveVoice";
 import { openCirceWebsite } from "./CirceQuickActions.logic";
-import { scopeProjectRef } from "@t3tools/client-runtime/environment";
+import { scopeProjectRef } from "@circe/client/environment";
 import { useAtomValue } from "@effect/atom-react";
 import {
   buildCirceInterpretInput,
@@ -35,7 +35,7 @@ import {
 } from "@circe/core/modelChoice";
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
 import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
-import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime";
+import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import type {
   EnvironmentId,
   CirceExpectedReply,
@@ -48,7 +48,7 @@ import type {
   ModelSelection,
   ThreadId,
   TurnId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CirceCommandTarget } from "../../circeBus";
@@ -1559,7 +1559,7 @@ export function CirceVoiceRuntime({
       // pinned followups never re-route here. Negated (excluded-only) and
       // malformed proposals stay ambient for authoritative clarification.
       let meshRoutedProject: CirceMeshProject | undefined;
-      let meshProposal: import("@t3tools/contracts").CirceSemanticProposal | undefined;
+      let meshProposal: import("@circe/contracts").CirceSemanticProposal | undefined;
       const meshSource = voiceSubmission.sourceTranscript ?? capturedInstruction;
       // One request identity for interpret plus execute so an explicit
       // correction cancel aborts either phase on its node. New additional

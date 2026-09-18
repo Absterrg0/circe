@@ -2,11 +2,11 @@ import {
   ProviderDriverKind,
   type ServerProvider,
   type ServerProviderVersionAdvisory,
-} from "@t3tools/contracts";
-import { compareSemverVersions } from "@t3tools/shared/semver";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
-import { causeErrorTag } from "@t3tools/shared/observability";
-import { resolveCommandPath } from "@t3tools/shared/shell";
+} from "@circe/contracts";
+import { compareSemverVersions } from "@circe/shared/semver";
+import { HostProcessPlatform } from "@circe/shared/hostProcess";
+import { causeErrorTag } from "@circe/shared/observability";
+import { resolveCommandPath } from "@circe/shared/shell";
 import * as Config from "effect/Config";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
@@ -119,7 +119,7 @@ export interface ProviderVersionCacheEntry {
 }
 
 export const ProviderVersionCache = Context.Reference<Map<string, ProviderVersionCacheEntry>>(
-  "@t3tools/server/providerMaintenance/ProviderVersionCache",
+  "@circe/server/providerMaintenance/ProviderVersionCache",
   {
     defaultValue: () => new Map(),
   },
@@ -345,7 +345,7 @@ const runHomebrew = Effect.fn("runHomebrew")(function* (
 /**
  * Derive update capabilities from where the executable actually lives. Every
  * branch that yields a one-click command has evidence that the named tool
- * owns that path; anything unproven stays manual-only so T3 Code never runs
+ * owns that path; anything unproven stays manual-only so Circe never runs
  * a package manager against an install it did not create.
  */
 export const resolvePackageManagedProviderMaintenance = Effect.fn(

@@ -17,14 +17,14 @@ import {
   RunAttemptId,
   RunId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Schema from "effect/Schema";
 
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
+import { getModelSelectionStringOptionValue } from "@circe/shared/model";
 import { AnalyticsService } from "../telemetry/AnalyticsService.ts";
 import { EventSinkV2 } from "./EventSink.ts";
 import { ProjectionStoreV2 } from "./ProjectionStore.ts";

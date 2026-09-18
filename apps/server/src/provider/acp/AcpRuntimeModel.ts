@@ -4,13 +4,13 @@ import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import type * as EffectAcpSchema from "effect-acp/compat";
-import { deriveToolActivityPresentation } from "@t3tools/shared/toolActivity";
-import { T3_MCP_TOOL_NAMES } from "@t3tools/shared/t3McpToolPresentation";
+import { deriveToolActivityPresentation } from "@circe/shared/toolActivity";
+import { CIRCE_MCP_TOOL_NAMES } from "@circe/shared/t3McpToolPresentation";
 import type {
   OrchestrationV2ProviderThreadNativeMetadata,
   ThreadTokenUsageSnapshot,
   ToolLifecycleItemType,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -1013,7 +1013,7 @@ function acpMcpFallbackInput(value: string | undefined): Record<string, unknown>
  * its server as "t3-code", and matches are additionally gated on the known
  * T3 tool inventory, so the separator match can stay loose.
  */
-const T3_MCP_TITLE_CALL =
+const CIRCE_MCP_TITLE_CALL =
   /^(?:mcp[-_]{1,2})?t3[-_ ]?code[-_.:/ ]{1,3}(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*)(?::.*)?$/i;
 
 /**
@@ -1021,7 +1021,7 @@ const T3_MCP_TITLE_CALL =
  * qwen-code appends ": <args json>" to the same template; Auggie namespaces
  * tool-first as "<tool>_t3-code".
  */
-const T3_MCP_TITLE_SUFFIX_CALL =
+const CIRCE_MCP_TITLE_SUFFIX_CALL =
   /^(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*?)(?: \(t3[-_ ]?code MCP Server\)(?::|$)|[-_.]t3[-_ ]?code$)/i;
 
 /**
@@ -1029,7 +1029,7 @@ const T3_MCP_TITLE_SUFFIX_CALL =
  * names; Kimi additionally appends ": <raw args json>". Safe only because the
  * match is gated on the known T3 tool inventory.
  */
-const T3_MCP_BARE_TITLE_CALL = /^(?<tool>[A-Za-z0-9_]+)(?::\s|$)/;
+const CIRCE_MCP_BARE_TITLE_CALL = /^(?<tool>[A-Za-z0-9_]+)(?::\s|$)/;
 
 /**
  * Best-effort recovery of MCP identity from a generic ACP tool call.
@@ -1073,7 +1073,7 @@ export function extractMcpToolCallIdentity(
   const metaServerId = typeof meta?.serverId === "string" ? meta.serverId.trim() : "";
   const metaToolName = typeof meta?.toolName === "string" ? meta.toolName.trim() : "";
   if (/^t3[-_ ]?code$/i.test(metaServerId) && metaToolName.length > 0) {
-    for (const knownTool of T3_MCP_TOOL_NAMES) {
+    for (const knownTool of CIRCE_MCP_TOOL_NAMES) {
       const boundary = metaToolName.length - knownTool.length - 1;
       if (
         metaToolName === knownTool ||
@@ -1104,11 +1104,11 @@ export function extractMcpToolCallIdentity(
   for (const candidate of candidates) {
     const trimmed = candidate.trim();
     const match =
-      T3_MCP_TITLE_CALL.exec(trimmed) ??
-      T3_MCP_TITLE_SUFFIX_CALL.exec(trimmed) ??
-      T3_MCP_BARE_TITLE_CALL.exec(trimmed);
+      CIRCE_MCP_TITLE_CALL.exec(trimmed) ??
+      CIRCE_MCP_TITLE_SUFFIX_CALL.exec(trimmed) ??
+      CIRCE_MCP_BARE_TITLE_CALL.exec(trimmed);
     const candidateTool = match?.groups?.tool;
-    if (candidateTool !== undefined && T3_MCP_TOOL_NAMES.has(candidateTool)) {
+    if (candidateTool !== undefined && CIRCE_MCP_TOOL_NAMES.has(candidateTool)) {
       return { server: "t3-code", tool: candidateTool };
     }
   }

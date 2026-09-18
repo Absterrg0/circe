@@ -8,7 +8,7 @@ import {
   GROVE_THEME,
   IRIS_THEME,
   OCEAN_THEME,
-  T3_CHAT_THEME,
+  CIRCE_CHAT_THEME,
   RESERVED_THEME_IDS,
   THEME_COLOR_ROLES,
   type ThemeAppearance,
@@ -16,12 +16,12 @@ import {
   type ThemeColors,
   type ThemeDefinition,
   type ThemeVariants,
-} from "@t3tools/shared/themePalettes";
+} from "@circe/shared/themePalettes";
 
-export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, T3_CHAT_THEME, THEME_COLOR_ROLES };
+export { EMBER_THEME, GROVE_THEME, IRIS_THEME, OCEAN_THEME, CIRCE_CHAT_THEME, THEME_COLOR_ROLES };
 export type { ThemeAppearance, ThemeColorRole, ThemeColors, ThemeDefinition, ThemeVariants };
 
-export const T3_CHAT_THEME_ID = "t3-chat" as const;
+export const CIRCE_CHAT_THEME_ID = "t3-chat" as const;
 const GROVE_THEME_ID = "grove" as const;
 export const OCEAN_THEME_ID = "ocean" as const;
 const EMBER_THEME_ID = "ember" as const;
@@ -296,7 +296,7 @@ export function subscribeToCustomThemes(listener: () => void): () => void {
 // genuinely T3-branded palette keeps it. Stored preferences and mixes with the
 // old ids stay readable through this alias table.
 const LEGACY_THEME_ID_ALIASES: Readonly<Record<string, string>> = {
-  [LEGACY_T3_CHAT_DARK_THEME_ID]: T3_CHAT_THEME_ID,
+  [LEGACY_T3_CHAT_DARK_THEME_ID]: CIRCE_CHAT_THEME_ID,
   "t3-grove": GROVE_THEME_ID,
   "t3-ocean": OCEAN_THEME_ID,
   "t3-ember": EMBER_THEME_ID,
@@ -333,7 +333,7 @@ function legacyThemeMode(theme: ThemePreference): ThemeAppearance | null {
  * their real backdrops (canvas, or the sidebar for its rows) because theme
  * colors are stored as opaque OKLCH tokens.
  */
-const T3_CODE_LIGHT_THEME_COLORS: ThemeColors = {
+const CIRCE_CODE_LIGHT_THEME_COLORS: ThemeColors = {
   canvas: "#fcfcfc",
   chrome: "#fcfcfc",
   toolbar: "#fcfcfc",
@@ -393,7 +393,7 @@ const T3_CODE_LIGHT_THEME_COLORS: ThemeColors = {
   terminalScrollbarHover: "#bdbdbd",
 };
 
-const T3_CODE_DARK_THEME_COLORS: ThemeColors = {
+const CIRCE_CODE_DARK_THEME_COLORS: ThemeColors = {
   canvas: "#0a0a0a",
   chrome: "#0a0a0a",
   toolbar: "#0a0a0a",
@@ -461,9 +461,9 @@ const T3_CODE_DARK_THEME_COLORS: ThemeColors = {
  */
 export function getStandardThemeColors(appearance: ThemeAppearance): ThemeColors {
   if (appearance === "dark") {
-    return (standardDarkThemeColors ??= decodeThemeColors(T3_CODE_DARK_THEME_COLORS));
+    return (standardDarkThemeColors ??= decodeThemeColors(CIRCE_CODE_DARK_THEME_COLORS));
   }
-  return (standardLightThemeColors ??= decodeThemeColors(T3_CODE_LIGHT_THEME_COLORS));
+  return (standardLightThemeColors ??= decodeThemeColors(CIRCE_CODE_LIGHT_THEME_COLORS));
 }
 
 type ThemeRgbColor = {
@@ -997,7 +997,7 @@ function standardMutedThemeText(
 
 /** Theme-file defaults follow the flagship palette for the requested mode. */
 export function getDefaultThemeColors(appearance: ThemeAppearance): ThemeColors {
-  return appearance === "dark" ? T3_CHAT_THEME.variants!.dark! : T3_CHAT_THEME.colors;
+  return appearance === "dark" ? CIRCE_CHAT_THEME.variants!.dark! : CIRCE_CHAT_THEME.colors;
 }
 
 /**

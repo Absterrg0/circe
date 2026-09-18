@@ -1,5 +1,5 @@
-import { AuthStandardClientScopes, EnvironmentId } from "@t3tools/contracts";
-import { RelayClientTracer } from "@t3tools/shared/relayTracing";
+import { AuthStandardClientScopes, EnvironmentId } from "@circe/contracts";
+import { RelayClientTracer } from "@circe/shared/relayTracing";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -1200,7 +1200,7 @@ describe("EnvironmentSupervisor", () => {
         const pathname = new URL(request.url).pathname;
         httpPaths.push(pathname);
         switch (pathname) {
-          case "/.well-known/t3/environment":
+          case "/.well-known/circe/environment":
             return Promise.resolve(
               Response.json({
                 environmentId: TARGET.environmentId,

@@ -34,8 +34,8 @@ import {
   ProviderDriverKind,
   type ProviderInstanceConfigMap,
   ProviderInstanceId,
-} from "@t3tools/contracts";
-import { isHostWindows } from "@t3tools/shared/hostProcess";
+} from "@circe/contracts";
+import { isHostWindows } from "@circe/shared/hostProcess";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
@@ -354,7 +354,7 @@ describe("ProviderInstanceRegistryLive — multi-instance codex slice", () => {
           enabled: true,
           environment: [
             {
-              name: "T3_CODEX_COLLAB_SCRIPT",
+              name: "CIRCE_CODEX_COLLAB_SCRIPT",
               value: fixtures.codexScriptPath,
               sensitive: false,
             },

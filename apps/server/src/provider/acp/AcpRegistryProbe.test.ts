@@ -3,7 +3,7 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { AcpRegistrySettings, ProviderInstanceId } from "@t3tools/contracts";
+import { AcpRegistrySettings, ProviderInstanceId } from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -345,7 +345,7 @@ describe("ACP Registry probe", () => {
                 args: [mockAgentPath],
                 env: {
                   ...process.env,
-                  T3_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "25",
+                  CIRCE_ACP_COMMAND_ADVERTISEMENT_DELAY_MS: "25",
                 },
               },
             }),
@@ -409,8 +409,8 @@ describe("ACP Registry probe", () => {
             args: [mockAgentPath],
             env: {
               ...process.env,
-              T3_ACP_SESSION_LIFECYCLE: "1",
-              T3_ACP_AUTH_METHOD_ID: "mock-login",
+              CIRCE_ACP_SESSION_LIFECYCLE: "1",
+              CIRCE_ACP_AUTH_METHOD_ID: "mock-login",
             },
           },
         }),
@@ -463,7 +463,7 @@ describe("ACP Registry probe", () => {
           spawn: {
             command: "node",
             args: [mockAgentPath],
-            env: { ...process.env, T3_ACP_OMIT_SESSION_LIST_HANDLER: "1" },
+            env: { ...process.env, CIRCE_ACP_OMIT_SESSION_LIST_HANDLER: "1" },
           },
         }),
     });

@@ -1,4 +1,4 @@
-import type { OrchestrationV2Run, OrchestrationV2ThreadProjection } from "@t3tools/contracts";
+import type { OrchestrationV2Run, OrchestrationV2ThreadProjection } from "@circe/contracts";
 
 export function isAutomaticCompletionRun(
   projection: OrchestrationV2ThreadProjection,

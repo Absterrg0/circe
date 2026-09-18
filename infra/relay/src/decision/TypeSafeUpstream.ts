@@ -5,7 +5,7 @@ import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientRequest, HttpClientResponse } from "effect/unstable/http";
 
-import { RelayTypeSafeDecisionResponse } from "@t3tools/contracts/relay";
+import { RelayTypeSafeDecisionResponse } from "@circe/contracts/relay";
 
 /**
  * Managed TypeSafe System One upstream.

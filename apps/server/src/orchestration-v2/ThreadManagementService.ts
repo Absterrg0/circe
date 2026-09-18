@@ -16,7 +16,7 @@ import {
   RunId,
   type ScheduledTaskId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";

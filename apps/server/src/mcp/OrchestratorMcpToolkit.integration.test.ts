@@ -32,7 +32,7 @@ import {
   ThreadId,
   ThreadMetadataMcpUpdateResult,
   TurnItemId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -1841,9 +1841,9 @@ describe("orchestrator MCP toolkit", () => {
               threadId: emptyThread.threadId,
               action: "link_pull_request",
               pullRequest: {
-                repository: "pingdotgg/t3code",
+                repository: "Absterrg0/circe",
                 number: 8689,
-                url: "https://github.com/pingdotgg/t3code/pull/8689",
+                url: "https://github.com/Absterrg0/circe/pull/8689",
               },
               clientRequestId: "metadata-link-1",
             });
@@ -1852,9 +1852,9 @@ describe("orchestrator MCP toolkit", () => {
             );
             expect(linked.linkedPullRequest).toEqual({
               projectId,
-              repository: "pingdotgg/t3code",
+              repository: "Absterrg0/circe",
               number: 8689,
-              url: "https://github.com/pingdotgg/t3code/pull/8689",
+              url: "https://github.com/Absterrg0/circe/pull/8689",
             });
             const metadataReadCall = yield* invoke("t3_thread_read", {
               threadId: emptyThread.threadId,

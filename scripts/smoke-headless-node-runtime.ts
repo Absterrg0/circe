@@ -184,7 +184,7 @@ const findPackagedServer = async (
   const [serverPath] = candidates;
   if (serverPath === undefined || candidates.length !== 1) {
     throw new Error(
-      `Expected exactly one packaged T3 server entrypoint, found ${candidates.length}.`,
+      `Expected exactly one packaged Circe server entrypoint, found ${candidates.length}.`,
     );
   }
   return { nodePath, serverPath };
@@ -228,13 +228,13 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     const command = buildHeadlessRuntimeSmokeCommand({ nodePath, serverPath, homeDir, port });
     const env: NodeJS.ProcessEnv = {
       ...process.env,
-      T3CODE_HOME: homeDir,
+      CIRCE_HOME: homeDir,
       CIRCE_HEADLESS_HOME: homeDir,
     };
     delete env.CIRCE_NODE_PRESET;
-    delete env.T3CODE_PORT;
-    delete env.T3CODE_HOST;
-    delete env.T3CODE_MODE;
+    delete env.CIRCE_PORT;
+    delete env.CIRCE_HOST;
+    delete env.CIRCE_MODE;
     delete env.VITE_DEV_SERVER_URL;
     const spawnedChild = ChildProcess.spawn(command.executable, [...command.args], {
       cwd: absoluteRoot,
@@ -243,7 +243,7 @@ export async function runHeadlessRuntimeSmoke(rootDir: string): Promise<void> {
     });
     child = spawnedChild;
     await waitForStartup(spawnedChild, STARTUP_TIMEOUT_MS);
-    const response = await fetch(`http://127.0.0.1:${port}/.well-known/t3/environment`);
+    const response = await fetch(`http://127.0.0.1:${port}/.well-known/circe/environment`);
     if (!response.ok) {
       throw new Error(`Headless environment descriptor returned HTTP ${response.status}.`);
     }

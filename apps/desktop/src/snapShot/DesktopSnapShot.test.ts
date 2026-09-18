@@ -5,7 +5,7 @@ import {
   DesktopPendingSnapShot,
   type ClientSettings,
   type DesktopSnapShotEvent,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
@@ -934,9 +934,9 @@ it.effect.each(["win32", "darwin", "linux"] as const)(
     const bounds = { x: 10, y: 20, width: 800, height: 600 };
     const t3 = {
       id: 42,
-      title: "T3 Code",
+      title: "Circe",
       appIdentifier: "circe.desktop",
-      owner: { name: "T3 Code", processId: 123 },
+      owner: { name: "Circe", processId: 123 },
       bounds,
       png: Buffer.from([1, 2, 3]),
     };
@@ -1610,7 +1610,7 @@ it.effect(
     focusedWindowMock.mockReturnValue(undefined);
     const destination = {
       getBounds: () => ({ x: 0, y: 0, width: 1000, height: 800 }),
-      getTitle: () => "T3 Code",
+      getTitle: () => "Circe",
       isDestroyed: () => false,
       isVisible: () => true,
       isMinimized: () => false,
@@ -3741,7 +3741,7 @@ for (const fails of [false, true]) {
       platform: "macos",
       id: 42,
       title: "Setup",
-      owner: { name: "T3 Code", processId: 123, path: "/Applications/T3 Code.app" },
+      owner: { name: "Circe", processId: 123, path: "/Applications/Circe.app" },
       bounds: { x: 0, y: 0, width: 800, height: 600 },
     };
     activeWindowMock.mockReset().mockResolvedValue(active);

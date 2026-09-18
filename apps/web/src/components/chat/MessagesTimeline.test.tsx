@@ -1,4 +1,4 @@
-import { CheckpointRef, EnvironmentId, MessageId, RunId, ThreadId } from "@t3tools/contracts";
+import { CheckpointRef, EnvironmentId, MessageId, RunId, ThreadId } from "@circe/contracts";
 import { act, createRef, useLayoutEffect, type ReactNode, type Ref } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { create, type ReactTestRenderer } from "react-test-renderer";

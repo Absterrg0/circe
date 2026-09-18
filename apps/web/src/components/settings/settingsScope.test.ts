@@ -1,4 +1,4 @@
-import { EnvironmentId, ProjectId } from "@t3tools/contracts";
+import { EnvironmentId, ProjectId } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type {
@@ -18,7 +18,7 @@ function member(id: string, environmentId: EnvironmentId): SidebarProjectGroupMe
   return {
     id: ProjectId.make(id),
     environmentId,
-    title: "T3 Code",
+    title: "Circe",
     workspaceRoot: `/repos/${id}`,
     physicalProjectKey: `${environmentId}:/repos/${id}`,
     environmentLabel:

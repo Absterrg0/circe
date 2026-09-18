@@ -21,7 +21,7 @@ vi.mock("electron", () => ({
   },
 }));
 
-import type { DesktopBridge } from "@t3tools/contracts";
+import type { DesktopBridge } from "@circe/contracts";
 
 import {
   DESKTOP_PRELOAD_READY_CHANNEL,

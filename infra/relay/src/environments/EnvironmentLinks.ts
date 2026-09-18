@@ -3,8 +3,8 @@ import type {
   RelayEnvironmentLinkProofPayload,
   RelayEnvironmentLinkRequest,
   RelayManagedEndpoint,
-} from "@t3tools/contracts/relay";
-import { RELAY_DEFAULT_ENABLED_DEVICE_LIMIT } from "@t3tools/contracts/relay";
+} from "@circe/contracts/relay";
+import { RELAY_DEFAULT_ENABLED_DEVICE_LIMIT } from "@circe/contracts/relay";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";

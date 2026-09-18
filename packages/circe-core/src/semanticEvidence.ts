@@ -1,4 +1,4 @@
-import type { ProjectId } from "@t3tools/contracts";
+import type { ProjectId } from "@circe/contracts";
 import * as Schema from "effect/Schema";
 
 import { normalizeDestinationPhrase, stripDestinationQuotes } from "./destinationSpan.ts";

@@ -1,8 +1,8 @@
-import { AuthStandardClientScopes, EnvironmentId } from "@t3tools/contracts";
+import { AuthStandardClientScopes, EnvironmentId } from "@circe/contracts";
 import {
   RelayEnvironmentConnectScope,
   type RelayEnvironmentConnectResponse,
-} from "@t3tools/contracts/relay";
+} from "@circe/contracts/relay";
 import { describe, expect, it } from "@effect/vitest";
 import * as Clock from "effect/Clock";
 import * as Deferred from "effect/Deferred";
@@ -207,7 +207,7 @@ const makeHarness = Effect.fn("TestRemoteAuthorization.makeHarness")(function* (
           ClientCapabilities.ClientPresentation,
           ClientCapabilities.ClientPresentation.of({
             metadata: {
-              label: "T3 Code Test",
+              label: "Circe Test",
               deviceType: "mobile",
               os: "test",
             },
@@ -257,7 +257,9 @@ describe("RemoteEnvironmentAuthorization", () => {
       expect(first.socketUrl).toContain("wsTicket=first-ticket");
       expect(second.socketUrl).toContain("wsTicket=second-ticket");
       expect(
-        harness.fetch.calls.filter(([url]) => String(url).endsWith("/.well-known/t3/environment")),
+        harness.fetch.calls.filter(([url]) =>
+          String(url).endsWith("/.well-known/circe/environment"),
+        ),
       ).toHaveLength(1);
       expect(
         harness.fetch.calls.filter(([url]) => String(url).endsWith("/api/auth/websocket-ticket")),
@@ -303,7 +305,9 @@ describe("RemoteEnvironmentAuthorization", () => {
         }),
       );
       expect(
-        harness.fetch.calls.filter(([url]) => String(url).endsWith("/.well-known/t3/environment")),
+        harness.fetch.calls.filter(([url]) =>
+          String(url).endsWith("/.well-known/circe/environment"),
+        ),
       ).toHaveLength(2);
     }),
   );
@@ -555,7 +559,7 @@ describe("RemoteEnvironmentAuthorization", () => {
           },
         ]);
         expect(harness.fetch.calls.map(([url]) => String(url))).toEqual([
-          `${ENDPOINT.httpBaseUrl}/.well-known/t3/environment`,
+          `${ENDPOINT.httpBaseUrl}/.well-known/circe/environment`,
           `${ENDPOINT.httpBaseUrl}/oauth/token`,
         ]);
         expect(yield* Ref.get(harness.proofInputs)).toEqual([

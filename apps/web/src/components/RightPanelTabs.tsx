@@ -1,18 +1,18 @@
-import { pullRequestHostOf, type SourceControlProviderKind } from "@t3tools/contracts";
-import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
+import { pullRequestHostOf, type SourceControlProviderKind } from "@circe/contracts";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
 import { useProjects, useServerConfigs, useThreadShells } from "~/state/entities";
 import {
   threadPullRequestKeysEqual,
   visibleThreadPullRequests,
-} from "@t3tools/shared/threadPullRequests";
+} from "@circe/shared/threadPullRequests";
 import type {
   ContextMenuItem,
   EnvironmentId,
   PreviewSessionSnapshot,
   ProjectId,
   PullRequestState,
-} from "@t3tools/contracts";
-import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
+} from "@circe/contracts";
+import { getTerminalLabel } from "@circe/shared/terminalLabels";
 import {
   Bot,
   Smartphone,

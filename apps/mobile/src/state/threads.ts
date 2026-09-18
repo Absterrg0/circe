@@ -7,13 +7,13 @@ import {
   type EnvironmentThreadState,
   createThreadEnvironmentAtoms,
   ThreadSnapshotLoader,
-} from "@t3tools/client-runtime/state/threads";
-import type { EnvironmentId, OrchestrationSessionStatus, ThreadId } from "@t3tools/contracts";
+} from "@circe/client/state/threads";
+import type { EnvironmentId, OrchestrationSessionStatus, ThreadId } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Option from "effect/Option";
 import * as SubscriptionRef from "effect/SubscriptionRef";
-import { EnvironmentSupervisor } from "@t3tools/client-runtime/connection";
-import { createEnvironmentCommand } from "@t3tools/client-runtime/state/runtime";
+import { EnvironmentSupervisor } from "@circe/client/connection";
+import { createEnvironmentCommand } from "@circe/client/state/runtime";
 import { AsyncResult, Atom } from "effect/unstable/reactivity";
 
 import { environmentCatalog } from "../connection/catalog";

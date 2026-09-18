@@ -13,14 +13,14 @@ import {
   AuthStandardClientScopes,
   ExecutionEnvironmentDescriptor,
   PortSchema,
-} from "@t3tools/contracts";
-import { resolveWorktreeT3Home } from "@t3tools/shared/devHome";
+} from "@circe/contracts";
+import { resolveWorktreeCirceHome } from "@circe/shared/devHome";
 import {
   buildTailscaleHttpsBaseUrl,
   DEFAULT_TAILSCALE_SERVE_PORT,
   ensureTailscaleServe,
   readTailscaleStatus,
-} from "@t3tools/tailscale";
+} from "@circe/tailscale";
 import * as Config from "effect/Config";
 import * as Console from "effect/Console";
 import * as DateTime from "effect/DateTime";
@@ -56,7 +56,7 @@ import {
 } from "../startupAccess.ts";
 import { baseDirFlag, DurationFromString } from "./config.ts";
 
-const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/t3/environment";
+const WELL_KNOWN_ENVIRONMENT_PATH = "/.well-known/circe/environment";
 const PAIR_PROBE_TIMEOUT = Duration.millis(2_500);
 // Tailscale provisions an HTTPS certificate on the first request to a fresh
 // serve mapping, which can take a few seconds.
@@ -201,7 +201,7 @@ const formatPairOutput = (input: {
 type EnvironmentProbeResult =
   | { readonly _tag: "descriptor"; readonly descriptor: ExecutionEnvironmentDescriptor }
   | { readonly _tag: "unreachable" }
-  | { readonly _tag: "not-a-t3-server" };
+  | { readonly _tag: "not-a-circe-server" };
 
 const probeEnvironmentDescriptor = (
   baseUrl: string,
@@ -225,7 +225,7 @@ const probeEnvironmentDescriptor = (
     // some other service.
     const descriptor = yield* HttpClientResponse.filterStatusOk(response).pipe(
       Effect.flatMap(HttpClientResponse.schemaBodyJson(ExecutionEnvironmentDescriptor)),
-      Effect.mapError(() => ({ _tag: "not-a-t3-server" }) as const),
+      Effect.mapError(() => ({ _tag: "not-a-circe-server" }) as const),
     );
     return { _tag: "descriptor", descriptor } as const;
   }).pipe(Effect.catch((outcome) => Effect.succeed(outcome)));
@@ -247,11 +247,11 @@ const discoverPairTarget = Effect.fn("pair.discoverPairTarget")(function* (
     // Same precedence as dev-runner: inside a linked worktree its own `.t3`
     // outranks the shared home, so `circe pair` in a worktree pairs with the dev
     // server under test rather than the daily-driver install.
-    const worktreeHome = yield* resolveWorktreeT3Home(process.cwd());
+    const worktreeHome = yield* resolveWorktreeCirceHome(process.cwd());
     if (worktreeHome !== undefined) {
       bases.push(worktreeHome);
     }
-    const envHome = yield* Config.string("T3CODE_HOME").pipe(Config.option);
+    const envHome = yield* Config.string("CIRCE_HOME").pipe(Config.option);
     bases.push(yield* resolveBaseDir(Option.getOrUndefined(envHome)));
   }
 
@@ -321,7 +321,7 @@ const makePairServerConfig = Effect.fn(function* (input: {
     otlpTracesUrl: undefined,
     otlpMetricsUrl: undefined,
     otlpExportIntervalMs: 10_000,
-    otlpServiceName: "t3-server",
+    otlpServiceName: "circe-server",
     otlpHeaders: undefined,
     otlpProtocol: "http/json",
     mode: "web",
@@ -389,7 +389,7 @@ const resolveTailscalePairingBase = Effect.fn("pair.resolveTailscalePairingBase"
         return { baseUrl, notes };
       }
     }
-    if (existing._tag === "not-a-t3-server") {
+    if (existing._tag === "not-a-circe-server") {
       return yield* new ServePortOccupiedError({ servePort: input.servePort });
     }
 

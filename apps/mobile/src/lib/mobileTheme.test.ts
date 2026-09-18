@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vite-plus/test";
-import { BUILT_IN_THEME_IDS, BUILT_IN_THEMES, T3_CHAT_THEME } from "@t3tools/shared/themePalettes";
+import { BUILT_IN_THEME_IDS, BUILT_IN_THEMES, CIRCE_CHAT_THEME } from "@circe/shared/themePalettes";
 import { readDefaultMobileThemeVariables } from "./mobileTheme.test-support";
 
 import {
@@ -49,7 +49,7 @@ function compositeOver(overlay: string, background: string): string {
 
 describe("mobile themes", () => {
   it("declares every runtime theme variable in the static stylesheet", () => {
-    const generatedVariables = createMobileThemeVariables(T3_CHAT_THEME.colors, "light");
+    const generatedVariables = createMobileThemeVariables(CIRCE_CHAT_THEME.colors, "light");
     expect(Object.keys(readDefaultMobileThemeVariables("light")).sort()).toEqual(
       Object.keys(generatedVariables).sort(),
     );
@@ -222,13 +222,13 @@ describe("mobile themes", () => {
     expect(Object.keys(variables).length).toBeGreaterThanOrEqual(75);
 
     expect(variables["--color-sheet-solid"]).toBe(
-      themeColorToNativeColor(T3_CHAT_THEME.colors.chrome),
+      themeColorToNativeColor(CIRCE_CHAT_THEME.colors.chrome),
     );
     expect(variables["--color-warning"]).toBe(
-      themeColorToNativeColor(T3_CHAT_THEME.colors.warningSurface),
+      themeColorToNativeColor(CIRCE_CHAT_THEME.colors.warningSurface),
     );
     expect(variables["--color-warning-foreground"]).toBe(
-      themeColorToNativeColor(T3_CHAT_THEME.colors.warningForeground),
+      themeColorToNativeColor(CIRCE_CHAT_THEME.colors.warningForeground),
     );
     expect(variables["--color-primary"]).not.toBe(variables["--color-screen"]);
     expect(variables["--color-primary-shadow"]).toBe("#000000");

@@ -11,7 +11,7 @@ import * as Schedule from "effect/Schedule";
 import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 
-import type { CircePresentationEvent, OrchestrationV2DomainEvent } from "@t3tools/contracts";
+import type { CircePresentationEvent, OrchestrationV2DomainEvent } from "@circe/contracts";
 
 import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
 import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";

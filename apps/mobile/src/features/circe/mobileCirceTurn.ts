@@ -8,7 +8,7 @@ import type {
   CirceTaskRef,
   ModelSelection,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   buildCirceClientCommandContext,
   resolveCirceLiveContextTask,
@@ -173,7 +173,7 @@ export type MobileCirceExecuteInput = {
   readonly kind: "control";
   readonly projectRef: CirceProjectRef;
   readonly utterance: string;
-  readonly semanticProposal?: import("@t3tools/contracts").CirceSemanticProposal;
+  readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
   readonly sourceUtterance?: string;
   readonly modelSelection?: ModelSelection;
   readonly contextThreadId?: ThreadId;
@@ -194,7 +194,7 @@ export function buildMobileCirceExecuteInput(input: {
   readonly projectRef: CirceProjectRef;
   readonly utterance: string;
   readonly sourceUtterance?: string;
-  readonly semanticProposal?: import("@t3tools/contracts").CirceSemanticProposal;
+  readonly semanticProposal?: import("@circe/contracts").CirceSemanticProposal;
   readonly modelSelection?: ModelSelection;
   readonly clarificationFrameId?: string;
   readonly requestId: string;

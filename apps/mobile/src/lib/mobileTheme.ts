@@ -1,6 +1,6 @@
 import {
   BUILT_IN_THEMES,
-  T3_CHAT_THEME,
+  CIRCE_CHAT_THEME,
   getThemeColorsForAppearance,
   MOBILE_DEFAULT_THEME_ID,
   MOBILE_THEME_IDS as SHARED_MOBILE_THEME_IDS,
@@ -8,11 +8,8 @@ import {
   type MobileThemeId as SharedMobileThemeId,
   type ThemeAppearance,
   type ThemeColors,
-} from "@t3tools/shared/themePalettes";
-import {
-  STANDARD_THEME_PREVIEW_COLORS,
-  type ThemePreviewColors,
-} from "@t3tools/shared/themePreview";
+} from "@circe/shared/themePalettes";
+import { STANDARD_THEME_PREVIEW_COLORS, type ThemePreviewColors } from "@circe/shared/themePreview";
 
 export const DEFAULT_MOBILE_THEME_ID = MOBILE_DEFAULT_THEME_ID;
 export const MOBILE_THEME_IDS = [...SHARED_MOBILE_THEME_IDS, "material-you"] as const;
@@ -337,7 +334,7 @@ export function createMobileThemeVariables(colors: ThemeColors, appearance: Mobi
 }
 
 export const MOBILE_THEME_VARIABLE_NAMES = Object.keys(
-  createMobileThemeVariables(T3_CHAT_THEME.colors, "light"),
+  createMobileThemeVariables(CIRCE_CHAT_THEME.colors, "light"),
 ) as ReadonlyArray<MobileThemeVariable>;
 
 export function getMobileThemeVariables(
@@ -345,7 +342,7 @@ export function getMobileThemeVariables(
   appearance: MobileThemeAppearance,
   overrides: Partial<MobileThemeVariables> | null = null,
 ): MobileThemeVariables {
-  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? T3_CHAT_THEME;
+  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? CIRCE_CHAT_THEME;
   const colors = getThemeColorsForAppearance(theme, appearance) ?? theme.colors;
   const baseVariables = createMobileThemeVariables(colors, appearance);
 
@@ -359,7 +356,7 @@ export function getMobileThemePreviewColors(
 ): ThemePreviewColors {
   if (themeId === DEFAULT_MOBILE_THEME_ID || themeId === "material-you")
     return STANDARD_THEME_PREVIEW_COLORS[appearance];
-  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? T3_CHAT_THEME;
+  const theme = BUILT_IN_THEMES.find((candidate) => candidate.id === themeId) ?? CIRCE_CHAT_THEME;
   const colors = getThemeColorsForAppearance(theme, appearance) ?? theme.colors;
   return {
     canvas: themeColorToNativeColor(colors.canvas),

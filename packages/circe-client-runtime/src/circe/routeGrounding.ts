@@ -4,7 +4,7 @@ import type {
   CirceSemanticRef,
   EnvironmentId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   findSourceQuoteSpans,
   isCirceNegatedOrContractedSpan,

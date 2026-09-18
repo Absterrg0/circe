@@ -1,9 +1,6 @@
-import type {
-  EnvironmentProject,
-  EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
-import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-search";
-import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@t3tools/contracts";
+import type { EnvironmentProject, EnvironmentThreadShell } from "@circe/client/state/shell";
+import { threadSearchMatchKey } from "@circe/client/state/thread-search";
+import { EnvironmentId, ProjectId, ProviderInstanceId, ThreadId } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -73,11 +70,11 @@ describe("buildHomeThreadGroups", () => {
     const localEnvironmentId = EnvironmentId.make("environment-local");
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
     const repositoryIdentity = {
-      canonicalKey: "github.com/pingdotgg/t3code",
+      canonicalKey: "github.com/Absterrg0/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:pingdotgg/t3code.git",
+        remoteUrl: "git@github.com:Absterrg0/circe.git",
       },
     };
     const projects = [
@@ -116,11 +113,11 @@ describe("buildHomeThreadGroups", () => {
     const localEnvironmentId = EnvironmentId.make("environment-local");
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
     const repositoryIdentity = {
-      canonicalKey: "github.com/pingdotgg/t3code",
+      canonicalKey: "github.com/Absterrg0/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:pingdotgg/t3code.git",
+        remoteUrl: "git@github.com:Absterrg0/circe.git",
       },
     };
     const local = makeProject({
@@ -180,11 +177,11 @@ describe("buildHomeThreadGroups", () => {
     const localEnvironmentId = EnvironmentId.make("environment-local");
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
     const repositoryIdentity = {
-      canonicalKey: "github.com/pingdotgg/t3code",
+      canonicalKey: "github.com/Absterrg0/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:pingdotgg/t3code.git",
+        remoteUrl: "git@github.com:Absterrg0/circe.git",
       },
     };
     const projects = [
@@ -302,11 +299,11 @@ describe("buildHomeThreadGroups", () => {
     const localEnvironmentId = EnvironmentId.make("environment-local");
     const remoteEnvironmentId = EnvironmentId.make("environment-remote");
     const repositoryIdentity = {
-      canonicalKey: "github.com/pingdotgg/t3code",
+      canonicalKey: "github.com/Absterrg0/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:pingdotgg/t3code.git",
+        remoteUrl: "git@github.com:Absterrg0/circe.git",
       },
     };
     const olderMember = makeProject({
@@ -378,12 +375,12 @@ describe("buildHomeThreadGroups", () => {
       id: ProjectId.make("project-1"),
       title: "local-worktree-name",
       repositoryIdentity: {
-        canonicalKey: "github.com/pingdotgg/t3code",
+        canonicalKey: "github.com/Absterrg0/circe",
         displayName: "codething-mvp",
         locator: {
           source: "git-remote" as const,
           remoteName: "origin",
-          remoteUrl: "git@github.com:pingdotgg/t3code.git",
+          remoteUrl: "git@github.com:Absterrg0/circe.git",
         },
       },
     });
@@ -414,7 +411,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const threads = [
       makeThread({
@@ -533,7 +530,7 @@ describe("buildHomeThreadGroups", () => {
       provider: "github",
       owner: "t3tools",
       name: "t3code",
-      displayName: "T3 Code",
+      displayName: "Circe",
       rootPath: "/workspaces/t3code",
     };
     const projects = [
@@ -579,7 +576,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const threads = [
       makeThread({
@@ -617,7 +614,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const threads = [
       makeThread({
@@ -654,7 +651,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const threads = ["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].map(
       (day, index) =>
@@ -681,7 +678,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const threads = ["2026-06-01", "2026-06-02", "2026-06-03", "2026-06-04", "2026-06-05"].map(
       (day, index) =>
@@ -694,7 +691,7 @@ describe("buildHomeThreadGroups", () => {
         }),
     );
 
-    const group = buildGroups([project], threads, { searchQuery: "T3 Code" })[0];
+    const group = buildGroups([project], threads, { searchQuery: "Circe" })[0];
     // Search reaches the full history rather than the 3-thread fallback.
     expect(group?.recentThreads).toHaveLength(5);
     expect(group?.recentThreads.map((thread) => thread.id)).toEqual(
@@ -707,7 +704,7 @@ describe("buildHomeThreadGroups", () => {
     const project = makeProject({
       environmentId,
       id: ProjectId.make("project-1"),
-      title: "T3 Code",
+      title: "Circe",
     });
     const thread = makeThread({
       environmentId,
@@ -733,11 +730,11 @@ describe("buildHomeThreadGroups", () => {
     const laptopEnv = EnvironmentId.make("environment-laptop");
     const desktopEnv = EnvironmentId.make("environment-desktop");
     const repositoryIdentity = {
-      canonicalKey: "github.com/pingdotgg/t3code",
+      canonicalKey: "github.com/Absterrg0/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:pingdotgg/t3code.git",
+        remoteUrl: "git@github.com:Absterrg0/circe.git",
       },
     };
     const laptopProject = makeProject({

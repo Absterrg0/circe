@@ -7,7 +7,7 @@ import * as Layer from "effect/Layer";
 import * as HttpServer from "effect/unstable/http/HttpServer";
 import * as HttpServerRequest from "effect/unstable/http/HttpServerRequest";
 import * as HttpServerResponse from "effect/unstable/http/HttpServerResponse";
-import { HostProcessArchitecture, HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessArchitecture, HostProcessPlatform } from "@circe/shared/hostProcess";
 
 import * as ServerConfig from "../config.ts";
 import { getTelemetryIdentifier } from "./Identify.ts";
@@ -57,10 +57,10 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
       const telemetryLayer = AnalyticsService.layer.pipe(Layer.provideMerge(serverConfigLayer));
       const configLayer = ConfigProvider.layer(
         ConfigProvider.fromUnknown({
-          T3CODE_TELEMETRY_ENABLED: true,
-          T3CODE_POSTHOG_KEY: "phc_test_key",
-          T3CODE_POSTHOG_HOST: "http://localhost",
-          T3CODE_TELEMETRY_FLUSH_BATCH_SIZE: 20,
+          CIRCE_TELEMETRY_ENABLED: true,
+          CIRCE_POSTHOG_KEY: "phc_test_key",
+          CIRCE_POSTHOG_HOST: "http://localhost",
+          CIRCE_TELEMETRY_FLUSH_BATCH_SIZE: 20,
         }),
       );
       const batchServerLayer = HttpServer.serve(
@@ -158,9 +158,9 @@ it.layer(NodeServices.layer)("AnalyticsService test", (it) => {
       const telemetryLayer = AnalyticsService.layer.pipe(Layer.provideMerge(serverConfigLayer));
       const configLayer = ConfigProvider.layer(
         ConfigProvider.fromUnknown({
-          T3CODE_TELEMETRY_ENABLED: false,
-          T3CODE_POSTHOG_KEY: "phc_test_key",
-          T3CODE_POSTHOG_HOST: "http://localhost",
+          CIRCE_TELEMETRY_ENABLED: false,
+          CIRCE_POSTHOG_KEY: "phc_test_key",
+          CIRCE_POSTHOG_HOST: "http://localhost",
         }),
       );
       const batchServerLayer = HttpServer.serve(

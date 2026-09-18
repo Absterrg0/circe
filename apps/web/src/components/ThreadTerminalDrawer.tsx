@@ -1,15 +1,12 @@
 import { useAtomValue } from "@effect/atom-react";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
   INITIAL_TERMINAL_OUTPUT_CURSOR,
   readTerminalOutputUpdate,
   type TerminalOutputCursor,
   type TerminalOutputUpdate,
   type TerminalSessionState,
-} from "@t3tools/client-runtime/state/terminal";
+} from "@circe/client/state/terminal";
 import {
   Plus,
   Square,
@@ -24,8 +21,8 @@ import {
   type ResolvedKeybindingsConfig,
   type ScopedThreadRef,
   type ThreadId,
-} from "@t3tools/contracts";
-import { getTerminalLabel } from "@t3tools/shared/terminalLabels";
+} from "@circe/contracts";
+import { getTerminalLabel } from "@circe/shared/terminalLabels";
 import * as Schema from "effect/Schema";
 import {
   type PointerEvent as ReactPointerEvent,

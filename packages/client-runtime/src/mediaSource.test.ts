@@ -1,4 +1,4 @@
-import { ThreadId } from "@t3tools/contracts";
+import { ThreadId } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { resolveMediaSource } from "./mediaSource.ts";
@@ -41,7 +41,7 @@ describe("resolveMediaSource", () => {
       });
     });
 
-    it.each(["data:image/png;base64,AAAA", "blob:https://app.t3.codes/id"])(
+    it.each(["data:image/png;base64,AAAA", "blob:https://app.heycirce.com/id"])(
       "loads %s directly",
       (href) => {
         expect(resolveMediaSource(href, { threadId, imageEmbed: true })).toMatchObject({

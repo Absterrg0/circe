@@ -1,7 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off - realpathSync.native resolves Windows 8.3 short names, which the Effect realPath does not.
 import * as NodeFS from "node:fs";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
+import { HostProcessPlatform } from "@circe/shared/hostProcess";
 import { assert, it, describe } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -26,7 +26,7 @@ import {
   GitCommandError,
   ReviewDiffPreviewInput,
   type ReviewDiffFileContentsInput,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import { ServerConfig } from "../config.ts";
 import { gitCommandDuration } from "../observability/Metrics.ts";
 import {
@@ -1933,7 +1933,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           "GIT_TERMINAL_PROMPT",
           "SSH_ASKPASS",
           "SSH_ASKPASS_REQUIRE",
-          "T3_TEST_SSH_ASKPASS_LOG",
+          "CIRCE_TEST_SSH_ASKPASS_LOG",
         ] as const;
         const previousEnv = new Map(envKeys.map((key) => [key, process.env[key]]));
 
@@ -1941,11 +1941,11 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           sshWrapperPath,
           [
             "#!/bin/sh",
-            'printf "GCM_INTERACTIVE=%s\\n" "${GCM_INTERACTIVE:-}" > "$T3_TEST_SSH_ASKPASS_LOG"',
-            'printf "GIT_ASKPASS=%s\\n" "${GIT_ASKPASS:-}" >> "$T3_TEST_SSH_ASKPASS_LOG"',
-            'printf "GIT_TERMINAL_PROMPT=%s\\n" "${GIT_TERMINAL_PROMPT:-}" >> "$T3_TEST_SSH_ASKPASS_LOG"',
-            'printf "SSH_ASKPASS=%s\\n" "${SSH_ASKPASS:-}" >> "$T3_TEST_SSH_ASKPASS_LOG"',
-            'printf "SSH_ASKPASS_REQUIRE=%s\\n" "${SSH_ASKPASS_REQUIRE:-}" >> "$T3_TEST_SSH_ASKPASS_LOG"',
+            'printf "GCM_INTERACTIVE=%s\\n" "${GCM_INTERACTIVE:-}" > "$CIRCE_TEST_SSH_ASKPASS_LOG"',
+            'printf "GIT_ASKPASS=%s\\n" "${GIT_ASKPASS:-}" >> "$CIRCE_TEST_SSH_ASKPASS_LOG"',
+            'printf "GIT_TERMINAL_PROMPT=%s\\n" "${GIT_TERMINAL_PROMPT:-}" >> "$CIRCE_TEST_SSH_ASKPASS_LOG"',
+            'printf "SSH_ASKPASS=%s\\n" "${SSH_ASKPASS:-}" >> "$CIRCE_TEST_SSH_ASKPASS_LOG"',
+            'printf "SSH_ASKPASS_REQUIRE=%s\\n" "${SSH_ASKPASS_REQUIRE:-}" >> "$CIRCE_TEST_SSH_ASKPASS_LOG"',
             "exit 1",
             "",
           ].join("\n"),
@@ -1962,7 +1962,7 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
           process.env.GIT_TERMINAL_PROMPT = "1";
           process.env.SSH_ASKPASS = "ssh-askpass";
           process.env.SSH_ASKPASS_REQUIRE = "force";
-          process.env.T3_TEST_SSH_ASKPASS_LOG = sshLogPath;
+          process.env.CIRCE_TEST_SSH_ASKPASS_LOG = sshLogPath;
 
           yield* (yield* GitVcsDriver.GitVcsDriver).statusDetails(cwd);
 
@@ -2551,40 +2551,40 @@ it.layer(TestLayer)("GitVcsDriver core integration", (it) => {
         yield* initRepoWithCommit(cwd);
         const driver = yield* GitVcsDriver.GitVcsDriver;
 
-        yield* git(cwd, ["remote", "add", "origin", "https://github.com/pingdotgg/t3code.git"]);
+        yield* git(cwd, ["remote", "add", "origin", "https://github.com/Absterrg0/circe.git"]);
 
         const reusedForSsh = yield* driver.ensureRemote({
           cwd,
           preferredName: "pingdotgg",
-          url: "git@github.com:pingdotgg/t3code.git",
+          url: "git@github.com:Absterrg0/circe.git",
         });
         assert.equal(reusedForSsh, "origin");
 
         const reusedForSshScheme = yield* driver.ensureRemote({
           cwd,
           preferredName: "pingdotgg",
-          url: "ssh://git@github.com/pingdotgg/t3code",
+          url: "ssh://git@github.com/Absterrg0/circe",
         });
         assert.equal(reusedForSshScheme, "origin");
 
         const reusedForBareSshScheme = yield* driver.ensureRemote({
           cwd,
           preferredName: "pingdotgg",
-          url: "ssh://github.com/pingdotgg/t3code",
+          url: "ssh://github.com/Absterrg0/circe",
         });
         assert.equal(reusedForBareSshScheme, "origin");
 
         const reusedForSshPort = yield* driver.ensureRemote({
           cwd,
           preferredName: "pingdotgg",
-          url: "ssh://git@github.com:22/pingdotgg/t3code",
+          url: "ssh://git@github.com:22/Absterrg0/circe",
         });
         assert.equal(reusedForSshPort, "origin");
 
         const reusedForSshWithPort = yield* driver.ensureRemote({
           cwd,
           preferredName: "pingdotgg",
-          url: "ssh://git@github.com:22/pingdotgg/t3code.git",
+          url: "ssh://git@github.com:22/Absterrg0/circe.git",
         });
         assert.equal(reusedForSshWithPort, "origin");
 

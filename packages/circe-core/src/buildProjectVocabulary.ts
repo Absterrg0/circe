@@ -2,7 +2,7 @@ import type {
   CirceProjectAlias,
   CirceProjectVocabulary,
   OrchestrationProjectShell,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 const present = (value: string | undefined): value is string =>
   value !== undefined && value.trim().length > 0;

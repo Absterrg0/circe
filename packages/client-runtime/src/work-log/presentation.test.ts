@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { ThreadId, TurnItemId, type OrchestrationV2TurnItem } from "@t3tools/contracts";
+import { ThreadId, TurnItemId, type OrchestrationV2TurnItem } from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
 
 import {
@@ -711,7 +711,7 @@ describe("pull request tool presentation", () => {
       tone: "tool",
       itemType: "dynamic_tool",
       toolLifecycleStatus: "completed",
-      toolSource: { key: "t3-code", name: "T3 Code", kind: "integration" },
+      toolSource: { key: "t3-code", name: "Circe", kind: "integration" },
     };
     const list: WorkLogPresentationEntry = {
       ...link,

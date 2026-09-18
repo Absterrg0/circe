@@ -1,11 +1,8 @@
 import { RefreshIcon } from "~/components/ui/refresh-icon";
 import { useAtomValue } from "@effect/atom-react";
-import { connectionStatusTitle } from "@t3tools/client-runtime/connection";
-import { safeErrorLogAttributes } from "@t3tools/client-runtime/errors";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import { connectionStatusTitle } from "@circe/client/connection";
+import { safeErrorLogAttributes } from "@circe/client/errors";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
   defaultInstanceIdForDriver,
   type EnvironmentId,
@@ -16,12 +13,12 @@ import {
   type ProviderInstanceId,
   resolveEnvironmentMachineKind,
   resolveProviderInstanceEnabled,
-} from "@t3tools/contracts";
-import { DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
+} from "@circe/contracts";
+import { DEFAULT_UNIFIED_SETTINGS } from "@circe/contracts/settings";
 import {
   getBackgroundActivityPresetSettings,
   resolveServerBackgroundActivitySettings,
-} from "@t3tools/shared/backgroundActivitySettings";
+} from "@circe/shared/backgroundActivitySettings";
 import * as Arr from "effect/Array";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";

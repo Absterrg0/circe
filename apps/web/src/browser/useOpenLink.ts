@@ -1,8 +1,5 @@
-import type { ScopedThreadRef } from "@t3tools/contracts";
-import {
-  isAtomCommandInterrupted,
-  squashAtomCommandFailure,
-} from "@t3tools/client-runtime/state/runtime";
+import type { ScopedThreadRef } from "@circe/contracts";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 import { useCallback } from "react";
 
 import { recordVisitForThread } from "~/browserHistoryStore";

@@ -19,9 +19,9 @@ describe("electron development launcher", () => {
   it("uses captured values only as fallbacks for a live runner environment", () => {
     const environmentScript = makeDevelopmentEnvironmentScript({
       VITE_DEV_SERVER_URL: "http://127.0.0.1:8526",
-      T3CODE_PORT: "16566",
-      T3CODE_HOME: "/tmp/t3",
-      T3CODE_OTLP_PROTOCOL: "http/protobuf",
+      CIRCE_PORT: "16566",
+      CIRCE_HOME: "/tmp/t3",
+      CIRCE_OTLP_PROTOCOL: "http/protobuf",
     });
 
     assert.include(
@@ -30,7 +30,7 @@ describe("electron development launcher", () => {
     );
     assert.include(
       environmentScript,
-      "if [ -z \"${T3CODE_OTLP_PROTOCOL:-}\" ]; then export T3CODE_OTLP_PROTOCOL='http/protobuf'; fi",
+      "if [ -z \"${CIRCE_OTLP_PROTOCOL:-}\" ]; then export CIRCE_OTLP_PROTOCOL='http/protobuf'; fi",
     );
     assert.notInclude(environmentScript, "\nexport VITE_DEV_SERVER_URL=");
   });
@@ -104,26 +104,26 @@ describe("electron development launcher", () => {
   });
 
   it("declares why the macOS app needs protected access", () => {
-    const values = resolveMacBundleInfoPlistStrings("T3 Code (Dev) Launcher");
+    const values = resolveMacBundleInfoPlistStrings("Circe (Dev) Launcher");
 
     assert.equal(
       values.NSScreenCaptureUsageDescription,
-      "T3 Code captures the active window when you use the snapshot shortcut.",
+      "Circe captures the active window when you use the snapshot shortcut.",
     );
     assert.equal(
       values.NSDocumentsFolderUsageDescription,
-      "T3 Code reads project files you open in the desktop app.",
+      "Circe reads project files you open in the desktop app.",
     );
   });
 
   it("ad-hoc signs the complete development app bundle", () => {
-    assert.deepEqual(resolveMacCodeSignArguments("/runtime/T3 Code (Dev).app"), [
+    assert.deepEqual(resolveMacCodeSignArguments("/runtime/Circe (Dev).app"), [
       "--force",
       "--deep",
       "--sign",
       "-",
       "--timestamp=none",
-      "/runtime/T3 Code (Dev).app",
+      "/runtime/Circe (Dev).app",
     ]);
   });
 

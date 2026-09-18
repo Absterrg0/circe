@@ -1,5 +1,5 @@
 import { Tooltip, TooltipTrigger, TooltipPopup } from "./ui/tooltip";
-import type { EnvironmentId } from "@t3tools/contracts";
+import type { EnvironmentId } from "@circe/contracts";
 import { ScaleIcon } from "lucide-react";
 import { memo, useMemo } from "react";
 

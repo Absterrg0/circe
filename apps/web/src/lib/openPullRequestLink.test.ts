@@ -10,7 +10,7 @@ import {
   pullRequestCandidateUrlFromReferenceAutolink,
   shouldOpenPullRequestExternally,
 } from "./openPullRequestLink";
-import { ProjectId, type RepositoryIdentity } from "@t3tools/contracts";
+import { ProjectId, type RepositoryIdentity } from "@circe/contracts";
 
 function repositoryIdentity(
   provider: string,
@@ -134,20 +134,20 @@ describe("pullRequestCandidateUrlFromReferenceAutolink", () => {
   it("turns GitHub's shared issue route into a pull request candidate", () => {
     expect(
       pullRequestCandidateUrlFromReferenceAutolink(
-        "https://github.com/pingdotgg/t3code/issues/8600#issuecomment-1",
+        "https://github.com/Absterrg0/circe/issues/8600#issuecomment-1",
       ),
-    ).toBe("https://github.com/pingdotgg/t3code/pull/8600#issuecomment-1");
+    ).toBe("https://github.com/Absterrg0/circe/pull/8600#issuecomment-1");
   });
 
   it("does not reinterpret other issue hosts or malformed references", () => {
     expect(
       pullRequestCandidateUrlFromReferenceAutolink(
-        "https://gitlab.com/pingdotgg/t3code/-/issues/8600",
+        "https://gitlab.com/Absterrg0/circe/-/issues/8600",
       ),
     ).toBeNull();
     expect(
       pullRequestCandidateUrlFromReferenceAutolink(
-        "https://github.com/pingdotgg/t3code/issues/not-a-number",
+        "https://github.com/Absterrg0/circe/issues/not-a-number",
       ),
     ).toBeNull();
   });
@@ -156,16 +156,16 @@ describe("pullRequestCandidateUrlFromReferenceAutolink", () => {
 describe("matchesLinkedPullRequestUrl", () => {
   const linkedPullRequest = {
     projectId: ProjectId.make("project-1"),
-    repository: "pingdotgg/t3code",
+    repository: "Absterrg0/circe",
     number: 42,
-    url: "https://github.com/pingdotgg/t3code/pull/42",
+    url: "https://github.com/Absterrg0/circe/pull/42",
   };
 
   it("matches the same pull request without looking up its project", () => {
     expect(
       matchesLinkedPullRequestUrl(
         linkedPullRequest,
-        "https://github.com/PingDotGG/T3Code/pull/42/files",
+        "https://github.com/Absterrg0/circe/pull/42/files",
       ),
     ).toBe(true);
   });
@@ -187,7 +187,7 @@ describe("matchesLinkedPullRequestUrl", () => {
     expect(
       matchesLinkedPullRequestUrl(
         linkedPullRequest,
-        "https://github.com:8443/pingdotgg/t3code/pull/42",
+        "https://github.com:8443/Absterrg0/circe/pull/42",
       ),
     ).toBe(true);
   });
@@ -203,12 +203,12 @@ describe("matchesLinkedPullRequestUrl", () => {
 
   it("rejects a different pull request or host", () => {
     expect(
-      matchesLinkedPullRequestUrl(linkedPullRequest, "https://github.com/pingdotgg/t3code/pull/43"),
+      matchesLinkedPullRequestUrl(linkedPullRequest, "https://github.com/Absterrg0/circe/pull/43"),
     ).toBe(false);
     expect(
       matchesLinkedPullRequestUrl(
         linkedPullRequest,
-        "https://github.example.com/pingdotgg/t3code/pull/42",
+        "https://github.example.com/Absterrg0/circe/pull/42",
       ),
     ).toBe(false);
   });
@@ -483,7 +483,7 @@ describe("findProjectForChangeRequest", () => {
   it("keeps two hosts apart, so an Enterprise link does not open the public one", () => {
     const projects = [
       project({
-        canonicalKey: "github.com/pingdotgg/t3code",
+        canonicalKey: "github.com/Absterrg0/circe",
         provider: "github",
         owner: "pingdotgg",
         name: "t3code",
@@ -492,7 +492,7 @@ describe("findProjectForChangeRequest", () => {
     expect(
       findProjectForChangeRequest(projects, {
         host: "github.acme.test",
-        repository: "pingdotgg/t3code",
+        repository: "Absterrg0/circe",
         number: 1,
       }),
     ).toBeUndefined();
@@ -501,7 +501,7 @@ describe("findProjectForChangeRequest", () => {
   it("claims nothing for a lookalike host, which is what keeps a link a link", () => {
     const projects = [
       project({
-        canonicalKey: "github.com/pingdotgg/t3code",
+        canonicalKey: "github.com/Absterrg0/circe",
         provider: "github",
         owner: "pingdotgg",
         name: "t3code",
@@ -510,7 +510,7 @@ describe("findProjectForChangeRequest", () => {
     expect(
       findProjectForChangeRequest(projects, {
         host: "github.com-evil.test",
-        repository: "pingdotgg/t3code",
+        repository: "Absterrg0/circe",
         number: 1,
       }),
     ).toBeUndefined();

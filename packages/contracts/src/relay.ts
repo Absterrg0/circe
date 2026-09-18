@@ -874,7 +874,7 @@ export class RelayClientPrincipal extends Context.Service<
     readonly proofKeyThumbprint?: string;
     readonly dpopScopes?: ReadonlyArray<RelayDpopAccessTokenScope>;
   }
->()("@t3tools/contracts/relay/RelayClientPrincipal") {}
+>()("@circe/contracts/relay/RelayClientPrincipal") {}
 
 export class RelayEnvironmentPrincipal extends Context.Service<
   RelayEnvironmentPrincipal,
@@ -882,7 +882,7 @@ export class RelayEnvironmentPrincipal extends Context.Service<
     readonly environmentId: string;
     readonly environmentPublicKey: string;
   }
->()("@t3tools/contracts/relay/RelayEnvironmentPrincipal") {}
+>()("@circe/contracts/relay/RelayEnvironmentPrincipal") {}
 
 const RelayClientBearerAuthorization = HttpApiSecurity.http({ scheme: "bearer" }).pipe(
   HttpApiSecurity.annotate(
@@ -1448,7 +1448,7 @@ export const RelayApi = HttpApi.make("RelayApi")
     RelayDpopClientGroup,
     RelayServerGroup,
   )
-  .annotate(OpenApi.Title, "T3 Code Relay API")
+  .annotate(OpenApi.Title, "Circe Relay API")
   .annotate(OpenApi.Version, "1.0.0")
   .annotate(
     OpenApi.Description,
