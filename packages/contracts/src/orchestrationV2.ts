@@ -29,6 +29,7 @@ import {
   TrimmedNonEmptyString,
   TurnItemId,
 } from "./baseSchemas.ts";
+import { CirceNodeId } from "./circe.ts";
 import { ChatAttachment } from "./chatAttachment.ts";
 import {
   OrchestrationGetFullThreadDiffInput,
@@ -84,6 +85,18 @@ const OrchestrationV2CreationFields = {
   createdBy: OrchestrationV2Actor,
   creationSource: OrchestrationV2CreationSource,
 } as const;
+
+/**
+ * Circe routing identity for a task created through the mesh. V2 persists it on
+ * the app thread so live presentation and push delivery can resolve the origin
+ * interaction without the legacy thread-activity markers.
+ */
+export const OrchestrationV2CirceRouting = Schema.Struct({
+  originInteractionId: TrimmedNonEmptyString,
+  originNodeId: Schema.optional(CirceNodeId),
+  requestId: Schema.optional(TrimmedNonEmptyString),
+});
+export type OrchestrationV2CirceRouting = typeof OrchestrationV2CirceRouting.Type;
 
 export const OrchestrationV2NativeRefStrength = Schema.Literals(["strong", "weak", "none"]);
 export type OrchestrationV2NativeRefStrength = typeof OrchestrationV2NativeRefStrength.Type;
@@ -2167,6 +2180,7 @@ export const OrchestrationV2Command = Schema.Union([
     interactionMode: ProviderInteractionMode,
     branch: Schema.NullOr(TrimmedNonEmptyString),
     worktreePath: Schema.NullOr(TrimmedNonEmptyString),
+    circe: Schema.optional(OrchestrationV2CirceRouting),
     importedNativeThread: Schema.optional(
       Schema.Struct({
         ref: Schema.Struct({
