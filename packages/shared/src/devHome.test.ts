@@ -99,7 +99,7 @@ describe("resolveWorktreeCirceHome", () => {
     Effect.gen(function* () {
       const { root, nested } = yield* makeRepo("worktree");
       const home = yield* resolveWorktreeCirceHome(nested);
-      assert.equal(home, NodePath.join(NodePath.resolve(root), ".t3"));
+      assert.equal(home, NodePath.join(NodePath.resolve(root), ".circe"));
       assert.isFalse(NodeFS.existsSync(home ?? ""));
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
   );

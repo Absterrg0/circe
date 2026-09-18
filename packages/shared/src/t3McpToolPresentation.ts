@@ -21,7 +21,7 @@ export type T3McpToolSummaryAction =
   | "thread-wait"
   | "thread-interrupt";
 
-const CIRCE_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code"]);
+const CIRCE_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code", "circe"]);
 
 const CIRCE_MCP_TOOLS: Record<
   string,
@@ -131,12 +131,14 @@ function resolveT3McpToolName(value: string): string | null {
       : null;
   }
 
-  const namespaceMatch = /^(?<server>t3-code|t3_code|t3code)[.:/](?<tool>.+)$/i.exec(label);
+  const namespaceMatch = /^(?<server>t3-code|t3_code|t3code|circe)[.:/](?<tool>.+)$/i.exec(label);
   if (namespaceMatch?.groups) {
     return namespaceMatch.groups.tool ?? null;
   }
 
-  const prefixed = /^(?:mcp[-_]{1,2})?t3[-_ ]?code(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
+  const prefixed = /^(?:mcp[-_]{1,2})?(?:t3[-_ ]?code|circe)(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(
+    label,
+  );
   const candidate = prefixed?.groups?.tool ?? label;
   return Object.hasOwn(CIRCE_MCP_TOOLS, candidate) ? candidate : null;
 }
