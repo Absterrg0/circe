@@ -569,6 +569,13 @@ export type CirceExecutionFeedback = {
 
 /** Converts an authoritative Director result into user-facing feedback. */
 export function circeExecutionFeedback(result: CirceExecutionResult): CirceExecutionFeedback {
+  if (result.status === "client-action" || result.status === "tool-answer") {
+    return {
+      cue: false,
+      speech: result.speech,
+      visual: { state: "Circe", detail: result.speech, kind: "completed" },
+    };
+  }
   if (result.status === "needs-input") {
     return {
       cue: false,

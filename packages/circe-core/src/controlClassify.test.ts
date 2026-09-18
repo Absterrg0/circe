@@ -45,8 +45,8 @@ describe("offered tools", () => {
   });
 
   it("never offers a tool whose required text parameter has no candidates", () => {
-    // open-app and media need free-text arguments with no code-built
-    // candidate set, so they are not offered a Choice they cannot close.
+    // Without a client-supplied app catalog there is no closed Choice for the
+    // required app argument, so open-app is not offered.
     const names = offered().map((tool) => tool.name);
     expect(names).toContain("weather");
     expect(names).toContain("open-website");
@@ -55,6 +55,16 @@ describe("offered tools", () => {
     // A required app or residual argument has no candidate set, so it is not offered.
     expect(names).not.toContain("open-app");
     expect(names).not.toContain("computer");
+  });
+
+  it("offers a tool once the client supplies the client-owned candidate set", () => {
+    const names = offeredCirceTools({
+      nodeTools: [],
+      clientTools: ["open-app", "media"],
+      appCandidates: ["Spotify", "Safari"],
+      mediaCandidates: ["Spotify"],
+    }).map((tool) => tool.name);
+    expect(names).toEqual(["open-app", "media"]);
   });
 });
 
@@ -78,7 +88,14 @@ describe("the single outcome request", () => {
     expect(outcome?.type).toBe("choice");
     if (outcome?.type !== "choice") return;
     expect(Object.keys(outcome.criteria)).toEqual(
-      expect.arrayContaining(["work", "conversation", "refusal", "clarification", "weather", "open-website"]),
+      expect.arrayContaining([
+        "work",
+        "conversation",
+        "refusal",
+        "clarification",
+        "weather",
+        "open-website",
+      ]),
     );
     // Every tool argument is a closed Choice or Noul, never free text.
     expect(built.request.questions.tool_weather_location?.type).toBe("choice");

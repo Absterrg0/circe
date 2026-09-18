@@ -627,6 +627,55 @@ describe("Circe multi-command execution", () => {
   });
 });
 
+describe("Circe bounded tool results and client capabilities", () => {
+  it("decodes a node tool answer and a client action", () => {
+    expect(
+      decodeExecutionResult({
+        status: "tool-answer",
+        tool: "weather",
+        speech: "Weather for Paris.",
+      }),
+    ).toMatchObject({ status: "tool-answer", tool: "weather" });
+    expect(
+      decodeExecutionResult({
+        status: "client-action",
+        tool: "open-website",
+        args: { website: "YouTube" },
+        speech: "Opening YouTube.",
+        requestId: "request-1",
+      }),
+    ).toMatchObject({
+      status: "client-action",
+      tool: "open-website",
+      args: { website: "YouTube" },
+    });
+    expect(() =>
+      decodeExecutionResult({ status: "client-action", tool: "open-website" }),
+    ).toThrow();
+  });
+
+  it("carries advertised client tools and their candidate sets on execute", () => {
+    expect(
+      decodeExecuteInput({
+        projectId: "project-1",
+        utterance: "open Spotify",
+        clientTools: ["open-website", "open-app", "media"],
+        clientToolCandidates: { apps: ["Spotify"], mediaTargets: ["Spotify"] },
+      }),
+    ).toMatchObject({
+      clientTools: ["open-website", "open-app", "media"],
+      clientToolCandidates: { apps: ["Spotify"] },
+    });
+    expect(() =>
+      decodeExecuteInput({
+        projectId: "project-1",
+        utterance: "open Spotify",
+        clientTools: ["launch-missiles"],
+      }),
+    ).toThrow();
+  });
+});
+
 describe("Circe plan clarification frame", () => {
   const decodePendingInteraction = Schema.decodeUnknownSync(CircePendingInteraction);
   it("carries the remaining steps and the pending question", () => {
