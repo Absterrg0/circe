@@ -18,7 +18,11 @@ describe("checkpoint reactor ownership", () => {
       "CheckpointRollbackService.test.ts",
     ]) {
       const path = NodePath.join(orchestrationDir, "..", "orchestration-v2", filename);
-      expect(NodeFS.readFileSync(path, "utf8"), path).not.toMatch(/circe/iu);
+      // Stripping the package-qualified Effect tag keys first; every generic
+      // module carries `@absterrg0/circe/...` as its DI identifier, and only a
+      // Circe *concept* in the body is a boundary violation.
+      const source = NodeFS.readFileSync(path, "utf8").replace(/"@absterrg0\/circe\/[^"]*"/gu, "");
+      expect(source, path).not.toMatch(/circe/iu);
     }
   });
 });

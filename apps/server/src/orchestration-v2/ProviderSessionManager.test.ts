@@ -411,7 +411,7 @@ const fakeEnvironment = ServerEnvironment.of({
     label: "Test",
     platform: { os: "linux", arch: "x64" },
     serverVersion: "test",
-    capabilities: { repositoryIdentity: true, desktopUse: true },
+    capabilities: { repositoryIdentity: true },
   }),
   setLabel: () => Effect.die("unused"),
 });
