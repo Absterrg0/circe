@@ -1,4 +1,5 @@
 import {
+  CirceComputerUseResult,
   DesktopUseError,
   DesktopUseFrame,
   DesktopUseInputResult,
@@ -15,8 +16,10 @@ import * as Toolkit from "effect/unstable/ai/Toolkit";
 
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
+import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
 
 const dependencies = [McpInvocationContext.McpInvocationContext, DesktopUse.DesktopUse];
+const goalDependencies = [...dependencies, CirceComputerUse];
 
 export const DesktopUseToolError = Schema.Union([McpCapabilityUnavailableError, DesktopUseError]);
 export type DesktopUseToolError = typeof DesktopUseToolError.Type;
@@ -235,6 +238,34 @@ const DesktopFocusWindowTool = Tool.make("desktop_focus_window", {
   .annotate(Tool.Idempotent, false)
   .annotate(Tool.OpenWorld, false);
 
+export const DesktopRunGoalTool = Tool.make("desktop_run_goal", {
+  description:
+    "Achieve a short goal on this node's desktop with the grounded TypeSafe step loop, which selects among accessibility elements and performs each action. Prefer this over clicking step by step when the app exposes an accessibility tree. For canvas or GL apps where you are the only one who can see the target, use desktop_screenshot and desktop_click/desktop_type directly. The goal is an objective, never a prompt: the loop only selects grounded elements and finite actions.",
+  parameters: Schema.Struct({
+    goal: TrimmedNonEmptyString.annotate({
+      description: "What to accomplish, in plain language.",
+    }),
+    typeText: Schema.optional(
+      TrimmedNonEmptyString.annotate({
+        description: "Text the loop may type when a step needs to fill a field.",
+      }),
+    ),
+    maxSteps: Schema.optional(
+      Schema.Int.check(Schema.isGreaterThanOrEqualTo(1))
+        .check(Schema.isLessThanOrEqualTo(40))
+        .annotate({ description: "Maximum steps before stopping. Defaults to 24." }),
+    ),
+  }),
+  success: CirceComputerUseResult,
+  failure: DesktopUseToolError,
+  dependencies: goalDependencies,
+})
+  .annotate(Tool.Title, "Run a desktop goal")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, true)
+  .annotate(Tool.Idempotent, false)
+  .annotate(Tool.OpenWorld, false);
+
 export const DesktopUseToolkit = Toolkit.make(
   DesktopStatusTool,
   DesktopMoveTool,
@@ -245,4 +276,5 @@ export const DesktopUseToolkit = Toolkit.make(
   DesktopKeyTool,
   DesktopWindowsTool,
   DesktopFocusWindowTool,
+  DesktopRunGoalTool,
 );

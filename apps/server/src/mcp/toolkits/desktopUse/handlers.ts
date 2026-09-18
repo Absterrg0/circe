@@ -1,11 +1,13 @@
 import * as Effect from "effect/Effect";
 
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
+import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import { DesktopUseToolkit } from "./tools.ts";
 
 const make = Effect.gen(function* () {
   const desktopUse = yield* DesktopUse.DesktopUse;
+  const circeComputerUse = yield* CirceComputerUse;
   const requireCapability = () => McpInvocationContext.requireMcpCapability("desktop-use");
 
   return DesktopUseToolkit.of({
@@ -93,6 +95,20 @@ const make = Effect.gen(function* () {
       requireCapability().pipe(
         Effect.andThen(
           desktopUse.input({ action: { type: "window.focus", windowId: input.windowId } }),
+        ),
+      ),
+    // The provider delegates a grounded goal to the TypeSafe loop. The call is
+    // synchronous, so the provider owns the goal while it runs and no two
+    // planners touch the desktop at once.
+    desktop_run_goal: (input) =>
+      requireCapability().pipe(
+        Effect.andThen(
+          circeComputerUse.run({
+            goal: input.goal,
+            confirmed: true,
+            ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
+            ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+          }),
         ),
       ),
   });

@@ -14,6 +14,8 @@ import { McpSchema, McpServer } from "effect/unstable/ai";
 
 import * as ServerConfig from "../config.ts";
 import * as DesktopUse from "../circe/desktopUse/DesktopUse.ts";
+import * as DesktopCommands from "../circe/desktopUse/DesktopCommands.ts";
+import { CirceDecision } from "../circe/Services/CirceDecision.ts";
 import * as McpHttpServer from "./McpHttpServer.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 
@@ -55,6 +57,16 @@ const desktopUseService = Layer.succeed(DesktopUse.DesktopUse, {
 const TestLayer = McpHttpServer.DesktopUseToolkitRegistration.pipe(
   Layer.provideMerge(McpServer.McpServer.layer),
   Layer.provideMerge(desktopUseService),
+  Layer.provideMerge(
+    Layer.mock(CirceDecision)({
+      decide: () => Effect.succeed({ status: "decline", reason: "decision-disabled" }),
+    }),
+  ),
+  Layer.provideMerge(
+    Layer.mock(DesktopCommands)({
+      run: () => Effect.succeed({ stdout: JSON.stringify({ elements: [] }), stderr: "", code: 0 }),
+    }),
+  ),
   Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "t3-desktop-mcp-" })),
   Layer.provideMerge(NodeServices.layer),
 );
