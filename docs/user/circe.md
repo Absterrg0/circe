@@ -189,7 +189,9 @@ Circe resolves each voice or typed request before any work starts. One TypeSafe 
 
 Bounded answers that need no model stay on the host: weather, local time, task status, project lists, and opening a named site. Only an open-domain conversation reaches a coding provider, as a normal conversation thread.
 
-To use the classifier, set `CIRCE_TYPESAFE_API_KEY` on the node (only the server sees it). The model defaults to `jev-latest` and can be pinned with `CIRCE_TYPESAFE_MODEL`. Without a key, Circe declines and falls back to the ordinary provider proposal path; a timeout or a rate limit does the same, and a low-confidence classification asks you to restate rather than guessing.
+A node linked to Circe Mesh uses the managed classifier with no setup: the request is carried by the relay, which holds the deployment key, and the node never sees the key. The classifier payload is bounded workspace state (project names, a limited set of task titles and objectives, and the offered options) plus the request; it crosses the relay in memory, and neither the payload nor the answer is stored or logged. The managed tier is capped per device per day. Set `CIRCE_TYPESAFE_ENABLED=false` to turn the tier off entirely. An unlinked node can instead set `CIRCE_TYPESAFE_API_KEY` locally (only the server sees it), and `CIRCE_TYPESAFE_MODEL` pins `jev-latest` if needed.
+
+Without either path, Circe declines and falls back to the ordinary provider proposal path; a timeout or a rate limit does the same, and a low-confidence classification asks you to restate rather than guessing.
 
 ### Conversations
 

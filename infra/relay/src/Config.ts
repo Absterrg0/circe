@@ -34,6 +34,15 @@ export class RelayConfiguration extends Context.Service<
       readonly model: string;
       readonly voice: string;
     };
+    /**
+     * Deployment-owned TypeSafe decision tier. A null key disables the managed
+     * path. Request and response bodies cross this relay in memory only: they
+     * are never persisted, logged, or attached to traces.
+     */
+    readonly typesafe?: {
+      readonly apiKey: Redacted.Redacted<string> | null;
+      readonly baseUrl: string;
+    };
   }
 >()("@circe/relay/Config/RelayConfiguration") {}
 

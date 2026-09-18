@@ -859,6 +859,24 @@ describe("cloud live voice release", () => {
     await f.controller.close();
   });
 
+  it("notifies close once when the transport drops during cloud release", async () => {
+    const released = deferred<void>();
+    const release = vi.fn(() => released.promise);
+    const f = fixture({ start: async () => cloudSession, release });
+    await f.controller.start();
+    const closing = f.controller.close();
+    await Promise.resolve();
+    expect(release).toHaveBeenCalledExactlyOnceWith("cloud_1");
+    // The relay release is still in flight when the data channel drops.
+    // `onclose` finalizes the session and reports the close; the resumed close
+    // must not report the same close a second time.
+    f.peer.channel.onclose?.();
+    released.resolve();
+    await closing;
+    expect(f.closed).toEqual(["user"]);
+    expect(f.controller.getStatus()).toBe("idle");
+  });
+
   it("releases a late cloud answer after cancellation", async () => {
     const entered = deferred<void>();
     const answer = deferred<CirceLiveVoiceStartResult>();

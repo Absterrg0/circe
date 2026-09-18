@@ -198,7 +198,7 @@ describe("mobile themes", () => {
   });
 
   it("maps semantic palette roles onto every mobile color variable", () => {
-    const variables = createMobileThemeVariables(BUILT_IN_THEMES[0].colors, "light");
+    const variables = createMobileThemeVariables(BUILT_IN_THEMES[0]!.colors, "light");
 
     // The Circe design system tokens are additive to the shared palette. They
     // must all be declared, because Circe-owned chrome reads them directly.

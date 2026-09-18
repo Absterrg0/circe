@@ -233,3 +233,20 @@ export const relayLiveVoiceStarts = pgTable(
   },
   (table) => [index("idx_relay_live_voice_starts_user").on(table.userId, table.startedAt)],
 );
+
+/**
+ * One row per managed TypeSafe decision, for the per-environment daily quota.
+ * Only identity and time are stored; the request and response bodies are never
+ * written here or anywhere else on the decision path.
+ */
+export const relayTypeSafeDecisions = pgTable(
+  "relay_type_safe_decisions",
+  {
+    decisionId: varchar("decision_id", { length: 191 }).primaryKey(),
+    environmentId: varchar("environment_id", { length: 191 }).notNull(),
+    startedAt: varchar("started_at", { length: 64 }).notNull(),
+  },
+  (table) => [
+    index("idx_relay_type_safe_decisions_environment").on(table.environmentId, table.startedAt),
+  ],
+);

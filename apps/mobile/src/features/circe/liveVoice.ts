@@ -45,6 +45,10 @@ export {
 
 let controller: CirceLiveVoiceController | null = null;
 let starting = false;
+// Bumped by every start and stop. A start that awaits the platform audio
+// session re-checks this before it publishes a session, so a stop (or a newer
+// start) that lands during the await cannot be overtaken.
+let generation = 0;
 
 // The media stack is probed only when a conversation is actually requested.
 // Loading it initializes WebRTC's native audio stack, so a client that never
@@ -96,6 +100,11 @@ export async function startLiveConversation(input: StartLiveConversationInput): 
     return false;
   }
 
+  // Opening the audio session awaits the platform, and the user can end the
+  // conversation inside that window. `generation` lets this start detect that a
+  // stop superseded it, so a cancelled request cannot still open the microphone
+  // and bill a session.
+  const myGeneration = (generation += 1);
   starting = true;
   setLiveConversationState({ active: true, status: "requesting", caption: null });
   try {
@@ -103,9 +112,21 @@ export async function startLiveConversation(input: StartLiveConversationInput): 
     // capture shape first so the first utterance is not lost to the switch.
     await configureVoiceAudioForCapture();
   } catch {
-    starting = false;
-    resetLiveConversationState();
-    input.onNotice("Could not start live voice on this device.");
+    if (myGeneration === generation) {
+      starting = false;
+      resetLiveConversationState();
+      input.onNotice("Could not start live voice on this device.");
+    }
+    return false;
+  }
+
+  if (myGeneration !== generation) {
+    // A stop landed while the audio session was opening. If nothing newer is
+    // running, undo the capture configuration this start just applied; if a
+    // newer start already owns the session, leave its audio alone.
+    if (!starting && controller === null) {
+      await releaseVoiceAudio().catch(() => undefined);
+    }
     return false;
   }
 
@@ -177,10 +198,16 @@ export async function startLiveConversation(input: StartLiveConversationInput): 
   setLiveVoiceSink({ speak: session.speak, note: session.note });
   starting = false;
   await session.start();
-  return true;
+  // A stop can land inside `session.start()`. Report the session that is
+  // actually owned now, not the intent to start one.
+  return controller === session;
 }
 
 export async function stopLiveConversation(): Promise<void> {
+  // Supersede an in-flight start so it cannot publish a session after this
+  // stop. Clearing `starting` stops the surface waiting on it immediately.
+  generation += 1;
+  starting = false;
   const session = controller;
   controller = null;
   setLiveVoiceSink(null);
@@ -208,4 +235,5 @@ function liveVoiceFailureMessage(result: unknown): string {
 export function resetLiveConversationHostForTests(): void {
   controller = null;
   starting = false;
+  generation = 0;
 }

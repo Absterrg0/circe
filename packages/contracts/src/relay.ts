@@ -257,6 +257,30 @@ export const RelayLiveVoiceSessionCreateResponse = Schema.Struct({
 }).annotate({ description: "The minted cloud live-voice session and its SDP answer." });
 export type RelayLiveVoiceSessionCreateResponse = typeof RelayLiveVoiceSessionCreateResponse.Type;
 
+/**
+ * One System One decision request forwarded verbatim through the relay. The
+ * relay never interprets the state or the questions; it only carries them to
+ * TypeSafe with the deployment key and returns the upstream body. Request and
+ * response bodies are never persisted, logged, or attached to spans.
+ */
+export const RelayTypeSafeDecisionRequest = Schema.Struct({
+  state: Schema.Unknown,
+  model: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
+  questions: Schema.Record(TrimmedNonEmptyString, Schema.Unknown),
+}).annotate({
+  description: "A System One decision request, carried to TypeSafe without interpretation.",
+});
+export type RelayTypeSafeDecisionRequest = typeof RelayTypeSafeDecisionRequest.Type;
+
+export const RelayTypeSafeDecisionResponse = Schema.Struct({
+  model: TrimmedNonEmptyString,
+  answers: Schema.Unknown,
+  usage: Schema.optional(Schema.Unknown),
+}).annotate({
+  description: "The upstream System One response, returned without interpretation or storage.",
+});
+export type RelayTypeSafeDecisionResponse = typeof RelayTypeSafeDecisionResponse.Type;
+
 export const RelayEnvironmentLinkScope = Schema.Literals([
   "agent_activity_notifications",
   "managed_tunnels",
@@ -608,6 +632,84 @@ export class RelayLiveVoiceUpstreamError extends Schema.TaggedError<RelayLiveVoi
   }
 }
 
+export class RelayTypeSafeNotConfiguredError extends Schema.TaggedError<RelayTypeSafeNotConfiguredError>()(
+  "RelayTypeSafeNotConfiguredError",
+  {
+    code: Schema.Literal("typesafe_not_configured"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 503 },
+) {
+  override get message(): string {
+    return "The managed decision tier is not configured on this relay";
+  }
+}
+
+export class RelayTypeSafeUpstreamError extends Schema.TaggedError<RelayTypeSafeUpstreamError>()(
+  "RelayTypeSafeUpstreamError",
+  {
+    code: Schema.Literal("typesafe_upstream_failed"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 502 },
+) {
+  override get message(): string {
+    return "The managed decision tier could not reach TypeSafe";
+  }
+}
+
+export class RelayTypeSafeEnvironmentDisabledError extends Schema.TaggedError<RelayTypeSafeEnvironmentDisabledError>()(
+  "RelayTypeSafeEnvironmentDisabledError",
+  {
+    code: Schema.Literal("typesafe_environment_disabled"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 403 },
+) {
+  override get message(): string {
+    return "The managed decision tier is turned off for this device";
+  }
+}
+
+export class RelayTypeSafeUsageLimitError extends Schema.TaggedError<RelayTypeSafeUsageLimitError>()(
+  "RelayTypeSafeUsageLimitError",
+  {
+    code: Schema.Literal("typesafe_usage_limit"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 429 },
+) {
+  override get message(): string {
+    return "This device reached its managed decision limit for today";
+  }
+}
+
+export class RelayTypeSafeOverloadedError extends Schema.TaggedError<RelayTypeSafeOverloadedError>()(
+  "RelayTypeSafeOverloadedError",
+  {
+    code: Schema.Literal("typesafe_overloaded"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 429 },
+) {
+  override get message(): string {
+    return "The managed decision tier is busy; try again";
+  }
+}
+
+export class RelayTypeSafeInvalidRequestError extends Schema.TaggedError<RelayTypeSafeInvalidRequestError>()(
+  "RelayTypeSafeInvalidRequestError",
+  {
+    code: Schema.Literal("typesafe_invalid_request"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 400 },
+) {
+  override get message(): string {
+    return "The managed decision request was outside its bounds";
+  }
+}
+
 export class RelayLiveVoiceEnvironmentDisabledError extends Schema.TaggedError<RelayLiveVoiceEnvironmentDisabledError>()(
   "RelayLiveVoiceEnvironmentDisabledError",
   {
@@ -750,6 +852,17 @@ const RelayLiveVoiceSessionErrors = [
   RelayLiveVoiceSessionInUseError,
   RelayLiveVoiceUsageLimitError,
   RelayLiveVoiceUpstreamError,
+  RelayInternalError,
+] as const;
+
+const RelayTypeSafeDecisionErrors = [
+  RelayAuthInvalidError,
+  RelayTypeSafeNotConfiguredError,
+  RelayTypeSafeEnvironmentDisabledError,
+  RelayTypeSafeUsageLimitError,
+  RelayTypeSafeOverloadedError,
+  RelayTypeSafeInvalidRequestError,
+  RelayTypeSafeUpstreamError,
   RelayInternalError,
 ] as const;
 
@@ -1311,6 +1424,16 @@ const RelayServerGroup = HttpApiGroup.make("server")
         error: RelayLiveVoiceReleaseErrors,
       },
     ).annotate(OpenApi.Summary, "Release a cloud live-voice session"),
+    HttpApiEndpoint.post(
+      "runTypeSafeDecision",
+      "/v1/environments/:environmentId/typesafe/systemone",
+      {
+        params: Schema.Struct({ environmentId: EnvironmentId }),
+        payload: RelayTypeSafeDecisionRequest,
+        success: RelayTypeSafeDecisionResponse,
+        error: RelayTypeSafeDecisionErrors,
+      },
+    ).annotate(OpenApi.Summary, "Run one managed TypeSafe decision"),
   )
   .annotate(OpenApi.Description, "Environment-authenticated activity publication and cloud voice.")
   .middleware(RelayEnvironmentAuth);

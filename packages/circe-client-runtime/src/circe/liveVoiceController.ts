@@ -203,8 +203,9 @@ const defaultBrowser: CirceLiveVoiceBrowser = {
     // A generated zero-gain track keeps the session valid without opening the
     // microphone. If WebAudio is unavailable, an empty stream is still a
     // trackless but honest fallback.
+    let context: AudioContext | null = null;
     try {
-      const context = new AudioContext();
+      context = new AudioContext();
       const destination = context.createMediaStreamDestination();
       const gain = context.createGain();
       gain.gain.value = 0;
@@ -213,8 +214,21 @@ const defaultBrowser: CirceLiveVoiceBrowser = {
       source.connect(gain);
       gain.connect(destination);
       source.start();
+      // The controller stops the track when the session ends, so close the
+      // context with it. A running AudioContext is a limited, capped resource;
+      // one per announcement session would exhaust the cap and silence later
+      // reports.
+      const owningContext = context;
+      for (const track of destination.stream.getAudioTracks()) {
+        const stop = track.stop.bind(track);
+        track.stop = () => {
+          stop();
+          void owningContext.close().catch(() => undefined);
+        };
+      }
       return destination.stream as unknown as CirceLiveVoiceMediaStream;
     } catch {
+      if (context !== null) void context.close().catch(() => undefined);
       return new MediaStream() as unknown as CirceLiveVoiceMediaStream;
     }
   },
@@ -673,6 +687,13 @@ export function createCirceLiveVoiceController(
     if (cloudSessionId !== null) {
       releaseCloudSession();
       await releasePending;
+      // The data channel can close while the release RPC is in flight, and
+      // `data.onclose` then finalizes the session and reports the close. Stop
+      // here so the same close is not reported twice.
+      if (readStatus() === "idle" || readStatus() === "failed") {
+        closePromise = null;
+        return;
+      }
     } else if (gracefulChannel !== null && gracefulChannel.readyState === "open") {
       // Local-key sessions always close over the data channel, including when
       // creation is still in flight: a late local answer is suppressed above,

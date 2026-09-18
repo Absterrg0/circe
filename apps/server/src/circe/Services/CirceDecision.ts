@@ -5,14 +5,16 @@ import type * as Effect from "effect/Effect";
 /**
  * Runtime config for the System One decision tier.
  *
- * Disabled by default: `enabled` false means no outbound request and a
- * decline, so the caller falls back to the ordinary provider path. The key is
- * server-side only; it is never read by a client bundle. The model id is
- * pinned by default because aliases move, and the resolved `response.model`
- * is recorded per turn.
+ * `enabled` is tri-state. Unset means the node is managed: it uses a local key
+ * when one is configured, otherwise the linked relay's deployment key, and
+ * declines when neither exists. `enabled: false` turns the tier off entirely,
+ * even on a linked node. `enabled: true` requires a path and otherwise declines
+ * as unconfigured. The key is server-side only; it is never read by a client
+ * bundle. The model id is pinned by default because aliases move, and the
+ * resolved `response.model` is recorded per turn.
  */
 export interface CirceDecisionConfig {
-  readonly enabled: boolean;
+  readonly enabled: boolean | undefined;
   readonly apiKey: string;
   readonly model: string;
   readonly timeoutMs: number;
@@ -20,10 +22,10 @@ export interface CirceDecisionConfig {
 }
 
 export const CIRCE_DECISION_DEFAULT: CirceDecisionConfig = {
-  enabled: false,
+  enabled: undefined,
   apiKey: "",
   model: "jev-latest",
-  timeoutMs: 1_500,
+  timeoutMs: 5_000,
   endpoint: "https://api.typesafe.ai",
 };
 

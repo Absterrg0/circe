@@ -1,14 +1,54 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, describe, it } from "@effect/vitest";
 import { readDecisionResponse, type DecisionRequest } from "@circe/core/decision";
+import { EnvironmentId } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
 import { HttpClient, HttpClientResponse } from "effect/unstable/http";
 
+import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
+import { RELAY_ENVIRONMENT_CREDENTIAL_SECRET, RELAY_URL_SECRET } from "../cloud/config.ts";
 import * as ServerConfig from "../config.ts";
+import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import { CirceDecision } from "./Services/CirceDecision.ts";
 import { CirceDecisionDisabledLive, CirceDecisionLive } from "./Layers/CirceDecision.ts";
+
+/**
+ * Fake node services for the direct-key paths. A relay route is supplied only
+ * when a test exercises the managed path.
+ */
+const nodeSupportLayer = (relay?: { readonly url: string; readonly credential: string }) =>
+  Layer.mergeAll(
+    Layer.succeed(
+      ServerSecretStore.ServerSecretStore,
+      ServerSecretStore.ServerSecretStore.of({
+        get: (name) => {
+          if (relay === undefined) return Effect.succeed(Option.none());
+          if (name === RELAY_URL_SECRET) {
+            return Effect.succeed(Option.some(new TextEncoder().encode(relay.url)));
+          }
+          if (name === RELAY_ENVIRONMENT_CREDENTIAL_SECRET) {
+            return Effect.succeed(Option.some(new TextEncoder().encode(relay.credential)));
+          }
+          return Effect.succeed(Option.none());
+        },
+        set: () => Effect.void,
+        create: () => Effect.void,
+        getOrCreateRandom: () => Effect.die("unused"),
+        remove: () => Effect.void,
+      }),
+    ),
+    Layer.succeed(
+      ServerEnvironment.ServerEnvironment,
+      ServerEnvironment.ServerEnvironment.of({
+        getEnvironmentId: Effect.succeed(EnvironmentId.make("env-test")),
+        getDescriptor: Effect.die("unused"),
+        setLabel: () => Effect.die("unused"),
+      }),
+    ),
+  );
 
 const request: DecisionRequest = {
   state: { utterance: "stop authentication" },
@@ -88,12 +128,17 @@ const decide = (
   cfg: ServerConfig.CirceDecisionRuntimeConfig,
   http: Layer.Layer<HttpClient.HttpClient>,
   decisionRequest: DecisionRequest = request,
+  relay?: { readonly url: string; readonly credential: string },
 ) =>
   Effect.gen(function* () {
     const service = yield* CirceDecision;
     return yield* service.decide(decisionRequest);
   }).pipe(
-    Effect.provide(CirceDecisionLive.pipe(Layer.provide(Layer.mergeAll(configLayer(cfg), http)))),
+    Effect.provide(
+      CirceDecisionLive.pipe(
+        Layer.provide(Layer.mergeAll(configLayer(cfg), http, nodeSupportLayer(relay))),
+      ),
+    ),
   );
 
 describe("CirceDecision service", () => {
@@ -200,6 +245,105 @@ describe("CirceDecision service", () => {
         { ...request, state: "a".repeat(20_000) },
       );
       assert.deepStrictEqual(outcome, { status: "decline", reason: "source-too-large" });
+    }),
+  );
+
+  it.live("routes through the linked relay on the managed default", () =>
+    Effect.gen(function* () {
+      let seenUrl: string | undefined;
+      let seenAuthorization: string | undefined;
+      let seenBody: string | undefined;
+      const outcome = yield* decide(
+        { ...enabledConfig, enabled: undefined, apiKey: "" },
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((httpRequest) =>
+            Effect.sync(() => {
+              seenUrl = httpRequest.url;
+              seenAuthorization = httpRequest.headers.authorization;
+              seenBody =
+                httpRequest.body._tag === "Uint8Array"
+                  ? new TextDecoder().decode(httpRequest.body.body)
+                  : undefined;
+              return HttpClientResponse.fromWeb(httpRequest, jsonResponse(responseBody));
+            }),
+          ),
+        ),
+        request,
+        { url: "https://relay.example.test", credential: "environment-credential" },
+      );
+      assert.strictEqual(outcome.status, "answered");
+      assert.strictEqual(
+        seenUrl,
+        "https://relay.example.test/v1/environments/env-test/typesafe/systemone",
+      );
+      assert.strictEqual(seenAuthorization, "Bearer environment-credential");
+      // The same bounded request crosses the relay as the local path.
+      assert.ok(seenBody?.includes("stop authentication"));
+      assert.ok(seenBody?.includes("jev-latest"));
+    }),
+  );
+
+  it.effect("keeps an explicit disabled tier off even on a linked node", () =>
+    Effect.gen(function* () {
+      const outcome = yield* decide(
+        { ...enabledConfig, enabled: false, apiKey: "" },
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make(() => Effect.die("must not send when explicitly disabled")),
+        ),
+        request,
+        { url: "https://relay.example.test", credential: "environment-credential" },
+      );
+      assert.deepStrictEqual(outcome, { status: "decline", reason: "decision-disabled" });
+    }),
+  );
+
+  it.live("prefers the local key over the relay when both exist", () =>
+    Effect.gen(function* () {
+      let seenUrl: string | undefined;
+      const outcome = yield* decide(
+        { ...enabledConfig, enabled: true, apiKey: "local-key" },
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make((httpRequest) =>
+            Effect.sync(() => {
+              seenUrl = httpRequest.url;
+              return HttpClientResponse.fromWeb(httpRequest, jsonResponse(responseBody));
+            }),
+          ),
+        ),
+        request,
+        { url: "https://relay.example.test", credential: "environment-credential" },
+      );
+      assert.strictEqual(outcome.status, "answered");
+      assert.strictEqual(seenUrl, "https://api.typesafe.test/v1/systemone");
+    }),
+  );
+
+  it.effect("declines unconfigured when neither a local key nor a relay link exists", () =>
+    Effect.gen(function* () {
+      const outcome = yield* decide(
+        { ...enabledConfig, enabled: true, apiKey: "" },
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make(() => Effect.die("must not send an unconfigured request")),
+        ),
+      );
+      assert.deepStrictEqual(outcome, { status: "decline", reason: "decision-unconfigured" });
+    }),
+  );
+
+  it.effect("declines disabled on the default when no local key or relay link exists", () =>
+    Effect.gen(function* () {
+      const outcome = yield* decide(
+        { ...enabledConfig, enabled: undefined, apiKey: "" },
+        Layer.succeed(
+          HttpClient.HttpClient,
+          HttpClient.make(() => Effect.die("must not send an unconfigured request")),
+        ),
+      );
+      assert.deepStrictEqual(outcome, { status: "decline", reason: "decision-disabled" });
     }),
   );
 });
