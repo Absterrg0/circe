@@ -62,15 +62,24 @@ export const make = Effect.gen(function* () {
   const memoryDir = (root: string) => path.join(root, CIRCE_DIR, MEMORY_DIR);
   const retiredDir = (root: string) => path.join(memoryDir(root), RETIRED_DIR);
 
-  const readFolder = (dir: string, skipIndex: boolean) =>
+  // A missing memory directory is normal (memory is created lazily); any other
+  // filesystem failure must surface rather than be reported as "no memory".
+  const isMissing = (error: { readonly reason: { readonly _tag: string } }): boolean =>
+    error.reason._tag === "NotFound";
+
+  const readFolder = (projectId: string, dir: string, skipIndex: boolean) =>
     Effect.gen(function* () {
-      const names = yield* fs.readDirectory(dir).pipe(Effect.orElseSucceed(() => [] as string[]));
+      const names = yield* fs.readDirectory(dir).pipe(
+        Effect.catchIf(isMissing, () => Effect.succeed<ReadonlyArray<string>>([])),
+        Effect.mapError((cause) => storeError(projectId, "read the memory directory", cause)),
+      );
       const entries: Array<CirceMemoryEntry> = [];
       for (const name of names) {
         if (!name.endsWith(".md") || (skipIndex && name === INDEX_FILE)) continue;
-        const text = yield* fs
-          .readFileString(path.join(dir, name))
-          .pipe(Effect.orElseSucceed(() => ""));
+        const text = yield* fs.readFileString(path.join(dir, name)).pipe(
+          Effect.catchIf(isMissing, () => Effect.succeed("")),
+          Effect.mapError((cause) => storeError(projectId, "read a memory entry", cause)),
+        );
         const entry = parseMemoryFile(text);
         if (entry !== null) entries.push(entry);
       }
@@ -78,7 +87,7 @@ export const make = Effect.gen(function* () {
     });
 
   const readEntries = (projectId: string, root: string) =>
-    readFolder(memoryDir(root), true).pipe(
+    readFolder(projectId, memoryDir(root), true).pipe(
       Effect.map((entries) => entries.filter((entry) => entry.projectId === projectId)),
     );
 
@@ -130,7 +139,7 @@ export const make = Effect.gen(function* () {
       const active = yield* readEntries(projectId, root);
       const found = active.find((entry) => entry.id === entryId);
       if (found !== undefined) return found;
-      const retired = yield* readFolder(retiredDir(root), false);
+      const retired = yield* readFolder(projectId, retiredDir(root), false);
       return retired.find((entry) => entry.id === entryId && entry.projectId === projectId) ?? null;
     });
 
@@ -255,9 +264,12 @@ export const make = Effect.gen(function* () {
         .pipe(
           Effect.mapError((cause) => storeError(input.projectId, "retire the memory entry", cause)),
         );
-      yield* fs
-        .remove(path.join(memoryDir(root), `${retired.id}.md`))
-        .pipe(Effect.orElseSucceed(() => undefined));
+      yield* fs.remove(path.join(memoryDir(root), `${retired.id}.md`)).pipe(
+        Effect.catchIf(isMissing, () => Effect.void),
+        Effect.mapError((cause) =>
+          storeError(input.projectId, "remove the retired memory entry", cause),
+        ),
+      );
       yield* writeIndex(
         input.projectId,
         root,

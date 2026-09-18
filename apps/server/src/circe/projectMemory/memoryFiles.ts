@@ -31,22 +31,44 @@ export function renderMemoryFile(entry: CirceMemoryEntry): string {
 export function parseMemoryFile(text: string): CirceMemoryEntry | null {
   const prefix = `<!-- ${MEMORY_MARKER} `;
   if (!text.startsWith(prefix)) return null;
-  const end = text.indexOf(" -->", prefix.length);
-  if (end === -1) return null;
+  // The marker is one line; the terminator is always the last " -->" on it, so
+  // a value containing the delimiter cannot truncate the JSON.
+  const newline = text.indexOf("\n");
+  const marker = newline === -1 ? text : text.slice(0, newline);
+  const end = marker.lastIndexOf(" -->");
+  if (end < prefix.length) return null;
   try {
-    return decodeEntry(text.slice(prefix.length, end));
+    return decodeEntry(marker.slice(prefix.length, end));
   } catch {
     return null;
   }
 }
 
-/** Replace a project's managed Circe block, leaving user content untouched. */
+const occurrences = (haystack: string, needle: string): number[] => {
+  const indices: number[] = [];
+  let from = haystack.indexOf(needle);
+  while (from !== -1) {
+    indices.push(from);
+    from = haystack.indexOf(needle, from + needle.length);
+  }
+  return indices;
+};
+
+/**
+ * Replace a project's managed Circe block, leaving user content untouched. A
+ * block is only treated as managed when it has exactly one well-ordered pair of
+ * markers; anything else (an orphan marker, or a marker quoted inside user
+ * text) is left alone and the block is appended, so user content is never
+ * deleted by a malformed or injected marker.
+ */
 export function upsertAgentsBlock(existing: string | null, block: string): string {
   const managed = `${AGENTS_BEGIN}\n${block}\n${AGENTS_END}`;
   if (existing === null || existing.trim().length === 0) return `${managed}\n`;
-  const start = existing.indexOf(AGENTS_BEGIN);
-  const end = existing.indexOf(AGENTS_END);
-  if (start !== -1 && end > start) {
+  const starts = occurrences(existing, AGENTS_BEGIN);
+  const ends = occurrences(existing, AGENTS_END);
+  const start = starts[0];
+  const end = ends[0];
+  if (starts.length === 1 && ends.length === 1 && start !== undefined && end !== undefined) {
     return `${existing.slice(0, start)}${managed}${existing.slice(end + AGENTS_END.length)}`;
   }
   const separator = existing.endsWith("\n") ? "\n" : "\n\n";

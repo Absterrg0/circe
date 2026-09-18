@@ -7,27 +7,20 @@ import {
   type CirceMissionCancellationShape,
 } from "../Services/CirceMissionCancellation.ts";
 
-/**
- * Bounds the registry so a client that never settles a mission cannot grow it
- * without limit. The cap is far above the handful of missions a node runs at
- * once, so eviction only ever drops an abandoned entry.
- */
-const REGISTRY_LIMIT = 128;
-
 interface MissionState {
   readonly active: ReadonlySet<string>;
   readonly stop: ReadonlySet<string>;
 }
 
-const boundedAdd = (current: ReadonlySet<string>, requestId: string): ReadonlySet<string> => {
+/**
+ * Registering never evicts a live entry: a mission's own `ensuring` clears its
+ * id when it settles, so a fixed cap would only ever let a busy node drop the
+ * stop flag of a mission that is still running.
+ */
+const add = (current: ReadonlySet<string>, requestId: string): ReadonlySet<string> => {
   if (current.has(requestId)) return current;
   const next = new Set(current);
   next.add(requestId);
-  while (next.size > REGISTRY_LIMIT) {
-    const oldest = next.values().next().value;
-    if (oldest === undefined) break;
-    next.delete(oldest);
-  }
   return next;
 };
 
@@ -43,7 +36,7 @@ export const make: Effect.Effect<CirceMissionCancellationShape> = Effect.gen(fun
 
   const register: CirceMissionCancellationShape["register"] = (requestId) =>
     Ref.update(ref, (state) => ({
-      active: boundedAdd(state.active, requestId),
+      active: add(state.active, requestId),
       stop: state.stop,
     }));
 
@@ -53,7 +46,7 @@ export const make: Effect.Effect<CirceMissionCancellationShape> = Effect.gen(fun
   const requestStop: CirceMissionCancellationShape["requestStop"] = (requestId) =>
     Ref.modify(ref, (state) => {
       if (!state.active.has(requestId)) return [false, state];
-      return [true, { active: state.active, stop: boundedAdd(state.stop, requestId) }];
+      return [true, { active: state.active, stop: add(state.stop, requestId) }];
     });
 
   const clear: CirceMissionCancellationShape["clear"] = (requestId) =>

@@ -70,4 +70,21 @@ describe("mission cancellation registry", () => {
     );
     expect(result).toEqual({ a: true, b: false });
   });
+
+  it("never drops a live mission's stop flag as more missions register", () => {
+    const result = Effect.runSync(
+      withRegistry((registry) =>
+        Effect.gen(function* () {
+          yield* registry.register("oldest");
+          for (let index = 0; index < 200; index += 1) {
+            yield* registry.register(`mission-${index}`);
+          }
+          const cancelled = yield* registry.requestStop("oldest");
+          const flagged = yield* registry.isCancelled("oldest");
+          return { cancelled, flagged };
+        }),
+      ),
+    );
+    expect(result).toEqual({ cancelled: true, flagged: true });
+  });
 });
