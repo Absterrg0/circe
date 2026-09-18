@@ -14,6 +14,7 @@ import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { PreviewAutomationBroker } from "../../mcp/PreviewAutomationBroker.ts";
 import { circeAutomationScope } from "../computerUse/CirceAutomationScope.ts";
 import { makePreviewAutomationInvoker } from "../computerUse/PreviewAutomationInvoker.ts";
+import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
 
@@ -51,8 +52,6 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceBrowserUseR
         message: `I took ${result.steps} steps but couldn't finish ${goal}.`,
         steps: result.steps,
       };
-    case "clarification":
-      return { status: "needs-input", message: result.prompt };
     case "unverified":
       return {
         status: "refused",
@@ -90,8 +89,14 @@ export const make = Effect.gen(function* () {
     const select = (request: DecisionRequest) =>
       decision
         .decide(request)
-        .pipe(Effect.map((outcome) => (outcome.status === "answered" ? outcome.answers : {})));
-    return yield* runBrowserGoal<PreviewAutomationError>({
+        .pipe(
+          Effect.flatMap((outcome) =>
+            outcome.status === "answered"
+              ? Effect.succeed(outcome.answers)
+              : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
+          ),
+        );
+    return yield* runBrowserGoal<PreviewAutomationError | SurfaceDecisionUnavailableError>({
       model: DECISION_MODEL,
       goal: input.goal,
       ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
@@ -100,6 +105,9 @@ export const make = Effect.gen(function* () {
       select,
     }).pipe(
       Effect.map((result) => mapResult(result, input.goal)),
+      Effect.catchTag("SurfaceDecisionUnavailableError", (error) =>
+        Effect.succeed({ status: "unavailable" as const, message: error.message }),
+      ),
       Effect.catchTag("PreviewAutomationNoAvailableHostError", () =>
         Effect.succeed({
           status: "unavailable" as const,

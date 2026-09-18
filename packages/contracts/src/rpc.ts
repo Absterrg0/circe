@@ -1,5 +1,6 @@
 import { CirceQuickLookupInput, CirceQuickLookupResult } from "./circeQuickActions.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
+import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
 import { OrchestrationDispatchCommandError } from "./orchestration.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -378,6 +379,7 @@ export const WS_METHODS = {
   circeUnregisterPushToken: "circe.unregisterPushToken",
   circeQuickLookup: "circe.quickLookup",
   circeBrowserUse: "circe.browserUse",
+  circeComputerUse: "circe.computerUse",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
@@ -653,6 +655,12 @@ const WsCirceQuickLookupRpc = Rpc.make(WS_METHODS.circeQuickLookup, {
 const WsCirceBrowserUseRpc = Rpc.make(WS_METHODS.circeBrowserUse, {
   payload: CirceBrowserUseInput,
   success: CirceBrowserUseResult,
+  error: EnvironmentAuthorizationError,
+});
+
+const WsCirceComputerUseRpc = Rpc.make(WS_METHODS.circeComputerUse, {
+  payload: CirceComputerUseInput,
+  success: CirceComputerUseResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1816,6 +1824,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
+  WsCirceComputerUseRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -1832,6 +1841,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
+  WsCirceComputerUseRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2020,6 +2030,7 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
+  WsCirceComputerUseRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2039,6 +2050,7 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeUnregisterPushToken,
   WS_METHODS.circeQuickLookup,
   WS_METHODS.circeBrowserUse,
+  WS_METHODS.circeComputerUse,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,

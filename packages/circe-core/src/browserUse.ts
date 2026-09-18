@@ -7,7 +7,12 @@ import type {
   PreviewAutomationTypeInput,
 } from "@circe/contracts";
 
-import type { ComputerAction, ComputerElement, ComputerSurface } from "./computerUse.ts";
+import type {
+  ComputerAction,
+  ComputerElement,
+  ComputerPressKey,
+  ComputerSurface,
+} from "./computerUse.ts";
 
 /**
  * Browser surface adapter. The broker already returns grounded
@@ -19,6 +24,25 @@ import type { ComputerAction, ComputerElement, ComputerSurface } from "./compute
  */
 
 const SCROLL_DELTA_PX = 600;
+
+/**
+ * The browser host resolves keys by exact name from its `NAMED_KEYS` table
+ * ("Enter", "ArrowUp", "PageUp"). The step layer uses lowercase ids, so the
+ * boundary must translate; passing "enter" through would emit a raw key event
+ * that never presses Enter.
+ */
+const BROWSER_PRESS_KEY: Readonly<Record<ComputerPressKey, string>> = {
+  enter: "Enter",
+  tab: "Tab",
+  escape: "Escape",
+  arrowup: "ArrowUp",
+  arrowdown: "ArrowDown",
+  arrowleft: "ArrowLeft",
+  arrowright: "ArrowRight",
+  backspace: "Backspace",
+  pageup: "PageUp",
+  pagedown: "PageDown",
+};
 
 export function computerElementFromPreview(element: PreviewAutomationElement): ComputerElement {
   return {
@@ -86,7 +110,7 @@ export function browserOperationForAction(
     case "press":
       // The browser press operation targets only the focused element, so a
       // selected element is a no-op here; focus it with a click first.
-      return { operation: "press", input: { key: action.key } };
+      return { operation: "press", input: { key: BROWSER_PRESS_KEY[action.key] } };
     case "scroll": {
       const input: PreviewAutomationScrollInput =
         action.direction === "up" || action.direction === "down"

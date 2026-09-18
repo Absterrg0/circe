@@ -75,7 +75,6 @@ export type ComputerStepRefusal = "confidence-too-low" | "unknown-element" | "mi
 export type ComputerStep =
   | { readonly kind: "action"; readonly action: ComputerAction }
   | { readonly kind: "done"; readonly summary: string }
-  | { readonly kind: "clarification"; readonly prompt: string }
   | { readonly kind: "refused"; readonly reason: ComputerStepRefusal };
 
 export const COMPUTER_STEP_CONFIDENCE_FLOOR = 0.55;
@@ -333,7 +332,6 @@ export type ComputerUseRunResult =
    */
   | { readonly status: "unverified"; readonly steps: number; readonly summary: string }
   | { readonly status: "budget-exhausted"; readonly steps: number }
-  | { readonly status: "clarification"; readonly prompt: string; readonly steps: number }
   | { readonly status: "refused"; readonly reason: ComputerStepRefusal; readonly steps: number };
 
 /**
@@ -346,16 +344,23 @@ export const runComputerUse = <E = never>(
 ): Effect.Effect<ComputerUseRunResult, E> =>
   Effect.gen(function* () {
     const maxSteps = input.maxSteps ?? COMPUTER_USE_DEFAULT_MAX_STEPS;
+    const maxElements = input.maxElements ?? COMPUTER_STEP_DEFAULT_MAX_ELEMENTS;
     const history: Array<string> = [];
     let applied = 0;
     for (let index = 0; index < maxSteps; index += 1) {
-      const surface = yield* input.runtime.capture();
+      // Bound the surface once and share it with composition, so an answer can
+      // only name an element the request actually offered.
+      const captured = yield* input.runtime.capture();
+      const surface: ComputerSurface = {
+        ...captured,
+        elements: captured.elements.slice(0, maxElements),
+      };
       const request = buildComputerStepRequest({
         model: input.model,
         goal: input.goal,
         surface,
+        maxElements,
         ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
-        ...(input.maxElements === undefined ? {} : { maxElements: input.maxElements }),
         history,
       });
       const answers = yield* input.runtime.select(request);
@@ -373,9 +378,6 @@ export const runComputerUse = <E = never>(
         return applied === 0
           ? ({ status: "unverified", steps: index + 1, summary: step.summary } as const)
           : ({ status: "done", steps: index + 1, summary: step.summary } as const);
-      }
-      if (step.kind === "clarification") {
-        return { status: "clarification", prompt: step.prompt, steps: index + 1 } as const;
       }
       if (step.kind === "refused") {
         return { status: "refused", reason: step.reason, steps: index + 1 } as const;

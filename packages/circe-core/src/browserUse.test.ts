@@ -81,6 +81,17 @@ describe("browser operation mapping", () => {
     });
   });
 
+  it("translates press keys to the host's canonical names", () => {
+    expect(browserOperationForAction({ kind: "press", key: "enter" })).toEqual({
+      operation: "press",
+      input: { key: "Enter" },
+    });
+    expect(browserOperationForAction({ kind: "press", key: "arrowup" })).toEqual({
+      operation: "press",
+      input: { key: "ArrowUp" },
+    });
+  });
+
   it("returns no operation for wait", () => {
     expect(browserOperationForAction({ kind: "wait" })).toBeNull();
   });

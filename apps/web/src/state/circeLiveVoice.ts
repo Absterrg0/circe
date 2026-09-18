@@ -5,6 +5,7 @@ import {
   releaseCirceVoiceLiveSession,
   renewCirceVoiceLiveSession,
 } from "@circe/client-runtime/operations/circeLiveVoice";
+import { useCirceBrowser, useCirceComputer } from "@circe/client-runtime/operations/circe";
 import type {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
@@ -18,6 +19,14 @@ export const circeLiveVoiceEnvironment = {
     label: "environment-data:commands:circe:quick-lookup",
     execute: (input: import("@circe/contracts").CirceQuickLookupInput) =>
       lookupCirceQuickAnswer(input),
+  }),
+  browserUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "environment-data:commands:circe:browser-use",
+    execute: (input: import("@circe/contracts").CirceBrowserUseInput) => useCirceBrowser(input),
+  }),
+  computerUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "environment-data:commands:circe:computer-use",
+    execute: (input: import("@circe/contracts").CirceComputerUseInput) => useCirceComputer(input),
   }),
   release: createEnvironmentCommand(connectionAtomRuntime, {
     label: "environment-data:commands:circe:voice-live-release",

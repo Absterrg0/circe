@@ -44,6 +44,7 @@ import { deriveCirceTaskState } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
+import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
@@ -288,6 +289,7 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeUnregisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -304,6 +306,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const executionNodeId = yield* serverEnvironment.getEnvironmentId;
     const circe = yield* CirceController.CirceController;
     const browserUse = yield* CirceBrowserUse;
+    const computerUse = yield* CirceComputerUse;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
     const projectLexicon = yield* CirceProjectLexicon;
@@ -419,10 +422,31 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 ),
                 { "rpc.aggregate": "circe.quick" },
               ),
+            // Surface missions need a screen. A Headless node owns execution
+            // but no desktop or voice, so it refuses rather than running a
+            // mission against a machine nobody is watching.
             [WS_METHODS.circeBrowserUse]: (input) =>
-              context.observeRpcEffect(WS_METHODS.circeBrowserUse, browserUse.run(input), {
-                "rpc.aggregate": "circe.browser",
-              }),
+              context.observeRpcEffect(
+                WS_METHODS.circeBrowserUse,
+                (config.circeNodePreset ?? "full") === "headless"
+                  ? Effect.succeed({
+                      status: "unavailable" as const,
+                      message: "This node has no desktop surface.",
+                    })
+                  : browserUse.run(input),
+                { "rpc.aggregate": "circe.browser" },
+              ),
+            [WS_METHODS.circeComputerUse]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeComputerUse,
+                (config.circeNodePreset ?? "full") === "headless"
+                  ? Effect.succeed({
+                      status: "unavailable" as const,
+                      message: "This node has no desktop surface.",
+                    })
+                  : computerUse.run(input),
+                { "rpc.aggregate": "circe.computer" },
+              ),
             // Release is intentionally not gated on presetOffersVoice like start
             // is: it is a cleanup path, and a session minted before a preset
             // change (or by a stale client) must still be closable. Release is

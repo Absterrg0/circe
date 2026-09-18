@@ -18,6 +18,7 @@ import {
 import { composeDecision } from "./decisionCompose.ts";
 import type { CirceSemanticProposal } from "./semanticEvidence.ts";
 import { NONE_OPTION } from "./toolRegistry.ts";
+import { circeWebsiteUrl } from "./website.ts";
 
 /**
  * The single classifier request and its deterministic composition.
@@ -97,8 +98,6 @@ function parameterIsOfferable(
       return candidates.appCandidates.length > 0;
     case "media-target":
       return candidates.mediaCandidates.length > 0;
-    case "residual":
-      return false;
   }
 }
 
@@ -116,8 +115,6 @@ function candidatesFor(
       return input.appCandidates ?? [];
     case "media-target":
       return input.mediaCandidates ?? [];
-    case "residual":
-      return [];
   }
 }
 
@@ -442,6 +439,12 @@ export interface CirceProposalOutcomeInput {
   /** Work resolution; absent means the proposal is refused. */
   readonly work?: (proposal: CirceSemanticProposal) => CirceWorkResolution;
   readonly conversationAnswer?: string;
+  /** Verbatim source the proposal must be grounded in for a bounded action. */
+  readonly source?: string;
+  /** Code-built place candidates; a lookup may only use one of them. */
+  readonly locationCandidates?: ReadonlyArray<string>;
+  /** Code-built website candidates; a launch may only use one of them. */
+  readonly websiteCandidates?: ReadonlyArray<string>;
 }
 
 /**
@@ -455,6 +458,14 @@ export function circeOutcomeFromProposal(input: CirceProposalOutcomeInput): Circ
   const { proposal } = input;
   const lookup = proposal.lookup ?? undefined;
   if (proposal.action === "lookup" && lookup !== undefined) {
+    // The proposal is client-supplied here, so the place must be one the host
+    // itself derived from the source, never a value the proposal invented.
+    const candidates = input.locationCandidates ?? [];
+    if (
+      !candidates.some((candidate) => candidate.toLowerCase() === lookup.location.toLowerCase())
+    ) {
+      return { kind: "refused", reason: "unsupported-command" };
+    }
     const tool = input.tools.find(
       (candidate) => candidate.name === (lookup.kind === "time" ? "time" : "weather"),
     );
@@ -469,7 +480,15 @@ export function circeOutcomeFromProposal(input: CirceProposalOutcomeInput): Circ
   }
   const website = proposal.website ?? undefined;
   if (proposal.action === "open-website" && website !== undefined) {
-    const tool = input.tools.find((candidate) => candidate.name === "open-website");
+    // A supplied proposal must not smuggle an unheard address: it is valid
+    // only when it is itself grounded in the source or is a code-built
+    // candidate. The client re-checks with the same authority before launch.
+    const grounded = circeWebsiteUrl(website, input.source ?? "") !== null;
+    const candidate = (input.websiteCandidates ?? []).some(
+      (value) => value.toLowerCase() === website.toLowerCase(),
+    );
+    if (!grounded && !candidate) return { kind: "refused", reason: "unsupported-command" };
+    const tool = input.tools.find((entry) => entry.name === "open-website");
     if (tool === undefined) return { kind: "refused", reason: "unsupported-command" };
     const args: CirceToolArguments = { website };
     return {

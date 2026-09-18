@@ -27,9 +27,7 @@ export type CirceCandidateSource =
   | { readonly kind: "location" }
   | { readonly kind: "website" }
   | { readonly kind: "app" }
-  | { readonly kind: "media-target" }
-  /** The residual instruction after the tool trigger is removed (computer use). */
-  | { readonly kind: "residual" };
+  | { readonly kind: "media-target" };
 
 export type CirceToolParameter =
   | {
@@ -105,12 +103,6 @@ const p = {
     values: ["copy", "paste"],
     required: true,
   }),
-  residual: (): CirceToolParameter => ({
-    kind: "text",
-    name: "goal",
-    required: true,
-    candidates: { kind: "residual" },
-  }),
 } as const;
 
 /**
@@ -182,15 +174,6 @@ export const CIRCE_TOOLS: ReadonlyArray<CirceTool> = [
     description: "Read or write the device clipboard.",
     parameters: [p.clipboardAction()],
     renderAccepted: (args) => `${clEntity(args.action)} the clipboard.`,
-  },
-  {
-    name: "computer",
-    host: "client",
-    risk: "destructive",
-    description:
-      "Operate the user's desktop to accomplish a goal: clicking, typing, scrolling, opening apps. A provider plans the goal and a fast decision model picks each grounded screen action.",
-    parameters: [p.residual()],
-    renderAccepted: () => "Working on your computer.",
   },
 ];
 

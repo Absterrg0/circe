@@ -228,6 +228,29 @@ describe("computer use runner", () => {
     expect(applied).toBe(0);
   });
 
+  it("refuses an element outside the offered slice", () => {
+    const result = Effect.runSync(
+      runComputerUse({
+        model: "m",
+        goal: "Open compose",
+        maxElements: 1,
+        runtime: {
+          capture: () => Effect.succeed(surface),
+          select: () =>
+            Effect.succeed(
+              selecting(
+                ["action", choice("click")],
+                ["element", choice("role=textbox[name='Search']")],
+              ),
+            ),
+          apply: () => Effect.void,
+        },
+      }),
+    );
+    // Only the first element was offered, so the second is unknown.
+    expect(result).toEqual({ status: "refused", reason: "unknown-element", steps: 1 });
+  });
+
   it("returns a refusal from composition without applying it", () => {
     let applied = 0;
     const result = Effect.runSync(
