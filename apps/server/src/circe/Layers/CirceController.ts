@@ -948,7 +948,7 @@ export const makeCirceControllerLive = <R>(
           ...(circeOrigin?.originInteractionId === undefined
             ? {}
             : {
-                circe: {
+                clientRouting: {
                   originInteractionId: circeOrigin.originInteractionId,
                   ...(circeOrigin.originNodeId === undefined
                     ? {}

@@ -62,7 +62,7 @@ export function buildCircePresentation(
 
 /**
  * V2-native presentation. The routing identity lives on the app thread
- * (`thread.circe`), and completion comes from a terminal provider turn. The
+ * (`thread.clientRouting`), and completion comes from a terminal provider turn. The
  * assistant message for that run supplies the spoken result; operator-facing
  * detail stays in T3.
  */
@@ -73,7 +73,7 @@ export function buildV2TurnPresentation(input: {
   readonly executionNodeId: EnvironmentId;
   readonly occurredAt: string;
 }): CircePresentationEvent | null {
-  const route = input.projection.thread.circe;
+  const route = input.projection.thread.clientRouting;
   const originInteractionId = route?.originInteractionId;
   if (route === undefined || originInteractionId === undefined) return null;
   const turn = input.projection.providerTurns.find(

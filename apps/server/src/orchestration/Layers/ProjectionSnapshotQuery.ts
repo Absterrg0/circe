@@ -556,11 +556,52 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
-          deleted_at AS "deletedAt"
-        FROM projection_threads
+          deleted_at AS "deletedAt",
+          0 AS "v2Rank"
+        FROM projection_threads AS threads
         WHERE deleted_at IS NULL
           AND archived_at IS NULL
-        ORDER BY project_id ASC, created_at ASC, thread_id ASC
+          AND NOT EXISTS (
+            SELECT 1 FROM orchestration_v2_projection_threads AS v2
+            WHERE v2.thread_id = threads.thread_id
+          )
+        UNION ALL
+        SELECT
+          thread_id AS "threadId",
+          project_id AS "projectId",
+          title,
+          NULL AS "titleState",
+          json_extract(payload_json, '$.modelSelection') AS "modelSelection",
+          runtime_mode AS "runtimeMode",
+          interaction_mode AS "interactionMode",
+          json_extract(payload_json, '$.branch') AS "branch",
+          json_extract(payload_json, '$.worktreePath') AS "worktreePath",
+          json_extract(payload_json, '$.linkedPullRequest') AS "linkedPullRequest",
+          json_extract(payload_json, '$.branchPullRequest') AS "branchPullRequest",
+          NULL AS "latestTurnId",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt",
+          archived_at AS "archivedAt",
+          json_extract(payload_json, '$.settledOverride') AS "settledOverride",
+          json_extract(payload_json, '$.settledAt') AS "settledAt",
+          json_extract(payload_json, '$.unsettledAt') AS "unsettledAt",
+          json_extract(payload_json, '$.snoozedUntil') AS "snoozedUntil",
+          json_extract(payload_json, '$.snoozedAt') AS "snoozedAt",
+          json_extract(payload_json, '$.pinnedAt') AS "pinnedAt",
+          json_extract(payload_json, '$.pinOrderKey') AS "pinOrderKey",
+          json_extract(payload_json, '$.activeOrderKey') AS "activeOrderKey",
+          json_extract(payload_json, '$.titleRegeneration.requestId') AS "titleRegenerationRequestId",
+          json_extract(payload_json, '$.titleRegeneration.startedAt') AS "titleRegenerationStartedAt",
+          NULL AS "latestUserMessageAt",
+          0 AS "pendingApprovalCount",
+          0 AS "pendingUserInputCount",
+          0 AS "hasActionableProposedPlan",
+          deleted_at AS "deletedAt",
+          1 AS "v2Rank"
+        FROM orchestration_v2_projection_threads
+        WHERE deleted_at IS NULL
+          AND archived_at IS NULL
+        ORDER BY "projectId" ASC, "createdAt" ASC, "threadId" ASC
       `,
   });
 
@@ -1162,11 +1203,50 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
           pending_approval_count AS "pendingApprovalCount",
           pending_user_input_count AS "pendingUserInputCount",
           has_actionable_proposed_plan AS "hasActionableProposedPlan",
-          deleted_at AS "deletedAt"
+          deleted_at AS "deletedAt",
+          0 AS "v2Rank"
         FROM projection_threads
         WHERE thread_id = ${threadId}
           AND deleted_at IS NULL
           AND archived_at IS NULL
+        UNION ALL
+        SELECT
+          thread_id AS "threadId",
+          project_id AS "projectId",
+          title,
+          NULL AS "titleState",
+          json_extract(payload_json, '$.modelSelection') AS "modelSelection",
+          runtime_mode AS "runtimeMode",
+          interaction_mode AS "interactionMode",
+          json_extract(payload_json, '$.branch') AS "branch",
+          json_extract(payload_json, '$.worktreePath') AS "worktreePath",
+          json_extract(payload_json, '$.linkedPullRequest') AS "linkedPullRequest",
+          json_extract(payload_json, '$.branchPullRequest') AS "branchPullRequest",
+          NULL AS "latestTurnId",
+          created_at AS "createdAt",
+          updated_at AS "updatedAt",
+          archived_at AS "archivedAt",
+          json_extract(payload_json, '$.settledOverride') AS "settledOverride",
+          json_extract(payload_json, '$.settledAt') AS "settledAt",
+          json_extract(payload_json, '$.unsettledAt') AS "unsettledAt",
+          json_extract(payload_json, '$.snoozedUntil') AS "snoozedUntil",
+          json_extract(payload_json, '$.snoozedAt') AS "snoozedAt",
+          json_extract(payload_json, '$.pinnedAt') AS "pinnedAt",
+          json_extract(payload_json, '$.pinOrderKey') AS "pinOrderKey",
+          json_extract(payload_json, '$.activeOrderKey') AS "activeOrderKey",
+          json_extract(payload_json, '$.titleRegeneration.requestId') AS "titleRegenerationRequestId",
+          json_extract(payload_json, '$.titleRegeneration.startedAt') AS "titleRegenerationStartedAt",
+          NULL AS "latestUserMessageAt",
+          0 AS "pendingApprovalCount",
+          0 AS "pendingUserInputCount",
+          0 AS "hasActionableProposedPlan",
+          deleted_at AS "deletedAt",
+          1 AS "v2Rank"
+        FROM orchestration_v2_projection_threads
+        WHERE thread_id = ${threadId}
+          AND deleted_at IS NULL
+          AND archived_at IS NULL
+        ORDER BY "v2Rank" DESC
         LIMIT 1
       `,
   });

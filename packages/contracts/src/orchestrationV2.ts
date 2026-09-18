@@ -358,7 +358,7 @@ export const OrchestrationV2AppThread = Schema.Struct({
   branchPullRequest: Schema.optional(Schema.NullOr(ThreadLinkedPullRequest)),
   activeProviderThreadId: Schema.NullOr(ProviderThreadId),
   historyOrigin: Schema.optional(OrchestrationV2ThreadHistoryOrigin),
-  circe: Schema.optional(OrchestrationV2CirceRouting),
+  clientRouting: Schema.optional(OrchestrationV2CirceRouting),
   lineage: OrchestrationV2AppThreadLineage,
   forkedFrom: Schema.NullOr(
     Schema.Union([
@@ -2181,7 +2181,7 @@ export const OrchestrationV2Command = Schema.Union([
     interactionMode: ProviderInteractionMode,
     branch: Schema.NullOr(TrimmedNonEmptyString),
     worktreePath: Schema.NullOr(TrimmedNonEmptyString),
-    circe: Schema.optional(OrchestrationV2CirceRouting),
+    clientRouting: Schema.optional(OrchestrationV2CirceRouting),
     importedNativeThread: Schema.optional(
       Schema.Struct({
         ref: Schema.Struct({

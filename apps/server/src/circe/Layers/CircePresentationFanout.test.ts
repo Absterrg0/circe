@@ -59,7 +59,7 @@ const projectionFor = (
       providerInstanceId: ProviderInstanceId.make("codex"),
       modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "gpt-5.6-sol" },
       activeProviderThreadId: null,
-      circe: { originInteractionId },
+      clientRouting: { originInteractionId },
     },
     runs: [],
     attempts: [{ id: attemptId, runId, providerTurnId }],
