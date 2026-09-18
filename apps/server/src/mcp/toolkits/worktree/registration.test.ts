@@ -76,6 +76,14 @@ it.effect("production mcp layer lists worktree tools over http", () =>
         Layer.provide(
           Layer.mock(ServerEnvironment.ServerEnvironment)({
             getEnvironmentId: Effect.succeed("environment-scratch" as never),
+            getDescriptor: Effect.succeed({
+              environmentId: "environment-scratch" as never,
+              label: "Scratch",
+              platform: { os: "linux", arch: "x64" },
+              serverVersion: "test",
+              capabilities: { repositoryIdentity: true, desktopUse: true },
+            }),
+            setLabel: () => Effect.die("unused"),
           }),
         ),
         Layer.provide(PreviewAutomationBroker.layer),
