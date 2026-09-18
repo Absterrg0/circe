@@ -12,13 +12,9 @@ import * as Ref from "effect/Ref";
 
 import { DesktopCommands } from "../../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../../desktopUse/DesktopUse.ts";
-import {
-  buildAccessibilityActionCommand,
-  decodeAccessibilityActionResultJson,
-  observeLinuxDesktop,
-  type AccessibilityCommandRunner,
-} from "../../desktopUse/linuxAccessibility.ts";
+import { type AccessibilityCommandRunner } from "../../desktopUse/linuxAccessibility.ts";
 import { detectDisplayServer, resolveBackend } from "../../desktopUse/platforms.ts";
+import { accessibilityAdapterFor } from "../accessibility.ts";
 import {
   DesktopSurface,
   DesktopSurfaceBackendError,
@@ -42,9 +38,6 @@ interface CachedSnapshot {
   readonly targets: ReadonlyMap<string, CachedTarget>;
 }
 
-const supportedBackend = (backend: DesktopUseBackend): boolean =>
-  backend === "linux-x11" || backend === "linux-wayland";
-
 const sameTarget = (region: DesktopRegion, target: CachedTarget): boolean =>
   region.role === target.role &&
   region.name === target.name &&
@@ -66,6 +59,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     const displayServer = detectDisplayServer(process.env);
     const backend =
       options.backend ?? resolveBackend({ platform: process.platform, displayServer });
+    const adapter = accessibilityAdapterFor(backend);
     const cache = yield* Ref.make<CachedSnapshot | null>(null);
     let sequence = 0;
 
@@ -78,11 +72,11 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     const observe: DesktopSurfaceShape["observe"] = Effect.fn("DesktopSurface.observe")(function* (
       input = {},
     ) {
-      if (!supportedBackend(backend)) {
+      if (adapter === null) {
         return yield* Effect.fail(
           new DesktopSurfaceUnavailableError({
             reason:
-              "This node's desktop backend is unavailable; accessibility control is implemented for Linux for now.",
+              "This node's platform has no accessibility adapter yet; desktop control is implemented for Linux first.",
           }),
         );
       }
@@ -90,10 +84,13 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         .getStatus()
         .pipe(Effect.mapError((cause) => backendError("status", cause)));
       const display = status.displays.find((candidate) => candidate.primary) ?? status.displays[0];
-      const surface = yield* observeLinuxDesktop(runCommand, {
-        backend,
-        title: input.title ?? "Desktop",
-      }).pipe(Effect.mapError((cause) => backendError("observe", cause)));
+      const surface = yield* adapter
+        .observe({
+          runner: runCommand,
+          backend,
+          ...(input.title === undefined ? {} : { title: input.title }),
+        })
+        .pipe(Effect.mapError((cause) => backendError("observe", cause)));
 
       sequence += 1;
       const captureId = `cap_${sequence}`;
@@ -132,10 +129,10 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     });
 
     const act: DesktopSurfaceShape["act"] = Effect.fn("DesktopSurface.act")(function* (action) {
-      if (!supportedBackend(backend)) {
+      if (adapter === null) {
         return yield* Effect.fail(
           new DesktopSurfaceUnavailableError({
-            reason: "This node's desktop backend is unavailable.",
+            reason: "This node's platform has no accessibility adapter yet.",
           }),
         );
       }
@@ -207,25 +204,20 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         return;
       }
 
-      const command = buildAccessibilityActionCommand({
-        path: target.path,
-        expect: { role: target.role, name: target.name },
-        ...(action.kind === "type"
-          ? { action: "set-text" as const, text: action.text }
-          : { action: "activate" as const }),
-      });
-      const result = yield* runCommand(command, "desktop.surface.act").pipe(
-        Effect.mapError((cause) => backendError("act", cause)),
-      );
-      const decoded = yield* Effect.sync(() => {
-        try {
-          return decodeAccessibilityActionResultJson(result.stdout);
-        } catch {
-          return null;
-        }
-      });
-      if (decoded?.ok === true) return;
-      if (decoded?.error === "element-changed" || decoded?.error === "element-not-found") {
+      const outcome = yield* adapter
+        .action({
+          runner: runCommand,
+          request: {
+            path: target.path,
+            expect: { role: target.role, name: target.name },
+            ...(action.kind === "type"
+              ? { action: "set-text" as const, text: action.text }
+              : { action: "activate" as const }),
+          },
+        })
+        .pipe(Effect.mapError((cause) => backendError("act", cause)));
+      if (outcome === "ok") return;
+      if (outcome === "refuse") {
         return yield* Effect.fail(new DesktopSurfaceStaleError({ captureId: action.captureId }));
       }
 
