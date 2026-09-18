@@ -4,6 +4,8 @@ import { describe, expect, it } from "vite-plus/test";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
 import {
+  CirceCancelMissionInput,
+  CirceCancelMissionResult,
   CirceCancelRequestInput,
   CirceCancelRequestResult,
   CirceExecuteInput,
@@ -11,7 +13,9 @@ import {
   CirceExecutionResult,
   CirceExecutionStarted,
   CirceExpectedReply,
+  CirceInterpretClarification,
   CirceInterpretInput,
+  CirceInterpretResult,
   CirceNeedsInput,
   CirceNodeId,
   CirceOriginMetadata,
@@ -38,6 +42,11 @@ const decodeInterpretInput = Schema.decodeUnknownSync(CirceInterpretInput);
 const decodeNodeId = Schema.decodeUnknownSync(CirceNodeId);
 const decodeCancelRequestInput = Schema.decodeUnknownSync(CirceCancelRequestInput);
 const decodeCancelRequestResult = Schema.decodeUnknownSync(CirceCancelRequestResult);
+const decodeCancelMissionInput = Schema.decodeUnknownSync(CirceCancelMissionInput);
+const decodeCancelMissionResult = Schema.decodeUnknownSync(CirceCancelMissionResult);
+const decodePendingInteraction = Schema.decodeUnknownSync(CircePendingInteraction);
+const decodeInterpretResult = Schema.decodeUnknownSync(CirceInterpretResult);
+const decodeInterpretClarification = Schema.decodeUnknownSync(CirceInterpretClarification);
 const decodeExecutionCancelled = Schema.decodeUnknownSync(CirceExecutionCancelled);
 const decodeExecutionResult = Schema.decodeUnknownSync(CirceExecutionResult);
 const decodeProjectRef = Schema.decodeUnknownSync(CirceProjectRef);
@@ -554,6 +563,84 @@ describe("Circe pre-accept request cancellation", () => {
       status: "unknown",
       requestId: "request-1",
     });
+  });
+
+  it("carries a mission stop request and its boolean outcome", () => {
+    expect(decodeCancelMissionInput({ requestId: "request-1" })).toEqual({
+      requestId: "request-1",
+    });
+    expect(() => decodeCancelMissionInput({ requestId: "   " })).toThrow();
+    expect(decodeCancelMissionResult({ cancelled: true })).toEqual({ cancelled: true });
+    expect(decodeCancelMissionResult({ cancelled: false })).toEqual({ cancelled: false });
+  });
+
+  it("round-trips durable lookup and website refinement frames", () => {
+    expect(
+      decodePendingInteraction({
+        kind: "lookup",
+        frame: {
+          frameId: "frame-1",
+          originalUtterance: "what's the weather",
+          lookupKind: "weather",
+          day: "now",
+          locationCandidates: ["London"],
+          previousPrompt: "Name the city.",
+          createdAt: "2026-08-12T00:00:00.000Z",
+          expiresAt: "2026-08-12T00:05:00.000Z",
+        },
+      }),
+    ).toMatchObject({ kind: "lookup" });
+    expect(
+      decodePendingInteraction({
+        kind: "website",
+        frame: {
+          frameId: "frame-2",
+          originalUtterance: "open it",
+          websiteCandidates: ["youtube"],
+          previousPrompt: "Say the site or address.",
+          createdAt: "2026-08-12T00:00:00.000Z",
+          expiresAt: "2026-08-12T00:05:00.000Z",
+        },
+      }),
+    ).toMatchObject({ kind: "website" });
+    // A frame without its user-visible question cannot decode.
+    expect(() =>
+      decodePendingInteraction({
+        kind: "lookup",
+        frame: {
+          frameId: "frame-3",
+          originalUtterance: "what's the weather",
+          lookupKind: "weather",
+          day: "now",
+          locationCandidates: [],
+          createdAt: "2026-08-12T00:00:00.000Z",
+          expiresAt: "2026-08-12T00:05:00.000Z",
+        },
+      }),
+    ).toThrow();
+  });
+
+  it("distinguishes a live refinement from a stale-frame rejection", () => {
+    expect(
+      decodeInterpretClarification({
+        status: "needs-input",
+        kind: "website",
+        reason: "unsupported-command",
+        prompt: "I couldn't tell which site you wanted.",
+        choices: [],
+        candidates: ["youtube"],
+        frameId: "frame-2",
+      }),
+    ).toMatchObject({ kind: "website", frameId: "frame-2" });
+    expect(
+      decodeInterpretResult({
+        status: "needs-input",
+        reason: "source-output-unavailable",
+        prompt: "That question is no longer waiting. Please restate your request.",
+        choices: [],
+        candidates: [],
+      }),
+    ).toMatchObject({ status: "needs-input", reason: "source-output-unavailable" });
   });
 
   it("reports a pre-accept cancel through the ordinary execution result", () => {

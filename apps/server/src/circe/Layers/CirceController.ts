@@ -2,7 +2,6 @@ import {
   CommandId,
   DEFAULT_RUNTIME_MODE,
   EventId,
-  CIRCE_CONVERSATIONS_PROJECT_TITLE,
   MessageId,
   type EnvironmentId,
   type ModelSelection,
@@ -41,6 +40,7 @@ import {
   CirceProjectNotFoundError,
   CirceRequestConflictError,
   type CirceClassifiedTurn,
+  type CirceProposedInterpretation,
 } from "../Services/CirceController.ts";
 import { CirceNodeTools } from "../Services/CirceNodeTools.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
@@ -199,6 +199,10 @@ function buildMeshSemanticPrompt(input: {
 }
 
 const CIRCE_MAX_SEQUENCE_STEPS = 4;
+
+/** The lookup day a refinement frame keeps, read from the original request. */
+const refinementDay = (source: string): "now" | "today" | "tomorrow" =>
+  /\btomorrow\b/iu.test(source) ? "tomorrow" : /\btoday\b/iu.test(source) ? "today" : "now";
 
 /** Ordered steps for a multi-command turn, or null when the proposal is single. */
 function decodeCirceSequenceSteps(
@@ -615,18 +619,42 @@ const defaultInterpreterLayer = Layer.effect(
       propose: (input) =>
         Effect.gen(function* () {
           const source = input.utterance;
-          if (!/[\p{Letter}\p{Number}]/u.test(source)) {
+          const unsupported = (): CirceProposedInterpretation => ({
+            status: "proposal",
+            proposal: { action: "unsupported", refs: [], model: null, effort: null, answer: null },
+          });
+          const refinement = (
+            needsInput: CirceCommandNeedsInput,
+          ): CirceProposedInterpretation | undefined => {
+            const kind = needsInput.refinement;
+            if (kind === undefined) return undefined;
+            if (kind.kind === "lookup") {
+              return {
+                status: "refinement",
+                kind: "lookup",
+                reason: needsInput.reason,
+                prompt: needsInput.prompt,
+                candidates: extractLocationCandidates(source),
+                lookupKind: kind.lookupKind,
+                day: refinementDay(source),
+              };
+            }
             return {
-              action: "unsupported" as const,
-              refs: [],
-              model: null,
-              effort: null,
-              answer: null,
+              status: "refinement",
+              kind: "website",
+              reason: needsInput.reason,
+              prompt: needsInput.prompt,
+              candidates: extractWebsiteCandidates(source),
             };
+          };
+          if (!/[\p{Letter}\p{Number}]/u.test(source)) {
+            return unsupported();
           }
           // Decision tier over untrusted evidence. No Director here; the
-          // execution node revalidates. A composed needs-input becomes
-          // unsupported, and only a decline reaches the provider net.
+          // execution node revalidates. A composed needs-input for a bounded
+          // assistant action becomes a durable refinement; any other composed
+          // needs-input becomes unsupported, and only a decline reaches the
+          // provider net.
           const tier = yield* runCirceDecisionTier({
             source,
             state: decisionStateFromEvidence(input),
@@ -634,16 +662,10 @@ const defaultInterpreterLayer = Layer.effect(
             decide: decision.decide,
           });
           if (tier.status === "proposal") {
-            return tier.proposal;
+            return { status: "proposal", proposal: tier.proposal } as const;
           }
           if (tier.status === "needs-input") {
-            return {
-              action: "unsupported" as const,
-              refs: [],
-              model: null,
-              effort: null,
-              answer: null,
-            };
+            return refinement(tier.needsInput) ?? unsupported();
           }
           // Decision tier declined: one ordinary provider proposal as a
           // safety net. The execution node still revalidates.
@@ -660,19 +682,23 @@ const defaultInterpreterLayer = Layer.effect(
             configured: modelSelection,
             providers,
           });
-          return yield* runSemanticWithFallback(candidates, prompt);
+          const proposal = yield* runSemanticWithFallback(candidates, prompt);
+          return { status: "proposal", proposal } as const;
         }).pipe(
           Effect.tapError((cause) => Effect.logWarning("Semantic proposal request failed", cause)),
           Effect.catchCause((cause) => {
             if (Cause.hasInterruptsOnly(cause))
               return Effect.failCause(cause as Cause.Cause<never>);
             return Effect.succeed({
-              action: "unsupported" as const,
-              refs: [],
-              model: null,
-              effort: null,
-              answer: null,
-            });
+              status: "proposal",
+              proposal: {
+                action: "unsupported",
+                refs: [],
+                model: null,
+                effort: null,
+                answer: null,
+              },
+            } as const);
           }),
         ),
     });
@@ -1023,8 +1049,19 @@ export const makeCirceControllerLive = <R>(
               message: "Cancelled selection.",
             };
           }
+          // A lookup or website refinement resumes through interpret, which
+          // owns its deterministic resume; control execute never answers it.
+          if (pending.kind === "lookup" || pending.kind === "website") {
+            return {
+              status: "needs-input" as const,
+              reason: "control-target-required" as const,
+              prompt:
+                "That question is waiting for a lookup or website answer. Answer it with the assistant.",
+              choices: [],
+            };
+          }
           const selected =
-            pending.kind !== "plan" &&
+            (pending.kind === "task" || pending.kind === "project") &&
             /^(?:yes|yeah|yep|confirm|correct|that one)$/u.test(answer) &&
             pending.frame.candidates.length === 1
               ? 0
@@ -1401,24 +1438,6 @@ export const makeCirceControllerLive = <R>(
               ? {}
               : { requestId: input.requestMetadata.requestId }),
           };
-        }
-        // Every general question lives in the dedicated Conversations project,
-        // never the ambient coding project.
-        if (
-          interpretation.status === "command" &&
-          interpretation.command.type === "start" &&
-          interpretation.command.flow === "conversation"
-        ) {
-          const conversationsShell = yield* projections.getShellSnapshot();
-          const conversations = conversationsShell.projects.find(
-            (candidate) => candidate.title === CIRCE_CONVERSATIONS_PROJECT_TITLE,
-          );
-          if (conversations !== undefined) {
-            interpretation = {
-              ...interpretation,
-              command: { ...interpretation.command, projectId: conversations.id },
-            };
-          }
         }
         if (interpretation.status === "needs-input") {
           if (interpretation.projectClarification !== undefined) {
@@ -2352,21 +2371,157 @@ export const makeCirceControllerLive = <R>(
           };
         });
 
+      const unsupportedProposal = (): CirceSemanticProposal => ({
+        action: "unsupported" as const,
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+      });
+
+      const staleRefinement = (): import("@circe/contracts").CirceInterpretResult => ({
+        status: "needs-input" as const,
+        reason: "source-output-unavailable" as const,
+        prompt: "That question is no longer waiting. Please restate your request.",
+        choices: [],
+        candidates: [],
+      });
+
+      /** The place named by a refinement answer: a candidate or the bare phrase. */
+      const lookupLocation = (answer: string): string | null => {
+        const candidate = extractLocationCandidates(answer)[0];
+        if (candidate !== undefined) return candidate;
+        const stripped = answer.replace(/^\s*(?:in|at|for)\s+/iu, "").trim();
+        return stripped.length > 0 && stripped.length <= 160 ? stripped : null;
+      };
+
+      /** The site named by a refinement answer, allowlist-checked. */
+      const websiteTarget = (answer: string): string | null =>
+        extractWebsiteCandidates(answer)[0] ?? null;
+
+      /**
+       * Resume one stored lookup or website refinement from the bound answer.
+       * The frame is consumed only when it is still the live one, so a replaced
+       * or expired frame is rejected without touching the current question.
+       */
+      const resumeRefinement = Effect.fn("CirceController.resumeRefinement")(function* (args: {
+        readonly sessionId: import("@circe/contracts").AuthSessionId;
+        readonly frameId: string;
+        readonly utterance: string;
+      }) {
+        const desk = yield* taskDesk.get(args.sessionId);
+        const pending = desk.pendingInteraction;
+        if (
+          pending === null ||
+          (pending.kind !== "lookup" && pending.kind !== "website") ||
+          pending.frame.frameId !== args.frameId
+        ) {
+          return staleRefinement();
+        }
+        const consumed = yield* taskDesk.consumePendingInteraction({
+          sessionId: args.sessionId,
+          expectedFrameId: args.frameId,
+        });
+        if (consumed === null) return staleRefinement();
+        if (consumed.kind === "lookup") {
+          const location = lookupLocation(args.utterance);
+          if (location !== null) {
+            return {
+              action: "lookup" as const,
+              refs: [],
+              model: null,
+              effort: null,
+              answer: null,
+              lookup: { kind: consumed.frame.lookupKind, location, day: consumed.frame.day },
+            };
+          }
+          // The answer still did not ground a place: store a fresh frame and
+          // ask again, so the user can retry without losing the request.
+          const now = yield* DateTime.now;
+          const frameId = yield* uuid();
+          const prompt = "I couldn't match that place to what you said. Name the city.";
+          const frame = {
+            ...consumed.frame,
+            frameId,
+            previousPrompt: prompt,
+            createdAt: now,
+            expiresAt: DateTime.add(now, { minutes: 5 }),
+          };
+          yield* taskDesk.setPendingInteraction({
+            sessionId: args.sessionId,
+            interaction: { kind: "lookup", frame },
+          });
+          return {
+            status: "needs-input" as const,
+            kind: "lookup" as const,
+            reason: "unsupported-command" as const,
+            prompt,
+            choices: [],
+            candidates: frame.locationCandidates,
+            lookupKind: frame.lookupKind,
+            day: frame.day,
+            frameId,
+          };
+        }
+        if (consumed.kind === "website") {
+          const website = websiteTarget(args.utterance);
+          if (website !== null) {
+            return {
+              action: "open-website" as const,
+              refs: [],
+              model: null,
+              effort: null,
+              answer: null,
+              website,
+            };
+          }
+          const now = yield* DateTime.now;
+          const frameId = yield* uuid();
+          const prompt = "I couldn't match that site to what you said. Say it again.";
+          const frame = {
+            ...consumed.frame,
+            frameId,
+            previousPrompt: prompt,
+            createdAt: now,
+            expiresAt: DateTime.add(now, { minutes: 5 }),
+          };
+          yield* taskDesk.setPendingInteraction({
+            sessionId: args.sessionId,
+            interaction: { kind: "website", frame },
+          });
+          return {
+            status: "needs-input" as const,
+            kind: "website" as const,
+            reason: "unsupported-command" as const,
+            prompt,
+            choices: [],
+            candidates: frame.websiteCandidates,
+            frameId,
+          };
+        }
+        return staleRefinement();
+      });
+
       const interpret = Effect.fn("CirceController.interpret")(function* (
         input: import("@circe/contracts").CirceInterpretInput & {
+          readonly sessionId?: import("@circe/contracts").AuthSessionId | undefined;
           readonly executionNodeId?: import("@circe/contracts").EnvironmentId | undefined;
           readonly acceptanceKey?: string | undefined;
         },
       ) {
+        const sessionId = input.sessionId;
+        // A bound answer resumes the exact stored refinement; a missing or
+        // replaced frame is rejected before any inference runs.
+        if (input.clarificationFrameId !== undefined && sessionId !== undefined) {
+          return yield* resumeRefinement({
+            sessionId,
+            frameId: input.clarificationFrameId,
+            utterance: input.utterance,
+          });
+        }
         const propose = interpreter.propose;
         if (propose === undefined) {
-          return {
-            action: "unsupported" as const,
-            refs: [],
-            model: null,
-            effort: null,
-            answer: null,
-          };
+          return unsupportedProposal();
         }
         // One proposal-only inference under the same pre-accept lifecycle as
         // execute, keyed by semantic node + request identity. Cancel wins the
@@ -2402,20 +2557,75 @@ export const makeCirceControllerLive = <R>(
           // client treats it as no proposal and stays ambient for the owner
           // execute to clarify. The awaiting execute (same requestId on the
           // execution node) will observe its own cancel separately.
-          return {
-            action: "unsupported" as const,
-            refs: [],
-            model: null,
-            effort: null,
-            answer: null,
-          };
+          return unsupportedProposal();
         }
         if (tracked.status === "tracked") {
           yield* Ref.set(leaseHolder, tracked.lease);
         }
         // Shared and untracked both carry the single inference value with no
         // second run; neither dispatches here.
-        return tracked.value;
+        const proposed = tracked.value;
+        if (proposed.status === "proposal") return proposed.proposal;
+        // A refinement needs a session to own its durable frame; without one
+        // the node cannot ask durably, so it stays a plain unsupported result.
+        if (sessionId === undefined) return unsupportedProposal();
+        const frameId = yield* uuid();
+        const now = yield* DateTime.now;
+        const candidates = [...proposed.candidates];
+        if (proposed.kind === "lookup") {
+          const frame = {
+            frameId,
+            originalUtterance: input.utterance,
+            lookupKind: proposed.lookupKind ?? ("weather" as const),
+            day: proposed.day ?? ("now" as const),
+            locationCandidates: candidates,
+            previousPrompt: proposed.prompt,
+            ...(input.requestMetadata === undefined
+              ? {}
+              : { requestMetadata: input.requestMetadata }),
+            createdAt: now,
+            expiresAt: DateTime.add(now, { minutes: 5 }),
+          };
+          yield* taskDesk.setPendingInteraction({
+            sessionId,
+            interaction: { kind: "lookup", frame },
+          });
+          return {
+            status: "needs-input" as const,
+            kind: "lookup" as const,
+            reason: proposed.reason,
+            prompt: proposed.prompt,
+            choices: [],
+            candidates,
+            lookupKind: frame.lookupKind,
+            day: frame.day,
+            frameId,
+          };
+        }
+        const frame = {
+          frameId,
+          originalUtterance: input.utterance,
+          websiteCandidates: candidates,
+          previousPrompt: proposed.prompt,
+          ...(input.requestMetadata === undefined
+            ? {}
+            : { requestMetadata: input.requestMetadata }),
+          createdAt: now,
+          expiresAt: DateTime.add(now, { minutes: 5 }),
+        };
+        yield* taskDesk.setPendingInteraction({
+          sessionId,
+          interaction: { kind: "website", frame },
+        });
+        return {
+          status: "needs-input" as const,
+          kind: "website" as const,
+          reason: proposed.reason,
+          prompt: proposed.prompt,
+          choices: [],
+          candidates,
+          frameId,
+        };
       });
 
       // Only concurrent calls are joined here. Durable retry reconciliation

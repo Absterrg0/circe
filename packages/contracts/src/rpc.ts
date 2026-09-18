@@ -1,6 +1,14 @@
 import { CirceQuickLookupInput, CirceQuickLookupResult } from "./circeQuickActions.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
+import {
+  CirceMemoryFetchInput,
+  CirceMemoryFetchResult,
+  CirceMemoryForgetInput,
+  CirceMemoryForgetResult,
+  CirceMemoryIndex,
+  CirceMemoryIndexInput,
+} from "./projectMemory.ts";
 import { OrchestrationDispatchCommandError } from "./orchestration.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -335,8 +343,12 @@ import {
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
 import {
+  CirceCancelMissionInput,
+  CirceCancelMissionResult,
   CirceCancelRequestInput,
   CirceCancelRequestResult,
+  CirceCoordinateInput,
+  CirceCoordinateResult,
   CirceExecuteInput,
   CirceExecutionError,
   CirceExecutionResult,
@@ -346,6 +358,9 @@ import {
   CirceInterpretResult,
   CirceTaskDeskView,
   CirceProjectVocabulary,
+  CirceProjectContext,
+  CirceProjectGoalInput,
+  CirceProjectRef,
   CirceManageProjectAliasInput,
   CirceManageProjectAliasResult,
   CircePresentationEvent,
@@ -370,16 +385,23 @@ export const WS_METHODS = {
   circeExecute: "circe.execute",
   circeInterpret: "circe.interpret",
   circeCancelRequest: "circe.cancelRequest",
+  circeCancelMission: "circe.cancelMission",
   circeGetTaskDesk: "circe.getTaskDesk",
   circeFocusTask: "circe.focusTask",
   circeGetProjectVocabulary: "circe.getProjectVocabulary",
   circeManageProjectAlias: "circe.manageProjectAlias",
+  circeGetProjectContext: "circe.getProjectContext",
+  circeSetProjectGoal: "circe.setProjectGoal",
+  circeCoordinate: "circe.coordinate",
   subscribeCircePresentation: "circe.subscribePresentation",
   circeRegisterPushToken: "circe.registerPushToken",
   circeUnregisterPushToken: "circe.unregisterPushToken",
   circeQuickLookup: "circe.quickLookup",
   circeBrowserUse: "circe.browserUse",
   circeComputerUse: "circe.computerUse",
+  circeMemoryIndex: "circe.memoryIndex",
+  circeMemoryFetch: "circe.memoryFetch",
+  circeMemoryForget: "circe.memoryForget",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
@@ -597,6 +619,12 @@ const WsCirceCancelRequestRpc = Rpc.make(WS_METHODS.circeCancelRequest, {
   error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
 });
 
+const WsCirceCancelMissionRpc = Rpc.make(WS_METHODS.circeCancelMission, {
+  payload: CirceCancelMissionInput,
+  success: CirceCancelMissionResult,
+  error: EnvironmentAuthorizationError,
+});
+
 const WsCirceInterpretRpc = Rpc.make(WS_METHODS.circeInterpret, {
   payload: CirceInterpretInput,
   success: CirceInterpretResult,
@@ -624,6 +652,24 @@ const WsCirceGetProjectVocabularyRpc = Rpc.make(WS_METHODS.circeGetProjectVocabu
 const WsCirceManageProjectAliasRpc = Rpc.make(WS_METHODS.circeManageProjectAlias, {
   payload: CirceManageProjectAliasInput,
   success: CirceManageProjectAliasResult,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceGetProjectContextRpc = Rpc.make(WS_METHODS.circeGetProjectContext, {
+  payload: CirceProjectRef,
+  success: CirceProjectContext,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceSetProjectGoalRpc = Rpc.make(WS_METHODS.circeSetProjectGoal, {
+  payload: CirceProjectGoalInput,
+  success: CirceProjectContext,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceCoordinateRpc = Rpc.make(WS_METHODS.circeCoordinate, {
+  payload: CirceCoordinateInput,
+  success: CirceCoordinateResult,
   error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
 });
 
@@ -662,6 +708,24 @@ const WsCirceComputerUseRpc = Rpc.make(WS_METHODS.circeComputerUse, {
   payload: CirceComputerUseInput,
   success: CirceComputerUseResult,
   error: EnvironmentAuthorizationError,
+});
+
+const WsCirceMemoryIndexRpc = Rpc.make(WS_METHODS.circeMemoryIndex, {
+  payload: CirceMemoryIndexInput,
+  success: CirceMemoryIndex,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceMemoryFetchRpc = Rpc.make(WS_METHODS.circeMemoryFetch, {
+  payload: CirceMemoryFetchInput,
+  success: CirceMemoryFetchResult,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
+});
+
+const WsCirceMemoryForgetRpc = Rpc.make(WS_METHODS.circeMemoryForget, {
+  payload: CirceMemoryForgetInput,
+  success: CirceMemoryForgetResult,
+  error: Schema.Union([CirceExecutionError, EnvironmentAuthorizationError]),
 });
 
 const WsCirceVoiceLiveReleaseRpc = Rpc.make(WS_METHODS.circeVoiceLiveRelease, {
@@ -1815,16 +1879,23 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
+  WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
   WsCirceGetProjectVocabularyRpc,
   WsCirceManageProjectAliasRpc,
+  WsCirceGetProjectContextRpc,
+  WsCirceSetProjectGoalRpc,
+  WsCirceCoordinateRpc,
   WsSubscribeCircePresentationRpc,
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -1832,16 +1903,23 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
+  WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
   WsCirceGetProjectVocabularyRpc,
   WsCirceManageProjectAliasRpc,
+  WsCirceGetProjectContextRpc,
+  WsCirceSetProjectGoalRpc,
+  WsCirceCoordinateRpc,
   WsSubscribeCircePresentationRpc,
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2021,16 +2099,23 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
+  WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
   WsCirceGetProjectVocabularyRpc,
   WsCirceManageProjectAliasRpc,
+  WsCirceGetProjectContextRpc,
+  WsCirceSetProjectGoalRpc,
+  WsCirceCoordinateRpc,
   WsSubscribeCircePresentationRpc,
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceMemoryIndexRpc,
+  WsCirceMemoryFetchRpc,
+  WsCirceMemoryForgetRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2041,16 +2126,23 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeExecute,
   WS_METHODS.circeInterpret,
   WS_METHODS.circeCancelRequest,
+  WS_METHODS.circeCancelMission,
   WS_METHODS.circeGetTaskDesk,
   WS_METHODS.circeFocusTask,
   WS_METHODS.circeGetProjectVocabulary,
   WS_METHODS.circeManageProjectAlias,
+  WS_METHODS.circeGetProjectContext,
+  WS_METHODS.circeSetProjectGoal,
+  WS_METHODS.circeCoordinate,
   WS_METHODS.subscribeCircePresentation,
   WS_METHODS.circeRegisterPushToken,
   WS_METHODS.circeUnregisterPushToken,
   WS_METHODS.circeQuickLookup,
   WS_METHODS.circeBrowserUse,
   WS_METHODS.circeComputerUse,
+  WS_METHODS.circeMemoryIndex,
+  WS_METHODS.circeMemoryFetch,
+  WS_METHODS.circeMemoryForget,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,

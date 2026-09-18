@@ -115,6 +115,62 @@
 .circe-presence-label[data-state="error"] > span {
   background: #c07168;
 }
+.circe-attention {
+  margin: 0 24px 12px;
+  padding: 10px 12px;
+  border: 1px solid #b28a5133;
+  border-radius: 8px;
+  background: #b28a510f;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.circe-attention-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 550;
+  color: var(--jc-text);
+}
+.circe-attention-frame {
+  font-size: 12px;
+  color: var(--jc-muted);
+  margin: 0;
+}
+.circe-attention-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--jc-surface, transparent);
+  border: 1px solid transparent;
+  text-align: left;
+  cursor: pointer;
+}
+.circe-attention-row:hover {
+  border-color: #b28a5133;
+}
+.circe-attention-title {
+  font-size: 12px;
+  color: var(--jc-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.circe-attention-reason {
+  font-size: 11px;
+  color: var(--jc-muted);
+  flex: none;
+}
+.circe-attention-reason[data-reason="approval"] {
+  color: #b28a51;
+}
+.circe-attention-reason[data-reason="failed"] {
+  color: #c07168;
+}
 .circe-section-heading {
   display: flex;
   align-items: center;

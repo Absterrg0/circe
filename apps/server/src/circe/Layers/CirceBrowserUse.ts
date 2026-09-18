@@ -17,6 +17,7 @@ import { makePreviewAutomationInvoker } from "../computerUse/PreviewAutomationIn
 import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 
 /**
  * Production browser use. The scope is stable for one control session so the
@@ -68,11 +69,16 @@ export const make = Effect.gen(function* () {
   const broker = yield* PreviewAutomationBroker;
   const decision = yield* CirceDecision;
   const serverEnvironment = yield* ServerEnvironment;
+  const cancellation = yield* CirceMissionCancellation;
 
   const run = Effect.fn("CirceBrowserUse.run")(function* (input: CirceBrowserUseInput) {
     if (input.confirmed !== true) {
       return { status: "needs-input", message: confirmationMessage(input.goal) } as const;
     }
+    // One client request id identifies one mission, so a stop from any paired
+    // client reaches the loop and the registry clears when the run settles.
+    const requestId = input.requestMetadata?.requestId;
+    if (requestId !== undefined) yield* cancellation.register(requestId);
     const environmentId = yield* serverEnvironment.getEnvironmentId;
     const controlSessionId =
       input.requestMetadata?.origin?.originInteractionId ??
@@ -103,6 +109,7 @@ export const make = Effect.gen(function* () {
       goal: input.goal,
       ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
       ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+      ...(requestId === undefined ? {} : { shouldStop: () => cancellation.isCancelled(requestId) }),
       invoker,
       select,
     }).pipe(
@@ -134,6 +141,7 @@ export const make = Effect.gen(function* () {
           message: "I couldn't drive the browser for that request.",
         }),
       ),
+      Effect.ensuring(requestId === undefined ? Effect.void : cancellation.clear(requestId)),
     );
   });
 

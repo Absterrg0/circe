@@ -3,6 +3,7 @@ import { runCirceQuickLookup } from "../Services/CirceQuickLookup.ts";
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
+import { renderMemoryBody } from "@circe/core/projectMemory";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -15,6 +16,7 @@ import {
   type AuthEnvironmentScope,
   type EnvironmentId,
   CirceExecutionError,
+  CirceInterpretClarification,
   CircePushRegistrationError,
   CirceLiveVoiceInvalidInputError,
   CirceLiveVoiceRuntimeError,
@@ -45,6 +47,9 @@ import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
+import { CirceCoordinator } from "../Services/CirceCoordinator.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
+import { CirceProjectMemory } from "../Services/CirceProjectMemory.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
@@ -52,6 +57,7 @@ import { CirceTaskDesk } from "../Services/CirceTaskDesk.ts";
 import { CircePushRegistrationRepository } from "../../persistence/Services/CircePushRegistrations.ts";
 
 const isCirceExecutionError = Schema.is(CirceExecutionError);
+const isInterpretClarification = Schema.is(CirceInterpretClarification);
 const isCirceLiveVoiceInvalidInputError = Schema.is(CirceLiveVoiceInvalidInputError);
 const isCirceLiveVoiceUnavailableError = Schema.is(CirceLiveVoiceUnavailableError);
 const isCirceLiveVoiceRuntimeError = Schema.is(CirceLiveVoiceRuntimeError);
@@ -280,16 +286,23 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeExecute]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeInterpret]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeCancelRequest]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeCancelMission]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetTaskDesk]: AuthOrchestrationReadScope,
   [WS_METHODS.circeFocusTask]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetProjectVocabulary]: AuthOrchestrationReadScope,
   [WS_METHODS.circeManageProjectAlias]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeGetProjectContext]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeSetProjectGoal]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeCoordinate]: AuthOrchestrationOperateScope,
   [WS_METHODS.subscribeCircePresentation]: AuthOrchestrationReadScope,
   [WS_METHODS.circeRegisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeUnregisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeMemoryIndex]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeMemoryFetch]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeMemoryForget]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -307,6 +320,9 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const circe = yield* CirceController.CirceController;
     const browserUse = yield* CirceBrowserUse;
     const computerUse = yield* CirceComputerUse;
+    const missionCancellation = yield* CirceMissionCancellation;
+    const projectMemory = yield* CirceProjectMemory;
+    const coordinator = yield* CirceCoordinator;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
     const projectLexicon = yield* CirceProjectLexicon;
@@ -384,8 +400,9 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                         "This Circe node is configured as a controller and cannot run semantic interpretation.",
                     });
                   }
-                  const proposal = yield* circe.interpret({
+                  const result = yield* circe.interpret({
                     ...input,
+                    sessionId: context.sessionId,
                     executionNodeId,
                     ...(input.requestMetadata === undefined
                       ? {}
@@ -396,7 +413,12 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                           }),
                         }),
                   });
-                  return groundCirceQuickActionProposal(proposal, input.utterance);
+                  // A durable refinement is returned as-is; only a proposal is
+                  // grounded against the utterance before the client sees it.
+                  if (isInterpretClarification(result)) {
+                    return result;
+                  }
+                  return groundCirceQuickActionProposal(result, input.utterance);
                 }).pipe(
                   Effect.tapCause((cause) =>
                     Effect.logWarning("Circe interpret failed", {
@@ -412,6 +434,24 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 WS_METHODS.circeCancelRequest,
                 circe.cancelRequest({ ...input, executionNodeId }),
                 { "rpc.aggregate": "circe" },
+              ),
+            // A stop reaches a running browser or computer mission on this
+            // node. `cancelled` is false when the mission already settled.
+            [WS_METHODS.circeCancelMission]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeCancelMission,
+                missionCancellation.requestStop(input.requestId).pipe(
+                  // A provider-delegated desktop goal registers under its
+                  // thread, so a stop may name either the mission or the thread.
+                  Effect.flatMap((cancelled) =>
+                    cancelled
+                      ? Effect.succeed({ cancelled })
+                      : missionCancellation
+                          .requestStop(`thread:${input.requestId}`)
+                          .pipe(Effect.map((threadCancelled) => ({ cancelled: threadCancelled }))),
+                  ),
+                ),
+                { "rpc.aggregate": "circe.mission" },
               ),
             [WS_METHODS.circeQuickLookup]: (input) =>
               context.observeRpcEffect(
@@ -446,6 +486,69 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                     })
                   : computerUse.run(input),
                 { "rpc.aggregate": "circe.computer" },
+              ),
+            // The memory surface is read-only on the wire: the model lists the
+            // index and fetches bodies on demand. Writes go through the
+            // coordinator so promotion policy is never bypassed by a tool.
+            [WS_METHODS.circeMemoryIndex]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryIndex,
+                projectMemory.index(input.projectId).pipe(
+                  Effect.mapError(
+                    () =>
+                      new CirceExecutionError({
+                        code: "dispatch-failed",
+                        message: "Circe could not read project memory.",
+                      }),
+                  ),
+                ),
+                {
+                  "rpc.aggregate": "circe.memory",
+                },
+              ),
+            [WS_METHODS.circeMemoryFetch]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryFetch,
+                Effect.gen(function* () {
+                  const entry = yield* projectMemory.get(input.projectId, input.entryId);
+                  if (entry === null) return { found: false as const };
+                  return {
+                    found: true as const,
+                    text: renderMemoryBody({
+                      id: entry.id,
+                      kind: entry.kind,
+                      source: entry.source,
+                      title: entry.title,
+                      body: entry.body,
+                      updatedAt: DateTime.formatIso(entry.updatedAt),
+                    }),
+                  };
+                }).pipe(
+                  Effect.mapError(
+                    () =>
+                      new CirceExecutionError({
+                        code: "dispatch-failed",
+                        message: "Circe could not read project memory.",
+                      }),
+                  ),
+                ),
+                { "rpc.aggregate": "circe.memory" },
+              ),
+            // Forgetting retires an entry to `retired/` so provenance survives;
+            // it is the reverse state for a memory the user no longer wants.
+            [WS_METHODS.circeMemoryForget]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeMemoryForget,
+                projectMemory.forget(input).pipe(
+                  Effect.mapError(
+                    () =>
+                      new CirceExecutionError({
+                        code: "dispatch-failed",
+                        message: "Circe could not forget that memory.",
+                      }),
+                  ),
+                ),
+                { "rpc.aggregate": "circe.memory" },
               ),
             // Release is intentionally not gated on presetOffersVoice like start
             // is: it is a cleanup path, and a session minted before a preset
@@ -551,6 +654,91 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                           }),
                     ),
                   ),
+                ),
+                { "rpc.aggregate": "circe" },
+              ),
+            [WS_METHODS.circeGetProjectContext]: (projectRef) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeGetProjectContext,
+                context.authorizeEffect(
+                  AuthOrchestrationReadScope,
+                  Effect.gen(function* () {
+                    if (projectRef.nodeId !== executionNodeId) {
+                      return yield* new CirceExecutionError({
+                        code: "node-mismatch",
+                        message:
+                          "The requested project belongs to a different Circe execution node.",
+                      });
+                    }
+                    return yield* coordinator.getContext(projectRef);
+                  }).pipe(
+                    Effect.mapError((error) =>
+                      isCirceExecutionError(error)
+                        ? error
+                        : new CirceExecutionError({
+                            code: "dispatch-failed",
+                            message: "Circe could not read that project's context.",
+                          }),
+                    ),
+                  ),
+                ),
+                { "rpc.aggregate": "circe" },
+              ),
+            [WS_METHODS.circeSetProjectGoal]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeSetProjectGoal,
+                context.authorizeEffect(
+                  AuthOrchestrationOperateScope,
+                  Effect.gen(function* () {
+                    if (input.projectRef.nodeId !== executionNodeId) {
+                      return yield* new CirceExecutionError({
+                        code: "node-mismatch",
+                        message:
+                          "The requested project belongs to a different Circe execution node.",
+                      });
+                    }
+                    return yield* coordinator.setGoal(input);
+                  }).pipe(
+                    Effect.mapError((error) =>
+                      isCirceExecutionError(error)
+                        ? error
+                        : new CirceExecutionError({
+                            code: "dispatch-failed",
+                            message: "Circe could not set that project's goal.",
+                          }),
+                    ),
+                  ),
+                ),
+                { "rpc.aggregate": "circe" },
+              ),
+            [WS_METHODS.circeCoordinate]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeCoordinate,
+                context.authorizeEffect(
+                  AuthOrchestrationOperateScope,
+                  Effect.gen(function* () {
+                    if (
+                      !circeNodeCapabilitiesForPreset(config.circeNodePreset ?? "full").execution
+                    ) {
+                      return yield* new CirceExecutionError({
+                        code: "execution-unavailable",
+                        message:
+                          "This Circe node is configured as a controller and cannot execute tasks.",
+                      });
+                    }
+                    if (input.projectRef.nodeId !== executionNodeId) {
+                      return yield* new CirceExecutionError({
+                        code: "node-mismatch",
+                        message:
+                          "The requested project belongs to a different Circe execution node.",
+                      });
+                    }
+                    return yield* coordinator.coordinate({
+                      ...input,
+                      sessionId: context.sessionId,
+                      executionNodeId,
+                    });
+                  }).pipe(Effect.mapError((error) => toCirceExecuteClientError(error))),
                 ),
                 { "rpc.aggregate": "circe" },
               ),

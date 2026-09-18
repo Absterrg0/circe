@@ -5,7 +5,11 @@ import {
   releaseCirceVoiceLiveSession,
   renewCirceVoiceLiveSession,
 } from "@circe/client-runtime/operations/circeLiveVoice";
-import { useCirceBrowser, useCirceComputer } from "@circe/client-runtime/operations/circe";
+import {
+  useCirceBrowser,
+  useCirceComputer,
+  cancelCirceMission,
+} from "@circe/client-runtime/operations/circe";
 import type {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
@@ -27,6 +31,11 @@ export const circeLiveVoiceEnvironment = {
   computerUse: createEnvironmentCommand(connectionAtomRuntime, {
     label: "environment-data:commands:circe:computer-use",
     execute: (input: import("@circe/contracts").CirceComputerUseInput) => useCirceComputer(input),
+  }),
+  cancelMission: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "environment-data:commands:circe:cancel-mission",
+    execute: (input: import("@circe/contracts").CirceCancelMissionInput) =>
+      cancelCirceMission(input),
   }),
   release: createEnvironmentCommand(connectionAtomRuntime, {
     label: "environment-data:commands:circe:voice-live-release",

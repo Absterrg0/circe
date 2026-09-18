@@ -9,6 +9,8 @@ import {
   type CirceClientToolName,
   type CirceExpectedReply,
   type CirceInterpretInput,
+  type CirceInterpretResult,
+  type CirceNeedsInputReason,
   type CirceRequestMetadata,
   type CirceSemanticProposal,
   type CirceTaskRef,
@@ -129,6 +131,23 @@ export interface CirceClassifiedTurn {
   readonly interpretation: CirceCommandInterpretation;
 }
 
+/**
+ * The proposal-only result of one semantic inference. A refinement is a
+ * bounded action the classifier chose but could not ground; the node turns it
+ * into a durable pending frame before returning it to the client.
+ */
+export type CirceProposedInterpretation =
+  | { readonly status: "proposal"; readonly proposal: CirceSemanticProposal }
+  | {
+      readonly status: "refinement";
+      readonly kind: "lookup" | "website";
+      readonly reason: CirceNeedsInputReason;
+      readonly prompt: string;
+      readonly candidates: ReadonlyArray<string>;
+      readonly lookupKind?: "weather" | "time";
+      readonly day?: "now" | "today" | "tomorrow";
+    };
+
 export interface CirceControllerInterpreterShape {
   readonly interpret: (input: CirceCommandContext) => Effect.Effect<CirceCommandInterpretation>;
   /**
@@ -143,7 +162,7 @@ export interface CirceControllerInterpreterShape {
    * grounding. The execution node revalidates before anything dispatches.
    * Optional in tests; production always provides it.
    */
-  readonly propose?: (input: CirceInterpretInput) => Effect.Effect<CirceSemanticProposal>;
+  readonly propose?: (input: CirceInterpretInput) => Effect.Effect<CirceProposedInterpretation>;
 }
 
 /**
@@ -245,14 +264,16 @@ export interface CirceControllerShape {
   /**
    * One proposal-only inference over untrusted mesh evidence. No dispatch.
    * Uses the node's ordinary configured supervisor via the ordinary provider
-   * registry.
+   * registry. A clarification refinement is stored as a durable frame when a
+   * session is supplied; a bound answer resumes that frame deterministically.
    */
   readonly interpret: (
     input: CirceInterpretInput & {
+      readonly sessionId?: AuthSessionId | undefined;
       readonly executionNodeId?: EnvironmentId | undefined;
       readonly acceptanceKey?: string | undefined;
     },
-  ) => Effect.Effect<CirceSemanticProposal, CirceControllerError>;
+  ) => Effect.Effect<CirceInterpretResult, CirceControllerError>;
   /**
    * Project-free conversation. Answers are best-effort and not
    * receipt-backed: retries ask the model again. Carries the same

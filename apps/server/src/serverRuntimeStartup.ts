@@ -41,7 +41,6 @@ import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
 import { ProjectionSnapshotQuery } from "./orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as AgentAwarenessRelay from "./relay/AgentAwarenessRelay.ts";
 import { CirceFollowUpDispatcher } from "./circe/Services/CirceFollowUpDispatcher.ts";
-import { ensureCirceConversationsProject } from "./circe/conversationsProject.ts";
 import { CircePushNotifications } from "./circe/Services/CircePushNotifications.ts";
 import * as ServerLifecycleEvents from "./serverLifecycleEvents.ts";
 import * as ServerSettings from "./serverSettings.ts";
@@ -580,12 +579,6 @@ const make = (options?: StartupOptions) =>
             )
           : importPendingTranscripts
       ).pipe(forkParked);
-
-      // Circe general questions live in one dedicated project per node.
-      yield* runStartupPhase(
-        "conversations.ensure",
-        ensureCirceConversationsProject.pipe(Effect.asVoid),
-      );
 
       yield* forkParked(
         Effect.gen(function* () {

@@ -35,6 +35,10 @@
       "types": "./src/circe/planPresentation.ts",
       "default": "./src/circe/planPresentation.ts"
     },
+    "./circe/overview": {
+      "types": "./src/circe/overview.ts",
+      "default": "./src/circe/overview.ts"
+    },
     "./circe/liveVoice": {
       "types": "./src/circe/liveVoice.ts",
       "default": "./src/circe/liveVoice.ts"

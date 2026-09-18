@@ -32,6 +32,7 @@ import {
 } from "../computerUse/SurfaceDecisionError.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
+import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 
 const DECISION_MODEL = "jev-latest";
 const COMMAND_TIMEOUT_MS = 8_000;
@@ -91,6 +92,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
     const desktopUse = yield* DesktopUse;
     const commands = yield* DesktopCommands;
     const decision = yield* CirceDecision;
+    const cancellation = yield* CirceMissionCancellation;
     const displayServer = detectDisplayServer(process.env);
     const backend =
       options.backend ?? resolveBackend({ platform: process.platform, displayServer });
@@ -177,6 +179,8 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
           message: "Desktop control is available on Linux for now.",
         } as const;
       }
+      const requestId = input.requestMetadata?.requestId;
+      if (requestId !== undefined) yield* cancellation.register(requestId);
       const observe = () => observeLinuxDesktop(runCommand, { backend, title: "Desktop" });
       const select = (request: DecisionRequest) =>
         decision
@@ -194,6 +198,9 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         goal: input.goal,
         ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
         ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+        ...(requestId === undefined
+          ? {}
+          : { shouldStop: () => cancellation.isCancelled(requestId) }),
         runtime: makeDesktopUseRuntime<RunError>({
           observe,
           select,
@@ -213,6 +220,7 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
             message: "I couldn't drive the desktop for that request.",
           }),
         ),
+        Effect.ensuring(requestId === undefined ? Effect.void : cancellation.clear(requestId)),
       );
     });
 

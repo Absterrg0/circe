@@ -234,6 +234,7 @@ const resultFromComposition = (composed: ReturnType<typeof composeDecision>): De
           reason: composed.reason,
           prompt: composed.prompt,
           choices: composed.choices,
+          ...(composed.refinement === undefined ? {} : { refinement: composed.refinement }),
         },
       };
 

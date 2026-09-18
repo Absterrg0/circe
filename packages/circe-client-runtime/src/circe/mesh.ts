@@ -413,6 +413,8 @@ export interface CirceMeshInterpretEvidenceOptions {
     readonly state?: string;
   }>;
   readonly requestMetadata?: CirceInterpretInput["requestMetadata"];
+  /** Binds an answer to the exact lookup or website frame it replies to. */
+  readonly clarificationFrameId?: string;
 }
 
 /**
@@ -472,6 +474,9 @@ export function buildCirceInterpretInput(
     ...(options.pendingHint === undefined ? {} : { pendingHint: options.pendingHint }),
     ...(options.inputMode === undefined ? {} : { inputMode: options.inputMode }),
     ...(options.requestMetadata === undefined ? {} : { requestMetadata: options.requestMetadata }),
+    ...(options.clarificationFrameId === undefined
+      ? {}
+      : { clarificationFrameId: options.clarificationFrameId }),
   };
 }
 
