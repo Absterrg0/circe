@@ -2,6 +2,8 @@ import { lookupCirceQuickAnswer } from "@circe/client-runtime/operations/circeLi
 import {
   cancelCirceMission,
   executeCirceInstruction,
+  forgetCirceMemory,
+  getCirceMemoryIndex,
   useCirceBrowser,
   useCirceComputer,
 } from "@circe/client-runtime/operations/circe";
@@ -36,6 +38,15 @@ export const circeEnvironment = {
     label: "mobile:environment-data:circe:cancel-mission",
     execute: (input: import("@circe/contracts").CirceCancelMissionInput) =>
       cancelCirceMission(input),
+  }),
+  memoryIndex: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:memory-index",
+    execute: (input: import("@circe/contracts").CirceMemoryIndexInput) =>
+      getCirceMemoryIndex(input),
+  }),
+  forgetMemory: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:memory-forget",
+    execute: (input: import("@circe/contracts").CirceMemoryForgetInput) => forgetCirceMemory(input),
   }),
   presentations: createEnvironmentRpcSubscriptionAtomFamily(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:presentation-stream",

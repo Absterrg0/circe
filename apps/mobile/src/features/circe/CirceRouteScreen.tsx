@@ -37,6 +37,7 @@ import type { AppSymbolName } from "../../components/AppSymbol";
 import { CirceOrb } from "../../components/circe-orb/CirceOrb";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
 import { CirceTabBar } from "./CirceTabBar";
+import { CirceMemories } from "./CirceMemories";
 import { CirceNeedsAttention } from "./CirceNeedsAttention";
 import { ListeningChrome } from "./ListeningChrome";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
@@ -520,6 +521,7 @@ export function CirceRouteScreen() {
                 if (task !== undefined) void controller.focusTask(task);
               }}
             />
+            <CirceMemories project={controller.selectedProject} />
           </Animated.View>
 
           {devicesConnecting ? (
