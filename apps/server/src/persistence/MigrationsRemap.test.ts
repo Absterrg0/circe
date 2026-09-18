@@ -3,7 +3,7 @@ import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
-import * as Option from "effect/Option";
+import * as Result from "effect/Result";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ForeignDatabaseError, migrationManifest, runMigrations } from "./Migrations.ts";
@@ -117,6 +117,7 @@ layer("MigrationRemap", (it) => {
   it.effect("refuses a database whose recorded history belongs to another product", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
+      yield* sql`DROP TABLE IF EXISTS effect_sql_migrations`;
       yield* sql`
         CREATE TABLE effect_sql_migrations (
           migration_id INTEGER PRIMARY KEY,
@@ -132,11 +133,11 @@ layer("MigrationRemap", (it) => {
       const result = yield* runMigrations().pipe(Effect.exit);
       assert.isTrue(Exit.isFailure(result));
       if (Exit.isFailure(result)) {
-        const defect = Cause.dieOption(result.cause);
-        assert.isTrue(Option.isSome(defect));
-        if (Option.isSome(defect)) {
-          assert.instanceOf(defect.value, ForeignDatabaseError);
-          assert.strictEqual(defect.value.reason, "history_mismatch");
+        const defect = Cause.findDefect(result.cause);
+        assert.isTrue(Result.isSuccess(defect));
+        if (Result.isSuccess(defect)) {
+          assert.instanceOf(defect.success, ForeignDatabaseError);
+          assert.strictEqual(defect.success.reason, "history_mismatch");
         }
       }
     }),
