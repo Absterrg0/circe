@@ -1,4 +1,4 @@
-import { ApprovalRequestId } from "@t3tools/contracts";
+import { RuntimeRequestId } from "@t3tools/contracts";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vite-plus/test";
 
@@ -8,7 +8,8 @@ describe("ComposerPendingApprovalActions", () => {
   it("uses direct choices with compact controls", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-1")}
+        requestId={RuntimeRequestId.make("approval-1")}
+        canRespond
         isResponding={false}
         onRespondToApproval={async () => undefined}
       />,
@@ -22,10 +23,11 @@ describe("ComposerPendingApprovalActions", () => {
     expect(markup).toContain("sm:text-[11px]");
   });
 
-  it("shows only the approval choices advertised by an MCP server", () => {
+  it("shows the approval choices advertised by an MCP server", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-safari")}
+        requestId={RuntimeRequestId.make("approval-safari")}
+        canRespond
         isResponding={false}
         options={[
           { decision: "decline", label: "Decline" },
@@ -44,7 +46,8 @@ describe("ComposerPendingApprovalActions", () => {
   it("marks an option that carries a provider warning", () => {
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-1")}
+        requestId={RuntimeRequestId.make("approval-1")}
+        canRespond
         isResponding={false}
         options={[
           { decision: "accept", label: "Allow once" },
@@ -70,7 +73,8 @@ describe("ComposerPendingApprovalActions", () => {
     const label = "Allow ".repeat(40).trim();
     const markup = renderToStaticMarkup(
       <ComposerPendingApprovalActions
-        requestId={ApprovalRequestId.make("approval-long-label")}
+        requestId={RuntimeRequestId.make("approval-long-label")}
+        canRespond
         isResponding={false}
         options={[{ decision: "acceptAlways", label }]}
         onRespondToApproval={async () => undefined}

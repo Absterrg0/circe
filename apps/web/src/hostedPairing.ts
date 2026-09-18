@@ -1,3 +1,5 @@
+import { DEFAULT_HOSTED_APP_URL } from "@t3tools/shared/connectAuth";
+
 import { getPairingTokenFromUrl, setPairingTokenOnUrl } from "./pairingUrl";
 
 export interface HostedPairingRequest {
@@ -13,7 +15,9 @@ export function configuredHostedAppUrl(): string {
   if (configured) {
     return configured;
   }
-  return typeof window !== "undefined" && window.location ? window.location.origin : "";
+  const origin =
+    typeof window !== "undefined" && window.location ? window.location.origin : "";
+  return origin || DEFAULT_HOSTED_APP_URL;
 }
 
 function configuredBackendUrl(): string {

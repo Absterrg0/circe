@@ -10,7 +10,7 @@ import {
   TurnId,
 } from "./baseSchemas.ts";
 import { ProviderOptionSelections } from "./model.ts";
-import { ModelSelection } from "./orchestration.ts";
+import { ModelSelection } from "./modelSelection.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
 
 export const CirceUtterance = TrimmedNonEmptyString.check(Schema.isMaxLength(16_000));

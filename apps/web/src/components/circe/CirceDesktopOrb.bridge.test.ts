@@ -1,4 +1,5 @@
 import { EnvironmentId, ProjectId, ThreadId, ProviderInstanceId } from "@t3tools/contracts";
+import type { EnvironmentThreadShell } from "@t3tools/client-runtime/state/shell";
 import { describe, expect, it } from "vite-plus/test";
 
 import {
@@ -260,6 +261,16 @@ describe("CirceDesktopOrb bridge", () => {
 describe("desktop activity catalog", () => {
   const nodeA = EnvironmentId.make("node-a");
   const nodeB = EnvironmentId.make("node-b");
+  const runtimeFor = (
+    status: NonNullable<EnvironmentThreadShell["runtime"]>["status"],
+  ): NonNullable<EnvironmentThreadShell["runtime"]> => ({
+    status,
+    activeRunId: null,
+    providerInstanceId: ProviderInstanceId.make("codex"),
+    providerName: null,
+    lastError: null,
+    updatedAt: "2026-09-12T00:00:00.000Z",
+  });
   const task = {
     id: ThreadId.make("shared-thread"),
     environmentId: nodeA,
@@ -269,7 +280,8 @@ describe("desktop activity catalog", () => {
     hasPendingApprovals: false,
     hasPendingUserInput: false,
     modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "test" },
-    session: { status: "running" as const },
+    runtime: runtimeFor("running"),
+    pendingBackgroundTasks: [] as ReadonlyArray<{ readonly taskId: string }>,
   };
   const catalog = {
     nodes: [
@@ -291,17 +303,16 @@ describe("desktop activity catalog", () => {
 
   it("drops completed, archived and unpaired work while preserving waiting and background agents", () => {
     const cases = [
-      { ...task, session: { status: "ready" as const } },
+      { ...task, runtime: runtimeFor("completed") },
       { ...task, archivedAt: "2026-09-12T00:00:00Z" },
       { ...task, environmentId: EnvironmentId.make("removed") },
       { ...task, hasPendingApprovals: true },
-      { ...task, session: null, backgroundLiveness: "monitoring" as const },
-      { ...task, session: null, backgroundLiveness: "working" as const },
+      { ...task, runtime: null, pendingBackgroundTasks: [{ taskId: "watch-1" }] },
+      { ...task, runtime: null },
     ];
     expect(buildDesktopCirceOrbAgents(cases, catalog).map((agent) => agent.status)).toEqual([
       "waiting",
       "monitoring",
-      "running",
     ]);
     expect(buildDesktopCirceOrbAgents([task], null)).toEqual([]);
   });

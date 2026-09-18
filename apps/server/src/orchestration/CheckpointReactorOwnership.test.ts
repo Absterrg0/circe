@@ -9,9 +9,20 @@ const orchestrationDir = NodePath.resolve(NodePath.dirname(NodeURL.fileURLToPath
 
 describe("checkpoint reactor ownership", () => {
   it("keeps Circe concepts out of generic checkpoint production and tests", () => {
-    for (const filename of ["CheckpointReactor.ts", "CheckpointReactor.test.ts"]) {
-      const path = NodePath.join(orchestrationDir, "Layers", filename);
-      expect(NodeFS.readFileSync(path, "utf8"), path).not.toMatch(/circe/iu);
+    for (const filename of [
+      "CheckpointService.ts",
+      "CheckpointCaptureService.ts",
+      "CheckpointRollbackService.ts",
+      "CheckpointService.test.ts",
+      "CheckpointCaptureService.test.ts",
+      "CheckpointRollbackService.test.ts",
+    ]) {
+      const path = NodePath.join(orchestrationDir, "..", "orchestration-v2", filename);
+      // Stripping the package-qualified Effect tag keys first; every generic
+      // module carries `@absterrg0/circe/...` as its DI identifier, and only a
+      // Circe *concept* in the body is a boundary violation.
+      const source = NodeFS.readFileSync(path, "utf8").replace(/"@absterrg0\/circe\/[^"]*"/gu, "");
+      expect(source, path).not.toMatch(/circe/iu);
     }
   });
 });

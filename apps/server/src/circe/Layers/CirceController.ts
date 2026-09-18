@@ -6,7 +6,7 @@ import {
   MessageId,
   type EnvironmentId,
   type ModelSelection,
-  ApprovalRequestId,
+  RuntimeRequestId,
   ProjectId,
   ThreadId,
   TextGenerationError,
@@ -30,7 +30,8 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import type * as PlatformError from "effect/PlatformError";
 import * as Ref from "effect/Ref";
-import { OrchestrationEngineService } from "../../orchestration/Services/OrchestrationEngine.ts";
+import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
+import { latestActiveRun } from "../../orchestration-v2/ThreadManagementService.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { ProviderRegistry } from "../../provider/Services/ProviderRegistry.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
@@ -39,7 +40,9 @@ import {
   CirceControllerInterpreter,
   CirceProjectNotFoundError,
   CirceRequestConflictError,
+  type CirceClassifiedTurn,
 } from "../Services/CirceController.ts";
+import { CirceNodeTools } from "../Services/CirceNodeTools.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
 import { CirceFollowUpQueue } from "../Services/CirceFollowUpQueue.ts";
 import { CirceFollowUpDispatcherLive } from "./CirceFollowUpDispatcher.ts";
@@ -58,6 +61,7 @@ import {
   scopeCirceStepClause,
   validateCirceModelSelection,
   type CirceCommandContext,
+  type CirceCommandInterpretation,
   type CirceCommandNeedsInput,
   type CirceCommandTask,
   type CircePlanStepBinding,
@@ -69,9 +73,19 @@ import {
   decisionCatalogFromEvidence,
   decisionStateFromContext,
   decisionStateFromEvidence,
+  extractLocationCandidates,
+  extractWebsiteCandidates,
   runCirceDecisionTier,
 } from "../decisionTier.ts";
 import type { DecisionRequest } from "@circe/core/decision";
+import {
+  circeOutcomeFromInterpretation,
+  circeOutcomeFromProposal,
+  offeredCirceTools,
+  type CirceWorkResolution,
+} from "@circe/core/controlClassify";
+import type { CirceClarification, CirceOutcome } from "@circe/core/controlOutcome";
+import { runCirceNodeTool } from "@circe/core/controlDispatch";
 import { getPendingCirceReplyState, isExpectedPendingReply } from "@circe/core/confirmation";
 import { deriveCirceTaskState, hasActiveCirceTurn } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
@@ -309,6 +323,14 @@ const defaultInterpreterLayer = Layer.effect(
     const providerRegistry = yield* ProviderRegistry;
     const fileSystem = yield* FileSystem.FileSystem;
     const serverSettings = yield* ServerSettingsService;
+    // Node tool capability. Absent means no bounded node tool is offered to
+    // the classifier, which is a legitimate wiring (a Controller node with no
+    // lookup executors), never a per-user refusal.
+    const nodeToolsOpt = yield* Effect.serviceOption(CirceNodeTools);
+    const nodeTools = Option.getOrElse(nodeToolsOpt, () => ({
+      available: [] as ReadonlyArray<string>,
+      executors: {},
+    }));
     // Optional System One decision tier. Absent means disabled: the request
     // is never sent and the provider safety net below is unchanged.
     const decisionOpt = yield* Effect.serviceOption(CirceDecision);
@@ -426,68 +448,162 @@ const defaultInterpreterLayer = Layer.effect(
       };
       return attempt(candidates);
     };
-    return CirceControllerInterpreter.of({
-      interpret: (input) => {
-        const prepared = prepareCirceSemanticTurn(input);
-        if (prepared.status === "needs-input") return Effect.succeed(prepared);
-        return Effect.gen(function* () {
-          // System One decision tier: one or two finite requests, composed in
-          // code, then the ordinary Director. A composed needs-input is a
-          // deliberate Clarify and never falls through; only a decline (no
-          // key, timeout, 429, or network failure) reaches the provider net.
-          const tier = yield* runCirceDecisionTier({
-            source: prepared.sourceUtterance,
-            state: decisionStateFromContext(input, prepared.sourceUtterance),
-            catalog: decisionCatalogFromContext(input),
-            decide: decision.decide,
-          });
-          if (tier.status === "proposal") {
-            return interpretCirceCommand(input, prepared, tier.proposal);
-          }
-          if (tier.status === "needs-input") {
-            return tier.needsInput;
-          }
-          // The decision tier declined (no key, timeout, 429, or network).
-          // Fall back to one ordinary provider proposal as a safety net; the
-          // shared Director still owns all authority.
-          const prompt = buildCirceSemanticPrompt(input, prepared);
-          // Settings are advisory here: an unreadable settings store must not
-          // fail interpretation, it only disables the provider-derived plan.
-          const settings = yield* serverSettings.getSettings.pipe(
-            Effect.catchCause(() => Effect.succeed(null)),
-          );
-          const providers = yield* readSemanticProviders;
-          const plan = resolveCirceSupervisorPlan({
-            activeSelection:
-              input.modelSelection ??
-              input.nodeDefaultModelSelection ??
-              settings?.circeDefaultModelSelection ??
-              input.supervisorModelSelection,
-            providers,
-          });
-          const modelSelection = plan?.provider ?? input.supervisorModelSelection;
-          const candidates = selectCirceSemanticCandidates({
-            configured: modelSelection,
-            providers,
-          });
-          return yield* runSemanticWithFallback(candidates, prompt).pipe(
-            Effect.map((proposal) => interpretCirceCommand(input, prepared, proposal)),
-            Effect.tapError((cause) =>
-              Effect.logWarning("Semantic supervisor request failed", cause),
-            ),
-            Effect.catchCause((cause) => {
-              if (Cause.hasInterruptsOnly(cause))
-                return Effect.failCause(cause as Cause.Cause<never>);
-              return Effect.succeed({
+    // One interpretation pass shared by `interpret` and `classify`, so the
+    // outcome never costs a second inference. The proposal is retained only
+    // for outcome classification; the interpretation keeps the rich Director
+    // result for work and durable clarifications.
+    const resolveWorkFromInterpretation = (
+      interpretation: CirceCommandInterpretation,
+    ): CirceWorkResolution => {
+      if (interpretation.status === "command") {
+        return { status: "commands", commands: [interpretation.command] };
+      }
+      if (interpretation.projectClarification !== undefined) {
+        const clarification: CirceClarification = {
+          kind: "project",
+          prompt: interpretation.prompt,
+          candidates: interpretation.projectClarification.candidates.map((candidate) => ({
+            projectId: candidate.projectId,
+            label: candidate.label,
+          })),
+        };
+        return { status: "clarification", clarification };
+      }
+      if (interpretation.taskClarification !== undefined) {
+        const clarification: CirceClarification = {
+          kind: "task",
+          prompt: interpretation.prompt,
+          candidates: interpretation.taskClarification.candidates.map((candidate) => ({
+            threadId: candidate.threadId,
+            label: candidate.label,
+          })),
+        };
+        return { status: "clarification", clarification };
+      }
+      return {
+        status: "clarification",
+        clarification: {
+          kind: "model",
+          prompt: interpretation.prompt,
+          choices: interpretation.choices,
+        },
+      };
+    };
+
+    const interpretTurn = (input: CirceCommandContext) => {
+      const prepared = prepareCirceSemanticTurn(input);
+      if (prepared.status === "needs-input") {
+        return Effect.succeed({
+          interpretation: prepared as CirceCommandInterpretation,
+          proposal: undefined,
+          source: input.utterance,
+        });
+      }
+      const source = prepared.sourceUtterance;
+      return Effect.gen(function* () {
+        // System One decision tier: one or two finite requests, composed in
+        // code, then the ordinary Director. A composed needs-input is a
+        // deliberate Clarify and never falls through; only a decline (no
+        // key, timeout, 429, or network failure) reaches the provider net.
+        const tier = yield* runCirceDecisionTier({
+          source,
+          state: decisionStateFromContext(input, source),
+          catalog: decisionCatalogFromContext(input),
+          decide: decision.decide,
+        });
+        if (tier.status === "proposal") {
+          return {
+            interpretation: interpretCirceCommand(input, prepared, tier.proposal),
+            proposal: tier.proposal,
+            source,
+          };
+        }
+        if (tier.status === "needs-input") {
+          return {
+            interpretation: tier.needsInput as CirceCommandInterpretation,
+            proposal: undefined,
+            source,
+          };
+        }
+        // The decision tier declined (no key, timeout, 429, or network).
+        // Fall back to one ordinary provider proposal as a safety net; the
+        // shared Director still owns all authority.
+        const prompt = buildCirceSemanticPrompt(input, prepared);
+        // Settings are advisory here: an unreadable settings store must not
+        // fail interpretation, it only disables the provider-derived plan.
+        const settings = yield* serverSettings.getSettings.pipe(
+          Effect.catchCause(() => Effect.succeed(null)),
+        );
+        const providers = yield* readSemanticProviders;
+        const plan = resolveCirceSupervisorPlan({
+          activeSelection:
+            input.modelSelection ??
+            input.nodeDefaultModelSelection ??
+            settings?.circeDefaultModelSelection ??
+            input.supervisorModelSelection,
+          providers,
+        });
+        const modelSelection = plan?.provider ?? input.supervisorModelSelection;
+        const candidates = selectCirceSemanticCandidates({
+          configured: modelSelection,
+          providers,
+        });
+        return yield* runSemanticWithFallback(candidates, prompt).pipe(
+          Effect.map((proposal) => ({
+            interpretation: interpretCirceCommand(input, prepared, proposal),
+            proposal,
+            source,
+          })),
+          Effect.tapError((cause) =>
+            Effect.logWarning("Semantic supervisor request failed", cause),
+          ),
+          Effect.catchCause((cause) => {
+            if (Cause.hasInterruptsOnly(cause))
+              return Effect.failCause(cause as Cause.Cause<never>);
+            return Effect.succeed({
+              interpretation: {
                 status: "needs-input" as const,
                 reason: "unsupported-command" as const,
                 prompt: CIRCE_SEMANTIC_UNAVAILABLE_PROMPT,
-                choices: [],
-              });
-            }),
-          );
-        });
-      },
+                choices: [] as ReadonlyArray<string>,
+              } as CirceCommandInterpretation,
+              proposal: undefined,
+              source,
+            });
+          }),
+        );
+      });
+    };
+
+    // Compose exactly one outcome from the accepted proposal. A node tool is
+    // offered only when the host advertised its executor; client tools are
+    // offered only when the originating client advertised them (none here,
+    // because the execute wire does not yet carry client capabilities).
+    const classifyTurn = (turn: {
+      readonly interpretation: CirceCommandInterpretation;
+      readonly proposal: typeof CirceSemanticProposal.Type | undefined;
+      readonly source: string;
+    }): CirceClassifiedTurn => {
+      const offered = offeredCirceTools({
+        nodeTools: nodeTools.available,
+        clientTools: [],
+        locationCandidates: extractLocationCandidates(turn.source),
+        websiteCandidates: extractWebsiteCandidates(turn.source),
+      });
+      const outcome: CirceOutcome =
+        turn.proposal === undefined
+          ? { kind: "refused", reason: "unsupported-command" }
+          : circeOutcomeFromProposal({
+              proposal: turn.proposal,
+              tools: offered,
+              work: () => resolveWorkFromInterpretation(turn.interpretation),
+            });
+      return { outcome, interpretation: turn.interpretation };
+    };
+
+    return CirceControllerInterpreter.of({
+      interpret: (input) => interpretTurn(input).pipe(Effect.map((turn) => turn.interpretation)),
+      classify: (input) => interpretTurn(input).pipe(Effect.map((turn) => classifyTurn(turn))),
       propose: (input) =>
         Effect.gen(function* () {
           const source = input.utterance;
@@ -584,9 +700,14 @@ export const makeCirceControllerLive = <R>(
     CirceController,
     Effect.gen(function* () {
       const interpreter = yield* CirceControllerInterpreter;
+      const nodeToolsOpt = yield* Effect.serviceOption(CirceNodeTools);
+      const nodeTools = Option.getOrElse(nodeToolsOpt, () => ({
+        available: [] as ReadonlyArray<string>,
+        executors: {} as import("@circe/core/controlDispatch").CirceNodeToolExecutors,
+      }));
       const providers = yield* ProviderRegistry;
       const projections = yield* ProjectionSnapshotQuery;
-      const orchestration = yield* OrchestrationEngineService;
+      const orchestration = yield* OrchestratorV2;
       const serverSettings = yield* ServerSettingsService;
       const projectLexicon = yield* CirceProjectLexicon;
       const followUpQueue = yield* CirceFollowUpQueue;
@@ -816,35 +937,28 @@ export const makeCirceControllerLive = <R>(
           acceptanceKey === undefined
             ? uuid()
             : Effect.succeed(`circe.${purpose}.${acceptanceKey}`);
-        const recordTurnOrigin = Effect.fn("CirceController.recordTurnOrigin")(function* (
-          thread: OrchestrationThread,
-          createdAt: string,
-          correlation: { readonly messageId?: MessageId; readonly turnId?: TurnId },
-        ) {
-          if (input.requestMetadata?.origin === undefined) return;
-          const taskRef = taskRefFor(input.executionNodeId, thread.id);
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(yield* requestScopedId("turn-origin-command")),
-            threadId: thread.id,
-            activity: {
-              id: EventId.make(yield* requestScopedId("turn-origin-activity")),
-              tone: "info",
-              kind: "circe.turn.origin",
-              summary: "Continued by Circe",
-              payload: {
-                ...(correlation.messageId === undefined
-                  ? {}
-                  : { messageId: correlation.messageId }),
-                ...(taskRef === undefined ? {} : { taskRef }),
-                requestMetadata: input.requestMetadata,
-              },
-              turnId: correlation.turnId ?? null,
-              createdAt,
-            },
-            createdAt,
-          });
-        });
+        // V2 records who created a turn through the message dispatch provenance
+        // (`createdBy`/`creationSource`) rather than a separate Circe activity.
+        // Circe is a server-side controller acting for the user, so its
+        // messages are user-created and server-sourced.
+        const circeOrigin = input.requestMetadata?.origin;
+        const circeCreation = {
+          createdBy: "user",
+          creationSource: "server",
+          ...(circeOrigin?.originInteractionId === undefined
+            ? {}
+            : {
+                clientRouting: {
+                  originInteractionId: circeOrigin.originInteractionId,
+                  ...(circeOrigin.originNodeId === undefined
+                    ? {}
+                    : { originNodeId: circeOrigin.originNodeId }),
+                  ...(input.requestMetadata?.requestId === undefined
+                    ? {}
+                    : { requestId: input.requestMetadata.requestId }),
+                },
+              }),
+        } as const;
 
         // The controller is the turn owner: read the desk, node catalogs, and
         // request context once before deciding which ordinary T3 command to emit.
@@ -1142,47 +1256,49 @@ export const makeCirceControllerLive = <R>(
         // source with no second inference. Direct local callers omit the
         // proposal and run their single local interpretation as before. A
         // proposal never authorizes beyond a regular user execute.
-        const proposalEffect: Effect.Effect<
-          import("@circe/core/command").CirceCommandInterpretation
-        > | null =
+        const proposalEffect: Effect.Effect<CirceClassifiedTurn> | null =
           input.semanticProposal === undefined
             ? null
-            : Effect.sync((): import("@circe/core/command").CirceCommandInterpretation => {
+            : Effect.sync((): CirceClassifiedTurn => {
+                let interpretation: CirceCommandInterpretation;
                 try {
                   const proposal = decodeCirceSemanticProposal(input.semanticProposal);
                   const source = input.sourceUtterance ?? input.utterance;
-                  if (!/[\p{Letter}\p{Number}]/u.test(source)) {
-                    return {
-                      status: "needs-input" as const,
-                      reason: "unsupported-command" as const,
-                      prompt:
-                        "I couldn't understand that command. State the task or control action you want.",
-                      choices: [],
-                    };
-                  }
-                  return interpretCirceCommand(
-                    interpretationContext,
-                    { status: "ready", utterance: source, sourceUtterance: source },
-                    proposal,
-                  );
+                  interpretation = !/[\p{Letter}\p{Number}]/u.test(source)
+                    ? {
+                        status: "needs-input",
+                        reason: "unsupported-command",
+                        prompt:
+                          "I couldn't understand that command. State the task or control action you want.",
+                        choices: [],
+                      }
+                    : interpretCirceCommand(
+                        interpretationContext,
+                        { status: "ready", utterance: source, sourceUtterance: source },
+                        proposal,
+                      );
                 } catch {
-                  return {
-                    status: "needs-input" as const,
-                    reason: "unsupported-command" as const,
+                  interpretation = {
+                    status: "needs-input",
+                    reason: "unsupported-command",
                     prompt:
                       "I couldn't safely apply that request. Restate the task or control action.",
                     choices: [],
                   };
                 }
+                return { interpretation, outcome: circeOutcomeFromInterpretation(interpretation) };
               });
-        const interpretationEffect =
+        const classifiedEffect =
           deterministicPendingReply !== null
-            ? Effect.succeed(deterministicPendingReply)
-            : (proposalEffect ?? interpreter.interpret(interpretationContext));
+            ? Effect.succeed({
+                interpretation: deterministicPendingReply,
+                outcome: circeOutcomeFromInterpretation(deterministicPendingReply),
+              })
+            : (proposalEffect ?? interpreter.classify(interpretationContext));
         const preAccept = yield* trackPreAccept(
           requestCancellation,
           acceptanceKey,
-          interpretationEffect,
+          classifiedEffect,
         );
         if (preAccept.status === "cancelled") {
           return {
@@ -1210,7 +1326,52 @@ export const makeCirceControllerLive = <R>(
             };
           }
         }
-        let interpretation = preAccept.value;
+        let interpretation = preAccept.value.interpretation;
+        const outcome = preAccept.value.outcome;
+        // A bounded node tool is the only outcome the node executes itself.
+        // The host advertised the executor before the tool was offered, so a
+        // missing executor here would be a wiring failure, not a user choice.
+        if (outcome.kind === "tool-answer") {
+          const execution = yield* runCirceNodeTool({
+            request: {
+              toolName: outcome.tool,
+              args: outcome.args,
+              source: input.sourceUtterance ?? input.utterance,
+            },
+            executors: nodeTools.executors,
+          });
+          if (execution.status === "ok") {
+            return {
+              status: "acknowledged" as const,
+              action: "conversed" as const,
+              message: execution.speech,
+            };
+          }
+          if (execution.status === "needs-input") {
+            return {
+              status: "needs-input" as const,
+              reason: "control-target-required" as const,
+              prompt: execution.prompt,
+              choices: execution.choices,
+            };
+          }
+          return {
+            status: "needs-input" as const,
+            reason: "unsupported-command" as const,
+            prompt: execution.speech,
+            choices: [] as ReadonlyArray<string>,
+          };
+        }
+        // A client action is performed by the origin client, which can report a
+        // real result. The node never attempts it; it returns the typed action's
+        // acceptance speech so the caller can speak and route it.
+        if (outcome.kind === "client-action") {
+          return {
+            status: "acknowledged" as const,
+            action: "conversed" as const,
+            message: outcome.speech,
+          };
+        }
         // Every general question lives in the dedicated Conversations project,
         // never the ambient coding project.
         if (
@@ -1561,23 +1722,17 @@ export const makeCirceControllerLive = <R>(
                 choices: [],
               };
             }
-            yield* recordTurnOrigin(
-              currentThread,
-              createdAt,
-              pendingReply.turnId === undefined ? {} : { turnId: pendingReply.turnId },
-            );
             yield* orchestration.dispatch({
-              type: "thread.user-input.respond",
+              type: "runtime-request.respond",
               commandId,
               threadId: currentThread.id,
-              requestId: ApprovalRequestId.make(pendingReply.requestId),
+              requestId: RuntimeRequestId.make(pendingReply.requestId),
               answers: Object.fromEntries(
                 pendingReply.questionIds.map((questionId) => [
                   questionId,
                   groundedUtterance.trim(),
                 ]),
               ),
-              createdAt,
             });
           } else if (pendingReply?.kind === "approval") {
             const decision =
@@ -1594,37 +1749,26 @@ export const makeCirceControllerLive = <R>(
                 expectedReply: { kind: "approval" as const, requestId: pendingReply.requestId },
               };
             }
-            yield* recordTurnOrigin(
-              currentThread,
-              createdAt,
-              pendingReply.turnId === undefined ? {} : { turnId: pendingReply.turnId },
-            );
             yield* orchestration.dispatch({
-              type: "thread.approval.respond",
+              type: "runtime-request.respond",
               commandId,
               threadId: currentThread.id,
-              requestId: ApprovalRequestId.make(pendingReply.requestId),
+              requestId: RuntimeRequestId.make(pendingReply.requestId),
               decision,
-              createdAt,
             });
           } else {
             const visibleInstruction = groundedUtterance.trim();
             const messageId = MessageId.make(yield* requestScopedId("continuation-message"));
-            yield* recordTurnOrigin(currentThread, createdAt, { messageId });
             yield* orchestration.dispatch({
-              type: "thread.turn.start",
+              type: "message.dispatch",
               commandId,
               threadId: currentThread.id,
-              message: {
-                messageId,
-                role: "user",
-                text: visibleInstruction,
-                attachments: [],
-              },
+              messageId,
+              text: visibleInstruction,
+              attachments: [],
               modelSelection: currentThread.modelSelection,
-              runtimeMode: currentThread.runtimeMode,
-              interactionMode: currentThread.interactionMode,
-              createdAt,
+              dispatchMode: { type: "start_immediately" },
+              ...circeCreation,
             });
           }
           const continuationTaskRef = taskRefFor(input.executionNodeId, currentThread.id);
@@ -1672,7 +1816,6 @@ export const makeCirceControllerLive = <R>(
         let rerouteSource:
           | { readonly thread: OrchestrationThread; readonly task: CirceCommandTask }
           | undefined;
-        let rerouteInterruptTurnId: TurnId | undefined;
         if (command.type === "status") {
           const statusThread = Option.getOrThrow(selectedControlThread);
           const queuedFollowUps = yield* followUpQueue.pendingCount(statusThread.id);
@@ -1748,23 +1891,22 @@ export const makeCirceControllerLive = <R>(
             };
           }
           const steerState = deriveCirceTaskState(selectedControlThread.value);
-          const createdAt = DateTime.formatIso(yield* DateTime.now);
           const messageId = MessageId.make(yield* requestScopedId("steer-message"));
-          yield* recordTurnOrigin(selectedControlThread.value, createdAt, { messageId });
           yield* orchestration.dispatch({
-            type: "thread.turn.start",
+            type: "message.dispatch",
             commandId: CommandId.make(yield* requestScopedId("steer-command")),
             threadId: selectedControlThread.value.id,
-            message: {
-              messageId,
-              role: "user",
-              text: command.instruction,
-              attachments: [],
-            },
+            messageId,
+            text: command.instruction,
+            attachments: [],
             modelSelection: selectedControlThread.value.modelSelection,
-            runtimeMode: selectedControlThread.value.runtimeMode,
-            interactionMode: selectedControlThread.value.interactionMode,
-            createdAt,
+            // Let V2 resolve active-run steering against its serialized thread
+            // state. It becomes `steer_active` when a run is live and falls
+            // back to a fresh turn when steering is too late, which matches
+            // Circe's continuation-versus-steer decision.
+            dispatchMode: { type: "start_immediately" },
+            deliveryIntent: "steer",
+            ...circeCreation,
           });
           {
             const steeredTaskRef = taskRefFor(
@@ -1828,9 +1970,6 @@ export const makeCirceControllerLive = <R>(
               : { executionNodeId: input.executionNodeId }),
           });
           rerouteSource = { thread: sourceThread, task: sourceTask };
-          rerouteInterruptTurnId = hasActiveCirceTurn(sourceThread)
-            ? sourceThread.latestTurn?.turnId
-            : undefined;
         } else if (command.type === "continue" || command.type === "answer") {
           return {
             status: "needs-input" as const,
@@ -1885,29 +2024,15 @@ export const makeCirceControllerLive = <R>(
           };
         }
 
-        const [
-          threadUuid,
-          threadCreateCommandUuid,
-          commandUuid,
-          messageUuid,
-          sourceActivityCommandUuid,
-          sourceActivityUuid,
-          reviewActivityCommandUuid,
-          reviewActivityUuid,
-        ] = yield* Effect.all([
+        const [threadUuid, threadCreateCommandUuid, commandUuid, messageUuid] = yield* Effect.all([
           requestScopedId("thread"),
           requestScopedId("thread-create"),
           requestScopedId("turn-start"),
           requestScopedId("message"),
-          requestScopedId("source-activity-command"),
-          requestScopedId("source-activity"),
-          requestScopedId("review-activity-command"),
-          requestScopedId("review-activity"),
         ]);
         const threadId = ThreadId.make(threadUuid);
         const messageId = MessageId.make(messageUuid);
         const createdAt = DateTime.formatIso(yield* DateTime.now);
-        const isConversation = command.type === "start" && command.flow === "conversation";
         // Conversations use the raw objective as the provisional title; the
         // provider renames it asynchronously (below) into a short summary.
         // No visible "Conversation:" prefix.
@@ -1979,137 +2104,50 @@ export const makeCirceControllerLive = <R>(
           interactionMode: inheritedExecution.interactionMode,
           branch: null,
           worktreePath: null,
-          createdAt,
+          ...circeCreation,
         });
 
         // Interrupt the source before the successor's first turn so both tasks
-        // cannot keep running after a cross-project reroute.
+        // cannot keep running after a cross-project reroute. V2 addresses a
+        // concrete run, so resolve the active one from the source projection.
         if (rerouteSource !== undefined && hasActiveCirceTurn(rerouteSource.thread)) {
+          const rerouteProjection = yield* orchestration.getThreadProjection(
+            rerouteSource.thread.id,
+          );
+          const activeRun = latestActiveRun(rerouteProjection);
+          if (activeRun === undefined) {
+            return {
+              status: "needs-input" as const,
+              reason: "control-target-required" as const,
+              prompt:
+                "I couldn't interrupt the source task safely. Choose a current task to reroute.",
+              choices: [],
+            };
+          }
           yield* orchestration.dispatch({
-            type: "thread.turn.interrupt",
+            type: "run.interrupt",
             commandId: CommandId.make(yield* requestScopedId("reroute-interrupt-command")),
             threadId: rerouteSource.thread.id,
-            ...(rerouteInterruptTurnId === undefined ? {} : { turnId: rerouteInterruptTurnId }),
-            createdAt,
+            runId: activeRun.id,
           });
-        }
-
-        // Record Circe origin before starting the turn. The live projector
-        // routes terminal events by this marker, so starting first would let a
-        // fast result arrive before the task is recognized as managed.
-        if (isReview && Option.isSome(reviewSource)) {
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(sourceActivityCommandUuid),
-            threadId: reviewSource.value.id,
-            activity: {
-              id: EventId.make(sourceActivityUuid),
-              tone: "info",
-              kind: "circe.review.requested",
-              summary: `Review started in ${title}`,
-              payload: { reviewThreadId: threadId, modelSelection },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(reviewActivityCommandUuid),
-            threadId,
-            activity: {
-              id: EventId.make(reviewActivityUuid),
-              tone: "info",
-              kind: "circe.review.source",
-              summary: `Reviewing ${reviewSource.value.title}`,
-              payload: {
-                sourceThreadId: reviewSource.value.id,
-                objective,
-                messageId,
-                ...(taskRef === undefined ? {} : { taskRef }),
-                ...(input.requestMetadata === undefined
-                  ? {}
-                  : { requestMetadata: input.requestMetadata }),
-              },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-        } else {
-          yield* orchestration.dispatch({
-            type: "thread.activity.append",
-            commandId: CommandId.make(reviewActivityCommandUuid),
-            threadId,
-            activity: {
-              id: EventId.make(reviewActivityUuid),
-              tone: "info",
-              kind: "circe.task.created",
-              summary: `${
-                availableProviders.find(
-                  (provider) => provider.instanceId === modelSelection.instanceId,
-                )?.displayName ?? modelSelection.instanceId
-              } is starting in ${project.title}`,
-              payload: {
-                modelSelection,
-                objective,
-                messageId,
-                ...(taskRef === undefined ? {} : { taskRef }),
-                ...(input.requestMetadata === undefined
-                  ? {}
-                  : { requestMetadata: input.requestMetadata }),
-                ...(rerouteSource === undefined
-                  ? {}
-                  : { reroutedFromThreadId: rerouteSource.thread.id }),
-                ...(isConversation ? { flow: "conversation" as const } : {}),
-              },
-              turnId: null,
-              createdAt,
-            },
-            createdAt,
-          });
-          if (rerouteSource !== undefined) {
-            yield* orchestration.dispatch({
-              type: "thread.activity.append",
-              commandId: CommandId.make(sourceActivityCommandUuid),
-              threadId: rerouteSource.thread.id,
-              activity: {
-                id: EventId.make(sourceActivityUuid),
-                tone: "info",
-                kind: "circe.task.rerouted",
-                summary: `Moved to ${project.title}`,
-                payload: {
-                  targetThreadId: threadId,
-                  targetProjectId: project.id,
-                },
-                turnId: null,
-                createdAt,
-              },
-              createdAt,
-            });
-          }
         }
 
         // The accepted turn dispatch is the execution outcome. Everything
         // above had to succeed first; what follows is maintenance that must
         // not turn accepted work into a failed dispatch.
         yield* orchestration.dispatch({
-          type: "thread.turn.start",
+          type: "message.dispatch",
           commandId: CommandId.make(commandUuid),
           threadId,
-          message: {
-            messageId,
-            role: "user",
-            text: prompt,
-            attachments: [],
-          },
+          messageId,
+          text: prompt,
+          attachments: [],
           modelSelection,
           // Seeded so the provider renames the provisional objective into a
           // short title. That happens after the turn, never blocking the answer.
           titleSeed: title,
-          runtimeMode: inheritedExecution.runtimeMode,
-          interactionMode: inheritedExecution.interactionMode,
-          createdAt,
+          dispatchMode: { type: "start_immediately" },
+          ...circeCreation,
         });
         yield* finishCommit(requestCancellation, ownerLease, {
           threadId,

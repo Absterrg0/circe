@@ -6,7 +6,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 const orchestrationHttpPath = NodePath.resolve(
   NodePath.dirname(NodeURL.fileURLToPath(import.meta.url)),
-  "http.ts",
+  "../orchestration-v2/http.ts",
 );
 
 describe("orchestration HTTP ownership", () => {
