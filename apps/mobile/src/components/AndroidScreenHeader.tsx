@@ -4,6 +4,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { SymbolView, type AppSymbolName } from "./AppSymbol";
 import { AppText as Text } from "./AppText";
+import { CIRCE_INK, CIRCE_IVORY, CIRCE_MUTED } from "../lib/circeBrandColors";
 import { cn } from "../lib/cn";
 
 export interface AndroidHeaderAction {
@@ -41,6 +42,13 @@ export function AndroidHeaderIconButton(props: {
   );
 }
 
+/**
+ * `tone` selects the surface the header sits on. The default follows the app
+ * theme; `ivory` matches the fixed-light brand pages, whose page background the
+ * themed header would otherwise cut across with an unrelated dark band. Ivory
+ * covers the title, subtitle, and back control only: the action buttons are
+ * themed chrome and no ivory caller uses them.
+ */
 export function AndroidScreenHeader(props: {
   readonly title: string;
   readonly subtitle?: string | null;
@@ -49,15 +57,18 @@ export function AndroidScreenHeader(props: {
   readonly onBack?: () => void;
   readonly embedded?: boolean;
   readonly hideBottomBorder?: boolean;
+  readonly tone?: "app" | "ivory";
 }) {
   const insets = useSafeAreaInsets();
+  const ivory = props.tone === "ivory";
 
   return (
     <View
-      className="border-b border-header-border bg-header px-3 pb-2.5"
+      className={cn("px-3 pb-2.5", !ivory && "border-b border-header-border bg-header")}
       style={{
         paddingTop: props.embedded ? 8 : Math.max(insets.top, 12),
-        borderBottomWidth: props.hideBottomBorder ? 0 : undefined,
+        ...(ivory ? { backgroundColor: CIRCE_IVORY } : null),
+        borderBottomWidth: props.hideBottomBorder || ivory ? 0 : undefined,
       }}
     >
       <View className="min-h-12 flex-row items-center gap-2">
@@ -72,20 +83,26 @@ export function AndroidScreenHeader(props: {
             <SymbolView
               name="chevron.left"
               size={24}
-              tintColorClassName={"accent-foreground"}
+              tintColor={ivory ? CIRCE_INK : undefined}
+              tintColorClassName={ivory ? undefined : "accent-foreground"}
               type="monochrome"
             />
           </Pressable>
         ) : null}
 
         <View className={cn("min-w-0 flex-1", !props.onBack && "pl-1")}>
-          <Text numberOfLines={1} className="text-lg font-t3-bold text-foreground">
+          <Text
+            numberOfLines={1}
+            className={cn("text-lg font-t3-bold", !ivory && "text-foreground")}
+            style={ivory ? { color: CIRCE_INK } : undefined}
+          >
             {props.title}
           </Text>
           {props.subtitle ? (
             <Text
               numberOfLines={1}
-              className="mt-px text-[13px] font-t3-medium text-foreground-muted"
+              className={cn("mt-px text-[13px] font-t3-medium", !ivory && "text-foreground-muted")}
+              style={ivory ? { color: CIRCE_MUTED } : undefined}
             >
               {props.subtitle}
             </Text>

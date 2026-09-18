@@ -2,9 +2,11 @@ import { useAuth } from "@clerk/expo";
 import { AuthView, UserProfileView } from "@clerk/expo/native";
 import { StackActions, useNavigation } from "@react-navigation/native";
 import { useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { View } from "react-native";
+import { ActivityIndicator, StatusBar, View } from "react-native";
 
+import { CIRCE_IVORY } from "../../lib/circeBrandColors";
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
+import { CirceMark } from "../welcome/welcomeMarks";
 
 export function SettingsAuthRouteScreen() {
   const navigation = useNavigation();
@@ -37,14 +39,23 @@ function ConfiguredSettingsAuthRouteScreen() {
   }, [isLoaded, isSignedIn, navigation]);
 
   return (
-    <View collapsable={false} className="flex-1 overflow-hidden bg-sheet">
+    <View collapsable={false} style={{ flex: 1, backgroundColor: CIRCE_IVORY }}>
+      <StatusBar barStyle="dark-content" />
       {isLoaded ? (
         hasBeenSignedIn.current ? (
           <UserProfileView isDismissible={false} onHostBack={handleHostBack} />
         ) : (
-          <AuthView isDismissible={false} onHostBack={handleHostBack} />
+          <AuthView
+            isDismissible={false}
+            onHostBack={handleHostBack}
+            logo={<CirceMark height={40} />}
+          />
         )
-      ) : null}
+      ) : (
+        <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+          <ActivityIndicator size="large" />
+        </View>
+      )}
     </View>
   );
 }

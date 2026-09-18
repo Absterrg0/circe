@@ -90,9 +90,10 @@ it("brands mobile product copy while keeping route and scheme identities", () =>
 
   const appConfig = readSource("../apps/mobile/app.config.ts");
   assert.include(appConfig, '"Circe Dev"');
-  assert.include(appConfig, 'scheme: "t3code-dev"');
-  assert.include(appConfig, 'scheme: "t3code-preview"');
-  assert.include(appConfig, 'scheme: "t3code"');
+  assert.include(appConfig, 'scheme: "circe-dev"');
+  assert.include(appConfig, 'scheme: "circe-preview"');
+  assert.include(appConfig, 'scheme: "circe"');
+  assert.notInclude(appConfig, 'scheme: "t3code');
 });
 
 it("brands mesh and command prompts without touching identifiers", () => {
@@ -125,7 +126,7 @@ it("keeps migration identities and upstream references intact", () => {
   assert.include(branding, "https://github.com/Absterrg0/Circe/releases/tag");
 
   const triagePlaybook = readSource("../apps/server/src/cli/triagePrompt.ts");
-  assert.include(triagePlaybook, "https://github.com/pingdotgg/t3code");
+  assert.include(triagePlaybook, "https://github.com/Absterrg0/Circe");
 
   const installDoc = readSource("../docs/user/install.md");
   assert.include(installDoc, "`Circe-Setup.exe`");

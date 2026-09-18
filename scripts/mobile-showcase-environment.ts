@@ -115,9 +115,9 @@ const PROJECT_FAVICONS = {
 export const SHOWCASE_PROJECTS = [
   {
     id: "t3code",
-    title: "T3 Code",
+    title: "Circe",
     directory: "t3code",
-    repositoryUrl: "https://github.com/pingdotgg/t3code.git",
+    repositoryUrl: "https://github.com/Absterrg0/Circe.git",
     favicon: PROJECT_FAVICONS.t3code,
   },
   {
@@ -162,9 +162,9 @@ export const SHOWCASE_THREADS = [
     branch: "feat/remote-command-center",
     minutesAgo: 3,
     request:
-      "Give T3 Code a remote-first command center. Make three machines feel one tap away, keep agent work in sync, and make every handoff feel instant.",
+      "Give Circe a remote-first command center. Make three machines feel one tap away, keep agent work in sync, and make every handoff feel instant.",
     response:
-      "T3 Code now treats every machine like it is right here in the room. ✦\n\n- Moonbase, Suspense Station, and Kernel Cabin stay live together\n- Terminal state follows you without losing a single line\n- Agent work remains perfectly in sync across devices\n- Handoffs land before your train of thought can wander\n\nI also ran the changed workspace: **612 tests passed**.",
+      "Circe now treats every machine like it is right here in the room. ✦\n\n- Moonbase, Suspense Station, and Kernel Cabin stay live together\n- Terminal state follows you without losing a single line\n- Agent work remains perfectly in sync across devices\n- Handoffs land before your train of thought can wander\n\nI also ran the changed workspace: **612 tests passed**.",
   },
   {
     id: "pocket-command-center",
@@ -305,7 +305,7 @@ async function seedT3CodeWorkspace(workspaceRoot: string): Promise<void> {
   );
   await initializeRepository({
     workspaceRoot,
-    repositoryUrl: "https://github.com/pingdotgg/t3code.git",
+    repositoryUrl: "https://github.com/Absterrg0/Circe.git",
     commitMessage: "Show connected environments",
   });
   await runGit(workspaceRoot, ["checkout", "-b", "feat/remote-command-center"]);
@@ -329,7 +329,7 @@ async function seedShowcaseWorkspace(input: {
   await NodeFSP.writeFile(NodePath.join(input.workspaceRoot, "favicon.svg"), input.favicon);
   await NodeFSP.writeFile(
     NodePath.join(input.workspaceRoot, "README.md"),
-    `# ${input.title}\n\nSeeded by the T3 Code mobile screenshot harness.\n`,
+    `# ${input.title}\n\nSeeded by the Circe mobile screenshot harness.\n`,
   );
   await initializeRepository({
     workspaceRoot: input.workspaceRoot,

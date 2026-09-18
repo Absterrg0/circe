@@ -35,6 +35,10 @@
       "types": "./src/circe/liveVoice.ts",
       "default": "./src/circe/liveVoice.ts"
     },
+    "./circe/liveVoiceController": {
+      "types": "./src/circe/liveVoiceController.ts",
+      "default": "./src/circe/liveVoiceController.ts"
+    },
     "./operations/circe": {
       "types": "./src/operations/circe.ts",
       "default": "./src/operations/circe.ts"

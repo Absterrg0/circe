@@ -4,10 +4,13 @@ import {
   applyCirceLiveVoiceTranscript,
   createCirceLiveVoiceTranscript,
   CIRCE_LIVE_VOICE_MAX_APPEND_BYTES,
+  CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS,
   CIRCE_LIVE_VOICE_MAX_FRAGMENTS,
   CIRCE_LIVE_VOICE_MAX_TRANSCRIPT_CHARS,
   circeLiveVoiceAppendCommand,
   circeLiveVoiceAppendText,
+  circeLiveVoiceCaption,
+  isCirceLiveVoiceQuickAction,
   parseCirceLiveVoiceServerEvent,
   takeCirceLiveVoiceDelegateUtterance,
 } from "./liveVoice.ts";
@@ -215,6 +218,114 @@ describe("Circe live voice session reduction", () => {
     expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe(
       "alright, check pull requests in Rivvl",
     );
+  });
+
+  it("keeps the caption to the assistant and a few sentences", () => {
+    let state = createCirceLiveVoiceTranscript();
+    expect(circeLiveVoiceCaption(state)).toBeNull();
+
+    const user = (delta: string) => {
+      state = applyCirceLiveVoiceTranscript(state, {
+        type: "session.input_transcript.delta",
+        delta,
+        startMs: null,
+        endMs: null,
+      });
+    };
+    const assistant = (delta: string) => {
+      state = applyCirceLiveVoiceTranscript(state, {
+        type: "session.output_transcript.delta",
+        delta,
+        startMs: null,
+        endMs: null,
+      });
+    };
+
+    // The user's own words never reach the caption: it is a readout of Circe,
+    // not a two-party transcript.
+    user("What is the weather today? ");
+    expect(circeLiveVoiceCaption(state)).toBeNull();
+
+    // Circe's reply is shown, but only its tail.
+    assistant("One. Two. Three. Four. Five.");
+    expect(circeLiveVoiceCaption(state)).toBe("Three. Four. Five.");
+
+    // The user answering again must not replace Circe in the caption.
+    user("Gujarat.");
+    expect(circeLiveVoiceCaption(state)).toBe("Three. Four. Five.");
+  });
+
+  it("caps the caption by characters without cutting a word in half", () => {
+    const words = Array.from({ length: 120 }, (_, index) => `word${index}`);
+    const spoken = words.join(" ");
+    let state = createCirceLiveVoiceTranscript();
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.output_transcript.delta",
+      delta: spoken,
+      startMs: null,
+      endMs: null,
+    });
+    const caption = circeLiveVoiceCaption(state);
+    expect(caption).not.toBeNull();
+    expect(caption?.length ?? 0).toBeLessThanOrEqual(CIRCE_LIVE_VOICE_MAX_CAPTION_CHARS);
+    // A suffix of whole words: nothing is cut mid-word and the newest words win.
+    expect(spoken.endsWith(caption ?? "")).toBe(true);
+    for (const word of (caption ?? "").split(" ")) {
+      expect(words).toContain(word);
+    }
+    expect(caption?.includes("word119")).toBe(true);
+  });
+
+  it("carries the previous request when the user corrects or confirms it", () => {
+    let state = createCirceLiveVoiceTranscript();
+    const input = (delta: string, startMs: number, endMs: number) => {
+      state = applyCirceLiveVoiceTranscript(state, {
+        type: "session.input_transcript.delta",
+        delta,
+        startMs,
+        endMs,
+      });
+    };
+    input("what's the weather today", 0, 1500);
+    const first = takeCirceLiveVoiceDelegateUtterance(state);
+    expect(first.utterance).toBe("what's the weather today");
+    // The original request is consumed, so the correction is meaningless on its
+    // own. It must reach the backend together with the request it refers to.
+    state = first.state;
+    input("you can check live weather, just delegate", 3000, 6000);
+    expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe(
+      "what's the weather today you can check live weather, just delegate",
+    );
+  });
+
+  it("does not let a genuine new command inherit the previous request", () => {
+    let state = createCirceLiveVoiceTranscript();
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.input_transcript.delta",
+      delta: "check pull requests in Rivvl",
+      startMs: 0,
+      endMs: 1500,
+    });
+    const first = takeCirceLiveVoiceDelegateUtterance(state);
+    expect(first.utterance).toBe("check pull requests in Rivvl");
+    state = applyCirceLiveVoiceTranscript(first.state, {
+      type: "session.input_transcript.delta",
+      delta: "stop",
+      startMs: 3000,
+      endMs: 3400,
+    });
+    // "stop" is its own request, not a correction of the previous one.
+    expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe("stop");
+  });
+
+  it("recognizes the deterministic quick actions that must not depend on the model", () => {
+    expect(isCirceLiveVoiceQuickAction("what's the weather in Ahmedabad")).toBe(true);
+    expect(isCirceLiveVoiceQuickAction("will it rain tomorrow")).toBe(true);
+    expect(isCirceLiveVoiceQuickAction("what time is it in Tokyo")).toBe(true);
+    expect(isCirceLiveVoiceQuickAction("how hot is it outside")).toBe(true);
+    // Ordinary conversation must never be force-delegated and answered twice.
+    expect(isCirceLiveVoiceQuickAction("how are you doing today")).toBe(false);
+    expect(isCirceLiveVoiceQuickAction("start the auth task")).toBe(false);
   });
 
   it("parses only the events the app acts on", () => {

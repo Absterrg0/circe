@@ -20,6 +20,11 @@ import { squashAtomCommandFailure } from "@t3tools/client-runtime/state/runtime"
 import { AppText as Text } from "./components/AppText";
 import { getCompactBrandHeaderOptions } from "./components/CompactBrandTitle";
 import { ArchivedThreadsRouteScreen } from "./features/archive/ArchivedThreadsRouteScreen";
+import { OrbGalleryRouteScreen } from "./features/circe/OrbGalleryRouteScreen";
+import { WelcomeRouteScreen } from "./features/welcome/WelcomeRouteScreen";
+import { WelcomeAuthRouteScreen } from "./features/welcome/WelcomeAuthRouteScreen";
+// WelcomeGate is deferred: the app opens in guest mode like t3code did, and
+// Circe Mesh sign-in lives in Settings. Welcome routes stay registered below.
 import {
   useExpoPushRegistration,
   type ExpoPushRegistrationNode,
@@ -419,6 +424,8 @@ function RootStackLayout(props: {
   const { pendingShare } = useIncomingShare();
   const sharePresentationRef = useRef(EMPTY_INCOMING_SHARE_PRESENTATION_STATE);
   useAgentNotificationNavigation();
+  // Signed-out users with account service configured land on Welcome so the
+  // first run connects through Circe Mesh instead of ad-hoc transports.
   // Presents the Circe Mesh onboarding sheet after an in-session sign-in.
   useConnectOnboardingNavigation();
   // Launcher app shortcuts: routes shortcut taps and tracks opened threads.
@@ -448,6 +455,7 @@ function RootStackLayout(props: {
     <HardwareKeyboardCommandProvider pathname={pathname}>
       <ThreadOutboxDrainWorker />
       <ShowcaseCaptureCoordinator pathname={pathname} />
+      {/* Signup gate deferred: guest mode by default. Settings owns Clerk login. */}
       <ExistingThreadSettingsRouteProvider>
         <AdaptiveWorkspaceLayout pathname={workspacePathname}>
           {props.children}
@@ -522,6 +530,35 @@ export const RootStack = createNativeStackNavigator({
         title: "Circe",
       },
     }),
+    Welcome: createNativeStackScreen({
+      screen: WelcomeRouteScreen,
+      linking: "welcome",
+      options: {
+        headerShown: false,
+        contentStyle: { backgroundColor: "#FAF7F3" },
+      },
+    }),
+    WelcomeAuth: createNativeStackScreen({
+      screen: WelcomeAuthRouteScreen,
+      linking: "welcome/auth",
+      options: {
+        headerShown: false,
+        contentStyle: { backgroundColor: "#FAF7F3" },
+      },
+    }),
+    // The gallery is a development affordance. Gate it on `__DEV__` rather
+    // than `process.env.APP_VARIANT`: Expo only inlines EXPO_PUBLIC_* and
+    // NODE_ENV into the bundle, so an APP_VARIANT check is always false at
+    // runtime and the route never registers.
+    ...(__DEV__
+      ? {
+          OrbGallery: createNativeStackScreen({
+            screen: OrbGalleryRouteScreen,
+            linking: "orb-gallery",
+            options: { headerShown: false },
+          }),
+        }
+      : null),
     Thread: createNativeStackScreen({
       screen: ThreadRouteScreen,
       linking: THREAD_LINKING_PREFIX,

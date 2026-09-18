@@ -1,46 +1,357 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
+  ActivityIndicator,
+  Alert,
+  BackHandler,
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   TextInput,
   View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
+import type { EnvironmentId } from "@t3tools/contracts";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import type { CircePresentationEvent, CirceTaskDeskView } from "@t3tools/contracts";
+import { useUser } from "@clerk/expo";
+import { File } from "expo-file-system";
+import Animated, {
+  Easing,
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+  type SharedValue,
+} from "react-native-reanimated";
+import * as Haptics from "expo-haptics";
 
 import { AppText as Text } from "../../components/AppText";
+import { CirceHeaderTitle } from "../../components/CirceHeaderTitle";
 import { SymbolView } from "../../components/AppSymbol";
-import { ControlPill } from "../../components/ControlPill";
+import type { AppSymbolName } from "../../components/AppSymbol";
+import { CirceOrb } from "../../components/circe-orb/CirceOrb";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
-import { CirceNavigation } from "./CirceNavigation";
+import { CirceTabBar } from "./CirceTabBar";
+import { ListeningChrome } from "./ListeningChrome";
+import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
+import { hasCloudPublicConfig } from "../cloud/publicConfig";
+import { useWorkspaceState } from "../../state/workspace";
 import { useCirceController } from "./CirceMobileProvider";
-import { selectCurrentPresentations } from "./mobilePresentations";
-import { describeCirceRouteNodeIssues } from "./mobileNodeReadiness";
+import { useSystemReducedMotion, useVoiceOrbLevel } from "./useVoiceOrbLevel";
+import { transcribeCapturedVoice } from "./voiceTranscribe";
+import { LiveConversationChrome } from "./LiveConversationChrome";
+import { hasOnlineCirceNode, NO_DEVICES_COPY } from "./circeAvailability";
+import {
+  isLiveConversationActive,
+  startLiveConversation,
+  stopLiveConversation,
+  useLiveConversation,
+} from "./liveVoice";
+import { getLocalVoiceTranscriber } from "../../native/voiceTranscription";
 
-const CIRCE_GRAPHITE = "#191a1d";
-const CIRCE_GRAPHITE_DEEP = "#111214";
-const CIRCE_WARM = "#f4f0e8";
-const CIRCE_MUTED = "#92969f";
-const CIRCE_STATUS_GREEN = "#90b78a";
+/** Warm near-black the scene settles into while listening. Never navy. */
+const ESPRESSO = "#171310";
+const LISTENING_INK = "#F6F2EF";
 
+const HOME_ORB_SIZE = 168;
+const VOICE_ORB_SIZE = 232;
+const ENTER_MS = 560;
+const EXIT_MS = 480;
+/**
+ * Entry and exit share one curve so the scene is genuinely reversible: with a
+ * symmetric ease, playing the progress value backwards retraces the same
+ * frames. Cubic rather than quadratic because the orb's mass reads better with
+ * a softer start and a longer settle.
+ */
+const SCENE_EASING = Easing.inOut(Easing.cubic);
+
+/**
+ * The scene's visual state. `enteringVoice`/`exitingVoice` are the cinematic
+ * transition; `voice` is the settled listening surface. The orb's semantic
+ * state (idle/listening/error/...) stays separate in `phase` and never drives
+ * layout, so a mic error mid-entry cannot strand the chrome halfway.
+ */
+type SurfaceMode = "home" | "enteringVoice" | "voice" | "exitingVoice";
+
+function greetingForHour(hour: number): string {
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
+}
+
+/**
+ * The home greeting. A signed-in user is addressed by first name when Clerk
+ * has one; everyone else — including anyone who chose "Continue as guest" — is
+ * greeted as Guest, so the surface never implies an account that is not there.
+ *
+ * `useUser` requires the Clerk provider, which `CloudAuthProvider` only mounts
+ * when the account service is configured, so the hook lives behind that check.
+ */
+function AssistantGreeting() {
+  const greeting = useMemo(() => greetingForHour(new Date().getHours()), []);
+  const address = hasCloudPublicConfig() ? <AccountGreetingName /> : "Guest";
+
+  return (
+    <View className="gap-1 px-1 pt-2">
+      <Text className="font-circe-serif text-3xl leading-tight text-foreground">
+        {greeting}, {address}
+      </Text>
+      <Text className="text-base text-foreground-muted">What shall we do today?</Text>
+    </View>
+  );
+}
+
+function AccountGreetingName() {
+  const { isLoaded, isSignedIn, user } = useUser();
+  if (!isLoaded || isSignedIn !== true) return "Guest";
+  const name = user?.firstName?.trim();
+  return name && name.length > 0 ? name : "Guest";
+}
+
+const QUICK_ACTIONS: ReadonlyArray<{ label: string; prompt: string; icon: AppSymbolName }> = [
+  { label: "Summarise my work", prompt: "Summarise my work across all machines", icon: "doc.text" },
+  { label: "Draft something", prompt: "Draft something for me: ", icon: "square.and.pencil" },
+  { label: "Find anything", prompt: "Find ", icon: "magnifyingglass" },
+  { label: "Plan my day", prompt: "Plan my day", icon: "clock" },
+];
+
+/**
+ * The Circe home scene. Home and listening are one physical scene around a
+ * single persistent orb: entering voice never navigates, never remounts the
+ * orb, and exits by reversing the same animation. The orb renders at a stable
+ * size and only its wrapper scales/translates on the UI thread.
+ */
 export function CirceRouteScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
   const controller = useCirceController();
   const catalog = controller.catalog;
+  // No connected device means nothing the assistant can do; every entry point
+  // gates on this rather than attempting an RPC that cannot succeed.
+  const hasDevice = hasOnlineCirceNode(catalog);
+  // The environment registry, not the Circe catalog, owns "still coming up".
+  // On a cold start the catalog is non-null with no reachable node while a
+  // saved environment reconnects, so gating on the catalog alone showed a
+  // false "No devices connected" and then flipped to the full UI.
+  const { state: workspace } = useWorkspaceState();
+  const devicesConnecting =
+    workspace.isLoadingConnections ||
+    workspace.hasConnectingEnvironment ||
+    (workspace.hasReadyEnvironment && !hasDevice);
+  const { themeAppearance } = useAppearancePreferences();
+  const reducedMotion = useSystemReducedMotion();
   const [utterance, setUtterance] = useState("");
-  const [showDetails, setShowDetails] = useState(false);
-  const [choosingProject, setChoosingProject] = useState(false);
+  const [surfaceMode, setSurfaceMode] = useState<SurfaceMode>("home");
+  // Transient voice-finish state. `voiceBusyLabel` covers the listening title
+  // while the recording transcribes; `voiceNotice` reuses the listening error
+  // copy when there is nothing to submit, so a dead mic is never silence.
+  const [voiceBusyLabel, setVoiceBusyLabel] = useState<string | null>(null);
+  const [voiceNotice, setVoiceNotice] = useState<string | null>(null);
+  // Which mode owns the voice surface. A live conversation and push-to-talk
+  // both need the microphone, so exactly one of them may hold it.
+  const [voiceOwner, setVoiceOwner] = useState<"dictation" | "live" | null>(null);
+  const live = useLiveConversation();
+  const composerRef = useRef<TextInput>(null);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  // Purely visual 0 → 1. Everything cinematic reads from this; nothing
+  // semantic does.
+  const voiceProgress = useSharedValue(0);
+  /**
+   * How far the orb has to travel to sit in the middle of the scene once the
+   * home chrome has gone.
+   *
+   * At home the orb sits in the scroll flow between the greeting and the
+   * composer, which puts it well above the middle of the screen. With the
+   * chrome hidden that left the listening surface with the orb high and a large
+   * void beneath it. The travel is measured rather than guessed, because the
+   * home layout above the orb is not a fixed height.
+   */
+  const [sceneHeight, setSceneHeight] = useState(0);
+  const [orbAnchor, setOrbAnchor] = useState<{ top: number; height: number } | null>(null);
+  const scrollOffset = useRef(0);
+  const voiceOrbShift = useSharedValue(0);
+
+  const onSceneLayout = useCallback((event: LayoutChangeEvent) => {
+    setSceneHeight(event.nativeEvent.layout.height);
+  }, []);
+  const onOrbLayout = useCallback((event: LayoutChangeEvent) => {
+    const { y, height } = event.nativeEvent.layout;
+    setOrbAnchor({ top: y, height });
+  }, []);
+  const onSceneScroll = useCallback((event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    scrollOffset.current = event.nativeEvent.contentOffset.y;
+  }, []);
+  // The wave grows outward from the orb as the scene settles into listening
+  // and collapses back into it on cancel. Geometry untouched, only revealed.
+  const fieldReveal = useDerivedValue(
+    () => interpolate(voiceProgress.value, [0.12, 0.85], [0, 1], Extrapolation.CLAMP),
+    [voiceProgress],
+  );
 
   useEffect(() => {
     if (controller.catalog === null) void controller.refresh();
   }, [controller.catalog, controller.refresh]);
 
+  useEffect(
+    () => () => {
+      timers.current.forEach(clearTimeout);
+      timers.current = [];
+    },
+    [],
+  );
+
+  const later = useCallback((ms: number, work: () => void) => {
+    timers.current.push(setTimeout(work, ms));
+  }, []);
+  const clearPendingTransitions = useCallback(() => {
+    timers.current.forEach(clearTimeout);
+    timers.current = [];
+  }, []);
+
+  const enterVoice = useCallback(
+    (owner: "dictation" | "live") => {
+      clearPendingTransitions();
+      setVoiceNotice(null);
+      setVoiceBusyLabel(null);
+      setVoiceOwner(owner);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => undefined);
+      // Measured here, at the moment the scroll is about to be locked, so the
+      // current scroll position is still the one that applies.
+      if (sceneHeight > 0 && orbAnchor !== null) {
+        const homeCentre = orbAnchor.top + orbAnchor.height / 2 - scrollOffset.current;
+        voiceOrbShift.value = sceneHeight / 2 - homeCentre;
+      } else {
+        voiceOrbShift.value = 0;
+      }
+      setSurfaceMode("enteringVoice");
+      const duration = reducedMotion ? 0 : ENTER_MS;
+      voiceProgress.value = withTiming(1, { duration, easing: SCENE_EASING });
+      later(reducedMotion ? 30 : ENTER_MS + 40, () => setSurfaceMode("voice"));
+    },
+    [
+      clearPendingTransitions,
+      later,
+      orbAnchor,
+      reducedMotion,
+      sceneHeight,
+      voiceOrbShift,
+      voiceProgress,
+    ],
+  );
+
+  const exitVoice = useCallback(() => {
+    clearPendingTransitions();
+    setVoiceOwner(null);
+    setSurfaceMode("exitingVoice");
+    const duration = reducedMotion ? 0 : EXIT_MS;
+    voiceProgress.value = withTiming(0, { duration, easing: SCENE_EASING });
+    later(reducedMotion ? 30 : EXIT_MS + 40, () => setSurfaceMode("home"));
+  }, [clearPendingTransitions, later, reducedMotion, voiceProgress]);
+
+  const typeInstead = useCallback(() => {
+    exitVoice();
+    later(550, () => composerRef.current?.focus());
+  }, [exitVoice, later]);
+
+  const modeRef = useRef(surfaceMode);
+  modeRef.current = surfaceMode;
+
+  // A live conversation owns the microphone for as long as it runs, so the
+  // dictation recorder must stay closed for that whole time.
+  const voiceActive = surfaceMode !== "home";
+  const dictationActive = voiceActive && voiceOwner === "dictation";
+  const { level, phase, errorMessage, stopAndCaptureUri } = useVoiceOrbLevel(dictationActive);
+  const orbState = dictationActive ? phase : voiceActive ? "listening" : "idle";
+
+  // The node that mints the session. A live conversation is not bound to a
+  // project — the phone runs the Director and the node only mints the speech
+  // session — so any reachable node will do. An offline node is never chosen:
+  // attempting the mint against one fails with a vague error instead of the
+  // honest "connect a machine", which is the only actionable thing to say.
+  const liveVoiceNodeId = useMemo(() => {
+    const nodes = controller.catalog?.nodes ?? [];
+    const isOnline = (nodeId: EnvironmentId | undefined): boolean =>
+      nodeId !== undefined &&
+      nodes.some((node) => node.nodeId === nodeId && node.reachability === "online");
+    const projectNodeId = controller.selectedProject?.ref.nodeId;
+    if (isOnline(projectNodeId)) return projectNodeId ?? null;
+    if (isOnline(controller.taskDeskNodeId ?? undefined)) return controller.taskDeskNodeId;
+    return nodes.find((node) => node.reachability === "online")?.nodeId ?? null;
+  }, [controller.catalog, controller.selectedProject, controller.taskDeskNodeId]);
+
+  const beginLiveConversation = useCallback(() => {
+    if (liveVoiceNodeId === null) {
+      Alert.alert("No devices connected", NO_DEVICES_COPY);
+      return;
+    }
+    enterVoice("live");
+    void startLiveConversation({
+      nodeId: liveVoiceNodeId,
+      onNotice: (message) => Alert.alert("Live conversation", message),
+    }).then((started) => {
+      if (!started) exitVoice();
+    });
+  }, [enterVoice, exitVoice, liveVoiceNodeId]);
+
+  const endLiveConversation = useCallback(() => {
+    void stopLiveConversation();
+  }, []);
+
+  // The one action the no-device state offers, shared by the banner pill and
+  // the empty-state card.
+  const openDeviceSettings = useCallback(() => {
+    navigation.navigate("SettingsSheet", {
+      screen: "SettingsContent",
+      params: { screen: "SettingsEnvironments" },
+    });
+  }, [navigation]);
+
+  // Leaving the voice surface must end a live conversation, not just hide it:
+  // walking away with the microphone open and the session billing is not a
+  // close. Dictation has nothing to release, so it only needs the reverse
+  // animation.
+  const closeVoiceSurface = useCallback(() => {
+    if (isLiveConversationActive()) {
+      endLiveConversation();
+      return;
+    }
+    exitVoice();
+  }, [endLiveConversation, exitVoice]);
+
+  // The session drives the surface: a remote or idle close must bring the home
+  // chrome back instead of leaving the scene stuck on a dead conversation.
+  useEffect(() => {
+    if (live.active) {
+      if (modeRef.current === "home") enterVoice("live");
+      return;
+    }
+    if (modeRef.current !== "home") exitVoice();
+  }, [enterVoice, exitVoice, live.active]);
+
+  // Android back leaves the listening surface instead of the app while the
+  // scene owns voice. The X button does the same on both platforms.
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (modeRef.current === "home") return false;
+      closeVoiceSurface();
+      return true;
+    });
+    return () => subscription.remove();
+  }, [closeVoiceSurface]);
+
   const submit = useCallback(async () => {
+    // Every path below reaches a node RPC. With no device connected there is
+    // nothing to reach, so say that instead of letting the attempt fail.
+    if (!hasDevice) {
+      controller.setMessage(NO_DEVICES_COPY);
+      return;
+    }
     // A correction typed while the previous request still submits cancels
     // that request first through the pre-accept wire; the retained text stays
     // for resend or follow-up instead of being silently dropped.
@@ -51,501 +362,477 @@ export function CirceRouteScreen() {
     const turn = controller.createTextTurn();
     await controller.runInstruction(turn, utterance);
     setUtterance("");
-  }, [controller, utterance]);
+  }, [controller, hasDevice, utterance]);
 
-  const projects = catalog?.projects ?? [];
-  const hasOnlineNode = (catalog?.nodes ?? []).some((node) => node.reachability === "online");
-  const focusedTask = controller.desk?.focusedTask;
-  const recentTasks = useMemo(
-    () =>
-      (controller.desk?.recentTasks ?? [])
-        .filter(
-          (task) =>
-            task.threadId !== focusedTask?.threadId ||
-            task.taskRef.executionNodeId !== focusedTask.taskRef.executionNodeId,
-        )
-        .slice(0, 4),
-    [controller.desk?.recentTasks, focusedTask],
-  );
-  // One current presentation per thread: terminal outcomes supersede
-  // their thread's earlier blockers instead of stacking beside them.
-  const visiblePresentations = useMemo(
-    () => selectCurrentPresentations(controller.presentations, 8),
-    [controller.presentations],
-  );
-  const nodeIssues = useMemo(() => describeCirceRouteNodeIssues(catalog), [catalog]);
-  const openConnections = useCallback(() => {
-    navigation.navigate("Connections");
-  }, [navigation]);
-  const retryRefresh = useCallback(() => {
-    void controller.refresh();
-  }, [controller]);
+  // Done means stop the mic, transcribe what was captured, and run it as a
+  // turn through the same pipeline typed text uses. The reply lands in the
+  // message lane below. A dropped session (the user cancelled mid-transcribe)
+  // abandons the result instead of submitting behind their back.
+  const finishVoice = useCallback(() => {
+    void (async () => {
+      setVoiceNotice(null);
+      setVoiceBusyLabel("Transcribing…");
+      let uri: string | null = null;
+      try {
+        uri = await stopAndCaptureUri();
+      } catch {
+        uri = null;
+      }
+      const abort = new AbortController();
+      try {
+        const outcome = await transcribeCapturedVoice(uri, {
+          getTranscriber: getLocalVoiceTranscriber,
+          signal: abort.signal,
+        });
+        if (modeRef.current === "home") return;
+        if (outcome.status === "ready") {
+          const text = outcome.text;
+          exitVoice();
+          setVoiceBusyLabel(null);
+          // The transcription is local, but running the turn is not. Keep the
+          // words out of the void and say why nothing happened.
+          if (!hasDevice) {
+            controller.setMessage(NO_DEVICES_COPY);
+            return;
+          }
+          const turn = controller.createTextTurn();
+          await controller.runInstruction(turn, text);
+          return;
+        }
+        setVoiceBusyLabel(null);
+        setVoiceNotice(
+          outcome.status === "unavailable"
+            ? "Voice transcription isn't available on this device yet. Type instead."
+            : "I didn't catch that. Try again or type instead.",
+        );
+      } catch {
+        if (modeRef.current === "home") return;
+        setVoiceBusyLabel(null);
+        setVoiceNotice("Voice transcription failed. Try again or type instead.");
+      } finally {
+        if (uri) {
+          try {
+            new File(uri).delete();
+          } catch {
+            // Best-effort temp cleanup; a leftover recording is harmless.
+          }
+        }
+      }
+    })();
+  }, [controller, exitVoice, hasDevice, stopAndCaptureUri]);
+
+  const hasOnlineNode = hasDevice;
+
+  // Home chrome drifts down and away; the listening layer rises into place.
+  // Both read the same progress so exit is entry in reverse, for free.
+  const homeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(voiceProgress.value, [0, 0.45], [1, 0], Extrapolation.CLAMP),
+    transform: [
+      { translateY: interpolate(voiceProgress.value, [0, 0.45], [0, 10], Extrapolation.CLAMP) },
+    ],
+  }));
+  const tabsStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(voiceProgress.value, [0, 0.35], [1, 0], Extrapolation.CLAMP),
+  }));
+  const sceneBackgroundStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(voiceProgress.value, [0.05, 0.55], [0, 1], Extrapolation.CLAMP),
+  }));
+
   return (
     <KeyboardAvoidingView
       className="flex-1 bg-screen"
       behavior={Platform.OS === "ios" ? "padding" : undefined}
       keyboardVerticalOffset={100}
     >
-      <NativeStackScreenOptions
-        options={{
-          headerBackVisible: false,
-          title: "Circe",
-          headerRight: CirceSettingsButton,
-        }}
+      <NativeStackScreenOptions options={{ headerShown: false }} />
+
+      {/* Warm espresso settles over the home surface as voice takes over. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, backgroundColor: ESPRESSO },
+          sceneBackgroundStyle,
+        ]}
       />
 
-      <Modal
-        visible={choosingProject}
-        animationType="slide"
-        onRequestClose={() => setChoosingProject(false)}
-      >
-        <View
-          className="flex-1 bg-screen"
-          style={{ paddingTop: insets.top + 16, paddingBottom: insets.bottom }}
-        >
-          <View className="flex-row items-center justify-between px-5 pb-4">
-            <Text className="text-xl font-t3-bold text-foreground">Working project</Text>
-            <ControlPill label="Done" onPress={() => setChoosingProject(false)} />
-          </View>
-          <ScrollView contentContainerStyle={{ padding: 20, gap: 12 }}>
-            {projects.length === 0 ? (
-              <Text className="text-foreground-muted">
-                Connect a computer with a project to get started.
-              </Text>
-            ) : (
-              projects.map((project) => (
-                <Pressable
-                  key={`${project.ref.nodeId}:${project.ref.projectId}`}
-                  accessibilityRole="button"
-                  accessibilityState={{
-                    selected:
-                      controller.selectedProject?.ref.nodeId === project.ref.nodeId &&
-                      controller.selectedProject?.ref.projectId === project.ref.projectId,
-                  }}
-                  onPress={() => {
-                    controller.selectProject(project);
-                    setChoosingProject(false);
-                  }}
-                  className="gap-1 rounded-2xl border border-border-subtle bg-card p-4 active:opacity-70"
-                >
-                  <Text className="text-base font-t3-bold text-foreground">{project.title}</Text>
-                  <Text className="text-sm text-foreground-muted">{project.nodeLabel}</Text>
-                </Pressable>
-              ))
-            )}
-          </ScrollView>
-        </View>
-      </Modal>
+      <View style={{ paddingTop: insets.top }}>
+        <SceneTopBar
+          progress={voiceProgress}
+          voiceActive={voiceActive}
+          hasOnlineNode={hasOnlineNode}
+          onOpenAccount={() =>
+            navigation.navigate("SettingsSheet", {
+              screen: "SettingsContent",
+              params: { screen: "Settings" },
+            })
+          }
+          onCloseVoice={closeVoiceSurface}
+          onConnectDevice={openDeviceSettings}
+        />
+      </View>
 
-      <ScrollView
-        contentInsetAdjustmentBehavior="automatic"
-        contentContainerStyle={{
-          gap: 16,
-          paddingHorizontal: 20,
-          paddingTop: 10,
-          paddingBottom: Math.max(insets.bottom, 18) + 28,
-        }}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-        showsVerticalScrollIndicator={false}
-      >
-        <CirceNavigation selected="assistant" />
-
-        <View
-          className="gap-4 overflow-hidden rounded-2xl border p-5"
-          style={{
-            backgroundColor: CIRCE_GRAPHITE,
-            borderColor: "#34363b",
+      <View style={{ flex: 1 }} onLayout={onSceneLayout}>
+        <ScrollView
+          contentInsetAdjustmentBehavior="automatic"
+          scrollEnabled={surfaceMode === "home"}
+          onScroll={onSceneScroll}
+          scrollEventThrottle={16}
+          contentContainerStyle={{
+            gap: 16,
+            paddingHorizontal: 20,
+            paddingTop: 10,
+            paddingBottom: Math.max(insets.bottom, 18) + 28,
           }}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="on-drag"
+          showsVerticalScrollIndicator={false}
         >
-          <View className="flex-row items-center justify-between gap-3">
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Choose working project"
-              onPress={() => setChoosingProject(true)}
-              className="min-w-0 flex-1 gap-1"
-            >
-              <Text className="text-xs" style={{ color: CIRCE_STATUS_GREEN }}>
-                Working project
-              </Text>
-              <Text
-                numberOfLines={1}
-                className="mt-1 text-xl font-t3-bold"
-                style={{ color: CIRCE_WARM }}
-              >
-                {controller.selectedProject?.title ?? "Choose a project"}
-              </Text>
-              {controller.selectedProject ? (
-                <Text numberOfLines={1} className="text-xs" style={{ color: CIRCE_MUTED }}>
-                  {controller.selectedProject.nodeLabel}
-                </Text>
-              ) : null}
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Open connections"
-              onPress={openConnections}
-              className="min-h-11 justify-center px-2"
-            >
-              <Text
-                className="text-xs font-t3-bold"
-                style={{ color: hasOnlineNode ? CIRCE_STATUS_GREEN : CIRCE_MUTED }}
-              >
-                {hasOnlineNode ? "Connected" : "Offline"}
-              </Text>
-            </Pressable>
-          </View>
-          <TextInput
-            accessibilityLabel="Circe command"
-            className="max-h-36 min-h-24 rounded-xl border px-3.5 py-3 text-base"
-            style={{
-              backgroundColor: CIRCE_GRAPHITE_DEEP,
-              borderColor: "rgba(255, 255, 255, 0.12)",
-              color: CIRCE_WARM,
-            }}
-            multiline
-            onChangeText={setUtterance}
-            placeholder="Tell Circe what needs doing…"
-            placeholderTextColorClassName="accent-placeholder"
-            textAlignVertical="top"
-            value={utterance}
-          />
-          <View className="flex-row items-center justify-between gap-3">
-            <ControlPill
-              accessibilityLabel={
-                controller.submitting ? "Cancel in-flight request" : "Send Circe command"
-              }
-              icon={controller.submitting ? "stop.fill" : "arrow.up"}
-              variant="primary"
-              onPress={() => void submit()}
-              disabled={utterance.trim() === "" && !controller.submitting}
-            />
-          </View>
-        </View>
+          <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+            <AssistantGreeting />
+          </Animated.View>
 
-        {controller.unavailableProjectKey !== null ? (
-          <View className="gap-3 rounded-2xl border border-danger bg-card p-5">
-            <Text className="text-base font-t3-bold text-foreground">
-              Selected project unavailable
-            </Text>
-            <Text className="text-sm leading-relaxed text-foreground-muted">
-              The selected project is not in the current catalog. New instructions wait instead of
-              borrowing a different target.
-            </Text>
-            {projects.length > 0 ? (
-              <View className="gap-2">
-                {projects.map((project) => (
+          <SceneOrb
+            progress={voiceProgress}
+            voiceOrbShift={voiceOrbShift}
+            fieldReveal={fieldReveal}
+            orbState={orbState}
+            level={level}
+            appearance={themeAppearance}
+            interactive={hasDevice && !voiceActive}
+            onPress={() => enterVoice("dictation")}
+            onLayout={onOrbLayout}
+          />
+
+          {devicesConnecting ? (
+            // The environment registry is the honest source for "still coming
+            // up". The Circe catalog can be non-null with no reachable node
+            // while a saved environment reconnects, which is what made the
+            // no-device card flash and then vanish.
+            <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+              <View className="flex-row items-center justify-center gap-2 rounded-2xl border border-border-subtle bg-card px-5 py-6">
+                <ActivityIndicator size="small" color="#B9AFA6" />
+                <Text className="text-sm text-foreground-muted">Connecting to your devices…</Text>
+              </View>
+            </Animated.View>
+          ) : !hasDevice ? (
+            // With no device, every control below would be a lie: the
+            // conversation row cannot mint a session, the composer cannot
+            // reach a node, and a quick action cannot run. The whole control
+            // stack is replaced by the one thing the user can act on.
+            <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+              <View className="items-center gap-1 rounded-2xl border border-border-subtle bg-card px-5 py-6">
+                <SymbolView
+                  name="exclamationmark.triangle.fill"
+                  size={22}
+                  tintColorClassName="accent-icon-muted"
+                />
+                <Text className="pt-1 text-base font-t3-bold text-foreground">
+                  No devices connected
+                </Text>
+                <Text className="text-center text-sm leading-snug text-foreground-muted">
+                  Circe runs work on your machines. Connect a device to talk, ask questions, or
+                  start a task.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Connect a device"
+                  onPress={openDeviceSettings}
+                  className="mt-3 min-h-11 items-center justify-center rounded-full bg-circe-copper px-5 active:opacity-70"
+                >
+                  <Text className="text-sm font-t3-bold" style={{ color: "#FFFDF9" }}>
+                    Connect a device
+                  </Text>
+                </Pressable>
+              </View>
+            </Animated.View>
+          ) : (
+            <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+              {/* Live conversation is the speech-to-speech path: one session the
+                  node mints, with the model listening and speaking at once. The
+                  orb above is push-to-talk dictation, which is a different mode. */}
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Start live conversation"
+                onPress={beginLiveConversation}
+                className="flex-row items-center gap-3 rounded-2xl border border-border-subtle bg-card px-4 py-3 active:opacity-70"
+              >
+                <SymbolView name="mic.fill" size={20} tintColorClassName="accent-icon" />
+                <View className="min-w-0 flex-1">
+                  <Text className="text-base font-t3-bold text-foreground">Live conversation</Text>
+                  <Text className="text-xs leading-snug text-foreground-muted">
+                    Talk with Circe out loud. Interrupt any time.
+                  </Text>
+                </View>
+                <SymbolView name="chevron.right" size={14} tintColorClassName="accent-icon-muted" />
+              </Pressable>
+
+              <View className="flex-row items-center gap-2 rounded-2xl border border-border-subtle bg-card py-2 pl-4 pr-2">
+                <TextInput
+                  ref={composerRef}
+                  accessibilityLabel="Circe command"
+                  className="min-h-11 flex-1 text-base text-foreground"
+                  onChangeText={setUtterance}
+                  onSubmitEditing={() => void submit()}
+                  placeholder="Message Circe…"
+                  placeholderTextColorClassName="accent-placeholder"
+                  returnKeyType="send"
+                  value={utterance}
+                />
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    controller.submitting ? "Cancel in-flight request" : "Send Circe command"
+                  }
+                  onPress={() => void submit()}
+                  disabled={utterance.trim() === "" && !controller.submitting}
+                  className={`h-11 w-11 items-center justify-center rounded-full active:opacity-70 ${
+                    utterance.trim() === "" && !controller.submitting
+                      ? "bg-subtle"
+                      : "bg-circe-copper"
+                  }`}
+                >
+                  <SymbolView
+                    name={controller.submitting ? "stop.fill" : "arrow.up"}
+                    size={18}
+                    tintColor="#FFFDF9"
+                    type="monochrome"
+                  />
+                </Pressable>
+              </View>
+
+              {/* The reply lane. Turn results, submission state, and node errors
+                  all land in `message`; without this nothing the user sends —
+                  typed or spoken — ever visibly answers. */}
+              {controller.message ? (
+                <View className="mt-3 rounded-2xl border border-border-subtle bg-card px-4 py-3">
+                  <Text className="text-sm leading-relaxed text-foreground">
+                    {controller.message}
+                  </Text>
+                </View>
+              ) : null}
+
+              <View className="flex-row gap-2 pt-4">
+                {QUICK_ACTIONS.map((action) => (
                   <Pressable
-                    key={`${project.ref.nodeId}:${project.ref.projectId}`}
+                    key={action.label}
                     accessibilityRole="button"
-                    accessibilityLabel={`Select ${project.title}`}
-                    onPress={() => controller.selectProject(project)}
-                    className="rounded-xl border border-border-subtle bg-subtle px-4 py-3 active:opacity-70"
+                    accessibilityLabel={action.label}
+                    onPress={() => setUtterance(action.prompt)}
+                    className="flex-1 items-center gap-2 rounded-2xl border border-border-subtle bg-card px-1 py-3.5 active:opacity-70"
                   >
-                    <Text className="text-sm font-t3-bold text-foreground">
-                      {project.title} — {project.nodeLabel}
+                    <SymbolView name={action.icon} size={20} tintColorClassName="accent-icon" />
+                    <Text className="text-center text-3xs font-t3-bold leading-tight text-foreground-muted">
+                      {action.label}
                     </Text>
                   </Pressable>
                 ))}
               </View>
-            ) : null}
-            <View className="flex-row">
-              <ControlPill
-                label={controller.refreshing ? "Retrying…" : "Retry connection"}
-                variant="primary"
-                onPress={retryRefresh}
-                disabled={controller.refreshing}
-              />
-            </View>
-          </View>
-        ) : null}
-
-        {projects.length === 0 && !hasOnlineNode ? (
-          <View className="gap-3 rounded-2xl border border-border-subtle bg-card p-5">
-            <Text className="text-base font-t3-bold text-foreground">Bring Circe online</Text>
-            <Text className="text-sm leading-relaxed text-foreground-muted">
-              Connect this phone to a Circe desktop, then type from anywhere.
-            </Text>
-            <ControlPill
-              label="Connect Circe"
-              variant="primary"
-              onPress={() =>
-                navigation.navigate("SettingsSheet", {
-                  screen: "SettingsContent",
-                  params: { screen: "SettingsEnvironmentNew" },
-                })
-              }
-            />
-          </View>
-        ) : null}
-
-        {nodeIssues.length > 0 ? (
-          <View className="gap-3">
-            <SectionHeader title="Node status" />
-            {nodeIssues.map((issue) => (
-              <View
-                key={String(issue.nodeId)}
-                className="gap-2 rounded-2xl border border-border-subtle bg-card p-5"
-              >
-                <Text className="text-base font-t3-bold text-foreground">{issue.label}</Text>
-                {issue.loading ? (
-                  <Text className="text-sm leading-relaxed text-foreground-muted">
-                    Loading projects and providers…
-                  </Text>
-                ) : (
-                  <Text className="text-sm leading-relaxed text-foreground-muted">
-                    {issue.message}
-                  </Text>
-                )}
-                {!issue.loading && issue.recovery !== null ? (
-                  <View className="flex-row">
-                    {issue.recovery === "retry" || issue.recovery === "update" ? (
-                      <ControlPill
-                        label={controller.refreshing ? "Retrying…" : "Retry"}
-                        variant="primary"
-                        onPress={retryRefresh}
-                        disabled={controller.refreshing}
-                      />
-                    ) : (
-                      <ControlPill
-                        label="Open Connections"
-                        variant="primary"
-                        onPress={openConnections}
-                      />
-                    )}
-                  </View>
-                ) : null}
-              </View>
-            ))}
-          </View>
-        ) : null}
-
-        {controller.message ? (
-          <View className="flex-row gap-3 rounded-2xl bg-subtle px-4 py-4">
-            <View className="mt-0.5 h-7 w-7 items-center justify-center rounded-full bg-card">
-              <SymbolView name="bolt.circle" size={15} tintColorClassName="accent-icon" />
-            </View>
-            <Text className="min-w-0 flex-1 text-sm leading-relaxed text-foreground">
-              {controller.message}
-            </Text>
-          </View>
-        ) : null}
-
-        <View className="gap-3">
-          <SectionHeader
-            title="Current task"
-            actionLabel="Refresh"
-            onAction={() => void controller.refresh()}
-          />
-          {controller.desk?.pendingInteraction && focusedTask ? (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => {
-                navigation.navigate("Thread", {
-                  environmentId: focusedTask.taskRef.executionNodeId,
-                  threadId: focusedTask.threadId,
-                });
-              }}
-              className="rounded-2xl border border-primary bg-card p-4 active:opacity-70"
-            >
-              <Text className="text-sm font-t3-bold text-primary">Circe needs your answer</Text>
-              <Text className="mt-1 text-sm leading-relaxed text-foreground-muted">
-                Open the current task to keep things moving.
-              </Text>
-            </Pressable>
-          ) : null}
-          {focusedTask ? (
-            <TaskDeskCard
-              task={focusedTask}
-              focused
-              onFocus={undefined}
-              onOpen={() =>
-                navigation.navigate("Thread", {
-                  environmentId: focusedTask.taskRef.executionNodeId,
-                  threadId: focusedTask.threadId,
-                })
-              }
-            />
-          ) : (
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => navigation.navigate("NewTaskSheet", { screen: "NewTask" })}
-              className="flex-row items-center justify-between rounded-2xl border border-border-subtle bg-card p-5 active:opacity-70"
-            >
-              <View className="min-w-0 flex-1 gap-1">
-                <Text className="text-base font-t3-bold text-foreground">Nothing active yet</Text>
-                <Text className="text-sm leading-relaxed text-foreground-muted">
-                  Ask Circe for something, or start a task in the workspace.
-                </Text>
-              </View>
-              <SymbolView name="chevron.right" size={17} tintColorClassName="accent-icon-subtle" />
-            </Pressable>
+            </Animated.View>
           )}
-        </View>
+        </ScrollView>
 
-        {visiblePresentations.length > 0 ? (
-          <View className="gap-3">
-            <SectionHeader title="Updates" />
-            {visiblePresentations.slice(0, showDetails ? 8 : 2).map((presentation) => (
-              <PresentationCard
-                key={presentation.event.presentationId}
-                event={presentation.event}
-                onOpen={() =>
-                  navigation.navigate("Thread", {
-                    environmentId:
-                      presentation.event.taskRef?.executionNodeId ?? presentation.executionNodeId,
-                    threadId: presentation.event.threadId,
-                  })
-                }
-              />
-            ))}
-          </View>
-        ) : null}
-
-        {recentTasks.length > 0 || visiblePresentations.length > 2 ? (
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ expanded: showDetails }}
-            onPress={() => setShowDetails((value) => !value)}
-            className="min-h-12 flex-row items-center justify-between border-t border-border-subtle px-1"
+        {voiceActive ? (
+          <View
+            pointerEvents="box-none"
+            style={{
+              position: "absolute",
+              left: 0,
+              right: 0,
+              top: 0,
+              bottom: 0,
+              paddingHorizontal: 0,
+              paddingTop: 8,
+              paddingBottom: 12,
+            }}
           >
-            <Text className="text-sm text-foreground-muted">
-              {showDetails ? "Show less" : "Show more"}
-            </Text>
-            <SymbolView
-              name={showDetails ? "chevron.up" : "chevron.down"}
-              size={14}
-              tintColorClassName="accent-icon-subtle"
-            />
-          </Pressable>
-        ) : null}
-        {showDetails && recentTasks.length > 0 ? (
-          <View className="gap-3">
-            <SectionHeader title="Recent work" />
-            {recentTasks.map((task) => (
-              <TaskDeskCard
-                key={`${task.taskRef.executionNodeId}:${task.threadId}`}
-                task={task}
-                onFocus={() => void controller.focusTask(task)}
-                onOpen={() =>
-                  navigation.navigate("Thread", {
-                    environmentId: task.taskRef.executionNodeId,
-                    threadId: task.threadId,
-                  })
-                }
+            {voiceOwner === "live" ? (
+              <LiveConversationChrome
+                progress={voiceProgress}
+                status={live.status}
+                caption={live.caption}
+                onEnd={endLiveConversation}
               />
-            ))}
+            ) : (
+              <ListeningChrome
+                progress={voiceProgress}
+                phase={voiceNotice ? "error" : phase}
+                errorMessage={voiceNotice ?? errorMessage}
+                busyLabel={voiceBusyLabel}
+                onTypeInstead={typeInstead}
+                onCancel={exitVoice}
+                onDone={finishVoice}
+              />
+            )}
           </View>
         ) : null}
-      </ScrollView>
+      </View>
+
+      <Animated.View style={tabsStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+        <CirceTabBar selected="home" />
+      </Animated.View>
     </KeyboardAvoidingView>
   );
 }
 
-function SectionHeader(props: {
-  readonly title: string;
-  readonly actionLabel?: string;
-  readonly onAction?: () => void;
+/**
+ * The one persistent orb. It renders at a stable size for its whole life; only
+ * this wrapper scales and travels, so the Skia scene never rebuilds
+ * mid-transition. Its measured home position is reported upward so entering
+ * voice can bring it to the middle of the scene.
+ */
+function SceneOrb({
+  progress,
+  voiceOrbShift,
+  fieldReveal,
+  orbState,
+  level,
+  appearance,
+  interactive,
+  onPress,
+  onLayout,
+}: {
+  readonly progress: SharedValue<number>;
+  readonly voiceOrbShift: SharedValue<number>;
+  readonly fieldReveal: SharedValue<number>;
+  readonly orbState: Parameters<typeof CirceOrb>[0]["state"];
+  readonly level: Parameters<typeof CirceOrb>[0]["level"];
+  readonly appearance: Parameters<typeof CirceOrb>[0]["appearance"];
+  readonly interactive: boolean;
+  readonly onPress: () => void;
+  readonly onLayout: (event: LayoutChangeEvent) => void;
 }) {
+  const wrapStyle = useAnimatedStyle(() => ({
+    transform: [
+      {
+        translateY: interpolate(
+          progress.value,
+          [0, 1],
+          [0, voiceOrbShift.value],
+          Extrapolation.CLAMP,
+        ),
+      },
+      {
+        scale: interpolate(
+          progress.value,
+          [0, 1],
+          [1, VOICE_ORB_SIZE / HOME_ORB_SIZE],
+          Extrapolation.CLAMP,
+        ),
+      },
+    ],
+  }));
+
   return (
-    <View className="flex-row items-center justify-between px-1">
-      <Text className="text-lg font-t3-bold text-foreground">{props.title}</Text>
-      {props.actionLabel && props.onAction ? (
-        <Pressable accessibilityRole="button" onPress={props.onAction} className="px-2 py-1">
-          <Text className="text-sm font-t3-bold text-foreground-muted">{props.actionLabel}</Text>
-        </Pressable>
-      ) : null}
+    <View className="items-center justify-center py-2" onLayout={onLayout}>
+      <Animated.View style={wrapStyle}>
+        <CirceOrb
+          state={orbState}
+          size={HOME_ORB_SIZE}
+          level={level}
+          fieldReveal={fieldReveal}
+          interactive={interactive}
+          appearance={appearance}
+          onPress={onPress}
+          voiceMeter
+          accessibilityLabel="Talk to Circe"
+        />
+      </Animated.View>
     </View>
   );
 }
 
-function formatTaskState(state: CirceTaskDeskView["recentTasks"][number]["state"]): string {
-  return state.replaceAll("-", " ");
-}
-
-function TaskDeskCard(props: {
-  readonly task: NonNullable<CirceTaskDeskView["focusedTask"]>;
-  readonly focused?: boolean;
-  readonly onFocus: (() => void) | undefined;
-  readonly onOpen: () => void;
+/**
+ * Custom top bar. The brand stays physically put while the right control
+ * cross-fades between account and close, so voice entry keeps its anchor.
+ * The readiness pill only exists when something is actually wrong.
+ */
+function SceneTopBar({
+  progress,
+  voiceActive,
+  hasOnlineNode,
+  onOpenAccount,
+  onCloseVoice,
+  onConnectDevice,
+}: {
+  readonly progress: SharedValue<number>;
+  readonly voiceActive: boolean;
+  readonly hasOnlineNode: boolean;
+  readonly onOpenAccount: () => void;
+  readonly onCloseVoice: () => void;
+  readonly onConnectDevice: () => void;
 }) {
+  const accountStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.3], [1, 0], Extrapolation.CLAMP),
+  }));
+  const closeStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0.3, 0.6], [0, 1], Extrapolation.CLAMP),
+  }));
+  const offlineStyle = useAnimatedStyle(() => ({
+    opacity: interpolate(progress.value, [0, 0.3], [1, 0], Extrapolation.CLAMP),
+  }));
+
   return (
-    <View
-      className={`flex-row items-center gap-3 rounded-2xl border bg-card p-4 ${
-        props.focused ? "border-primary" : "border-border-subtle"
-      }`}
-    >
-      <Pressable
-        accessibilityRole="button"
-        onPress={props.onOpen}
-        className="min-w-0 flex-1 flex-row items-center gap-3"
-      >
-        <View className="min-w-0 flex-1 gap-1.5">
-          <View className="flex-row items-center gap-2">
-            <View
-              className={`h-2 w-2 rounded-full ${
-                props.task.state === "failed" || props.task.state === "interrupted"
-                  ? "bg-danger-foreground"
-                  : props.task.state === "running"
-                    ? "bg-primary"
-                    : "bg-foreground-muted"
-              }`}
-            />
-            <Text className="text-xs capitalize text-foreground-muted">
-              {formatTaskState(props.task.state)}
-            </Text>
-          </View>
-          <Text className="text-base font-t3-bold text-foreground" numberOfLines={1}>
-            {props.task.title}
-          </Text>
-          <Text className="text-sm leading-relaxed text-foreground-muted" numberOfLines={2}>
-            {props.task.objective}
-          </Text>
+    // The side slots are equal width so the wordmark stays optically centered
+    // whichever controls are present. The readiness pill lives in the left
+    // slot, sized to fit on one line.
+    <View className="flex-row items-center px-5 pb-1 pt-2">
+      <View className="w-28 items-start justify-center">
+        {!hasOnlineNode ? (
+          <Animated.View style={offlineStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="No devices connected. Open environments settings."
+              onPress={onConnectDevice}
+              className="h-8 flex-row items-center gap-1.5 rounded-full border border-border-subtle bg-card px-2.5 active:opacity-70"
+            >
+              <SymbolView name="wifi.slash" size={13} tintColorClassName="accent-icon-muted" />
+              <Text numberOfLines={1} className="text-2xs font-t3-bold text-foreground-muted">
+                No devices
+              </Text>
+            </Pressable>
+          </Animated.View>
+        ) : null}
+      </View>
+
+      <View className="flex-1 items-center">
+        <CirceHeaderTitle />
+      </View>
+
+      <View className="w-28 items-end justify-center">
+        <View>
+          {/* The account control fades out on voice entry but would otherwise
+              stay hittable underneath the close control. Every other piece of
+              home chrome already drops its pointer events the same way. */}
+          <Animated.View style={accountStyle} pointerEvents={voiceActive ? "none" : "auto"}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Open account settings"
+              onPress={onOpenAccount}
+              className="h-10 w-10 items-center justify-center rounded-full bg-subtle active:opacity-70"
+            >
+              <SymbolView
+                name="person.crop.circle"
+                size={20}
+                tintColorClassName="accent-icon"
+                type="monochrome"
+              />
+            </Pressable>
+          </Animated.View>
+          {voiceActive ? (
+            <Animated.View style={[closeStyle, { position: "absolute", right: 0, top: 0 }]}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Close voice"
+                onPress={onCloseVoice}
+                className="h-10 w-10 items-center justify-center rounded-full active:opacity-70"
+                style={{ backgroundColor: "rgba(246, 242, 239, 0.12)" }}
+              >
+                <SymbolView name="xmark" size={18} tintColor={LISTENING_INK} type="monochrome" />
+              </Pressable>
+            </Animated.View>
+          ) : null}
         </View>
-        <SymbolView name="chevron.right" size={16} tintColor="#8b8b93" />
-      </Pressable>
-      {props.focused || props.onFocus === undefined ? null : (
-        <ControlPill label="Focus" variant="pill" onPress={props.onFocus} />
-      )}
+      </View>
     </View>
-  );
-}
-
-function PresentationCard(props: {
-  readonly event: CircePresentationEvent;
-  readonly onOpen: () => void;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      onPress={props.onOpen}
-      className="rounded-2xl border border-primary bg-card p-4 active:opacity-70"
-    >
-      <Text className="text-xs font-t3-bold capitalize text-primary">
-        {props.event.kind.replaceAll("-", " ")}
-      </Text>
-      <Text className="mt-1.5 text-base font-t3-bold text-foreground">
-        {props.event.threadTitle}
-      </Text>
-      <Text className="mt-1 text-sm leading-relaxed text-foreground-muted" numberOfLines={3}>
-        {props.event.text}
-      </Text>
-    </Pressable>
-  );
-}
-
-function CirceSettingsButton() {
-  const navigation = useNavigation();
-  return (
-    <ControlPill
-      accessibilityLabel="Open settings"
-      icon="gearshape"
-      onPress={() =>
-        navigation.navigate("SettingsSheet", {
-          screen: "SettingsContent",
-          params: { screen: "Settings" },
-        })
-      }
-    />
   );
 }

@@ -1,3 +1,4 @@
+import { circeLiveVoiceCaption } from "@circe/client-runtime/circe/liveVoice";
 import { useAtomValue } from "@effect/atom-react";
 import {
   isAtomCommandInterrupted,
@@ -154,8 +155,7 @@ function CirceLiveVoiceEnvironmentRuntime({
       },
       onAudioLevel: (value) => setLevel(value),
       onTranscript: (state) => {
-        const spoken = (state.assistantText || state.userText).trim();
-        setCaption(spoken.length === 0 ? null : spoken.slice(-120));
+        setCaption(circeLiveVoiceCaption(state));
       },
       // Idle, max-duration, and remote closes must release the toggle too, or
       // the button and orb keep claiming a session that is already gone.
