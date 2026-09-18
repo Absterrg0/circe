@@ -59,6 +59,9 @@ import * as EnvironmentLinks from "../environments/EnvironmentLinks.ts";
 import * as ManagedEndpointProvider from "../environments/ManagedEndpointProvider.ts";
 import * as AgentActivityPublisher from "../agentActivity/AgentActivityPublisher.ts";
 import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublishSignatures.ts";
+import * as LiveVoiceSessions from "../voice/LiveVoiceSessions.ts";
+import * as TypeSafeUpstream from "../decision/TypeSafeUpstream.ts";
+import * as TypeSafeUsage from "../decision/TypeSafeUsage.ts";
 
 vi.mock("@clerk/backend", () => ({
   createClerkClient: vi.fn(),
@@ -657,10 +660,25 @@ describe("relay routing fallback", () => {
             }),
           ),
       });
+      const liveVoice = Layer.succeed(LiveVoiceSessions.LiveVoiceSessions, {
+        create: () => Effect.die("relay live voice is not exercised in this test"),
+        release: () => Effect.die("relay live voice is not exercised in this test"),
+        sweepExpired: () => Effect.die("relay live voice is not exercised in this test"),
+      });
+      const typesafeUpstream = Layer.succeed(TypeSafeUpstream.TypeSafeUpstream, {
+        run: () => Effect.die("relay decision upstream is not exercised in this test"),
+      });
+      const typesafeUsage = Layer.succeed(TypeSafeUsage.TypeSafeUsage, {
+        reserve: () => Effect.void,
+      });
       const routes = HttpApiBuilder.layer(
         HttpApi.make("RelayApi").add(RelayApi.groups.server),
       ).pipe(
-        Layer.provide(serverApi.pipe(Layer.provide([publisher, signatures]))),
+        Layer.provide(
+          serverApi.pipe(
+            Layer.provide([publisher, signatures, liveVoice, typesafeUpstream, typesafeUsage]),
+          ),
+        ),
         Layer.provide(auth),
         Layer.provide([NodeServices.layer, NodeHttpPlatform.layer, Etag.layerWeak]),
       );
@@ -699,7 +717,15 @@ describe("relay routing fallback", () => {
         })),
       );
       expect(verified.map((input) => input.threadId)).toEqual(threadIds);
-    }).pipe(Effect.scoped),
+    }).pipe(
+      Effect.scoped,
+      Effect.provide(
+        Layer.mergeAll(
+          Layer.mock(EnvironmentLinks.EnvironmentLinks, {}),
+          Layer.succeed(RelayConfiguration.RelayConfiguration, relaySettings),
+        ),
+      ),
+    ),
   );
 
   it.effect("redirects the relay root to the API docs", () =>
