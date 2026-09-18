@@ -32,9 +32,11 @@ describe("T3 client-runtime Circe ownership", () => {
     for (const sourcePath of sourceFiles(NodePath.join(packageRoot, "src"))) {
       if (sourcePath.endsWith(`${NodePath.sep}rpc${NodePath.sep}client.ts`)) continue;
       const source = NodeFS.readFileSync(sourcePath, "utf8");
-      // Product copy may name Circe, but the upstream package must not depend on
-      // or re-export Circe-owned code, and must never carry the retired codename.
-      expect(source, sourcePath).not.toMatch(/@circe\//iu);
+      // Product copy may name Circe, and the package may depend on the generic
+      // workspace packages (`@circe/contracts`, `@circe/shared`), but it must
+      // not depend on or re-export Circe-owned code, and must never carry the
+      // retired codename.
+      expect(source, sourcePath).not.toMatch(/@circe\/(?:core|client-runtime)\b/iu);
       expect(source, sourcePath).not.toMatch(/jarvis/iu);
     }
     expect(
