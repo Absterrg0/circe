@@ -23,7 +23,9 @@ class CirceReviewDiffModule : Module() {
       Prop("selectedRowIdsJson") { view: CirceReviewDiffView, selectedRowIdsJson: String ->
         view.setSelectedRowIdsJson(selectedRowIdsJson)
       }
-      Prop("collapsedCommentIdsJson") { view: CirceReviewDiffView, collapsedCommentIdsJson: String ->
+      Prop("collapsedCommentIdsJson") {
+        view: CirceReviewDiffView,
+        collapsedCommentIdsJson: String ->
         view.setCollapsedCommentIdsJson(collapsedCommentIdsJson)
       }
       Prop("appearanceScheme") { view: CirceReviewDiffView, appearanceScheme: String ->
@@ -54,7 +56,10 @@ class CirceReviewDiffModule : Module() {
         "onToggleComment",
       )
 
-      AsyncFunction("scrollToFile") { view: CirceReviewDiffView, fileId: String, animated: Boolean ->
+      AsyncFunction("scrollToFile") {
+        view: CirceReviewDiffView,
+        fileId: String,
+        animated: Boolean ->
         view.scrollToFile(fileId, animated)
       }
       AsyncFunction("scrollToTop") { view: CirceReviewDiffView, animated: Boolean ->

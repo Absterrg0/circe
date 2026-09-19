@@ -2,7 +2,7 @@
 #import "CirceMarkdownTextShadowNode.h"
 #import "CirceMarkdownTextComponentDescriptor.h"
 #import "CirceMarkdownTextRun.h"
-#import "T3ContextChip.h"
+#import "CirceContextChip.h"
 #import <React/RCTConversions.h>
 #import <objc/runtime.h>
 
@@ -14,11 +14,11 @@
 
 using namespace facebook::react;
 
-@interface T3ContextChipAccessibilityElement : UIAccessibilityElement
+@interface CirceContextChipAccessibilityElement : UIAccessibilityElement
 @property(nonatomic, weak) CirceMarkdownTextRun *run;
 @end
 
-@implementation T3ContextChipAccessibilityElement
+@implementation CirceContextChipAccessibilityElement
 - (BOOL)accessibilityActivate
 {
   if (self.run == nil) return NO;
@@ -28,11 +28,11 @@ using namespace facebook::react;
 @end
 
 /** Preserve canonical references and their payload when copying a native text selection. */
-@interface T3ContextCopyTextView : UITextView
+@interface CirceContextCopyTextView : UITextView
 @property(nonatomic, copy) NSDictionary *contextClipboardConfig;
 @end
 
-@implementation T3ContextCopyTextView
+@implementation CirceContextCopyTextView
 // Read-only text still supports selecting the entire document after selecting a word.
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
@@ -156,12 +156,12 @@ static void CirceMarkdownTextApplyAttachments(
         CirceMarkdownTextAttachmentBaselineOffset(attachmentRange),
         attachmentSize,
         attachmentSize);
-    NSDictionary *chip = T3ContextChipPayload(imageUri);
+    NSDictionary *chip = CirceContextChipPayload(imageUri);
     if (chip != nil) {
       CGSize size = CGSizeMake(attachmentRange.chipWidth, attachmentRange.chipHeight);
-      attachment.bounds = T3ContextChipBounds(runAttributes[NSFontAttributeName], size);
+      attachment.bounds = CirceContextChipBounds(runAttributes[NSFontAttributeName], size);
       NSString *iconUri = [chip[@"iconUri"] isKindOfClass:NSString.class] ? chip[@"iconUri"] : nil;
-      attachment.image = T3ContextChipImage(chip, size, iconUri ? images[iconUri] : nil);
+      attachment.image = CirceContextChipImage(chip, size, iconUri ? images[iconUri] : nil);
     }
     const NSRange range = NSMakeRange(
         attachmentRange.location,
@@ -278,7 +278,7 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
 
 @implementation CirceMarkdownText {
   UIView * _view;
-  T3ContextCopyTextView * _textView;
+  CirceContextCopyTextView * _textView;
   CirceMarkdownTextShadowNode::ConcreteState::Shared _state;
   __weak UIWindow * _outsideTapWindow;
   BOOL _suppressSelectionChange;
@@ -304,7 +304,7 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
     self.contentView = _view;
     self.clipsToBounds = true;
 
-    _textView = [[T3ContextCopyTextView alloc] init];
+    _textView = [[CirceContextCopyTextView alloc] init];
     _attachmentImages = [[NSMutableDictionary alloc] init];
     _pendingAttachmentUris = [[NSMutableSet alloc] init];
     _textView.scrollEnabled = false;
@@ -464,7 +464,7 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
     NSMutableString *accessibleText = [convertedAttrString.string mutableCopy];
     for (auto it = _state->getData().attachmentRanges.rbegin();
          it != _state->getData().attachmentRanges.rend(); ++it) {
-      NSDictionary *chip = T3ContextChipPayload([NSString stringWithUTF8String:it->imageUri.c_str()]);
+      NSDictionary *chip = CirceContextChipPayload([NSString stringWithUTF8String:it->imageUri.c_str()]);
       if (chip != nil && it->location < accessibleText.length) {
         [accessibleText replaceCharactersInRange:NSMakeRange(it->location, 1) withString:chip[@"label"]];
       }
@@ -488,7 +488,7 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
     run.contextChipInteractive = NO;
   }
   for (const auto &attachmentRange : _state->getData().attachmentRanges) {
-    NSDictionary *chip = T3ContextChipPayload(
+    NSDictionary *chip = CirceContextChipPayload(
         [NSString stringWithUTF8String:attachmentRange.imageUri.c_str()]);
     if (![chip[@"interactive"] boolValue]) continue;
     NSRange range = NSMakeRange(attachmentRange.location, 1);
@@ -499,8 +499,8 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
                                                      inTextContainer:_textView.textContainer];
     bounds = CGRectOffset(bounds, _textView.textContainerInset.left, _textView.textContainerInset.top);
     run.contextChipInteractive = YES;
-    T3ContextChipAccessibilityElement *element =
-        [[T3ContextChipAccessibilityElement alloc] initWithAccessibilityContainer:self];
+    CirceContextChipAccessibilityElement *element =
+        [[CirceContextChipAccessibilityElement alloc] initWithAccessibilityContainer:self];
     element.run = run;
     element.accessibilityLabel = chip[@"label"];
     element.accessibilityTraits = UIAccessibilityTraitButton;
@@ -539,7 +539,7 @@ T3MarkdownOutsideTapCoordinatorForWindow(UIWindow *window)
     if ([imageUri hasPrefix:@"sf:"]) {
       continue;
     }
-    NSDictionary *chip = T3ContextChipPayload(imageUri);
+    NSDictionary *chip = CirceContextChipPayload(imageUri);
     if (chip != nil) {
       imageUri = [chip[@"iconUri"] isKindOfClass:NSString.class] ? chip[@"iconUri"] : nil;
       if (imageUri.length == 0) continue;

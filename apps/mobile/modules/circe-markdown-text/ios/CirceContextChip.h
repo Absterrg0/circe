@@ -3,7 +3,7 @@
 #import <UIKit/UIKit.h>
 
 // Used by both the shadow measurement and UITextView rendering paths.
-static NSDictionary *T3ContextChipPayload(NSString *uri)
+static NSDictionary *CirceContextChipPayload(NSString *uri)
 {
   if (![uri hasPrefix:@"chip:"]) return nil;
   NSData *data = [[uri substringFromIndex:5] dataUsingEncoding:NSUTF8StringEncoding];
@@ -15,7 +15,7 @@ static NSDictionary *T3ContextChipPayload(NSString *uri)
   return payload;
 }
 
-static UIColor *T3ContextChipColor(NSString *hex)
+static UIColor *CirceContextChipColor(NSString *hex)
 {
   unsigned int rgb = 0;
   if (![hex isKindOfClass:NSString.class] || hex.length != 7) return UIColor.labelColor;
@@ -25,7 +25,7 @@ static UIColor *T3ContextChipColor(NSString *hex)
                          blue:(rgb & 255) / 255.0 alpha:1];
 }
 
-static UIColor *T3ContextChipBlend(UIColor *accent, UIColor *base, CGFloat weight)
+static UIColor *CirceContextChipBlend(UIColor *accent, UIColor *base, CGFloat weight)
 {
   CGFloat ar = 0, ag = 0, ab = 0, aa = 0, br = 0, bg = 0, bb = 0, ba = 0;
   [accent getRed:&ar green:&ag blue:&ab alpha:&aa];
@@ -39,7 +39,7 @@ static UIColor *T3ContextChipBlend(UIColor *accent, UIColor *base, CGFloat weigh
 // Some chip glyphs have no SF Symbol that reads correctly: the pull request one would land on
 // `arrow.triangle.branch`, a road-sign fork that says "branch", not "pull request". Draw those
 // from the same lucide geometry web and Android use so one chip looks alike on every surface.
-static UIImage *T3ContextChipVectorIcon(NSString *symbol, CGFloat size, UIColor *color)
+static UIImage *CirceContextChipVectorIcon(NSString *symbol, CGFloat size, UIColor *color)
 {
   if (![symbol isEqualToString:@"git-pull-request"]) return nil;
   UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc]
@@ -71,7 +71,7 @@ static UIImage *T3ContextChipVectorIcon(NSString *symbol, CGFloat size, UIColor 
 
 // Centres the chip on the run font's ascent/descent box, the rule the composer span and
 // Android use, so the chip lands in the same place beside the words on every surface.
-static inline CGRect T3ContextChipBounds(UIFont *font, CGSize size)
+static inline CGRect CirceContextChipBounds(UIFont *font, CGSize size)
 {
   CGFloat y = font != nil ? (font.ascender + font.descender - size.height) / 2 : -3;
   return CGRectMake(0, y, size.width, size.height);
@@ -99,7 +99,7 @@ static inline NSAttributedString *CirceMarkdownTextAttachmentString(
   return string;
 }
 
-static UIFont *T3ContextChipFont(NSDictionary *payload)
+static UIFont *CirceContextChipFont(NSDictionary *payload)
 {
   CGFloat size = MAX(10, MIN(40, [payload[@"fontSize"] doubleValue]));
   size *= payload[@"fontSizeMultiplier"] != nil ? [payload[@"fontSizeMultiplier"] doubleValue] : 1;
@@ -107,16 +107,16 @@ static UIFont *T3ContextChipFont(NSDictionary *payload)
     ?: [UIFont systemFontOfSize:size weight:UIFontWeightMedium];
 }
 
-static inline CGSize T3ContextChipSize(NSDictionary *payload, CGFloat maximumWidth)
+static inline CGSize CirceContextChipSize(NSDictionary *payload, CGFloat maximumWidth)
 {
-  UIFont *font = T3ContextChipFont(payload);
+  UIFont *font = CirceContextChipFont(payload);
   NSString *label = payload[@"label"];
   CGFloat textWidth = [label sizeWithAttributes:@{ NSFontAttributeName: font }].width;
   return CGSizeMake(MIN(maximumWidth, ceil(textWidth + font.pointSize * 2.5)),
                     ceil(font.pointSize * 1.41));
 }
 
-static inline UIImage *T3ContextChipImage(NSDictionary *payload, CGSize size, UIImage *fileIcon)
+static inline UIImage *CirceContextChipImage(NSDictionary *payload, CGSize size, UIImage *fileIcon)
 {
   static NSCache<NSString *, UIImage *> *cache;
   static dispatch_once_t once;
@@ -127,11 +127,11 @@ static inline UIImage *T3ContextChipImage(NSDictionary *payload, CGSize size, UI
   if (fileIcon != nil) key = [key stringByAppendingString:@":file-icon"];
   UIImage *cached = [cache objectForKey:key];
   if (cached) return cached;
-  UIFont *font = T3ContextChipFont(payload);
+  UIFont *font = CirceContextChipFont(payload);
   CGFloat em = font.pointSize;
-  UIColor *accent = T3ContextChipColor(payload[@"accent"]);
-  UIColor *foreground = T3ContextChipBlend(accent, T3ContextChipColor(payload[@"foreground"]), 0.22);
-  UIColor *border = T3ContextChipBlend(accent, T3ContextChipColor(payload[@"border"]), 0.34);
+  UIColor *accent = CirceContextChipColor(payload[@"accent"]);
+  UIColor *foreground = CirceContextChipBlend(accent, CirceContextChipColor(payload[@"foreground"]), 0.22);
+  UIColor *border = CirceContextChipBlend(accent, CirceContextChipColor(payload[@"border"]), 0.34);
   UIGraphicsImageRenderer *renderer = [[UIGraphicsImageRenderer alloc] initWithSize:size];
   UIImage *image = [renderer imageWithActions:^(UIGraphicsImageRendererContext *context) {
     UIBezierPath *path = [UIBezierPath bezierPathWithRoundedRect:
@@ -144,7 +144,7 @@ static inline UIImage *T3ContextChipImage(NSDictionary *payload, CGSize size, UI
     [path stroke];
     CGFloat iconSize = em * 1.17;
     UIImage *icon = fileIcon
-        ?: T3ContextChipVectorIcon(payload[@"symbol"], iconSize, foreground)
+        ?: CirceContextChipVectorIcon(payload[@"symbol"], iconSize, foreground)
         ?: [[UIImage systemImageNamed:payload[@"symbol"]
         withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:em weight:UIImageSymbolWeightMedium]]
         imageWithTintColor:foreground renderingMode:UIImageRenderingModeAlwaysOriginal];

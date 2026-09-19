@@ -12,7 +12,7 @@ import kotlin.math.ceil
 import kotlin.math.min
 
 /** Shared by editable spans and inline chat images so their metrics and colors agree. */
-class T3ContextChip(
+class CirceContextChip(
   content: Content,
   fontSize: Float,
   colors: Colors,

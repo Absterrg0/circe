@@ -219,8 +219,8 @@ class CirceMarkdownTextSelectionModule : Module() {
       val key = "${metrics.density}:$fontScale:${metrics.widthPixels}:$payloadJson"
       chipImages.get(key)?.let { return@Function it }
       val payload = JSONObject(payloadJson)
-      val chip = T3ContextChip(
-        content = T3ContextChip.Content(
+      val chip = CirceContextChip(
+        content = CirceContextChip.Content(
           label = payload.optString("label").take(4096),
           symbol = payload.optString("symbol", "doc")
         ),
@@ -229,10 +229,10 @@ class CirceMarkdownTextSelectionModule : Module() {
         fontSize =
           payload.optDouble("fontSize", 12.0).toFloat().coerceIn(10f, 40f) *
             metrics.density * fontScale,
-        colors = T3ContextChip.Colors(
-          accent = T3ContextChip.color(payload.optString("accent"), Color.GRAY),
-          foreground = T3ContextChip.color(payload.optString("foreground"), Color.BLACK),
-          border = T3ContextChip.color(payload.optString("border"), Color.GRAY)
+        colors = CirceContextChip.Colors(
+          accent = CirceContextChip.color(payload.optString("accent"), Color.GRAY),
+          foreground = CirceContextChip.color(payload.optString("foreground"), Color.BLACK),
+          border = CirceContextChip.color(payload.optString("border"), Color.GRAY)
         ),
         maximumWidth = (metrics.widthPixels - 80 * metrics.density).coerceAtLeast(100f),
         density = metrics.density,
