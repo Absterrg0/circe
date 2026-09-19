@@ -536,6 +536,44 @@ describe("ManagedRelayClient", () => {
     }).pipe(Effect.provide(Layer.merge(TestClock.layer(), managedRelayTestLayer(fetchFn))));
   });
 
+  it.effect("gives environment linking the managed-tunnel provisioning timeout", () => {
+    const fetchFn = (() =>
+      new Promise<Response>(() => undefined)) satisfies typeof globalThis.fetch;
+
+    return Effect.gen(function* () {
+      const relayClient = yield* ManagedRelay.ManagedRelayClient;
+      const errorFiber = yield* relayClient
+        .linkEnvironment({
+          clerkToken: "clerk-token",
+          payload: {
+            proof: "proof",
+            notificationsEnabled: true,
+            liveActivitiesEnabled: true,
+            managedTunnelsEnabled: true,
+          },
+        })
+        .pipe(Effect.flip, Effect.forkScoped);
+
+      yield* Effect.yieldNow;
+      yield* TestClock.adjust(Duration.millis(ManagedRelay.MANAGED_RELAY_REQUEST_TIMEOUT_MS));
+      expect(errorFiber.pollUnsafe()).toBeUndefined();
+
+      yield* TestClock.adjust(
+        Duration.millis(
+          ManagedRelay.MANAGED_RELAY_LINK_REQUEST_TIMEOUT_MS -
+            ManagedRelay.MANAGED_RELAY_REQUEST_TIMEOUT_MS,
+        ),
+      );
+      const error = yield* Fiber.join(errorFiber);
+
+      expect(error).toMatchObject({
+        _tag: "ManagedRelayRequestTimeoutError",
+        activity: "Relay environment linking",
+        timeoutMs: ManagedRelay.MANAGED_RELAY_LINK_REQUEST_TIMEOUT_MS,
+      });
+    }).pipe(Effect.provide(Layer.merge(TestClock.layer(), managedRelayTestLayer(fetchFn))));
+  });
+
   it.effect("suggests checking network filtering when fetch fails without a response", () => {
     const fetchFn = (() =>
       Promise.reject(new TypeError("Failed to fetch"))) satisfies typeof globalThis.fetch;

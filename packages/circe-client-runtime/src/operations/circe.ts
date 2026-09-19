@@ -2,6 +2,7 @@ import {
   WS_METHODS,
   type CirceBrowserUseInput,
   type CirceCancelMissionInput,
+  type CirceComputerUseInput,
   type CirceCancelRequestInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
@@ -51,6 +52,17 @@ export const useCirceBrowser = Effect.fn("Circe.browserUse")(function* (
   input: CirceBrowserUseInput,
 ) {
   return yield* request(WS_METHODS.circeBrowserUse, input);
+});
+
+/**
+ * Run one bounded desktop mission on an explicit node. The node drives its own
+ * screen through the TypeSafe step loop over grounded accessibility elements;
+ * the origin client confirms once per session before the first mission.
+ */
+export const useCirceComputer = Effect.fn("Circe.computerUse")(function* (
+  input: CirceComputerUseInput,
+) {
+  return yield* request(WS_METHODS.circeComputerUse, input);
 });
 
 /**

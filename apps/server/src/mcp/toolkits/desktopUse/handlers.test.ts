@@ -13,6 +13,7 @@ import * as Stream from "effect/Stream";
 import type { Tool } from "effect/unstable/ai";
 
 import * as DesktopUse from "../../../circe/desktopUse/DesktopUse.ts";
+import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import { DesktopUseToolkitHandlersLive } from "./handlers.ts";
 import { DesktopUseToolkit } from "./tools.ts";
@@ -64,8 +65,17 @@ const makeHarness = () =>
         ]),
       subscribeFrames: () => Stream.empty,
     });
+    const goalRuns = yield* Ref.make<ReadonlyArray<string>>([]);
+    const computerUse = Layer.succeed(CirceComputerUse, {
+      run: (input) =>
+        Ref.update(goalRuns, (existing) => [...existing, input.goal]).pipe(
+          Effect.as({ status: "done" as const, message: `Did: ${input.goal}`, steps: 1 }),
+        ),
+    });
     const toolkit = yield* DesktopUseToolkit.pipe(
-      Effect.provide(DesktopUseToolkitHandlersLive.pipe(Layer.provide(service))),
+      Effect.provide(
+        DesktopUseToolkitHandlersLive.pipe(Layer.provide(service), Layer.provide(computerUse)),
+      ),
     );
     const call = <Name extends keyof typeof DesktopUseToolkit.tools>(
       name: Name,
@@ -79,12 +89,34 @@ const makeHarness = () =>
           (chunk) => chunk.at(-1)!.result as Tool.Success<(typeof DesktopUseToolkit.tools)[Name]>,
         ),
         Effect.provideService(McpInvocationContext.McpInvocationContext, invocation(capabilities)),
-        Effect.provide(service),
+        Effect.provide(Layer.merge(service, computerUse)),
       );
-    return { calls, call };
+    return { calls, goalRuns, call };
   });
 
 describe("desktop use toolkit handlers", () => {
+  it.effect("delegates desktop_run_goal to the mission service", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      const result = yield* harness.call("desktop_run_goal", { goal: "save the document" });
+      expect(result).toEqual({ status: "done", message: "Did: save the document", steps: 1 });
+      expect(yield* Ref.get(harness.goalRuns)).toEqual(["save the document"]);
+    }),
+  );
+
+  it.effect("refuses desktop_run_goal without the desktop-use capability", () =>
+    Effect.gen(function* () {
+      const harness = yield* makeHarness();
+      const error = yield* harness
+        .call("desktop_run_goal", { goal: "save" }, ["preview"])
+        .pipe(Effect.flip);
+      expect(error).toMatchObject({
+        _tag: "McpCapabilityUnavailableError",
+        capability: "desktop-use",
+      });
+    }),
+  );
+
   it.effect("refuses a credential without the desktop-use capability", () =>
     Effect.gen(function* () {
       const harness = yield* makeHarness();

@@ -1306,14 +1306,15 @@ function interpretCirceCommandProposal(
       choices: [],
     };
   }
-  // A lookup, website launch, or browser mission is a bounded assistant action
+  // A lookup, website launch, or surface mission is a bounded assistant action
   // with no project or task. The originating client runs it through the
   // quick-action endpoint or its own mission call, so a proposal that reaches
   // the Director without that path is refused rather than misread as a new task.
   if (
     proposal.action === "lookup" ||
     proposal.action === "open-website" ||
-    proposal.action === "browse"
+    proposal.action === "browse" ||
+    proposal.action === "computer"
   ) {
     return {
       status: "needs-input",

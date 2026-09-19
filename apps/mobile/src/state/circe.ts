@@ -3,6 +3,7 @@ import {
   cancelCirceMission,
   executeCirceInstruction,
   useCirceBrowser,
+  useCirceComputer,
 } from "@circe/client-runtime/operations/circe";
 import {
   createEnvironmentCommand,
@@ -30,6 +31,10 @@ export const circeEnvironment = {
   browserUse: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:browser-use",
     execute: (input: CirceBrowserUseInput) => useCirceBrowser(input),
+  }),
+  computerUse: createEnvironmentCommand(connectionAtomRuntime, {
+    label: "mobile:environment-data:circe:computer-use",
+    execute: (input: import("@circe/contracts").CirceComputerUseInput) => useCirceComputer(input),
   }),
   cancelMission: createEnvironmentCommand(connectionAtomRuntime, {
     label: "mobile:environment-data:circe:cancel-mission",

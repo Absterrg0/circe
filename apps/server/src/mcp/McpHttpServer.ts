@@ -16,9 +16,11 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/unstab
 
 import packageJson from "../../package.json" with { type: "json" };
 import * as ServerConfig from "../config.ts";
+import * as DesktopCommands from "../circe/desktopUse/DesktopCommands.ts";
 import * as DesktopUse from "../circe/desktopUse/DesktopUse.ts";
-import { CirceBrowserUseLive } from "../circe/Layers/CirceBrowserUse.ts";
+import { CirceComputerUseLive } from "../circe/Layers/CirceComputerUse.ts";
 import { CirceMissionCancellationLive } from "../circe/Layers/CirceMissionCancellation.ts";
+import { CirceBrowserUseLive } from "../circe/Layers/CirceBrowserUse.ts";
 import * as DeviceService from "../device/DeviceService.ts";
 import * as McpInvocationContext from "./McpInvocationContext.ts";
 import * as OrchestratorMcpService from "./OrchestratorMcpService.ts";
@@ -547,12 +549,19 @@ const registerDesktopScreenshot = Effect.fn("McpHttpServer.registerDesktopScreen
   },
 );
 
+// The run-goal tool delegates to the desktop mission service, so the handler
+// layer carries it and the command runner it needs.
+const DesktopUseToolkitHandlers = DesktopUseToolkitHandlersLive.pipe(
+  Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
+  Layer.provide(CirceMissionCancellationLive),
+);
+
 const DesktopUseToolkitRegistrationLive = McpServer.toolkit(DesktopUseToolkit).pipe(
-  Layer.provide(DesktopUseToolkitHandlersLive),
+  Layer.provide(DesktopUseToolkitHandlers),
 );
 
 const DesktopScreenshotRegistrationLive = Layer.effectDiscard(registerDesktopScreenshot()).pipe(
-  Layer.provide(DesktopUseToolkitHandlersLive),
+  Layer.provide(DesktopUseToolkitHandlers),
 );
 
 export const DesktopUseToolkitRegistration = Layer.mergeAll(
