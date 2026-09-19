@@ -44,6 +44,7 @@ import { deriveCirceTaskState } from "@circe/core/deriveTaskState";
 import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
 import * as CirceBrowserUse from "../Services/CirceBrowserUse.ts";
+import * as CirceComputerUse from "../Services/CirceComputerUse.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
@@ -281,6 +282,7 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeInterpret]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeCancelRequest]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeCancelMission]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetTaskDesk]: AuthOrchestrationReadScope,
   [WS_METHODS.circeFocusTask]: AuthOrchestrationOperateScope,
@@ -306,6 +308,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const executionNodeId = yield* serverEnvironment.getEnvironmentId;
     const circe = yield* CirceController.CirceController;
     const browserUse = yield* CirceBrowserUse.CirceBrowserUse;
+    const computerUse = yield* CirceComputerUse.CirceComputerUse;
     const missionCancellation = yield* CirceMissionCancellation;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
@@ -427,8 +430,21 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                   : browserUse.run(input),
                 { "rpc.aggregate": "circe.browser" },
               ),
-            // A stop reaches a running browser mission on this node. `cancelled`
-            // is false when the mission already settled.
+            // Desktop missions drive this node's own screen, so a Headless
+            // node refuses for the same reason it refuses a browser mission.
+            [WS_METHODS.circeComputerUse]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeComputerUse,
+                (config.circeNodePreset ?? "full") === "headless"
+                  ? Effect.succeed({
+                      status: "unavailable" as const,
+                      message: "This node has no desktop surface.",
+                    })
+                  : computerUse.run(input),
+                { "rpc.aggregate": "circe.computer" },
+              ),
+            // A stop reaches a running browser or desktop mission on this node.
+            // `cancelled` is false when the mission already settled.
             [WS_METHODS.circeCancelMission]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeCancelMission,

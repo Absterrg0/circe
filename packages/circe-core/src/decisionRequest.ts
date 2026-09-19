@@ -163,6 +163,8 @@ const ACTION_CRITERIA: Readonly<Record<CirceSemanticProposalAction, string>> = {
   "open-website": "Open a named site or web address on the user's device.",
   browse:
     "Operate a website toward a goal over several grounded steps; the origin client confirms first.",
+  computer:
+    "Operate this node's desktop toward a goal over several grounded steps; the origin client confirms first.",
   unsupported: "A request Circe cannot do as one action.",
   sequence: "Two or more genuinely independent commands in one turn.",
 };
@@ -183,6 +185,7 @@ export const CIRCE_DECISION_ACTIONS: ReadonlyArray<CirceSemanticProposalAction> 
   "lookup",
   "open-website",
   "browse",
+  "computer",
   "unsupported",
   "sequence",
 ];

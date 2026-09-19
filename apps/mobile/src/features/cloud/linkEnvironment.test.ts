@@ -264,7 +264,8 @@ describe("mobile cloud link environment client", () => {
       ).pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "CloudEnvironmentLinkError",
-        message: "https://relay.example.test/v1/environments failed",
+        message:
+          "https://relay.example.test/v1/environments failed: Could not list relay-managed environments.",
       });
     }),
   );
@@ -526,7 +527,8 @@ describe("mobile cloud link environment client", () => {
             label: "Desktop",
           },
           status: null,
-          statusError: "https://relay.example.test/v1/environments/env-1/status failed",
+          statusError:
+            "https://relay.example.test/v1/environments/env-1/status failed: Could not get relay environment status.",
         },
       ]);
     }),

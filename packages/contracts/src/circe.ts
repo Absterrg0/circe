@@ -151,6 +151,13 @@ export const CirceSemanticProposalAction = Schema.Literals([
    * and the node runs the TypeSafe step loop against its browser host.
    */
   "browse",
+  /**
+   * Operate this node's desktop toward a goal over several grounded steps.
+   * The goal is the user's own instruction; the origin client confirms once
+   * per session and the node runs the TypeSafe step loop over accessibility
+   * elements.
+   */
+  "computer",
   "unsupported",
   "sequence",
 ]);
@@ -214,6 +221,10 @@ export const CirceSemanticProposal = Schema.Struct({
    * per session and the node grounds every step.
    */
   browserGoal: Schema.optional(
+    Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
+  ),
+  /** Present only when action is computer: the bounded desktop mission goal. */
+  computerGoal: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),
   /**

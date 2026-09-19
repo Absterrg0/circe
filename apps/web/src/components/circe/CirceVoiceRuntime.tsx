@@ -272,6 +272,10 @@ export function CirceVoiceRuntime({
     reportFailure: false,
     reportDefect: false,
   });
+  const computerUse = useAtomCommand(circeLiveVoiceEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const cancelMission = useAtomCommand(circeLiveVoiceEnvironment.cancelMission, {
     reportFailure: false,
     reportDefect: false,
@@ -455,6 +459,7 @@ export function CirceVoiceRuntime({
   // the node treats `confirmed` as an assertion.
   const surfaceConfirmedRef = useRef(false);
   const pendingSurfaceRef = useRef<{
+    readonly surface: "browser" | "computer";
     readonly goal: string;
     readonly nodeId: EnvironmentId;
   } | null>(null);
@@ -1337,16 +1342,24 @@ export function CirceVoiceRuntime({
   };
 
   /**
-   * Desktop-only: runs one confirmed browser mission on the target node. The
+   * Desktop-only: runs one confirmed surface mission on the target node. The
    * first mission of a session parks for a spoken yes before this is reached.
    */
   const startSurfaceMission = useCallback(
-    async (goal: string, nodeId: EnvironmentId, inputMode: SubmissionInputMode) => {
+    async (
+      surface: "browser" | "computer",
+      goal: string,
+      nodeId: EnvironmentId,
+      inputMode: SubmissionInputMode,
+    ) => {
       surfaceConfirmedRef.current = true;
       const requestId = randomUUID();
-      const captureId = `circe-browser-${requestId}`;
+      const captureId = `circe-${surface}-${requestId}`;
       emitFeedback({
-        text: `Working on the browser: ${goal}`,
+        text:
+          surface === "browser"
+            ? `Working on the browser: ${goal}`
+            : `Working on the computer: ${goal}`,
         kind: "working",
         inputMode,
         captureId,
@@ -1358,10 +1371,16 @@ export function CirceVoiceRuntime({
         origin: { originInteractionId: circeReporterIdentity() },
       };
       activeMissionRef.current = { requestId, nodeId };
-      const result = await browserUse({
-        environmentId: nodeId,
-        input: { goal, confirmed: true, requestMetadata },
-      }).catch(() => null);
+      const result =
+        surface === "browser"
+          ? await browserUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null)
+          : await computerUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null);
       activeMissionRef.current = null;
       const value = result !== null && result._tag === "Success" ? result.value : null;
       emitFeedback({
@@ -1373,7 +1392,7 @@ export function CirceVoiceRuntime({
       });
       syncPending();
     },
-    [browserUse, emitFeedback, syncPending],
+    [browserUse, computerUse, emitFeedback, syncPending],
   );
 
   /**
@@ -1401,6 +1420,7 @@ export function CirceVoiceRuntime({
         submissionBusyRef.current = true;
         syncPending();
         void startSurfaceMission(
+          pendingSurface.surface,
           pendingSurface.goal,
           pendingSurface.nodeId,
           options.inputMode,
@@ -1904,39 +1924,43 @@ export function CirceVoiceRuntime({
               syncPending();
               return;
             }
-            // A multi-step browser mission runs on the target node, not in the
+            // A multi-step surface mission runs on the target node, not in the
             // browser tab. It is a desktop capability: the Electron app owns
             // the screen and the origin interaction, so a plain web tab skips
             // it rather than half-owning a mission.
-            if (
-              typeof window !== "undefined" &&
-              window.desktopBridge !== undefined &&
-              interpretedProposal.action === "browse" &&
-              typeof interpretedProposal.browserGoal === "string"
-            ) {
-              const goal = interpretedProposal.browserGoal;
-              // Prefer a node that advertises the surface capability, the same
-              // way a lookup picks its node, so a headless node never receives
-              // a mission it can only refuse.
-              const nodeId =
-                selectCirceQuickLookupNode(submissionCatalog, [
-                  primaryEnvironmentId,
-                  semanticNode.nodeId,
-                ])?.nodeId ?? semanticNode.nodeId;
-              if (!surfaceConfirmedRef.current) {
-                pendingSurfaceRef.current = { goal, nodeId };
-                emitFeedback({
-                  text: `I'll control the browser in this session to ${goal}. Say yes to start.`,
-                  kind: "needs-input",
-                  inputMode,
-                  captureId: voiceSubmission.captureId,
-                  requestId: turnRequestId,
-                });
-                syncPending();
+            if (typeof window !== "undefined" && window.desktopBridge !== undefined) {
+              const surfaceGoal =
+                interpretedProposal.action === "browse" &&
+                typeof interpretedProposal.browserGoal === "string"
+                  ? { surface: "browser" as const, goal: interpretedProposal.browserGoal }
+                  : interpretedProposal.action === "computer" &&
+                      typeof interpretedProposal.computerGoal === "string"
+                    ? { surface: "computer" as const, goal: interpretedProposal.computerGoal }
+                    : null;
+              if (surfaceGoal !== null) {
+                // Prefer a node that advertises the surface capability, the
+                // same way a lookup picks its node, so a headless node never
+                // receives a mission it can only refuse.
+                const nodeId =
+                  selectCirceQuickLookupNode(submissionCatalog, [
+                    primaryEnvironmentId,
+                    semanticNode.nodeId,
+                  ])?.nodeId ?? semanticNode.nodeId;
+                if (!surfaceConfirmedRef.current) {
+                  pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
+                  emitFeedback({
+                    text: `I'll control the ${surfaceGoal.surface === "browser" ? "browser" : "computer"} in this session to ${surfaceGoal.goal}. Say yes to start.`,
+                    kind: "needs-input",
+                    inputMode,
+                    captureId: voiceSubmission.captureId,
+                    requestId: turnRequestId,
+                  });
+                  syncPending();
+                  return;
+                }
+                await startSurfaceMission(surfaceGoal.surface, surfaceGoal.goal, nodeId, inputMode);
                 return;
               }
-              await startSurfaceMission(goal, nodeId, inputMode);
-              return;
             }
             // Converse is model-decided, never a pre-inference shortcut. Run
             // it project-free on the semantic node with the same request

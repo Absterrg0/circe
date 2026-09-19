@@ -227,6 +227,13 @@ export class ManagedRelayDpopSigner extends Context.Service<
 
 export const MANAGED_RELAY_REQUEST_TIMEOUT_MS = 10_000;
 
+// Linking provisions the managed tunnel inline on the relay (Cloudflare API
+// round trips), so first-time links routinely outlive the ordinary request
+// bound. A shorter timeout abandons a link the relay then completes anyway:
+// the environment is linked but the local server never receives its runtime
+// config, and the user sees a bare failure.
+export const MANAGED_RELAY_LINK_REQUEST_TIMEOUT_MS = 60_000;
+
 export interface ManagedRelayAccessTokenCacheEntry {
   readonly accountId: string;
   readonly clientId: RelayPublicClientId;
@@ -341,12 +348,15 @@ function isRejectedDpopAccessToken(error: ManagedRelayClientError): boolean {
   );
 }
 
-function timeoutRelayRequest(activity: ManagedRelayRequestActivity) {
+function timeoutRelayRequest(
+  activity: ManagedRelayRequestActivity,
+  timeoutMs = MANAGED_RELAY_REQUEST_TIMEOUT_MS,
+) {
   return <A, E, R>(
     effect: Effect.Effect<A, E, R>,
   ): Effect.Effect<A, E | ManagedRelayClientError, R> =>
     effect.pipe(
-      Effect.timeoutOption(Duration.millis(MANAGED_RELAY_REQUEST_TIMEOUT_MS)),
+      Effect.timeoutOption(Duration.millis(timeoutMs)),
       Effect.flatMap(
         Option.match({
           onNone: () =>
@@ -357,7 +367,7 @@ function timeoutRelayRequest(activity: ManagedRelayRequestActivity) {
                 Effect.fail(
                   new ManagedRelayRequestTimeoutError({
                     activity,
-                    timeoutMs: MANAGED_RELAY_REQUEST_TIMEOUT_MS,
+                    timeoutMs,
                     traceId,
                   }),
                 ),
@@ -774,7 +784,7 @@ export const make = Effect.fn("ManagedRelayClient.make")(function* (
           })
           .pipe(
             Effect.mapError(relayRequestError("link relay environment")),
-            timeoutRelayRequest("Relay environment linking"),
+            timeoutRelayRequest("Relay environment linking", MANAGED_RELAY_LINK_REQUEST_TIMEOUT_MS),
           );
       },
       Effect.withSpan("clientRuntime.managedRelay.linkEnvironment"),
