@@ -355,6 +355,7 @@ import {
   CircePushRegistrationError,
 } from "./circe.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
+import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
 import {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
@@ -372,6 +373,7 @@ export const WS_METHODS = {
   circeInterpret: "circe.interpret",
   circeCancelRequest: "circe.cancelRequest",
   circeBrowserUse: "circe.browserUse",
+  circeComputerUse: "circe.computerUse",
   circeCancelMission: "circe.cancelMission",
   circeGetTaskDesk: "circe.getTaskDesk",
   circeFocusTask: "circe.focusTask",
@@ -606,6 +608,17 @@ const WsCirceCancelRequestRpc = Rpc.make(WS_METHODS.circeCancelRequest, {
 const WsCirceBrowserUseRpc = Rpc.make(WS_METHODS.circeBrowserUse, {
   payload: CirceBrowserUseInput,
   success: CirceBrowserUseResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/**
+ * Run one bounded desktop mission on this node. The node drives its own screen
+ * through the TypeSafe step loop over grounded accessibility elements; the
+ * origin interaction confirms once per session before the first mission.
+ */
+const WsCirceComputerUseRpc = Rpc.make(WS_METHODS.circeComputerUse, {
+  payload: CirceComputerUseInput,
+  success: CirceComputerUseResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1823,6 +1836,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
   WsCirceBrowserUseRpc,
+  WsCirceComputerUseRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -2027,6 +2041,7 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
   WsCirceBrowserUseRpc,
+  WsCirceComputerUseRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -2047,6 +2062,7 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeInterpret,
   WS_METHODS.circeCancelRequest,
   WS_METHODS.circeBrowserUse,
+  WS_METHODS.circeComputerUse,
   WS_METHODS.circeCancelMission,
   WS_METHODS.circeGetTaskDesk,
   WS_METHODS.circeFocusTask,

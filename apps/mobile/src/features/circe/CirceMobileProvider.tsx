@@ -169,6 +169,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportFailure: false,
     reportDefect: false,
   });
+  const computerUse = useMobileAtomCommand(circeEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const refreshMesh = useMobileAtomCommand(circeMeshEnvironment.refresh, {
@@ -273,6 +277,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   // is user-facing consent, not authorization.
   const surfaceConfirmedRef = useRef(false);
   const pendingSurfaceRef = useRef<{
+    readonly surface: "browser" | "computer";
     readonly goal: string;
     readonly nodeId: EnvironmentId;
   } | null>(null);
@@ -1088,26 +1093,36 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   );
 
   /**
-   * Runs one confirmed browser mission on the target node. `confirmed` is the
+   * Runs one confirmed surface mission on the target node. `confirmed` is the
    * client's assertion that the user consented; the first mission parks for a
    * spoken yes before it reaches here.
    */
   const startSurfaceMission = useCallback(
-    async (goal: string, nodeId: EnvironmentId) => {
+    async (surface: "browser" | "computer", goal: string, nodeId: EnvironmentId) => {
       surfaceConfirmedRef.current = true;
       const requestMetadata = {
         requestId: uuidv4(),
         origin: { originInteractionId: nextOriginInteractionId() },
       };
-      setMessage(`Working on the browser: ${goal}`);
-      const result = await browserUse({
-        environmentId: nodeId,
-        input: { goal, confirmed: true, requestMetadata },
-      }).catch(() => null);
+      setMessage(
+        surface === "browser"
+          ? `Working on the browser: ${goal}`
+          : `Working on the computer: ${goal}`,
+      );
+      const result =
+        surface === "browser"
+          ? await browserUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null)
+          : await computerUse({
+              environmentId: nodeId,
+              input: { goal, confirmed: true, requestMetadata },
+            }).catch(() => null);
       const value = result !== null && result._tag === "Success" ? result.value : null;
       setMessage(value?.message ?? "I couldn't run that mission.");
     },
-    [browserUse, setMessage],
+    [browserUse, computerUse, setMessage],
   );
 
   const runInstruction = useCallback(
@@ -1137,7 +1152,11 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           submittingRef.current = true;
           setSubmitting(true);
           try {
-            await startSurfaceMission(pendingSurface.goal, pendingSurface.nodeId);
+            await startSurfaceMission(
+              pendingSurface.surface,
+              pendingSurface.goal,
+              pendingSurface.nodeId,
+            );
           } finally {
             submittingRef.current = false;
             setSubmitting(false);
@@ -1580,14 +1599,17 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         }
         return;
       }
-      // A multi-step browser mission runs on the target node, not on the
+      // A multi-step surface mission runs on the target node, not on the
       // phone. The first mission in an app session parks for a spoken yes; the
       // node grounds every step.
-      if (
-        executionProposal.action === "browse" &&
-        typeof executionProposal.browserGoal === "string"
-      ) {
-        const goal = executionProposal.browserGoal;
+      const surfaceGoal =
+        executionProposal.action === "browse" && typeof executionProposal.browserGoal === "string"
+          ? { surface: "browser" as const, goal: executionProposal.browserGoal }
+          : executionProposal.action === "computer" &&
+              typeof executionProposal.computerGoal === "string"
+            ? { surface: "computer" as const, goal: executionProposal.computerGoal }
+            : null;
+      if (surfaceGoal !== null) {
         // Prefer a node that advertises the surface capability, the same way a
         // lookup picks its node, so a headless semantic node never receives a
         // mission it can only refuse.
@@ -1597,16 +1619,18 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
             semanticNode.nodeId,
           ])?.nodeId ?? liveSemanticNode.nodeId;
         if (!surfaceConfirmedRef.current) {
-          pendingSurfaceRef.current = { goal, nodeId };
+          pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
           setPreparedOriginInteractionId(nextOriginInteractionId());
-          setMessage(`I'll control the browser in this session to ${goal}. Reply yes to start.`);
+          setMessage(
+            `I'll control the ${surfaceGoal.surface === "browser" ? "browser" : "computer"} in this session to ${surfaceGoal.goal}. Reply yes to start.`,
+          );
           drainQueuedInput();
           return;
         }
         submittingRef.current = true;
         setSubmitting(true);
         try {
-          await startSurfaceMission(goal, nodeId);
+          await startSurfaceMission(surfaceGoal.surface, surfaceGoal.goal, nodeId);
         } finally {
           submittingRef.current = false;
           setSubmitting(false);

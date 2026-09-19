@@ -58,6 +58,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
+import * as DesktopCommands from "./circe/desktopUse/DesktopCommands.ts";
 import * as DesktopUse from "./circe/desktopUse/DesktopUse.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { deviceHubProxyRouteLayer } from "./device/DeviceHubProxy.ts";
@@ -133,6 +134,7 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
+import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
@@ -649,6 +651,9 @@ const makeRoutesLayer = Layer.mergeAll(
         // Circe-owned scope, so voice and text control drive the same host a
         // provider session would.
         Layer.provide(CirceBrowserUseLive),
+        // Desktop missions drive this node's own screen through the same
+        // grounded step layer over accessibility elements.
+        Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
         Layer.provide(CirceMissionCancellationLive),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
