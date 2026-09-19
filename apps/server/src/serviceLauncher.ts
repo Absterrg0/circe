@@ -50,7 +50,7 @@ interface ManagedChild {
 // built-ins only.
 const runtimePaths = (baseDir: string, version: string) => {
   const versionDir = NodePath.join(baseDir, "runtime", "versions", version);
-  // oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone launcher has no Effect runtime.
+  // oxlint-disable-next-line circe/no-global-process-runtime -- Standalone launcher has no Effect runtime.
   const executableName = process.platform === "win32" ? "circe.exe" : "circe";
   return {
     versionDir,

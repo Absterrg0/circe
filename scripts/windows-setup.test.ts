@@ -175,7 +175,7 @@ describe("Windows setup contracts", () => {
   it("runs the owned-process helper with nonexistent allowed paths on Windows", async () => {
     // This smoke test intentionally runs only on the host Windows runtime;
     // NodeOS.platform() is the direct Node boundary for that host check.
-    // oxlint-disable-next-line t3code/no-global-process-runtime -- this test is a direct Node child-process smoke test and must skip on non-Windows hosts.
+    // oxlint-disable-next-line circe/no-global-process-runtime -- this test is a direct Node child-process smoke test and must skip on non-Windows hosts.
     if (NodeOS.platform() !== "win32") return;
 
     const root = await NodeFSP.mkdtemp(NodePath.join(NodeOS.tmpdir(), "circe-owned-stop-smoke-"));

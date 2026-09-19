@@ -400,7 +400,7 @@ async function copyRuntimePayload(source: string, target: string): Promise<void>
   );
 }
 
-// oxlint-disable-next-line t3code/no-global-process-runtime -- Standalone CLI needs the host platform for makensis flags.
+// oxlint-disable-next-line circe/no-global-process-runtime -- Standalone CLI needs the host platform for makensis flags.
 function makensisVerbosityFlag(platform: string = NodeOS.platform()): "/V2" | "-V2" {
   return platform === "win32" ? "/V2" : "-V2";
 }

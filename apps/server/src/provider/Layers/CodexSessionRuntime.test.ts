@@ -622,7 +622,7 @@ describe("T3 browser developer instructions", () => {
   it("prefers the product-native preview tools in both collaboration modes", () => {
     for (const mode of ["default", "plan"] as const) {
       const instructions = buildCodexDeveloperInstructions(mode, runtime, true);
-      NodeAssert.match(instructions, /t3-code/);
+      NodeAssert.match(instructions, /circe/);
       NodeAssert.match(instructions, /preview_status/);
       NodeAssert.match(instructions, /preview_open/);
       NodeAssert.match(instructions, /Do not switch to global browser skills/);
@@ -658,7 +658,7 @@ describe("hasConfiguredMcpServer", () => {
     NodeAssert.equal(hasConfiguredMcpServer(undefined), false);
     NodeAssert.equal(hasConfiguredMcpServer(["--model", "gpt-5.4"]), false);
     NodeAssert.equal(
-      hasConfiguredMcpServer(["-c", 'mcp_servers.t3-code.url="http://127.0.0.1/mcp"']),
+      hasConfiguredMcpServer(["-c", 'mcp_servers.circe.url="http://127.0.0.1/mcp"']),
       true,
     );
   });
@@ -814,7 +814,7 @@ describe("codexSessionAppServerArgs", () => {
   it("keeps launch args when explicit app-server args are provided", () => {
     NodeAssert.deepStrictEqual(
       codexSessionAppServerArgs(
-        ["-c", "mcp_servers.t3-code.url=http://127.0.0.1/mcp"],
+        ["-c", "mcp_servers.circe.url=http://127.0.0.1/mcp"],
         "--strict-config --enable foo",
       ),
       [
@@ -823,7 +823,7 @@ describe("codexSessionAppServerArgs", () => {
         "--enable",
         "foo",
         "-c",
-        "mcp_servers.t3-code.url=http://127.0.0.1/mcp",
+        "mcp_servers.circe.url=http://127.0.0.1/mcp",
       ],
     );
   });

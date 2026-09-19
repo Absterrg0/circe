@@ -1,0 +1,9 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["CirceComposerEditorModule"]
+  },
+  "android": {
+    "modules": ["expo.modules.circecomposereditor.CirceComposerEditorModule"]
+  }
+}

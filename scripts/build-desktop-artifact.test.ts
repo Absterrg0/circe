@@ -231,7 +231,7 @@ const makeWindowsPayloadFixture = Effect.fn("test.makeWindowsPayloadFixture")(fu
     );
     yield* fs.writeFileString(path.join(linuxPrebuildDir, "pty.node"), "linux-pty");
     yield* fs.writeFileString(
-      path.join(linuxPrebuildDir, "t3code-wsl-node-pty.json"),
+      path.join(linuxPrebuildDir, "circe-wsl-node-pty.json"),
       '{"arch":"x64"}',
     );
     if (input.wslRuntime === "forbidden") {
@@ -2432,7 +2432,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "utf8",
     );
     assert.include(source, "fs.makeTempDirectory : fs.makeTempDirectoryScoped");
-    assert.include(source, "prefix: `t3code-desktop-${options.platform}-stage-`");
+    assert.include(source, "prefix: `circe-desktop-${options.platform}-stage-`");
     assert.include(source, 'const stageAppDir = path.join(stageRoot, "app")');
     assert.notInclude(source, 'path.join(repoRoot, "package.json")');
     assert.notInclude(source, 'path.join(repoRoot, "main.cjs")');

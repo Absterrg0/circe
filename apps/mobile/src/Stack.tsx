@@ -23,7 +23,7 @@ import { ArchivedThreadsRouteScreen } from "./features/archive/ArchivedThreadsRo
 import { OrbGalleryRouteScreen } from "./features/circe/OrbGalleryRouteScreen";
 import { WelcomeRouteScreen } from "./features/welcome/WelcomeRouteScreen";
 import { WelcomeAuthRouteScreen } from "./features/welcome/WelcomeAuthRouteScreen";
-// WelcomeGate is deferred: the app opens in guest mode like t3code did, and
+// WelcomeGate is deferred: the app opens in guest mode, and
 // Circe Mesh sign-in lives in Settings. Welcome routes stay registered below.
 import {
   useExpoPushRegistration,

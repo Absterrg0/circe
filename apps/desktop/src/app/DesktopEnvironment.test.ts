@@ -266,8 +266,8 @@ describe("DesktopEnvironment", () => {
       const environment = yield* makeEnvironment({
         platform: "linux",
         isPackaged: true,
-        appPath: "/tmp/.mount_t3code/resources/app.asar",
-        resourcesPath: "/tmp/.mount_t3code/resources",
+        appPath: "/tmp/.mount_circe/resources/app.asar",
+        resourcesPath: "/tmp/.mount_circe/resources",
       });
 
       assert.equal(environment.linuxDesktopEntryName, "com.abstergo.circe.desktop");

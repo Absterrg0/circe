@@ -592,7 +592,7 @@ describe("CodexAdapterV2 process spawning", () => {
           model: "gpt-5.4",
           config: {
             mcp_servers: {
-              "t3-code": {
+              circe: {
                 url: "http://127.0.0.1:43123/mcp",
                 http_headers: {
                   Authorization: "Bearer secret-codex-token",
@@ -720,7 +720,7 @@ describe("CodexAdapterV2 dynamic tool projection", () => {
     const projection = projectCodexDynamicToolItem({
       type: "mcpToolCall",
       id: "call-create-threads",
-      server: "t3-code",
+      server: "circe",
       tool: "create_threads",
       status: "completed",
       arguments: {
@@ -735,7 +735,7 @@ describe("CodexAdapterV2 dynamic tool projection", () => {
     });
 
     assert.deepEqual(projection, {
-      toolName: "t3-code.create_threads",
+      toolName: "circe.create_threads",
       input: {
         threads: [{ title: "Fixture child", prompt: "fixture child prompt" }],
       },
@@ -1300,7 +1300,7 @@ function codexReplayPreamble(input: {
         id: 1,
         method: "initialize",
         params: {
-          clientInfo: { name: "t3code_desktop", title: "Circe Desktop", version: "0.1.0" },
+          clientInfo: { name: "circe_desktop", title: "Circe Desktop", version: "0.1.0" },
           capabilities: {
             experimentalApi: true,
             optOutNotificationMethods: ["turn/diff/updated"],
@@ -1314,7 +1314,7 @@ function codexReplayPreamble(input: {
       frame: {
         id: 1,
         result: {
-          userAgent: "t3code_desktop/0.144.0",
+          userAgent: "circe_desktop/0.144.0",
           codexHome: "/tmp/codex-home",
           platformFamily: "unix",
           platformOs: "macos",
@@ -4666,7 +4666,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             item: {
               type: "mcpToolCall",
               id: COMPLETED_WAIT_ITEM,
-              server: "t3-code",
+              server: "circe",
               tool: "t3_thread_wait",
               status: "inProgress",
               arguments: { threadId: "thread:completed-wait", timeoutMs: 30000 },
@@ -4686,7 +4686,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             item: {
               type: "mcpToolCall",
               id: COMPLETED_WAIT_ITEM,
-              server: "t3-code",
+              server: "circe",
               tool: "t3_thread_wait",
               status: "completed",
               arguments: { threadId: "thread:completed-wait", timeoutMs: 30000 },
@@ -4707,7 +4707,7 @@ describe("CodexAdapterV2 post-settle continuation", () => {
             item: {
               type: "mcpToolCall",
               id: ORPHAN_WAIT_ITEM,
-              server: "t3-code",
+              server: "circe",
               tool: "t3_thread_wait",
               status: "inProgress",
               arguments: {

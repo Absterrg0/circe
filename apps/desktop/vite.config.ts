@@ -18,6 +18,7 @@ const publicConfigDefine = {
   __CIRCE_BUILD_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
     repoEnv.CIRCE_CLERK_PUBLISHABLE_KEY?.trim() ?? "",
   ),
+  __CIRCE_BUILD_DESKTOP_SCHEME__: JSON.stringify(repoEnv.CIRCE_DESKTOP_SCHEME?.trim() ?? ""),
 };
 
 export default defineConfig({

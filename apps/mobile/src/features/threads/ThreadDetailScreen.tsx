@@ -1,6 +1,6 @@
 import { useNavigation } from "@react-navigation/native";
 import type { WorktreeSetupCardProps } from "./worktree-setup-card";
-import type { ComposerTextPaste } from "../../native/T3ComposerEditor.types";
+import type { ComposerTextPaste } from "../../native/CirceComposerEditor.types";
 import { type EnvironmentConnectionPhase } from "@circe/client/connection";
 import type { EnvironmentThreadShell } from "@circe/client/state/shell";
 import type { CodexFeedbackSubmission, EnvironmentThreadStatus } from "@circe/client/state/threads";
@@ -16,7 +16,7 @@ import type {
   ProviderInteractionMode,
   RuntimeMode,
   RuntimeRequestId,
-  ServerConfig as T3ServerConfig,
+  ServerConfig as CirceServerConfig,
   ThreadId,
   UsageLimitsReport,
 } from "@circe/contracts";
@@ -164,7 +164,7 @@ export interface ThreadDetailScreenProps {
   readonly selectedThreadQueueCount: number;
   readonly queuedMessages: ReadonlyArray<QueuedThreadMessage>;
   readonly dispatchingMessageId: MessageId | null;
-  readonly serverConfig: T3ServerConfig | null;
+  readonly serverConfig: CirceServerConfig | null;
   readonly layoutVariant?: LayoutVariant;
   readonly usesAutomaticContentInsets?: boolean;
   readonly onHeaderMaterialVisibilityChange?: (visible: boolean) => void;

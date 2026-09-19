@@ -1,0 +1,10 @@
+{
+  "platforms": ["apple", "android"],
+  "apple": {
+    "modules": ["CirceTerminalModule"],
+    "podspecPath": "CirceTerminalNative.podspec"
+  },
+  "android": {
+    "modules": ["expo.modules.circeterminal.CirceTerminalModule"]
+  }
+}

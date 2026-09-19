@@ -7,7 +7,7 @@ import { ActivityIndicator, StatusBar, View } from "react-native";
 import { CIRCE_IVORY } from "../../lib/circeBrandColors";
 import { hasCloudPublicConfig } from "../cloud/publicConfig";
 import { CirceMark } from "../welcome/welcomeMarks";
-import { T3ConnectProfilePage } from "../cloud/T3ConnectProfilePage";
+import { CirceConnectProfilePage } from "../cloud/CirceConnectProfilePage";
 
 // Custom rows in Clerk's native profile. Mirrors the web UserButton pages.
 const USER_PROFILE_CUSTOM_PAGES = [
@@ -15,7 +15,7 @@ const USER_PROFILE_CUSTOM_PAGES = [
     path: "t3-connect",
     label: "T3 Connect",
     icon: "globe",
-    content: <T3ConnectProfilePage />,
+    content: <CirceConnectProfilePage />,
   },
 ] satisfies UserProfileCustomPage[];
 

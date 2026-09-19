@@ -15,7 +15,13 @@ import { makeXAiPromptCompletionRuntime } from "./XAiAcpExtension.ts";
 
 const GROK_API_KEY_ENV = "XAI_API_KEY";
 const GROK_OAUTH2_REFERRER_ENV = "GROK_OAUTH2_REFERRER";
-const CIRCE_CODE_OAUTH_REFERRER = "t3code";
+/**
+ * Passed to the `grok` CLI as `GROK_OAUTH2_REFERRER`. This value is part of
+ * xAI's OAuth handshake, not a Circe identifier: it is kept as the value the
+ * CLI was built against so sign-in keeps working. It is the only remaining
+ * pre-rename string in the product.
+ */
+const GROK_OAUTH_REFERRER = "t3code";
 const GROK_AUTH_METHOD_API_KEY = "xai.api_key";
 const GROK_AUTH_METHOD_CACHED_TOKEN = "cached_token";
 const GROK_DRIVER_KIND = ProviderDriverKind.make("grok");
@@ -59,7 +65,7 @@ export function buildGrokAcpSpawnInput(
     cwd,
     env: {
       ...environment,
-      [GROK_OAUTH2_REFERRER_ENV]: CIRCE_CODE_OAUTH_REFERRER,
+      [GROK_OAUTH2_REFERRER_ENV]: GROK_OAUTH_REFERRER,
     },
   };
 }

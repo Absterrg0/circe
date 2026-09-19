@@ -139,7 +139,7 @@ export const hashBundle = Effect.fn("hashBundle")(function* (root: string) {
 });
 type FileSystemError = import("effect/PlatformError").PlatformError;
 
-const bundleId = "com.t3tools.t3code.dev";
+const bundleId = "com.abstergo.circe.dev";
 const roots = Effect.gen(function* () {
   const path = yield* Path.Path;
   const repo = yield* path.fromFileUrl(new URL("../", import.meta.url));
@@ -307,7 +307,7 @@ const main = Command.make(
       });
     const recordPath = path.join(
       home,
-      ".cache/t3code/native-clients",
+      ".cache/circe/native-clients",
       platform,
       `${yield* digest(device)}.json`,
     );

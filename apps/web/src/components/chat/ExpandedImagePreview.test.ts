@@ -16,7 +16,7 @@ describe("resolveMarkdownMediaPreview", () => {
   });
 
   it.each([
-    ["t3code:", "https:"],
+    ["circe:", "https:"],
     ["t3code-dev:", "https:"],
     ["http:", "http:"],
     ["https:", "https:"],

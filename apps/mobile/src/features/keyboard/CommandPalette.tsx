@@ -21,7 +21,7 @@ import { RowPressable } from "../../components/RowPressable";
 import { AppText as Text } from "../../components/AppText";
 import { SymbolView, type AppSymbolName } from "../../components/AppSymbol";
 import { scopedProjectKey, scopedThreadKey } from "../../lib/scopedEntities";
-import { T3KeyboardCommands } from "../../native/T3KeyboardCommands";
+import { CirceKeyboardCommands } from "../../native/CirceKeyboardCommands";
 import { useProjects, useThreadShell, useThreadShells } from "../../state/entities";
 import { useThreadSearch } from "../../state/queries";
 import { useWorkspaceEnvironments } from "../../state/workspace";
@@ -386,7 +386,7 @@ export function CommandPalette(props: {
       onDismiss={handleDismissed}
     >
       <GestureHandlerRootView className="flex-1">
-        <T3KeyboardCommands enabledCommands={PALETTE_COMMANDS} onCommand={onCommand}>
+        <CirceKeyboardCommands enabledCommands={PALETTE_COMMANDS} onCommand={onCommand}>
           <KeyboardAvoidingView
             behavior="padding"
             className="flex-1 items-center justify-center p-4"
@@ -470,7 +470,7 @@ export function CommandPalette(props: {
               />
             </GlassSurface>
           </KeyboardAvoidingView>
-        </T3KeyboardCommands>
+        </CirceKeyboardCommands>
       </GestureHandlerRootView>
     </Modal>
   );

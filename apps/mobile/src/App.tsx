@@ -50,18 +50,9 @@ void SplashScreen.preventAutoHideAsync().catch(() => {
 });
 
 const appLinking = {
-  // Legacy `t3code*` schemes stay registered as aliases: links already shared
-  // in QR codes, widgets, and push payloads must keep resolving after the
-  // rename to Circe. New links use the Circe scheme.
-  prefixes: [
-    Linking.createURL("/"),
-    "circe://",
-    "circe-dev://",
-    "circe-preview://",
-    "t3code://",
-    "t3code-dev://",
-    "t3code-preview://",
-  ],
+  // Circe is the only scheme. There are no pre-rename links to preserve, so
+  // the inherited T3 schemes are gone rather than aliased.
+  prefixes: [Linking.createURL("/"), "circe://", "circe-dev://", "circe-preview://"],
   // Keep the compact thread list available beneath a directly opened thread.
   config: { initialRouteName: "Home" },
   // Launcher URLs, share wake-ups, auth callbacks, and scheme-only wake-ups all

@@ -590,7 +590,7 @@ function negotiatedCapabilities(
     },
     tools: {
       ...base.tools,
-      // The stdio bridge (`t3 acp-mcp-bridge`) makes the t3-code MCP toolkit
+      // The stdio bridge (`t3 acp-mcp-bridge`) makes the circe MCP toolkit
       // available regardless of the agent's optional http/sse MCP support.
       supportsMcpTools: true,
     },
@@ -627,7 +627,7 @@ function acpMcpContext(threadId: ThreadId | null): AcpMcpContext {
   return {
     servers: [
       {
-        name: "t3-code",
+        name: "circe",
         command: process.execPath,
         args: [serverEntrypoint, "acp-mcp-bridge"],
         env: [
@@ -637,7 +637,7 @@ function acpMcpContext(threadId: ThreadId | null): AcpMcpContext {
         ],
       },
     ],
-    acpServers: [{ type: "acp", name: "t3-code", serverId: "t3-code" }],
+    acpServers: [{ type: "acp", name: "circe", serverId: "circe" }],
     endpoint: session.endpoint,
     authorization: session.authorizationHeader,
     processEnvironment: {
@@ -1877,7 +1877,7 @@ export function makeAcpAdapterV2(options: AcpAdapterV2Options): ProviderAdapterV
               elicitation: { form: {} },
               ...(flavor.clientCapabilitiesMeta ? { _meta: flavor.clientCapabilitiesMeta } : {}),
             },
-            clientInfo: { name: "t3-code", version: "0.0.0" },
+            clientInfo: { name: "circe", version: "0.0.0" },
             onTermination,
             onOutgoingResponseFailure: (requestId, error) =>
               Ref.modify(nativeResponseAcknowledgements, (current) => {

@@ -134,9 +134,10 @@ old conversation-project path in V1 code and will be replaced in the rebuild.)
 
 - Whether `CIRCE_*` CI secret renaming happens in this stack or a dedicated ops
   PR. Chosen: documented now, executed with the release pipeline.
-- Whether the T3-era lowercase storage keys (`t3code:themes:*`, theme id
-  `t3-chat-dark`, GNOME extension UUID `snap-shot@t3.codes`) are migrated or
-  left. Chosen: left, because they are persisted identities with no users yet
-  but no benefit to forcing a migration.
+- Whether the T3-era identifiers are aliased or removed. Chosen: removed in one
+  clean cut, because there are no users and no stored state worth migrating.
+  The only exceptions are the GNOME extension UUID `snap-shot@t3.codes`, which
+  GNOME requires for discovery, and the xAI OAuth referrer passed to the `grok`
+  CLI.
 - Whether the `@t3code/t3-<platform>` legacy npm launcher is deprecated or
   unpublished. Chosen: deprecate, because deprecation is reversible.

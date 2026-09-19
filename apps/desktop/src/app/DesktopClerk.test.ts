@@ -85,7 +85,7 @@ describe("DesktopClerk", () => {
     // packaged app — runSync throws the moment it hits one.
     // This regression test specifically proves that layer construction has no
     // async boundary before Electron's ready event, so it must use runSync.
-    // oxlint-disable-next-line t3code/no-manual-effect-runtime-in-tests -- sync boundary is the behavior under test.
+    // oxlint-disable-next-line circe/no-manual-effect-runtime-in-tests -- sync boundary is the behavior under test.
     Effect.runSync(Effect.scoped(Layer.build(makeDesktopClerkLayer(true, events))));
 
     assert.deepEqual(events, ["setPath:userData:/tmp/app-data/circe-dev", "createClerkBridge"]);

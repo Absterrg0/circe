@@ -47,6 +47,47 @@ export type MobileThreadLookup =
  * A transport failure stays "unreachable" so reconnects do not discard a
  * retained Circe listener. A confirmed 404 is "missing" and can retire it.
  */
+/**
+ * Durable liveness comes from the V2 projection: the active provider session's
+ * status and the newest provider turn of this thread's provider thread. A
+ * waiting session is still active (it is blocked on approval or input), and a
+ * pending or cancelled turn must not read as finished work.
+ */
+function sessionStatusFromProjection(
+  status: "starting" | "ready" | "running" | "waiting" | "stopped" | "error",
+): NonNullable<Extract<MobileThreadLookup, { status: "found" }>["sessionStatus"]> {
+  switch (status) {
+    case "starting":
+      return "starting";
+    case "ready":
+      return "ready";
+    case "running":
+    case "waiting":
+      return "running";
+    case "stopped":
+      return "stopped";
+    case "error":
+      return "error";
+  }
+}
+
+function turnStateFromProjection(
+  status: "pending" | "running" | "completed" | "interrupted" | "failed" | "cancelled",
+): NonNullable<Extract<MobileThreadLookup, { status: "found" }>["latestTurnState"]> {
+  switch (status) {
+    case "pending":
+    case "running":
+      return "running";
+    case "completed":
+      return "completed";
+    case "interrupted":
+    case "cancelled":
+      return "interrupted";
+    case "failed":
+      return "error";
+  }
+}
+
 export const lookupThread = createEnvironmentCommand(connectionAtomRuntime, {
   label: "mobile:environment-data:thread:lookup",
   execute: ({ threadId }: { readonly threadId: ThreadId }) =>
@@ -57,15 +98,43 @@ export const lookupThread = createEnvironmentCommand(connectionAtomRuntime, {
       const loader = yield* ThreadSnapshotLoader;
       if (loader.lookup === undefined) return { status: "unreachable" } as const;
       return yield* loader.lookup(prepared.value, threadId).pipe(
-        Effect.map((result): MobileThreadLookup =>
-          result._tag === "missing"
-            ? { status: "missing" }
-            : {
-                status: "found",
-                sessionStatus: result.snapshot.thread.session?.status ?? null,
-                latestTurnState: result.snapshot.thread.latestTurn?.state ?? null,
-              },
-        ),
+        Effect.map((result): MobileThreadLookup => {
+          if (result._tag === "missing") return { status: "missing" };
+          const projection = result.snapshot.projection;
+          const providerThreads = projection.providerThreads.filter(
+            (candidate) => candidate.appThreadId === threadId,
+          );
+          const providerThread =
+            providerThreads.find(
+              (candidate) => candidate.id === projection.thread.activeProviderThreadId,
+            ) ?? providerThreads.at(-1);
+          const session =
+            providerThread?.providerSessionId === null ||
+            providerThread?.providerSessionId === undefined
+              ? undefined
+              : projection.providerSessions.find(
+                  (candidate) => candidate.id === providerThread.providerSessionId,
+                );
+          const latestTurn =
+            providerThread === undefined
+              ? undefined
+              : projection.providerTurns
+                  .filter((candidate) => candidate.providerThreadId === providerThread.id)
+                  .reduce<(typeof projection.providerTurns)[number] | undefined>(
+                    (newest, candidate) =>
+                      newest === undefined || candidate.ordinal > newest.ordinal
+                        ? candidate
+                        : newest,
+                    undefined,
+                  );
+          return {
+            status: "found",
+            sessionStatus:
+              session === undefined ? null : sessionStatusFromProjection(session.status),
+            latestTurnState:
+              latestTurn === undefined ? null : turnStateFromProjection(latestTurn.status),
+          };
+        }),
         Effect.catch(() => Effect.succeed({ status: "unreachable" } as const)),
       );
     }),

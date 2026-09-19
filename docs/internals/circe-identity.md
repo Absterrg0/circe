@@ -14,14 +14,21 @@ Circe is the product name and the only name used across visible copy, code, pack
 - Migrations keep numeric IDs 41 through 58 and their `Circe*` names.
 - Relay resources, Clerk audience, and OTLP variables are Circe-named (`circe-relay`, `CIRCE_RELAY_URL`).
 
-## Legacy T3 names being renamed
+## Legacy T3 names are removed
 
-There is no upstream. `CIRCE_*` settings, `t3code:*` storage keys, `t3code`
-URL schemes, and `@circe/*` package names inherited from the foundation are
-legacy identifiers renamed in phases. Compat-sensitive renames (schemes,
-storage keys, package names, D-Bus names, desktop entry IDs) keep the old
-identifier working as an alias or migrate stored state; display names change
-outright. User-visible copy must say Circe.
+There is no upstream and no users, so the rename is a hard cut rather than a
+phased one. The inherited `t3code:*` storage keys, `t3code` URL schemes, the
+`t3code` service and desktop-entry names, the `com.t3tools.T3Code` D-Bus
+names, the `t3-code` MCP server name, and the `t3-*` native module identities
+are gone. Nothing is aliased and no stored state is migrated; a fresh install
+starts clean. User-visible copy says Circe everywhere.
+
+Two inherited values stay because they belong to other systems, not to Circe:
+
+- The GNOME extension UUID `snap-shot@t3.codes`. GNOME only discovers a newly
+  installed extension under the UUID it was installed with.
+- The xAI OAuth referrer `t3code` passed to the `grok` CLI, which is part of
+  that provider's sign-in handshake.
 
 ## Example catalog names
 

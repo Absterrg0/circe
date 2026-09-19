@@ -2829,7 +2829,7 @@ describe("MessagesTimeline", () => {
       completedAt: null,
       updatedAt: {},
       type: "dynamic_tool",
-      toolName: "mcp__t3-code__t3_thread_read",
+      toolName: "mcp__circe__t3_thread_read",
       input: { threadId: "thread-child" },
       output: { messages: [] },
     } as const;
@@ -2882,7 +2882,7 @@ describe("MessagesTimeline", () => {
     // The T3 wordmark replaces the generic tool icon for T3 MCP calls.
     expect(markup).toContain('aria-label="Circe"');
     expect(markup).toContain("Read a T3 thread");
-    expect(markup).not.toContain("mcp__t3-code__t3_thread_read");
+    expect(markup).not.toContain("mcp__circe__t3_thread_read");
   });
 
   it("formats changed file paths from the workspace root", async () => {
@@ -2914,16 +2914,16 @@ describe("MessagesTimeline", () => {
               tone: "tool",
               itemType: "file_change",
               toolLifecycleStatus: "completed",
-              changedFiles: ["C:/Users/mike/dev-stuff/t3code/apps/web/src/session-logic.ts"],
+              changedFiles: ["C:/Users/mike/dev-stuff/circe/apps/web/src/session-logic.ts"],
             },
           },
         ]}
-        workspaceRoot="C:/Users/mike/dev-stuff/t3code"
+        workspaceRoot="C:/Users/mike/dev-stuff/circe"
       />,
     );
 
-    expect(markup).toContain("t3code/apps/web/src/session-logic.ts");
-    expect(markup).not.toContain("C:/Users/mike/dev-stuff/t3code/apps/web/src/session-logic.ts");
+    expect(markup).toContain("circe/apps/web/src/session-logic.ts");
+    expect(markup).not.toContain("C:/Users/mike/dev-stuff/circe/apps/web/src/session-logic.ts");
   });
 
   it("renders review comment contexts as structured cards instead of raw tags", () => {

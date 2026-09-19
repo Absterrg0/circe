@@ -1017,7 +1017,7 @@ export function makeOpenCodeAdapterV2(options: OpenCodeAdapterV2Options): Provid
         if (hasT3Mcp) {
           yield* runOpenCodeSdk("mcp.add", () =>
             client.mcp.add({
-              name: "t3-code",
+              name: "circe",
               config: {
                 type: "remote",
                 url: mcpSession.endpoint,

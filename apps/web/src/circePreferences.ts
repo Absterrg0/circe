@@ -1,5 +1,5 @@
-const CIRCE_PREFERENCES_CHANGED_EVENT = "t3code:circe-preferences-changed";
-const VOICE_REPORTS_ENABLED_KEY = "t3code:circe:voice-reports-enabled:v1";
+const CIRCE_PREFERENCES_CHANGED_EVENT = "circe:circe-preferences-changed";
+const VOICE_REPORTS_ENABLED_KEY = "circe:circe:voice-reports-enabled:v1";
 
 export function areCirceVoiceReportsEnabled(): boolean {
   return localStorage.getItem(VOICE_REPORTS_ENABLED_KEY) !== "false";

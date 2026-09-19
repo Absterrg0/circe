@@ -77,7 +77,7 @@ import * as DesktopWslServerTree from "./wsl/DesktopWslServerTree.ts";
 
 // dbus-next/usocket must not take down the Electron main process on Linux.
 // Apply before any portal shortcut work can load those packages.
-// oxlint-disable-next-line t3code/no-global-process-runtime -- this compatibility patch must run before the Effect platform service exists.
+// oxlint-disable-next-line circe/no-global-process-runtime -- this compatibility patch must run before the Effect platform service exists.
 if (process.platform === "linux") {
   applyDesktopDbusNextElectronCompat();
 }

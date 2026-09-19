@@ -11,9 +11,26 @@ import * as Scope from "effect/Scope";
 
 import * as Electron from "electron";
 
+declare const __CIRCE_BUILD_DESKTOP_SCHEME__: string | undefined;
+
 export const DESKTOP_HOST = "app";
-export const DESKTOP_PRODUCTION_SCHEME = "circe";
-export const DESKTOP_DEVELOPMENT_SCHEME = "circe-dev";
+
+/**
+ * The production scheme is a build-time value. It defaults to `circe`, and a
+ * deployment whose Clerk instance still only allow-lists an older scheme sets
+ * `CIRCE_DESKTOP_SCHEME` so the sign-in redirect keeps working without a
+ * dashboard change. The scheme must stay a single lowercase label.
+ */
+function resolveDesktopProductionScheme(): string {
+  const configured =
+    typeof __CIRCE_BUILD_DESKTOP_SCHEME__ === "undefined"
+      ? ""
+      : __CIRCE_BUILD_DESKTOP_SCHEME__.trim();
+  return /^[a-z][a-z0-9-]*$/u.test(configured) ? configured : "circe";
+}
+
+export const DESKTOP_PRODUCTION_SCHEME = resolveDesktopProductionScheme();
+export const DESKTOP_DEVELOPMENT_SCHEME = `${DESKTOP_PRODUCTION_SCHEME}-dev`;
 
 export function getDesktopScheme(isDevelopment: boolean): string {
   return isDevelopment ? DESKTOP_DEVELOPMENT_SCHEME : DESKTOP_PRODUCTION_SCHEME;
