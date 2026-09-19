@@ -881,7 +881,7 @@ describe("Circe multi-node client mesh", () => {
         Effect.provide(clientLayer.pipe(Layer.provideMerge(remoteHttpClientLayer(localFetch)))),
       );
 
-      // oxlint-disable-next-line t3code/no-manual-effect-runtime-in-tests -- The outer async scope owns real child-process startup and guaranteed teardown; it.effect cannot safely bracket that lifecycle.
+      // oxlint-disable-next-line circe/no-manual-effect-runtime-in-tests -- The outer async scope owns real child-process startup and guaranteed teardown; it.effect cannot safely bracket that lifecycle.
       await Effect.runPromise(proof).catch((error) => {
         console.error(
           "multi-node server output",

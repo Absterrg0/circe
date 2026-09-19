@@ -81,13 +81,13 @@ describe("buildHomeThreadGroups", () => {
       makeProject({
         environmentId: localEnvironmentId,
         id: ProjectId.make("project-local"),
-        title: "t3code",
+        title: "circe",
         repositoryIdentity,
       }),
       makeProject({
         environmentId: remoteEnvironmentId,
         id: ProjectId.make("project-remote"),
-        title: "t3code",
+        title: "circe",
         repositoryIdentity,
       }),
     ];
@@ -99,7 +99,7 @@ describe("buildHomeThreadGroups", () => {
     });
 
     expect(scopes).toHaveLength(1);
-    expect(scopes[0]?.title).toBe("t3code");
+    expect(scopes[0]?.title).toBe("circe");
     expect(scopes[0]?.projects).toEqual(projects);
     expect(scopes[0]?.projectRefs).toEqual(
       projects.map((project) => ({
@@ -123,22 +123,22 @@ describe("buildHomeThreadGroups", () => {
     const local = makeProject({
       id: ProjectId.make("project-local"),
       environmentId: localEnvironmentId,
-      title: "t3code",
-      workspaceRoot: "/workspaces/t3code",
+      title: "circe",
+      workspaceRoot: "/workspaces/circe",
       repositoryIdentity,
     });
     const stale = makeProject({
       environmentId: remoteEnvironmentId,
       id: ProjectId.make("project-stale"),
-      title: "t3code",
-      workspaceRoot: "/remote/t3code",
+      title: "circe",
+      workspaceRoot: "/remote/circe",
       updatedAt: "2026-06-01T00:00:00.000Z",
     });
     const canonicalRemote = makeProject({
       environmentId: remoteEnvironmentId,
       id: ProjectId.make("project-canonical-remote"),
-      title: "t3code",
-      workspaceRoot: "/remote/t3code/",
+      title: "circe",
+      workspaceRoot: "/remote/circe/",
       repositoryIdentity,
       updatedAt: "2026-06-02T00:00:00.000Z",
     });
@@ -188,22 +188,22 @@ describe("buildHomeThreadGroups", () => {
       makeProject({
         environmentId: localEnvironmentId,
         id: ProjectId.make("project-local"),
-        title: "t3code",
+        title: "circe",
         repositoryIdentity,
       }),
       makeProject({
         environmentId: remoteEnvironmentId,
         id: ProjectId.make("project-remote-with-identity"),
-        title: "t3code",
-        workspaceRoot: "/remote/t3code",
+        title: "circe",
+        workspaceRoot: "/remote/circe",
         repositoryIdentity,
         updatedAt: "2026-06-01T00:00:00.000Z",
       }),
       makeProject({
         environmentId: remoteEnvironmentId,
         id: ProjectId.make("project-remote-fresh"),
-        title: "t3code",
-        workspaceRoot: "/remote/t3code/",
+        title: "circe",
+        workspaceRoot: "/remote/circe/",
         updatedAt: "2026-06-02T00:00:00.000Z",
       }),
     ];
@@ -309,14 +309,14 @@ describe("buildHomeThreadGroups", () => {
     const olderMember = makeProject({
       environmentId: localEnvironmentId,
       id: ProjectId.make("project-older-member"),
-      title: "t3code",
+      title: "circe",
       updatedAt: "2026-06-01T00:00:00.000Z",
       repositoryIdentity,
     });
     const newerMember = makeProject({
       environmentId: remoteEnvironmentId,
       id: ProjectId.make("project-newer-member"),
-      title: "t3code",
+      title: "circe",
       updatedAt: "2026-06-03T00:00:00.000Z",
       repositoryIdentity,
     });
@@ -521,31 +521,31 @@ describe("buildHomeThreadGroups", () => {
   it("matches web repository, repository-path, and separate grouping modes", () => {
     const environmentId = EnvironmentId.make("environment-1");
     const repositoryIdentity = {
-      canonicalKey: "github.com/t3tools/t3code",
+      canonicalKey: "github.com/t3tools/circe",
       locator: {
         source: "git-remote" as const,
         remoteName: "origin",
-        remoteUrl: "git@github.com:t3tools/t3code.git",
+        remoteUrl: "git@github.com:t3tools/circe.git",
       },
       provider: "github",
       owner: "t3tools",
-      name: "t3code",
+      name: "circe",
       displayName: "Circe",
-      rootPath: "/workspaces/t3code",
+      rootPath: "/workspaces/circe",
     };
     const projects = [
       makeProject({
         environmentId,
         id: ProjectId.make("project-web"),
         title: "Web",
-        workspaceRoot: "/workspaces/t3code/apps/web",
+        workspaceRoot: "/workspaces/circe/apps/web",
         repositoryIdentity,
       }),
       makeProject({
         environmentId,
         id: ProjectId.make("project-mobile"),
         title: "Mobile",
-        workspaceRoot: "/workspaces/t3code/apps/mobile",
+        workspaceRoot: "/workspaces/circe/apps/mobile",
         repositoryIdentity,
       }),
     ];
@@ -740,13 +740,13 @@ describe("buildHomeThreadGroups", () => {
     const laptopProject = makeProject({
       environmentId: laptopEnv,
       id: ProjectId.make("project-laptop"),
-      title: "t3code",
+      title: "circe",
       repositoryIdentity,
     });
     const desktopProject = makeProject({
       environmentId: desktopEnv,
       id: ProjectId.make("project-desktop"),
-      title: "t3code",
+      title: "circe",
       repositoryIdentity,
     });
     const threads = [

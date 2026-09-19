@@ -7,7 +7,7 @@ import type {
   TurnId,
 } from "@circe/contracts";
 
-const CIRCE_OPEN_EVENT = "t3code:open-circe";
+const CIRCE_OPEN_EVENT = "circe:open-circe";
 
 export interface CirceCommandTarget {
   readonly environmentId: EnvironmentId;

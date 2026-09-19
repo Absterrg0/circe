@@ -9,6 +9,12 @@ export interface T3CodePublicConfig {
   readonly clerkJwtTemplate: string | undefined;
   readonly clerkCliOAuthClientId: string | undefined;
   readonly relayUrl: string | undefined;
+  /**
+   * Desktop deep-link scheme. `circe` by default; set to a legacy scheme to keep a
+   * pre-existing Clerk instance that has not yet allow-listed the Circe
+   * scheme. Both the Electron registration and the renderer redirect read it.
+   */
+  readonly desktopScheme: string | undefined;
   readonly mobileOtlpTracesUrl: string | undefined;
   readonly mobileOtlpTracesDataset: string | undefined;
   readonly mobileOtlpTracesToken: string | undefined;
@@ -62,6 +68,12 @@ export function loadRepoEnv({
       ? {
           CIRCE_RELAY_URL: config.relayUrl,
           VITE_CIRCE_RELAY_URL: config.relayUrl,
+        }
+      : {}),
+    ...(config.desktopScheme
+      ? {
+          CIRCE_DESKTOP_SCHEME: config.desktopScheme,
+          VITE_DESKTOP_SCHEME: config.desktopScheme,
         }
       : {}),
     ...(config.mobileOtlpTracesUrl
@@ -123,6 +135,7 @@ export function resolvePublicConfig(...sources: readonly Environment[]): T3CodeP
       "VITE_CLERK_CLI_OAUTH_CLIENT_ID",
     ),
     relayUrl: firstNonEmpty(sources, "CIRCE_RELAY_URL", "VITE_CIRCE_RELAY_URL"),
+    desktopScheme: firstNonEmpty(sources, "CIRCE_DESKTOP_SCHEME", "VITE_DESKTOP_SCHEME"),
     mobileOtlpTracesUrl: firstNonEmpty(
       sources,
       "CIRCE_MOBILE_OTLP_TRACES_URL",

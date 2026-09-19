@@ -48,7 +48,7 @@ const makeCheckpointWorkspaceEffect = Effect.fn("makeCheckpointWorkspace")(funct
   });
   yield* runGit(cwd, ["init"]);
   yield* runGit(cwd, ["config", "user.name", "Circe Test"]);
-  yield* runGit(cwd, ["config", "user.email", "t3code-test@example.com"]);
+  yield* runGit(cwd, ["config", "user.email", "circe-test@example.com"]);
   yield* fs.writeFileString(path.join(cwd, "README.md"), `# ${fixtureName}\n`);
   yield* runGit(cwd, ["add", "README.md"]);
   yield* runGit(cwd, ["commit", "-m", "initial"]);

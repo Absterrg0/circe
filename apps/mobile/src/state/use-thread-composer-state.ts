@@ -1,4 +1,4 @@
-import type { ComposerTextPaste } from "../native/T3ComposerEditor.types";
+import type { ComposerTextPaste } from "../native/CirceComposerEditor.types";
 import { useAtomValue } from "@effect/atom-react";
 import { threadRuntimeIsActive } from "@circe/client/state/shell";
 import {

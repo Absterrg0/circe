@@ -1021,7 +1021,7 @@ describe("buildThreadFeed", () => {
     const toolItem: OrchestrationV2TurnItem = {
       ...base("item-t3-tool", "2026-06-20T00:00:04.000Z", 3),
       type: "dynamic_tool",
-      toolName: "mcp__t3-code__t3_thread_read",
+      toolName: "mcp__circe__t3_thread_read",
       input: { threadId: "thread-child" },
       output: { messages: [] },
     };
@@ -1030,14 +1030,14 @@ describe("buildThreadFeed", () => {
     const activity = feed[0]?.type === "activity-group" ? feed[0].activities[0] : null;
 
     expect(activity?.summary).toBe("Read a T3 thread");
-    expect(activity?.logo).toBe("t3-code");
+    expect(activity?.logo).toBe("circe");
     expect(activity?.getCopyText().split("\n")[0]).toBe("Read a T3 thread");
   });
 
   it("uses canonical T3 orchestration summaries in compact work groups", () => {
     const rows = [
       projected(command("2026-06-20T00:00:01.000Z"), 0),
-      ...["mcp__t3-code__t3_thread_send", "t3_code.t3_thread_send", "t3_thread_send"].map(
+      ...["mcp__circe__t3_thread_send", "circe.t3_thread_send", "t3_thread_send"].map(
         (toolName, index) =>
           projected(
             {
@@ -1325,7 +1325,7 @@ describe("retained v2 feed presentation", () => {
             ...base("preview-click", "2026-06-20T00:00:02.000Z", 1),
             type: "dynamic_tool",
             status,
-            toolName: "mcp__t3-code__preview_click",
+            toolName: "mcp__circe__preview_click",
             input: { element: "button" },
             output: null,
           },

@@ -5,7 +5,7 @@
  * `--extension`. It is written to a cache path at session open so packaged
  * AppImage builds do not need a sibling .ts file next to the bundled server.
  *
- * Do not import t3code modules from the string body. The Pi process resolves
+ * Do not import Circe modules from the string body. The Pi process resolves
  * `@earendil-works/pi-coding-agent` and `typebox` from the user's pi install.
  */
 import { CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS } from "../../provider/T3OrchestrationInstructions.ts";
@@ -251,7 +251,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
   if (endpoint === undefined || token === undefined) {
     pi.on("session_start", async (_event, ctx) => {
       ctx.ui.notify(
-        "t3-code MCP unavailable: CIRCE_MCP_URL or CIRCE_MCP_BEARER_TOKEN is missing.",
+        "circe MCP unavailable: CIRCE_MCP_URL or CIRCE_MCP_BEARER_TOKEN is missing.",
         "warning",
       );
     });
@@ -269,7 +269,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
       const tools = await client.listTools(signal);
       for (const tool of tools) {
         const name = tool.name;
-        const registeredName = \`mcp__t3-code__\${name}\`;
+        const registeredName = \`mcp__circe__\${name}\`;
         const description = tool.description ?? name;
         pi.registerTool({
           name: registeredName,
@@ -277,7 +277,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
           description,
           promptSnippet: description.split("\\n")[0] ?? name,
           promptGuidelines: [
-            \`Use \${registeredName} from the t3-code MCP server when the user asks for T3 orchestration that this tool covers.\`,
+            \`Use \${registeredName} from the circe MCP server when the user asks for T3 orchestration that this tool covers.\`,
           ],
           parameters: jsonSchemaToTypebox(tool.inputSchema),
           async execute(_toolCallId, params, signal) {
@@ -289,7 +289,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
             const text = formatMcpContent(result);
             return {
               content: [{ type: "text", text }],
-              details: { server: "t3-code", tool: name },
+              details: { server: "circe", tool: name },
               ...(isMcpToolError(result) ? { isError: true } : {}),
             };
           },
@@ -314,7 +314,7 @@ export default async function t3McpExtension(pi: ExtensionAPI) {
       await ensureStarted();
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      ctx.ui.notify(\`t3-code MCP unavailable: \${message}\`, "warning");
+      ctx.ui.notify(\`circe MCP unavailable: \${message}\`, "warning");
     }
   });
 

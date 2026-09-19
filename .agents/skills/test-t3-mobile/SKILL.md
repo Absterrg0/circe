@@ -32,11 +32,11 @@ node scripts/mobile-native-client.ts ensure android <emulator-serial>
 
 `ensure` compares the checkout's local Expo development fingerprint and the installed app's binary contents against the last successful build record. It reuses a matching client; otherwise it runs a clean prebuild, builds and installs the development app, and records the successful result. It does not start Metro. Start Metro below after it succeeds. On hosts with an `agent-job` requirement, run the entire `ensure` command through that queue.
 
-For a read-only decision, use `check` in place of `ensure`. Exit 0 means compatible, 2 means build required, and 1 means an operational error. An app installed outside this helper is initially unknown and gets rebuilt once. Records are local to the simulator host under `~/.cache/t3code/native-clients` and work across checkouts. Do not copy records between machines or write them manually.
+For a read-only decision, use `check` in place of `ensure`. Exit 0 means compatible, 2 means build required, and 1 means an operational error. An app installed outside this helper is initially unknown and gets rebuilt once. Records are local to the simulator host under `~/.cache/circe/native-clients` and work across checkouts. Do not copy records between machines or write them manually.
 
 A JavaScript-only diff, bundle identifier, app version, or recent install date does not prove native compatibility. Always check the whole checkout. Expo fingerprints are computed locally with `APP_VARIANT=development`; no EAS credentials or cloud build are required. Generated `ios/` and `android/` directories are excluded by `.fingerprintignore`, so edit native source modules or config plugins rather than generated output.
 
-The development identity is `T3 Code Dev`, bundle/package `com.t3tools.t3code.dev`, scheme `t3code-dev`. If a build fails, investigate the build error and fix the local prerequisites. Report the concrete failure if it cannot be resolved, not “no compatible client.”
+The development identity is `Circe Dev`, bundle/package `com.abstergo.circe.dev`, scheme `circe-dev`. If a build fails, investigate the build error and fix the local prerequisites. Report the concrete failure if it cannot be resolved, not “no compatible client.”
 
 ## Start one disposable T3 environment
 
@@ -76,14 +76,14 @@ Enter the complete `http://` origin to make the test transport explicit. Bare IP
 
 Run Metro from `apps/mobile`.
 
-1. Inspect any process on the intended Metro port and its `/status` response. Reuse it only when it is healthy, belongs to this worktree, and matches `APP_VARIANT=development`, `--dev-client`, and scheme `t3code-dev`.
+1. Inspect any process on the intended Metro port and its `/status` response. Reuse it only when it is healthy, belongs to this worktree, and matches `APP_VARIANT=development`, `--dev-client`, and scheme `circe-dev`.
 2. Never kill another worktree's Metro. Use a free explicit port when necessary.
 3. Run `vp run dev:client` on the standard port. For another port, retain the complete development identity:
 
    ```bash
    APP_VARIANT=development vp exec expo start \
      --dev-client \
-     --scheme t3code-dev \
+     --scheme circe-dev \
      --lan \
      --port <metro-port>
    ```
@@ -100,7 +100,7 @@ Use `ios-debugger-agent` to select one UDID and set these XcodeBuildMCP session 
 - Scheme: `T3CodeDev`
 - Configuration: `Debug`
 - Simulator ID: the selected UDID
-- Bundle ID: `com.t3tools.t3code.dev`
+- Bundle ID: `com.abstergo.circe.dev`
 
 After `ensure` succeeds, open the Metro URL:
 
@@ -119,7 +119,7 @@ adb -s <emulator-serial> reverse tcp:<metro-port> tcp:<metro-port>
 adb -s <emulator-serial> shell am start -W \
   -a android.intent.action.VIEW \
   -d '<printed-dev-client-url>' \
-  com.t3tools.t3code.dev
+  com.abstergo.circe.dev
 ```
 
 Do not start, stop, erase, or reconfigure an emulator owned by another task. Track and later stop only processes owned by this test.
@@ -141,7 +141,7 @@ Run only the command for the selected platform. The helper uses `http://127.0.0.
 The helper opens this registered route:
 
 ```text
-t3code-dev://connections/new?pairingUrl=<encoded-pairing-url>&autoConnect=1
+circe-dev://connections/new?pairingUrl=<encoded-pairing-url>&autoConnect=1
 ```
 
 The Add Environment route owns the behavior: `pairingUrl` prefills its normal host and token inputs, while `autoConnect=1` submits once in development builds and returns to Home after success. Without `autoConnect`, the same route only prefills the form for manual inspection.

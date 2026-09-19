@@ -305,7 +305,7 @@ function userNpmPrefix(
       : environment.HOME?.trim();
   if (!baseDirectory || !path.isAbsolute(baseDirectory)) return undefined;
   return platform === "win32"
-    ? path.join(baseDirectory, "t3code", "npm-global")
+    ? path.join(baseDirectory, "circe", "npm-global")
     : path.join(baseDirectory, ".local");
 }
 

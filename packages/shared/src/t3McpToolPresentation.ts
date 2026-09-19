@@ -1,4 +1,4 @@
-export type T3McpToolLogo = "t3-code";
+export type T3McpToolLogo = "circe";
 
 export interface T3McpToolPresentation {
   readonly displayName: string;
@@ -21,7 +21,7 @@ export type T3McpToolSummaryAction =
   | "thread-wait"
   | "thread-interrupt";
 
-const CIRCE_MCP_SERVER_ALIASES = new Set(["t3-code", "t3_code", "t3code", "circe"]);
+const CIRCE_MCP_SERVER_ALIASES = new Set(["circe"]);
 
 const CIRCE_MCP_TOOLS: Record<
   string,
@@ -113,8 +113,8 @@ function normalizeT3McpToolLabel(value: string): string {
 }
 
 /**
- * ACP agents disagree on how the injected T3 server prefixes its tools:
- * `mcp__t3-code__x` (Claude/Cursor), `t3-code.x` (Codex), plus single
+ * ACP agents disagree on how the injected Circe server prefixes its tools:
+ * `mcp__circe__x` (Claude/Cursor), `circe.x` (Codex), plus single
  * underscore, colon, slash, dash, and space separators seen from registry
  * agents. The prefix match is deliberately loose because the display-name
  * table below is the real gate; unknown tools stay on the generic renderer.
@@ -131,14 +131,12 @@ function resolveT3McpToolName(value: string): string | null {
       : null;
   }
 
-  const namespaceMatch = /^(?<server>t3-code|t3_code|t3code|circe)[.:/](?<tool>.+)$/i.exec(label);
+  const namespaceMatch = /^(?<server>circe)[.:/](?<tool>.+)$/i.exec(label);
   if (namespaceMatch?.groups) {
     return namespaceMatch.groups.tool ?? null;
   }
 
-  const prefixed = /^(?:mcp[-_]{1,2})?(?:t3[-_ ]?code|circe)(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(
-    label,
-  );
+  const prefixed = /^(?:mcp[-_]{1,2})?circe(?:__|[-_.:/ ])(?<tool>.+)$/i.exec(label);
   const candidate = prefixed?.groups?.tool ?? label;
   return Object.hasOwn(CIRCE_MCP_TOOLS, candidate) ? candidate : null;
 }
@@ -157,7 +155,7 @@ export function resolveT3McpToolPresentation(
   }
   return {
     displayName,
-    logo: "t3-code",
+    logo: "circe",
   };
 }
 

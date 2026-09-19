@@ -30,7 +30,7 @@ import { TraitsPicker } from "../chat/TraitsPicker";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 
-const NO_DEFAULT_INSTANCE_ID = ProviderInstanceId.make("t3code_no_provider");
+const NO_DEFAULT_INSTANCE_ID = ProviderInstanceId.make("circe_no_provider");
 const NO_DEFAULT_SELECTION: ModelSelection = {
   instanceId: NO_DEFAULT_INSTANCE_ID,
   model: "",

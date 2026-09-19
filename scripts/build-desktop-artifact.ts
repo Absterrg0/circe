@@ -1014,7 +1014,7 @@ interface StagePackageJson {
   readonly name: string;
   readonly version: string;
   readonly buildVersion: string;
-  readonly t3codeCommitHash: string;
+  readonly circeCommitHash: string;
   readonly private: true;
   readonly packageManager: string;
   readonly description: string;
@@ -2205,7 +2205,7 @@ const verifyPackagedBundleIsSelfContained = Effect.fn("verifyPackagedBundleIsSel
     const path = yield* Path.Path;
 
     const probeRoot = yield* fs.makeTempDirectoryScoped({
-      prefix: "t3code-bundle-selfcheck-",
+      prefix: "circe-bundle-selfcheck-",
     });
     const extractedApp = path.join(probeRoot, "extracted");
     const probeApp = path.join(probeRoot, "app");
@@ -2526,7 +2526,7 @@ function stageMacIcons(stageResourcesDir: string, sourcePng: string, verbose: bo
     }
 
     const tmpRoot = yield* fs.makeTempDirectoryScoped({
-      prefix: "t3code-icon-build-",
+      prefix: "circe-icon-build-",
     });
 
     const iconPngPath = path.join(stageResourcesDir, "icon.png");
@@ -2996,7 +2996,7 @@ const assertPlatformBuildResources = Effect.fn("assertPlatformBuildResources")(f
 // backend never compiles on the user's machine. node-pty publishes no Linux
 // prebuilt and the WSL Linux Node can't load the Windows/Electron binary, so the
 // Linux CI job builds pty.node and hands it here. We drop it into the staged
-// node-pty's prebuilds/linux-<arch>/ with a t3code marker the WSL preflight
+// node-pty's prebuilds/linux-<arch>/ with a Circe marker the WSL preflight
 // checks (arch + node-pty version; the binary is N-API, hence ABI-stable across
 // Node versions). A missing prebuild is a warning, not an error, so local and
 // non-Windows builds still succeed — they just won't ship a working WSL backend.
@@ -3054,7 +3054,7 @@ const stageWslNodePtyPrebuild = Effect.fn("stageWslNodePtyPrebuild")(function* (
   yield* fs.makeDirectory(prebuildDir, { recursive: true });
   yield* fs.copyFile(input.prebuildPath, path.join(prebuildDir, "pty.node"));
   const markerJson = yield* encodeJsonString({ arch: linuxArch, nodePtyVersion });
-  yield* fs.writeFileString(path.join(prebuildDir, "t3code-wsl-node-pty.json"), `${markerJson}\n`);
+  yield* fs.writeFileString(path.join(prebuildDir, "circe-wsl-node-pty.json"), `${markerJson}\n`);
 
   yield* Effect.log(
     `[desktop-artifact] Staged WSL node-pty prebuild (linux-${linuxArch}, node-pty ${nodePtyVersion}).`,
@@ -3193,7 +3193,7 @@ export const stageWindowsServerSidecar = Effect.fn("stageWindowsServerSidecar")(
     sidecarDependencies,
   );
   const sidecarPackageJson = {
-    name: "t3code-server",
+    name: "circe-server",
     version: input.appVersion,
     private: true,
     packageManager: rootPackageJson.packageManager,
@@ -3449,7 +3449,7 @@ export const verifyWindowsPrimaryFffNativeLoad = Effect.fn(
   if (hostPlatform !== "win32" || hostArchitecture !== input.targetArch) return;
 
   const probeRoot = yield* fs.makeTempDirectoryScoped({
-    prefix: "t3code-windows-primary-native-probe-",
+    prefix: "circe-windows-primary-native-probe-",
   });
   const fffEntryPath = path.join(
     input.asarPath,
@@ -3749,7 +3749,7 @@ export const validateWindowsPackagedPayload = Effect.fn(
         ? []
         : [
             `node_modules/node-pty/prebuilds/linux-${wslArch}/pty.node`,
-            `node_modules/node-pty/prebuilds/linux-${wslArch}/t3code-wsl-node-pty.json`,
+            `node_modules/node-pty/prebuilds/linux-${wslArch}/circe-wsl-node-pty.json`,
           ]),
     ];
     const missingMembers = requiredMembers.filter((member) => !members.includes(member));
@@ -3909,7 +3909,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const commitHash = yield* resolveGitCommitHash(repoRoot);
   const mkdir = options.keepStage ? fs.makeTempDirectory : fs.makeTempDirectoryScoped;
   const stageRoot = yield* mkdir({
-    prefix: `t3code-desktop-${options.platform}-stage-`,
+    prefix: `circe-desktop-${options.platform}-stage-`,
   });
   assertDesktopArtifactStageIsolated({ repoRoot, stageRoot, path });
 
@@ -4182,7 +4182,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     name: "circe",
     version: appVersion,
     buildVersion: appVersion,
-    t3codeCommitHash: commitHash,
+    circeCommitHash: commitHash,
     private: true,
     packageManager: rootPackageJson.packageManager,
     description: CIRCE_DESKTOP_PACKAGE_DESCRIPTION,

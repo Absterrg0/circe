@@ -187,7 +187,7 @@ const decodeCodexBackgroundTerminalsListResponse = Schema.decodeUnknownEffect(
   CodexBackgroundTerminalsListResponse,
 );
 const CODEX_CLIENT_INFO = {
-  name: "t3code_desktop",
+  name: "circe_desktop",
   title: "Circe Desktop",
   version: "0.1.0",
 } as const;
@@ -1255,7 +1255,7 @@ export function codexThreadRuntimeParams(input: {
       : {
           config: {
             mcp_servers: {
-              "t3-code": {
+              circe: {
                 url: mcpSession.endpoint,
                 http_headers: {
                   Authorization: mcpSession.authorizationHeader,

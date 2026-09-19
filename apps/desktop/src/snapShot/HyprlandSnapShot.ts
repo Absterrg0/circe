@@ -12,10 +12,10 @@ import { startNativeCaptureFeedback } from "./NativeCaptureFeedback.ts";
 import { HYPRLAND_CAPTURE_ACTION } from "./linuxCaptureSession.ts";
 export { isHyprlandCaptureSession } from "./linuxCaptureSession.ts";
 
-export const HYPRLAND_CAPTURE_EXECUTABLE = "t3-hyprland-snap-shot";
+export const HYPRLAND_CAPTURE_EXECUTABLE = "circe-hyprland-snap-shot";
 export type HyprlandCapturePaths = { readonly bundle: string; readonly dataHome: string };
 export function hyprlandCaptureExecutable(paths: HyprlandCapturePaths) {
-  return NodePath.join(paths.dataHome, "t3code", "hyprland-capture", HYPRLAND_CAPTURE_EXECUTABLE);
+  return NodePath.join(paths.dataHome, "circe", "hyprland-capture", HYPRLAND_CAPTURE_EXECUTABLE);
 }
 
 function hyprlandCaptureBinding(appId: string, lua: boolean): string {

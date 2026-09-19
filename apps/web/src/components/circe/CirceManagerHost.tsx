@@ -60,7 +60,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
   // command focus after reload. That path is gone; drop the stale key.
   useEffect(() => {
     try {
-      localStorage.removeItem("t3code:circe:attention-target:v1");
+      localStorage.removeItem("circe:circe:attention-target:v1");
     } catch {
       // Blocked storage must not break the control center.
     }

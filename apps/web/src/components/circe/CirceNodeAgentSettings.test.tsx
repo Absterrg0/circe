@@ -331,7 +331,7 @@ describe("CirceNodeAgentSettings", () => {
     atoms.config = { settings: state.settings };
     const panel = renderPanel();
     const picker = findPicker(panel);
-    expect(picker?.props.activeInstanceId).toBe("t3code_no_provider");
+    expect(picker?.props.activeInstanceId).toBe("circe_no_provider");
     expect(picker?.props.model).toBe("");
   });
 

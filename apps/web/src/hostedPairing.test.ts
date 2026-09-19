@@ -96,7 +96,7 @@ describe("hostedPairing", () => {
     );
 
     expect(url.origin).toBe("https://app.heycirce.com");
-    expect(url.pathname).toBe("/__t3code/channel");
+    expect(url.pathname).toBe("/__circe/channel");
     expect(url.searchParams.get("channel")).toBe("nightly");
     expect(url.searchParams.has("next")).toBe(false);
   });

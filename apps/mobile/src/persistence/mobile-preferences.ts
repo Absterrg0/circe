@@ -18,8 +18,8 @@ import * as MobileDatabase from "./mobile-database";
 import * as MobileSecureStorage from "./mobile-secure-storage";
 import { MobileStorageDecodeError, MobileStorageEncodeError } from "./mobile-storage";
 
-const PREFERENCES_KEY = "t3code.preferences";
-const PREFERENCES_FALLBACK_KEY = "t3code.preferences.fallback";
+const PREFERENCES_KEY = "circe.preferences";
+const PREFERENCES_FALLBACK_KEY = "circe.preferences.fallback";
 
 export interface Preferences {
   /** Explicitly selected remote node used for mobile voice compute. */

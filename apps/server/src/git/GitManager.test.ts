@@ -1878,7 +1878,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         yield* runGit(repoDir, ["add", "fork-pr.txt"]);
         yield* runGit(repoDir, ["commit", "-m", "Fork PR branch"]);
         yield* runGit(repoDir, ["push", "-u", "fork-seed", "statemachine"]);
-        yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-488/statemachine"]);
+        yield* runGit(repoDir, ["checkout", "-b", "circe/pr-488/statemachine"]);
         yield* runGit(repoDir, ["branch", "--set-upstream-to", "fork-seed/statemachine"]);
         yield* configureVisibleRemoteUrlWithLocalRewrite(
           repoDir,
@@ -1918,7 +1918,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         });
 
         const status = yield* manager.status({ cwd: repoDir });
-        expect(status.refName).toBe("t3code/pr-488/statemachine");
+        expect(status.refName).toBe("circe/pr-488/statemachine");
         expect(status.pr).toEqual({
           number: 488,
           title: "Rebase this PR on latest main",
@@ -1948,7 +1948,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         yield* runGit(repoDir, ["remote", "set-head", "origin", "main"]);
         yield* runGit(repoDir, ["remote", "add", "fork-seed", forkDir]);
         yield* runGit(repoDir, ["push", "fork-seed", "main"]);
-        yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-777/main"]);
+        yield* runGit(repoDir, ["checkout", "-b", "circe/pr-777/main"]);
         yield* runGit(repoDir, ["branch", "--set-upstream-to", "fork-seed/main"]);
         yield* configureVisibleRemoteUrlWithLocalRewrite(
           repoDir,
@@ -1984,7 +1984,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         });
 
         const status = yield* manager.status({ cwd: repoDir });
-        expect(status.refName).toBe("t3code/pr-777/main");
+        expect(status.refName).toBe("circe/pr-777/main");
         expect(status.pr).toEqual({
           number: 777,
           title: "Fork PR from main",
@@ -3686,7 +3686,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         const forkDir = yield* createBareRemote();
         yield* runGit(repoDir, ["remote", "add", "fork-seed", forkDir]);
         yield* runGit(repoDir, ["push", "-u", "fork-seed", "statemachine"]);
-        yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-142/statemachine"]);
+        yield* runGit(repoDir, ["checkout", "-b", "circe/pr-142/statemachine"]);
         yield* runGit(repoDir, ["branch", "--set-upstream-to", "fork-seed/statemachine"]);
         yield* configureVisibleRemoteUrlWithLocalRewrite(
           repoDir,
@@ -3699,7 +3699,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           ghScenario: {
             prListByHeadSelector: {
               // @effect-diagnostics-next-line preferSchemaOverJson:off
-              "t3code/pr-142/statemachine": JSON.stringify([]),
+              "circe/pr-142/statemachine": JSON.stringify([]),
               // @effect-diagnostics-next-line preferSchemaOverJson:off
               statemachine: JSON.stringify([
                 {
@@ -3761,7 +3761,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         const forkDir = yield* createBareRemote();
         yield* runGit(repoDir, ["remote", "add", "fork-seed", forkDir]);
         yield* runGit(repoDir, ["push", "-u", "fork-seed", "statemachine"]);
-        yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-142/statemachine"]);
+        yield* runGit(repoDir, ["checkout", "-b", "circe/pr-142/statemachine"]);
         yield* runGit(repoDir, ["branch", "--set-upstream-to", "fork-seed/statemachine"]);
         yield* configureVisibleRemoteUrlWithLocalRewrite(
           repoDir,
@@ -3794,7 +3794,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
               // @effect-diagnostics-next-line preferSchemaOverJson:off
               "fork-seed:statemachine": JSON.stringify([]),
               // @effect-diagnostics-next-line preferSchemaOverJson:off
-              "t3code/pr-142/statemachine": JSON.stringify([]),
+              "circe/pr-142/statemachine": JSON.stringify([]),
               // @effect-diagnostics-next-line preferSchemaOverJson:off
               statemachine: JSON.stringify([]),
             },
@@ -3972,7 +3972,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
   it.effect("accepts fork PR metadata when origin is the fork checkout remote", () =>
     Effect.sync(() => {
       const headContext = {
-        headBranch: "t3code/git-audit-stability",
+        headBranch: "circe/git-audit-stability",
         headRepositoryNameWithOwner: "justsomelegs/t3code",
         headRepositoryOwnerLogin: "justsomelegs",
         isCrossRepository: false,
@@ -3985,7 +3985,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
             title: "Improve branch mismatch warnings",
             url: "https://github.com/Absterrg0/circe/pull/2284",
             baseRefName: "main",
-            headRefName: "t3code/git-audit-stability",
+            headRefName: "circe/git-audit-stability",
             state: "open",
             updatedAt: Option.none(),
             isCrossRepository: true,
@@ -4214,7 +4214,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
       yield* runGit(repoDir, ["add", "changes.txt"]);
       yield* runGit(repoDir, ["commit", "-m", "Feature commit"]);
       yield* runGit(repoDir, ["push", "-u", "fork-seed", "statemachine"]);
-      yield* runGit(repoDir, ["checkout", "-b", "t3code/pr-91/statemachine"]);
+      yield* runGit(repoDir, ["checkout", "-b", "circe/pr-91/statemachine"]);
       yield* runGit(repoDir, ["branch", "--set-upstream-to", "fork-seed/statemachine"]);
       yield* configureVisibleRemoteUrlWithLocalRewrite(
         repoDir,
@@ -4620,7 +4620,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         pullRequestNumber: 93,
         headRepository: "octocat/codething-mvp",
         headBranch: "feature/missing-fork-branch",
-        localBranch: "t3code/pr-93/feature/missing-fork-branch",
+        localBranch: "circe/pr-93/feature/missing-fork-branch",
       });
       if (!(error.cause instanceof AggregateError)) {
         return yield* Effect.die(error.cause);
@@ -5499,7 +5499,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           mode: "worktree",
         });
 
-        expect(result.branch).toBe("t3code/pr-91/main");
+        expect(result.branch).toBe("circe/pr-91/main");
         expect(result.worktreePath).not.toBeNull();
         expect((yield* runGit(repoDir, ["branch", "--show-current"])).stdout.trim()).toBe("main");
         expect((yield* runGit(repoDir, ["rev-parse", "main"])).stdout.trim()).toBe(mainBefore);
@@ -5508,7 +5508,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
             "branch",
             "--show-current",
           ])).stdout.trim(),
-        ).toBe("t3code/pr-91/main");
+        ).toBe("circe/pr-91/main");
       }),
   );
 
@@ -5560,7 +5560,7 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
           mode: "worktree",
         });
 
-        expect(result.branch).toBe("t3code/pr-92/main");
+        expect(result.branch).toBe("circe/pr-92/main");
         expect((yield* runGit(repoDir, ["rev-parse", "main"])).stdout.trim()).toBe(localMainBefore);
         expect(
           (yield* runGit(result.worktreePath as string, [

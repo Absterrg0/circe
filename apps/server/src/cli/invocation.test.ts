@@ -44,7 +44,7 @@ it("formats package runner commands from their cache entry paths", () => {
 it("treats stable installs as direct invocations", () => {
   for (const entryPath of [
     "/usr/local/lib/node_modules/@absterrg0/circe/dist/bin.mjs",
-    "/home/theo/Code/work/t3code/apps/server/dist/bin.mjs",
+    "/home/theo/Code/work/circe/apps/server/dist/bin.mjs",
     "/home/theo/.t3/runtime/0.0.31/node_modules/@absterrg0/circe/dist/bin.mjs",
     "",
   ]) {

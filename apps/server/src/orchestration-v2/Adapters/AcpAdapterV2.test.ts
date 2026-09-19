@@ -650,7 +650,7 @@ describe("AcpAdapterV2", () => {
 
       const command = yield* runTurn(0, defaultPolicy, "/compact");
       assert.isTrue(command.prompt.startsWith("/compact"));
-      assert.notInclude(command.prompt, "<t3_code_instructions>");
+      assert.notInclude(command.prompt, "<circe_instructions>");
       const firstDefault = yield* runTurn(1, defaultPolicy, "First default request.");
       assert.include(firstDefault.prompt, "Circe interaction mode: Default");
       assert.include(firstDefault.prompt, "Circe collaborative browser");
@@ -1792,7 +1792,7 @@ describe("AcpAdapterV2", () => {
         mcpServers: [
           {
             type: "stdio",
-            name: "t3-code",
+            name: "circe",
             command: process.execPath,
             args: [
               process.argv[1] === undefined ? "t3" : NodePath.resolve(process.argv[1]),

@@ -44,7 +44,7 @@ it("brands web boot and the PWA manifest while keeping storage keys", () => {
   assert.include(indexHtml, "<title>Circe (Alpha)</title>");
   assert.include(indexHtml, 'aria-label="Circe splash screen"');
   assert.include(indexHtml, 'alt="Circe"');
-  assert.include(indexHtml, "t3code:themes:v1");
+  assert.include(indexHtml, "circe:themes:v1");
 
   const manifest = JSON.parse(readSource("../apps/web/public/manifest.webmanifest")) as {
     readonly id?: string;

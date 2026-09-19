@@ -18,6 +18,14 @@ rename on real infrastructure.
 - Environment variables `CIRCE_*` are now `CIRCE_*`.
 - Installer interface: `CIRCE_HOME`, `CIRCE_CHANNEL`, `CIRCE_VERSION`,
   `CIRCE_INSTALL_BIN_DIR`, `CIRCE_RELEASE_BASE_URL`.
+- Storage keys are `circe:*`; URL schemes are `circe`, `circe-dev`, and
+  `circe-preview`; the desktop entry is `com.abstergo.circe.desktop`; the
+  D-Bus capture names are `com.abstergo.circe.*`; the MCP server is `circe`;
+  native modules are `circe-*`. Nothing is aliased.
+
+There are no users, so the rename is a hard cut with no compatibility shims and
+no state migration. Two inherited values remain on purpose: the GNOME extension
+UUID `snap-shot@t3.codes` and the xAI OAuth referrer passed to the `grok` CLI.
 
 `~/.t3` and `~/.jarvis` belong to other products. Circe never reads or writes
 them, and the rename does not migrate them.

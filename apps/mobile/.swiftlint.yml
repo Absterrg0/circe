@@ -1,14 +1,14 @@
 included:
-  - ios/T3Code
-  - modules/t3-composer-editor/ios
-  - modules/t3-native-controls/ios
-  - modules/t3-terminal/ios
-  - modules/t3-review-diff/ios
+  - ios/Circe
+  - modules/circe-composer-editor/ios
+  - modules/circe-native-controls/ios
+  - modules/circe-terminal/ios
+  - modules/circe-review-diff/ios
 
 excluded:
   - ios/Pods
   - ios/build
-  - modules/t3-terminal/Vendor
+  - modules/circe-terminal/Vendor
 
 reporter: xcode
 

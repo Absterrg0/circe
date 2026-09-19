@@ -6,10 +6,10 @@ import { getMobileThemeRuntimeVariables } from "./mobileThemeVariables";
 
 describe("mobile theme runtime variables", () => {
   it("derives the standard runtime palette from global.css", () => {
-    expect(getMobileThemeRuntimeVariables("t3-code", "light", "ios")).toEqual(
+    expect(getMobileThemeRuntimeVariables("circe", "light", "ios")).toEqual(
       readDefaultMobileThemeVariables("light"),
     );
-    expect(getMobileThemeRuntimeVariables("t3-code", "dark", "ios")).toEqual(
+    expect(getMobileThemeRuntimeVariables("circe", "dark", "ios")).toEqual(
       readDefaultMobileThemeVariables("dark"),
     );
   });
@@ -33,9 +33,7 @@ describe("mobile theme runtime variables", () => {
           ...ios,
           "--color-header": themeColorWithAlpha(
             ios[
-              themeId === "t3-code" || themeId === "material-you"
-                ? "--color-card"
-                : "--color-drawer"
+              themeId === "circe" || themeId === "material-you" ? "--color-card" : "--color-drawer"
             ],
             1,
           ),
@@ -45,7 +43,7 @@ describe("mobile theme runtime variables", () => {
     },
   );
 
-  it.each(["t3-code", "material-you"] as const)(
+  it.each(["circe", "material-you"] as const)(
     "keeps the %s default dark frame distinct from the rounded settings body",
     (themeId) => {
       const variables = getMobileThemeRuntimeVariables(themeId, "dark", "android");

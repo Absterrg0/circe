@@ -157,7 +157,7 @@ TODO:
 
 FOOD FOR THOUGHT:
 
-- Custom t3code tools/mcp_server that lets agents spawn subagents of other providers powered by the T3 Orchestrator
+- Custom Circe tools/mcp_server that lets agents spawn subagents of other providers powered by the T3 Orchestrator
 
 ## Debugger-Only Work
 

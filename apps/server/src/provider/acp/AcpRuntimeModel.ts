@@ -1007,22 +1007,22 @@ function acpMcpFallbackInput(value: string | undefined): Record<string, unknown>
 /**
  * Agents flatten injected MCP tools into model-facing function names with no
  * shared convention (survey of the 2026-08 registry builds): Kilo and
- * opencode use `t3-code_<tool>`, claude-acp and qwen `mcp__t3-code__<tool>`,
- * Amp `mcp__t3_code__<tool>` (hyphens mangled), droid `t3-code___<tool>`,
- * Copilot `t3-code-<tool>`, cline appends `: <args json>`. T3 always injects
- * its server as "t3-code", and matches are additionally gated on the known
+ * opencode use `circe_<tool>`, claude-acp, qwen, and Amp
+ * `mcp__circe__<tool>`, droid `circe___<tool>`,
+ * Copilot `circe-<tool>`, cline appends `: <args json>`. Circe always injects
+ * its server as "circe", and matches are additionally gated on the known
  * T3 tool inventory, so the separator match can stay loose.
  */
 const CIRCE_MCP_TITLE_CALL =
-  /^(?:mcp[-_]{1,2})?t3[-_ ]?code[-_.:/ ]{1,3}(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*)(?::.*)?$/i;
+  /^(?:mcp[-_]{1,2})?circe[-_.:/ ]{1,3}(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*)(?::.*)?$/i;
 
 /**
  * Gemini CLI titles injected MCP calls "<tool> (<server> MCP Server)" and
  * qwen-code appends ": <args json>" to the same template; Auggie namespaces
- * tool-first as "<tool>_t3-code".
+ * tool-first as "<tool>_circe".
  */
 const CIRCE_MCP_TITLE_SUFFIX_CALL =
-  /^(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*?)(?: \(t3[-_ ]?code MCP Server\)(?::|$)|[-_.]t3[-_ ]?code$)/i;
+  /^(?<tool>[A-Za-z0-9][A-Za-z0-9_.-]*?)(?: \(circe MCP Server\)(?::|$)|[-_.]circe$)/i;
 
 /**
  * glm-acp-agent and Kimi CLI register injected MCP tools under their bare
@@ -1061,7 +1061,7 @@ export function extractMcpToolCallIdentity(
   // titleless or LLM-enriched update replaces the presentation title, so
   // match those rather than the summarized state title. Name-derived matches
   // are gated on the known T3 tool inventory so path-like titles (for
-  // example "t3-code/README.md") never brand.
+  // example "circe/README.md") never brand.
   const claudeCode = isRecord(meta?.claudeCode) ? meta.claudeCode : undefined;
   const gooseToolCall = isRecord(meta?.goose)
     ? isRecord(meta.goose.toolCall)
@@ -1072,7 +1072,7 @@ export function extractMcpToolCallIdentity(
   // its toolName identifies the call even under future prefix formats.
   const metaServerId = typeof meta?.serverId === "string" ? meta.serverId.trim() : "";
   const metaToolName = typeof meta?.toolName === "string" ? meta.toolName.trim() : "";
-  if (/^t3[-_ ]?code$/i.test(metaServerId) && metaToolName.length > 0) {
+  if (/^circe$/i.test(metaServerId) && metaToolName.length > 0) {
     for (const knownTool of CIRCE_MCP_TOOL_NAMES) {
       const boundary = metaToolName.length - knownTool.length - 1;
       if (
@@ -1081,7 +1081,7 @@ export function extractMcpToolCallIdentity(
           boundary >= 0 &&
           !/[A-Za-z0-9]/.test(metaToolName.charAt(boundary)))
       ) {
-        return { server: "t3-code", tool: knownTool };
+        return { server: "circe", tool: knownTool };
       }
     }
   }
@@ -1090,8 +1090,8 @@ export function extractMcpToolCallIdentity(
   const gooseExtension =
     typeof gooseToolCall?.extensionName === "string" ? gooseToolCall.extensionName.trim() : "";
   const assertsForeignOrigin =
-    (metaServerId.length > 0 && !/^t3[-_ ]?code$/i.test(metaServerId)) ||
-    (gooseExtension.length > 0 && !/^t3[-_ ]?code$/i.test(gooseExtension));
+    (metaServerId.length > 0 && !/^circe$/i.test(metaServerId)) ||
+    (gooseExtension.length > 0 && !/^circe$/i.test(gooseExtension));
   if (assertsForeignOrigin) {
     return undefined;
   }
@@ -1109,7 +1109,7 @@ export function extractMcpToolCallIdentity(
       CIRCE_MCP_BARE_TITLE_CALL.exec(trimmed);
     const candidateTool = match?.groups?.tool;
     if (candidateTool !== undefined && CIRCE_MCP_TOOL_NAMES.has(candidateTool)) {
-      return { server: "t3-code", tool: candidateTool };
+      return { server: "circe", tool: candidateTool };
     }
   }
   const commands = [
@@ -1124,7 +1124,7 @@ export function extractMcpToolCallIdentity(
       // The acp-mcp-call CLI exists only as T3's bridge fallback, so the
       // server identity is T3's by construction.
       const input = acpMcpFallbackInput(match[2]);
-      return { server: "t3-code", tool: match[1], ...(input === undefined ? {} : { input }) };
+      return { server: "circe", tool: match[1], ...(input === undefined ? {} : { input }) };
     }
   }
   return undefined;

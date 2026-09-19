@@ -6,8 +6,8 @@ import { Alert } from "react-native";
 import type { EnvironmentId } from "@circe/contracts";
 import { encodeComposerContextFragment } from "@circe/shared/composerContextClipboard";
 import { collectComposerContextReferences } from "@circe/shared/composerContextReferences";
-import { ComposerEditor as NativeComposerEditor } from "../native/T3ComposerEditor";
-import type { ComposerEditorProps as NativeComposerEditorProps } from "../native/T3ComposerEditor";
+import { ComposerEditor as NativeComposerEditor } from "../native/CirceComposerEditor";
+import type { ComposerEditorProps as NativeComposerEditorProps } from "../native/CirceComposerEditor";
 import {
   appendComposerDraftAttachments,
   createComposerDraftContextHistory,
@@ -255,4 +255,4 @@ export type {
   ComposerEditorHandle,
   ComposerEditorSelection,
   ComposerTextPaste,
-} from "../native/T3ComposerEditor";
+} from "../native/CirceComposerEditor";

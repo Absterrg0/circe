@@ -359,7 +359,7 @@ const discoverGrokMetadataViaAcpInitialize = (
       environment,
       childProcessSpawner,
       cwd: process.cwd(),
-      clientInfo: { name: "t3-code-provider-probe", version: "0.0.0" },
+      clientInfo: { name: "circe-provider-probe", version: "0.0.0" },
     });
     const initialized = yield* acp.initialize();
     return {
