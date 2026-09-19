@@ -19,7 +19,6 @@ import {
   createMobileCirceTurn,
   mobileTurnTaskRefs,
   resolveMobileFocusContextTask,
-  resolveRetainedFrameId,
   restoreMobileFocusFromDesk,
   routeMobileCirceTurn,
 } from "./mobileCirceTurn";
@@ -763,13 +762,7 @@ describe("mobile Circe turn routing", () => {
     ).toBeUndefined();
   });
 
-  it("keeps a rejected answer bound to its old frame across retries", () => {
-    expect(resolveRetainedFrameId(undefined, "frame-a")).toBe("frame-a");
-    expect(resolveRetainedFrameId("frame-b", "frame-a")).toBe("frame-b");
-    expect(resolveRetainedFrameId(undefined, undefined)).toBeUndefined();
-
-    // A repeated answer after a stale rejection still carries the old frame,
-    // and a fresh cancel carries none, so it can never deny unguarded.
+  it("binds an answer only to a frame the server says is still live", () => {
     const projectRef = {
       nodeId: EnvironmentId.make("desktop"),
       projectId: ProjectId.make("circe"),
@@ -781,21 +774,24 @@ describe("mobile Circe turn routing", () => {
       }),
       projectRef,
     );
-    const retry = buildMobileCirceExecuteInput({
+    // A live frame the server echoed travels with the answer.
+    const bound = buildMobileCirceExecuteInput({
       turn,
       projectRef,
       utterance: "the second one",
-      clarificationFrameId: resolveRetainedFrameId(undefined, "frame-a"),
+      clarificationFrameId: "frame-a",
       requestId: "request-reframe-1",
     });
-    expect(retry.clarificationFrameId).toBe("frame-a");
-    const freshCancel = buildMobileCirceExecuteInput({
+    expect(bound.clarificationFrameId).toBe("frame-a");
+    // A result that omitted the frame means the server consumed it; the next
+    // answer must go out fresh instead of carrying the dead id.
+    const freshAfterConsumedFrame = buildMobileCirceExecuteInput({
       turn,
       projectRef,
-      utterance: "cancel",
+      utterance: "open YouTube",
       requestId: "request-reframe-2",
     });
-    expect(freshCancel).not.toHaveProperty("clarificationFrameId");
+    expect(freshAfterConsumedFrame).not.toHaveProperty("clarificationFrameId");
   });
 
   it("classifies frame cancels without claiming false success", () => {

@@ -17,13 +17,27 @@ ACP fallback: some ACP agents accept the injected MCP server but fail to expose 
 
 export const CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
-## Circe collaborative browser
+## Circe browsers
 
-You are running inside Circe. The \`circe\` MCP server is the product-native collaborative browser shared with the user. When it exposes \`preview_*\` tools, prefer those tools for browser navigation, inspection, interaction, screenshots, and recordings.
+You are running inside Circe. Browser surfaces belong to the user.
 
-For browser work, first call \`preview_status\`. If no automation-capable preview is attached, call \`preview_open\` before concluding that the browser is unavailable. Then use \`preview_navigate\`, \`preview_snapshot\`, and the focused interaction tools. Prefer snapshot-provided locators over coordinates.
+- The user's own signed-in browser is the default for their everyday web goals. When the server exposes \`desktop_*\` tools, carry out those goals with \`desktop_run_goal\`: the grounded loop opens the named site in the real browser and steps the real machine. Never rebuild the user's signed-in state through a shell CLI or a provider API.
+- The \`preview_*\` tools operate the shared in-app preview browser. Use them for development and testing: localhost, dev servers, the project's preview, page inspection, screenshots, and recordings. When the server exposes \`preview_*\` tools, prefer them for that work.
 
-Do not switch to global browser skills, Chrome, Node REPL browser automation, standalone Playwright, or agent-browser merely because the preview is initially closed or a first call fails. Use an alternative browser system only when the T3 preview tools are absent, the user explicitly requests another browser, or \`preview_open\` returns an explicit unsupported/unavailable error. A failed T3 preview tool call should be inspected and retried with corrected arguments when the error is actionable.
+For preview work, first call \`preview_status\`. If no automation-capable preview is attached, call \`preview_open\` before concluding that it is unavailable. Then use \`preview_navigate\`, \`preview_snapshot\`, and the focused interaction tools. Prefer snapshot-provided locators over coordinates.
+
+Do not switch to global browser skills, Chrome, Node REPL browser automation, standalone Playwright, or agent-browser merely because a surface is initially closed or a first call fails. Use an alternative browser system only when the Circe tools are absent, the user explicitly requests another browser, or a tool returns an explicit unsupported/unavailable error. A failed Circe tool call should be inspected and retried with corrected arguments when the error is actionable.
+
+When the preview asks for credentials it does not have, stop and ask the user to sign in once in that preview; never reach the same data through another browser, a shell CLI, or a provider API as a silent substitute for the page.
+`;
+
+export const CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS = `
+
+## Circe desktop
+
+When the \`circe\` server exposes \`desktop_*\` tools, they drive this node's real desktop, including the user's real browser. Call \`desktop_status\` once: \`supports.accessibility\` means grounded element actions and text entry run over AT-SPI, \`supports.pointer\` and \`supports.keyboard\` mean injected input is available, and \`supports.capture\` means screenshots. Call \`desktop_state\` to see what is on screen: it reads the accessibility tree and never touches the display. Never call \`desktop_screenshot\` for element work; on GNOME Wayland it flashes the user's screen. Reserve it for canvas or GL surfaces where no element tree exists.
+
+Use \`desktop_run_goal\` for a bounded goal on the real machine. It selects among grounded accessibility elements and performs each action, and it opens a named site in the user's own browser when the goal names one. Pass \`typeText\` when the goal needs text the loop cannot select off the screen. Prefer these tools over any CLI, API, or headless browser that would bypass the user's signed-in session; do not substitute a shell command for an interactive goal while an accessibility or input path is available.
 `;
 
 const CIRCE_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS = `## Circe interaction mode: Default
@@ -61,7 +75,11 @@ export function t3AcpPromptWithInstructions(input: {
       ? CIRCE_CODE_ACP_PLAN_MODE_INSTRUCTIONS
       : CIRCE_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
     ...(input.state.hasT3Mcp
-      ? [CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(), CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim()]
+      ? [
+          CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
+          CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS.trim(),
+          CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+        ]
       : []),
   ];
   return `<circe_instructions>\n${instructions.join("\n\n")}\n</circe_instructions>\n\n<user_request>\n${input.prompt}\n</user_request>`;

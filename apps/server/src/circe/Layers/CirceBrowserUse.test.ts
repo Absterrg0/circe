@@ -115,6 +115,16 @@ describe("Circe browser use", () => {
     });
   });
 
+  it("navigates to the site the goal named before the first step", () => {
+    const operations: Array<string> = [];
+    const result = run(
+      { goal: "open github and search for pull requests in rivvl", confirmed: true },
+      testLayer({ decisions: ["click", "done"], operations }),
+    );
+    expect(result).toMatchObject({ status: "done" });
+    expect(operations).toEqual(["navigate", "snapshot", "click", "snapshot"]);
+  });
+
   it("runs one grounded click and reports done once confirmed", () => {
     const operations: Array<string> = [];
     const result = run(

@@ -34,8 +34,21 @@ only because XWayland root capture does not represent the compositor's desktop.
 ## Readiness and transport
 
 The environment capability flag advertises the API; `desktop_status` checks the graphical
-session and capture path. Capture readiness and input permissions are separate. Platform helper
+session's control paths. Capture readiness and input permissions are separate. Platform helper
 installation alone is not proof of readiness.
+
+## Capability model
+
+Readiness is per capability, not one boolean. AT-SPI grounds elements and performs element
+actions and text entry with no screenshot or injected-input helper, so a GNOME Wayland node
+with `python3` and pyatspi is available even when `grim`, `gnome-screenshot`, and `ydotool` are
+missing. `desktop_status` reports `supports.capture`, `pointer`, `keyboard`, `windows`, and
+`accessibility` independently; `available` is true when any control path works, and `reason`
+names the missing pieces. Capture gates canvas and GL surfaces only. Pointer and keyboard
+injection on Wayland requires `ydotool` with its daemon and uinput access, so a step that falls
+back to a coordinate click on a node without it reports the missing helper instead of a generic
+failure. Do not report the whole desktop as unavailable because one helper is missing: a
+provider that sees that falls back to shell commands for interactive goals.
 
 The ordinary authenticated node routes carry desktop RPCs. Capture, frame subscriptions and
 input require Operate scope; status and window listing require Read. Frame subscriptions stop

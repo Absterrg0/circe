@@ -144,6 +144,11 @@ export interface CirceControllerInterpreterShape {
    * Optional in tests; production always provides it.
    */
   readonly propose?: (input: CirceInterpretInput) => Effect.Effect<CirceSemanticProposal>;
+  /**
+   * Warm the first supervisor provider (start its CLI or server) without
+   * asking it anything meaningful. Production always provides it.
+   */
+  readonly warm?: () => Effect.Effect<void>;
 }
 
 /**
@@ -274,6 +279,12 @@ export interface CirceControllerShape {
   readonly cancelRequest: (
     input: CirceCancelRequestInput & { readonly executionNodeId?: EnvironmentId },
   ) => Effect.Effect<CirceCancelRequestResult, never>;
+  /**
+   * Best-effort provider warm-up. Starting live voice means the user is about
+   * to speak, so paying a cold provider start now keeps the first provider
+   * fallback inside its attempt budget. Never fails the caller.
+   */
+  readonly warmSupervisor: () => Effect.Effect<void>;
 }
 
 export class CirceController extends Context.Service<CirceController, CirceControllerShape>()(

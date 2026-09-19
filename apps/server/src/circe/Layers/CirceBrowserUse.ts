@@ -7,12 +7,14 @@ import { ThreadId } from "@circe/contracts";
 import type { ComputerUseRunResult, ComputerStepRefusal } from "@circe/core/computerUse";
 import { runBrowserGoal } from "@circe/core/browserUseRuntime";
 import type { DecisionRequest } from "@circe/core/decision";
+import { circeWebsiteUrl } from "@circe/core/website";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
 import { ServerEnvironment } from "../../environment/ServerEnvironment.ts";
 import { PreviewAutomationBroker } from "../../mcp/PreviewAutomationBroker.ts";
+import { extractWebsiteCandidates } from "../decisionTier.ts";
 import { circeAutomationScope } from "../computerUse/CirceAutomationScope.ts";
 import { makePreviewAutomationInvoker } from "../computerUse/PreviewAutomationInvoker.ts";
 import { SurfaceDecisionUnavailableError } from "../computerUse/SurfaceDecisionError.ts";
@@ -40,7 +42,7 @@ const refusalMessage = (reason: ComputerStepRefusal): string => {
     case "unknown-element":
       return "The page changed before I could act on it.";
     case "missing-parameter":
-      return "That step was missing a target or value.";
+      return "I couldn't tell which thing to act on for that step.";
   }
 };
 
@@ -102,6 +104,23 @@ export const make = Effect.gen(function* () {
       scope,
       waitMs: WAIT_MS,
     });
+    // The goal usually names where to start ("open github and search ...").
+    // Code grounds that site from the user's own words with the same allowlist
+    // as the quick action, so the loop starts on the right page instead of
+    // clicking around whatever tab happened to be open. An ungrounded goal
+    // starts wherever the user left the browser.
+    const startUrl = (() => {
+      for (const candidate of extractWebsiteCandidates(input.goal)) {
+        const url = circeWebsiteUrl(candidate, input.goal);
+        if (url !== null) return url;
+      }
+      return null;
+    })();
+    if (startUrl !== null) {
+      yield* invoker
+        .apply({ operation: "navigate", input: { url: startUrl } })
+        .pipe(Effect.catch(() => Effect.void));
+    }
     const select = (request: DecisionRequest) =>
       decision
         .decide(request)

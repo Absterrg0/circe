@@ -45,6 +45,13 @@ const makeHarness = () =>
     const calls = yield* Ref.make<ReadonlyArray<DesktopUseInputRequest>>([]);
     const service = Layer.succeed(DesktopUse.DesktopUse, {
       getStatus: () => Effect.succeed(status),
+      state: () =>
+        Effect.succeed({
+          title: "Desktop",
+          elements: [
+            { id: "app:0/0", role: "push button", name: "Save", x: 1, y: 2, width: 3, height: 4 },
+          ],
+        }),
       capture: () =>
         Effect.succeed({
           displayId: "primary",

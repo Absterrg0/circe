@@ -8,6 +8,8 @@ import {
   type DesktopUseDisplay,
   type DesktopUseError,
   type DesktopUsePlatform,
+  type DesktopUseState,
+  type DesktopUseStateInput,
   type DesktopUseStatus,
   type DesktopUseWindow,
 } from "@circe/contracts";
@@ -52,6 +54,7 @@ import {
   parseXrandrDisplays,
 } from "./parsers.ts";
 import { normalizeFrame } from "./frames.ts";
+import { observeLinuxDesktop } from "./linuxAccessibility.ts";
 import { resolveDisplay } from "./policy.ts";
 
 export interface DesktopCaptureResult {
@@ -61,6 +64,7 @@ export interface DesktopCaptureResult {
 }
 export interface DesktopDriverShape {
   readonly getStatus: () => Effect.Effect<DesktopUseStatus>;
+  readonly state: (input?: DesktopUseStateInput) => Effect.Effect<DesktopUseState, DesktopUseError>;
   readonly capture: (input: {
     readonly displayId?: string;
   }) => Effect.Effect<DesktopCaptureResult, DesktopUseError>;
@@ -99,8 +103,15 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
           backend: "unavailable",
           displays: [],
           reason,
-          supports: { capture: false, pointer: false, keyboard: false, windows: false },
+          supports: {
+            capture: false,
+            pointer: false,
+            keyboard: false,
+            windows: false,
+            accessibility: false,
+          },
         }),
+      state: () => Effect.fail(unavailable),
       capture: () => Effect.fail(unavailable),
       input: () => Effect.fail(unavailable),
       listWindows: () => Effect.fail(unavailable),
@@ -346,14 +357,34 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
             captureReady = true;
             pointer = keyboard = permission.input === true;
           }
-          if (!captureReady)
+          // AT-SPI grounds elements and performs element actions with no
+          // screenshot or injected-input helper, so it is its own control path:
+          // capture and pointer readiness only limit what that path can reach.
+          // Requiring a screenshot helper here used to report a working GNOME
+          // Wayland node as entirely unavailable.
+          const accessibility =
+            backend === "linux-x11" || backend === "linux-wayland"
+              ? yield* run(
+                  { command: "python3", args: ["-c", "import pyatspi"] },
+                  "probe accessibility",
+                ).pipe(
+                  Effect.as(true),
+                  Effect.catch(() => Effect.succeed(false)),
+                )
+              : false;
+          if (!accessibility && !pointer && !keyboard && !captureReady) {
             return yield* unavailable(
-              "No native screenshot helper is installed for this graphical session",
+              "No desktop control path is ready: install ydotool for pointer and keyboard input, or enable the accessibility bus",
             );
+          }
+          const missing: Array<string> = [];
+          if (!captureReady) missing.push("screenshots");
+          if (!pointer || !keyboard) missing.push("input");
+          if (!accessibility) missing.push("accessibility");
           const reason = pendingRelease.length
             ? "Input cleanup is pending; the next input request will retry release"
-            : !pointer || !keyboard
-              ? "Capture is available; one or more input helpers or permissions are unavailable"
+            : missing.length > 0
+              ? `Unavailable on this node: ${missing.join(", ")}`
               : undefined;
           return {
             available: true,
@@ -361,10 +392,11 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
             backend,
             displays,
             supports: {
-              capture: true,
+              capture: captureReady,
               pointer: pointer && !pendingRelease.length,
               keyboard: keyboard && !pendingRelease.length,
               windows: buildListWindowsCommand(tools) !== null,
+              accessibility,
             },
             ...(reason ? { reason } : {}),
           } satisfies DesktopUseStatus;
@@ -378,7 +410,13 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
                 backend,
                 reason: result.failure.message,
                 displays: [],
-                supports: { capture: false, pointer: false, keyboard: false, windows: false },
+                supports: {
+                  capture: false,
+                  pointer: false,
+                  keyboard: false,
+                  windows: false,
+                  accessibility: false,
+                },
               };
         cachedStatus = { at, status };
         return status;
@@ -530,6 +568,30 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
     cachedStatus = undefined;
     return yield* cursor(tools, display);
   });
+  const state: DesktopDriverShape["state"] = Effect.fn("DesktopDriver.state")(function* (input) {
+    if (backend !== "linux-x11" && backend !== "linux-wayland") {
+      return yield* unavailable("Desktop element state is available on Linux for now");
+    }
+    // The accessibility tree is the eyes of every element-based flow: reading
+    // it never touches the screen, unlike a screenshot.
+    const surface = yield* observeLinuxDesktop(
+      (command, operation) => run(command, operation).pipe(Effect.map((stdout) => ({ stdout }))),
+      {
+        backend,
+        title: "Desktop",
+        ...(input?.limit === undefined ? {} : { limit: input.limit }),
+      },
+    );
+    return {
+      title: surface.title,
+      elements: surface.elements.map((element) => ({
+        id: element.id,
+        role: element.role,
+        name: element.name,
+        ...element.bounds,
+      })),
+    } satisfies DesktopUseState;
+  });
   const listWindows: DesktopDriverShape["listWindows"] = () =>
     Effect.gen(function* () {
       const tools = yield* tooling;
@@ -539,6 +601,6 @@ export const make = Effect.fn("DesktopDriver.make")(function* () {
       const raw = yield* run(spec, "list windows");
       return backend === "linux-x11" ? parseWmctrlWindows(raw) : parseJsonWindows(raw);
     });
-  return DesktopDriver.of({ getStatus: () => getStatus, capture, input, listWindows });
+  return DesktopDriver.of({ getStatus: () => getStatus, state, capture, input, listWindows });
 });
 export const layer = Layer.effect(DesktopDriver, make()).pipe(Layer.provide(Commands.layer));

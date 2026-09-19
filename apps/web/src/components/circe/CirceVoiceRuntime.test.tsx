@@ -22,6 +22,9 @@ const state = vi.hoisted(() => ({
   interpret: vi.fn(),
   converse: vi.fn(),
   quickLookup: vi.fn(),
+  browserUse: vi.fn(),
+  computerUse: vi.fn(),
+  cancelMission: vi.fn(),
   openWebsite: vi.fn(),
   drain: undefined as (() => Promise<void>) | undefined,
   speechEvents: [] as string[],
@@ -81,7 +84,12 @@ vi.mock("./CirceManager.logic", async (importOriginal) => {
 vi.mock("../../state/environments", () => ({ usePrimaryEnvironmentId: () => "local" }));
 vi.mock("@effect/atom-react", () => ({ useAtomValue: () => state.catalog }));
 vi.mock("../../state/circeLiveVoice", () => ({
-  circeLiveVoiceEnvironment: { lookup: "quickLookup" },
+  circeLiveVoiceEnvironment: {
+    lookup: "quickLookup",
+    browserUse: "browserUse",
+    computerUse: "computerUse",
+    cancelMission: "cancelMission",
+  },
 }));
 vi.mock("./CirceQuickActions.logic", () => ({
   openCirceWebsite: (url: string, sourceUtterance: string) =>
@@ -109,7 +117,10 @@ vi.mock("../../state/use-atom-command", () => ({
       | "cancelRequest"
       | "interpret"
       | "converse"
-      | "quickLookup",
+      | "quickLookup"
+      | "browserUse"
+      | "computerUse"
+      | "cancelMission",
   ) => state[command],
 }));
 vi.mock("../../circeIdentity", () => ({ circeReporterIdentity: () => "interaction" }));
@@ -221,6 +232,9 @@ describe("Circe voice runtime", () => {
     };
     state.catalog = catalog;
     state.quickLookup.mockReset();
+    state.browserUse.mockReset();
+    state.computerUse.mockReset();
+    state.cancelMission.mockReset();
     state.openWebsite.mockReset();
     state.refresh.mockReset().mockResolvedValue({ _tag: "Success", value: catalog });
     state.refreshNode.mockReset().mockResolvedValue({ _tag: "Success", value: catalog });
@@ -290,6 +304,21 @@ describe("Circe voice runtime", () => {
     expect(events.some((event) => event.includes("31°C"))).toBe(true);
   });
 
+  it("runs a scoped general question as a durable thread instead of an inline answer", async () => {
+    await ready();
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: { action: "converse", refs: [], model: null, effort: null, answer: null },
+    });
+    transcript("search Tanmay Bhat for me", { captureId: "converse", purpose: "command" });
+    await state.drain?.();
+    expect(state.converse).not.toHaveBeenCalled();
+    expect(state.execute).toHaveBeenCalledTimes(1);
+    expect(state.execute.mock.calls[0]?.[0]).toMatchObject({
+      semanticProposal: { action: "converse", answer: null },
+    });
+  });
+
   it("opens a supervisor-proposed website on this device even with a remote task selected", async () => {
     routeNodeId = EnvironmentId.make("remote");
     await ready();
@@ -309,6 +338,188 @@ describe("Circe voice runtime", () => {
     await state.drain?.();
     expect(state.openWebsite).toHaveBeenCalledWith("YouTube", "Open YouTube");
     expect(state.execute).not.toHaveBeenCalled();
+  });
+
+  it("runs a lookup question's place answer directly without re-classifying it", async () => {
+    await ready();
+    state.execute.mockResolvedValueOnce({
+      _tag: "Success",
+      value: {
+        status: "needs-input",
+        reason: "control-target-required",
+        prompt: "Which place should I check for weather?",
+        choices: [],
+        lookup: { tool: "weather", day: "now" },
+      },
+    });
+    state.quickLookup.mockResolvedValue({
+      _tag: "Success",
+      value: { status: "answer", message: "Ahmedabad: 31°C.", source: "https://open-meteo.com/" },
+    });
+    transcript("what's the weather", { captureId: "weather-ask", purpose: "command" });
+    await state.drain?.();
+    transcript("Ahmedabad", { captureId: "weather-place", purpose: "command" });
+    await state.drain?.();
+    expect(state.quickLookup).toHaveBeenCalledWith({
+      environmentId: "local",
+      input: {
+        kind: "weather",
+        location: "Ahmedabad",
+        day: "now",
+        sourceUtterance: "Ahmedabad",
+      },
+    });
+    expect(events.some((event) => event.includes("31°C"))).toBe(true);
+  });
+
+  it("never replays an unsupported proposal into execute", async () => {
+    await ready();
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: { action: "unsupported", refs: [], model: null, effort: null, answer: null },
+    });
+    transcript("do something odd", { captureId: "unsupported", purpose: "command" });
+    await state.drain?.();
+    expect(state.execute).toHaveBeenCalledTimes(1);
+    expect(state.execute.mock.calls[0]?.[0]).not.toHaveProperty("semanticProposal");
+  });
+
+  it("runs a browse action in the real browser right away and hands a short mission to the provider", async () => {
+    const goal = "open github and search for pull requests in rivvl";
+    await ready();
+    vi.stubGlobal("window", { desktopBridge: {}, setTimeout, clearTimeout });
+    const feedback: CirceCommandFeedback[] = [];
+    onCirceCommandFeedback((entry) => {
+      feedback.push(entry);
+    });
+    try {
+      state.execute.mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "client-action",
+          tool: "browse",
+          args: { goal },
+          speech: "Working in your browser.",
+        },
+      });
+      state.computerUse.mockResolvedValue({
+        _tag: "Success",
+        value: {
+          status: "refused",
+          message: "I couldn't tell which thing to act on for that step.",
+        },
+      });
+      transcript(goal, { captureId: "browse-ask", purpose: "command" });
+      for (let turn = 0; turn < 50 && state.execute.mock.calls.length < 2; turn += 1) {
+        await Promise.resolve();
+        render();
+      }
+      // No confirmation round-trip: the mission starts from the same turn, and
+      // an everyday web goal drives the real browser through the desktop
+      // mission rather than the in-app preview.
+      expect(state.computerUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          environmentId: "local",
+          input: expect.objectContaining({ goal, confirmed: true }),
+        }),
+      );
+      expect(state.browserUse).not.toHaveBeenCalled();
+      expect(state.execute).toHaveBeenCalledTimes(2);
+      expect(state.execute.mock.calls[1]?.[0]).toMatchObject({
+        utterance: goal,
+        semanticProposal: { action: "start" },
+      });
+      // One continuous action reads as one message: the refusal must not be
+      // spoken or shown just before the hand-off retracts it.
+      expect(feedback.map((entry) => entry.text)).not.toContain(
+        "I couldn't tell which thing to act on for that step.",
+      );
+      expect(feedback.some((entry) => entry.text.includes("Handing that to your provider"))).toBe(
+        true,
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("runs a preview action in the shared preview browser without handing off on success", async () => {
+    const goal = "test the checkout flow against localhost";
+    await ready();
+    vi.stubGlobal("window", { desktopBridge: {}, setTimeout, clearTimeout });
+    try {
+      state.execute.mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "client-action",
+          tool: "preview",
+          args: { goal },
+          speech: "Working in the preview browser.",
+        },
+      });
+      state.browserUse.mockResolvedValue({
+        _tag: "Success",
+        value: { status: "done", message: "The checkout flow works.", steps: 6 },
+      });
+      transcript(goal, { captureId: "preview-ask", purpose: "command" });
+      await state.drain?.();
+      expect(state.browserUse).toHaveBeenCalledWith(
+        expect.objectContaining({
+          environmentId: "local",
+          input: expect.objectContaining({ goal, confirmed: true }),
+        }),
+      );
+      expect(state.computerUse).not.toHaveBeenCalled();
+      expect(state.execute).toHaveBeenCalledTimes(1);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("drops a consumed server frame instead of binding the next answer to it", async () => {
+    await ready();
+    // The first result parks a live frame; the answer to it consumes the
+    // frame and asks one more thing without opening a new one. The follow-up
+    // must go out fresh: carrying the dead frame id makes the server reject
+    // it before interpretation and the request is dropped.
+    state.execute
+      .mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "needs-input",
+          reason: "control-target-required",
+          prompt: "Which project did you mean?",
+          choices: ["Beacon"],
+          clarificationFrameId: "frame-1",
+        },
+      })
+      .mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "needs-input",
+          reason: "control-target-required",
+          prompt: "Which site should I open?",
+          choices: [],
+        },
+      })
+      .mockImplementation(async () => ({
+        _tag: "Success",
+        value: {
+          status: "started",
+          threadId,
+          objective: "Open YouTube",
+          modelSelection: { instanceId: ProviderInstanceId.make("codex"), model: "sol" },
+        },
+      }));
+    transcript("Check PRs in Rivvl", { captureId: "frame-open", purpose: "command" });
+    await state.drain?.();
+    transcript("Beacon", { captureId: "frame-answer", purpose: "command" });
+    await state.drain?.();
+    transcript("Open YouTube", { captureId: "frame-followup", purpose: "command" });
+    await state.drain?.();
+    expect(state.execute).toHaveBeenCalledTimes(3);
+    expect(state.execute.mock.calls[0]?.[0]).not.toHaveProperty("clarificationFrameId");
+    expect(state.execute.mock.calls[1]?.[0]).toMatchObject({ clarificationFrameId: "frame-1" });
+    expect(state.execute.mock.calls[2]?.[0]).not.toHaveProperty("clarificationFrameId");
   });
 
   it.each(["local", "remote"])(

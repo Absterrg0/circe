@@ -1,11 +1,25 @@
 import type { CirceCommandNeedsInput } from "@circe/core/command";
 import type { CirceCommandContext, CirceCommandTask } from "@circe/core/command";
+import {
+  buildCirceOutcomeRequest,
+  CIRCE_OUTCOME_CONVERSATION,
+  CIRCE_OUTCOME_WORK,
+  composeCirceOutcome,
+  type CirceWorkResolution,
+} from "@circe/core/controlClassify";
+import type { CirceOutcome } from "@circe/core/controlOutcome";
 import { acceptedBoundaries, composeDecision } from "@circe/core/decisionCompose";
-import type { CirceDecisionOutcome, DecisionAnswers, DecisionRequest } from "@circe/core/decision";
+import {
+  choiceAnswer,
+  type CirceDecisionOutcome,
+  type DecisionAnswers,
+  type DecisionRequest,
+} from "@circe/core/decision";
 import {
   buildDecisionRequest,
   segmentUtterance,
   type DecisionCatalog,
+  type DecisionSegment,
   type DecisionState,
 } from "@circe/core/decisionRequest";
 import { findCirceEffortDescriptor } from "@circe/core/modelChoice";
@@ -171,26 +185,199 @@ export function decisionStateFromEvidence(input: CirceInterpretInput): DecisionS
   };
 }
 
-const LOCATION_PATTERN =
-  /\b(?:in|at|for)\s+((?:the\s+)?[A-Z][\p{Letter}.'-]*(?:\s+[A-Z][\p{Letter}.'-]*){0,3})\b/gu;
+const LOCATION_TOKEN_PATTERN = /[\p{Letter}\p{Number}][\p{Letter}\p{Number}.'-]*/gu;
+const LEADING_ARTICLE = /^(?:the|a|an)$/u;
 
-/** Code-built place candidates for a lookup, capped and deduped. */
+const placeWordKey = (word: string): string =>
+  word.toLowerCase().replace(/[^\p{Letter}\p{Number}]/gu, "");
+
+/**
+ * Place candidates are transcript spans, never language patterns. Code only
+ * splits the utterance into maximal runs of non-vocabulary tokens (a run may
+ * start with an article, so "the hague" stays whole); TypeSafe selects the run
+ * the user named; the lookup then grounds that selection back into the
+ * transcript. Casing, accents, filler words, and word order stay the model's
+ * job, so voice keeps working without a place grammar that would age badly.
+ */
 export function extractLocationCandidates(source: string): ReadonlyArray<string> {
   const seen = new Set<string>();
   const candidates: string[] = [];
-  let match: RegExpExecArray | null;
-  const pattern = new RegExp(LOCATION_PATTERN.source, "gu");
-  while ((match = pattern.exec(source)) !== null) {
-    const value = match[1]?.trim();
-    if (value === undefined || value.length === 0) continue;
-    const key = fold(value);
-    if (seen.has(key)) continue;
+  const add = (value: string): void => {
+    const trimmed = value.trim();
+    if (trimmed.length === 0 || candidates.length >= 8) return;
+    const key = fold(trimmed);
+    if (seen.has(key)) return;
     seen.add(key);
-    candidates.push(value);
-    if (candidates.length >= 6) break;
+    candidates.push(trimmed);
+  };
+  const tokens: string[] = [];
+  const pattern = new RegExp(LOCATION_TOKEN_PATTERN.source, "gu");
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(source)) !== null) tokens.push(match[0]);
+  let run: string[] = [];
+  const flush = (): void => {
+    if (run.length === 0) return;
+    add(run.join(" "));
+    run = [];
+  };
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index]!;
+    const key = placeWordKey(token);
+    if (NON_PLACE_WORDS.has(key)) {
+      // An article may open a run only when a real name word follows it, so
+      // "the hague" stays whole and a stray "the" never becomes a candidate.
+      if (run.length === 0 && LEADING_ARTICLE.test(key)) {
+        const next = tokens[index + 1];
+        const nextKey = next === undefined ? undefined : placeWordKey(next);
+        if (
+          nextKey !== undefined &&
+          !NON_PLACE_WORDS.has(nextKey) &&
+          !LEADING_ARTICLE.test(nextKey)
+        ) {
+          run.push(token);
+          continue;
+        }
+      }
+      flush();
+      continue;
+    }
+    run.push(token);
+    if (run.length >= 5) flush();
   }
-  return candidates;
+  flush();
+  return candidates.filter((candidate) => circeWebsiteUrl(candidate, source) === null);
 }
+
+/**
+ * Words that are never part of a place name the user would answer with: question
+ * vocabulary, command verbs, day words, and connectives. A bare phrase made only
+ * of these is a question or an instruction, not a place.
+ */
+const NON_PLACE_WORDS: ReadonlySet<string> = new Set([
+  "a",
+  "about",
+  "actually",
+  "add",
+  "an",
+  "and",
+  "are",
+  "at",
+  "build",
+  "can",
+  "cancel",
+  "check",
+  "close",
+  "commit",
+  "compare",
+  "could",
+  "create",
+  "current",
+  "currently",
+  "day",
+  "days",
+  "deploy",
+  "do",
+  "does",
+  "document",
+  "examine",
+  "fetch",
+  "find",
+  "fix",
+  "focus",
+  "for",
+  "forecast",
+  "from",
+  "get",
+  "give",
+  "hey",
+  "how",
+  "hows",
+  "i",
+  "implement",
+  "in",
+  "investigate",
+  "is",
+  "it",
+  "just",
+  "kind",
+  "like",
+  "list",
+  "look",
+  "maybe",
+  "me",
+  "merge",
+  "move",
+  "my",
+  "near",
+  "next",
+  "now",
+  "of",
+  "ok",
+  "okay",
+  "on",
+  "open",
+  "or",
+  "pause",
+  "play",
+  "please",
+  "previous",
+  "pull",
+  "push",
+  "queue",
+  "really",
+  "rebase",
+  "remove",
+  "resume",
+  "reroute",
+  "review",
+  "right",
+  "run",
+  "search",
+  "set",
+  "show",
+  "skip",
+  "so",
+  "sort",
+  "start",
+  "status",
+  "stop",
+  "switch",
+  "task",
+  "tell",
+  "temperature",
+  "temps",
+  "test",
+  "that",
+  "the",
+  "then",
+  "there",
+  "this",
+  "tighten",
+  "time",
+  "to",
+  "today",
+  "tomorrow",
+  "tonight",
+  "uh",
+  "um",
+  "update",
+  "us",
+  "weather",
+  "we",
+  "week",
+  "well",
+  "what",
+  "whats",
+  "when",
+  "where",
+  "which",
+  "who",
+  "why",
+  "will",
+  "would",
+  "write",
+  "you",
+]);
 
 const URL_PATTERN = /\b(?:https?:\/\/|www\.)[^\s,;.!?]+/giu;
 
@@ -308,4 +495,116 @@ export const runCirceDecisionTier = (input: {
         state: input.state,
       }),
     );
+  });
+
+export type CirceOutcomeTierResult =
+  | { readonly status: "outcome"; readonly outcome: CirceOutcome }
+  | { readonly status: "decline"; readonly reason: string };
+
+/**
+ * The single live classifier. One TypeSafe request asks which outcome the turn
+ * resolves to; composition consults only the questions that outcome owns, so a
+ * weather ask never drags project, task, or compound questions into the answer.
+ * Work keeps the Director's authority through the supplied resolver; a
+ * conversation has no decision answer (the provider net speaks it), so the tier
+ * declines and the caller falls back instead of inventing one.
+ */
+export const runCirceOutcomeTier = (input: {
+  readonly source: string;
+  readonly state: DecisionState;
+  readonly catalog: DecisionCatalog;
+  readonly nodeTools: ReadonlyArray<string>;
+  readonly clientTools: ReadonlyArray<string>;
+  readonly appCandidates?: ReadonlyArray<string>;
+  readonly mediaCandidates?: ReadonlyArray<string>;
+  readonly locationCandidates?: ReadonlyArray<string>;
+  readonly websiteCandidates?: ReadonlyArray<string>;
+  readonly decide: (request: DecisionRequest) => Effect.Effect<CirceDecisionOutcome>;
+  readonly work: (proposal: CirceSemanticProposal) => CirceWorkResolution;
+}): Effect.Effect<CirceOutcomeTierResult> =>
+  Effect.gen(function* () {
+    const locationCandidates = input.locationCandidates ?? extractLocationCandidates(input.source);
+    const websiteCandidates = input.websiteCandidates ?? extractWebsiteCandidates(input.source);
+    const built = buildCirceOutcomeRequest({
+      state: input.state,
+      catalog: input.catalog,
+      nodeTools: input.nodeTools,
+      clientTools: input.clientTools,
+      locationCandidates,
+      websiteCandidates,
+      ...(input.appCandidates === undefined ? {} : { appCandidates: input.appCandidates }),
+      ...(input.mediaCandidates === undefined ? {} : { mediaCandidates: input.mediaCandidates }),
+    });
+    const first = yield* input.decide(built.request);
+    if (first.status === "decline") {
+      return { status: "decline", reason: first.reason } satisfies CirceOutcomeTierResult;
+    }
+    yield* Effect.logDebug("Circe outcome resolved", { model: first.model });
+    const outcomeChoice = choiceAnswer(first.answers, "outcome");
+    if (outcomeChoice === undefined) {
+      return {
+        status: "decline",
+        reason: "decision-invalid-response",
+      } satisfies CirceOutcomeTierResult;
+    }
+    if (outcomeChoice.choice === CIRCE_OUTCOME_CONVERSATION) {
+      // A conversation has no decision answer. The node answers through the
+      // provider: a scoped project gets a durable provider thread (whose real
+      // answer arrives on the thread), and only a project-free question needs
+      // the provider to speak inline. Returning the outcome lets the caller
+      // pick; the tier never invents prose.
+      return {
+        status: "outcome",
+        outcome: { kind: "conversation", answer: "" },
+      } satisfies CirceOutcomeTierResult;
+    }
+    // Only a work outcome can be a compound; tool and conversation turns never
+    // split, so their questions are not asked and their turns never segment.
+    let segments: ReadonlyArray<DecisionSegment> | undefined;
+    let segmentAnswers: ReadonlyArray<DecisionAnswers> | undefined;
+    if (outcomeChoice.choice === CIRCE_OUTCOME_WORK) {
+      const accepted = acceptedBoundaries(built.boundaries, first.answers);
+      const spokenSegments = segmentUtterance(input.source, accepted);
+      if (spokenSegments.length >= 2) {
+        const answersList: Array<DecisionAnswers> = [];
+        for (const [index, segment] of spokenSegments.entries()) {
+          const segmentRequest = buildDecisionRequest({
+            state: { ...input.state, utterance: segment.text },
+            catalog: input.catalog,
+          });
+          const segmentOutcome = yield* input.decide(segmentRequest.request);
+          if (segmentOutcome.status === "decline") {
+            return {
+              status: "decline",
+              reason: segmentOutcome.reason,
+            } satisfies CirceOutcomeTierResult;
+          }
+          const prefix = `seg${index}_`;
+          answersList.push(
+            Object.fromEntries(
+              Object.entries(segmentOutcome.answers).map(([id, answer]) => [
+                `${prefix}${id}`,
+                answer,
+              ]),
+            ),
+          );
+        }
+        segments = spokenSegments;
+        segmentAnswers = answersList;
+      }
+    }
+    const outcome = composeCirceOutcome({
+      source: input.source,
+      state: input.state,
+      table: built.table,
+      boundaries: built.boundaries,
+      answers: first.answers,
+      tools: built.tools,
+      locationCandidates,
+      websiteCandidates,
+      ...(segments === undefined ? {} : { segments }),
+      ...(segmentAnswers === undefined ? {} : { segmentAnswers }),
+      work: input.work,
+    });
+    return { status: "outcome", outcome } satisfies CirceOutcomeTierResult;
   });

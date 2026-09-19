@@ -619,13 +619,32 @@ describe("buildCodexDeveloperInstructions", () => {
 describe("T3 browser developer instructions", () => {
   const runtime = { model: "gpt-5.3-codex", reasoningEffort: "high" };
 
-  it("prefers the product-native preview tools in both collaboration modes", () => {
+  it("prefers the product-native preview tools for preview work in both collaboration modes", () => {
     for (const mode of ["default", "plan"] as const) {
       const instructions = buildCodexDeveloperInstructions(mode, runtime, true);
       NodeAssert.match(instructions, /circe/);
       NodeAssert.match(instructions, /preview_status/);
       NodeAssert.match(instructions, /preview_open/);
       NodeAssert.match(instructions, /Do not switch to global browser skills/);
+      NodeAssert.match(instructions, /signed-in browser is the default/);
+    }
+  });
+
+  it("adds desktop guidance only when the desktop tools are attached", () => {
+    for (const mode of ["default", "plan"] as const) {
+      const withDesktop = buildCodexDeveloperInstructions(mode, runtime, {
+        browser: true,
+        device: false,
+        desktop: true,
+      });
+      NodeAssert.match(withDesktop, /desktop_run_goal/);
+      NodeAssert.match(withDesktop, /Circe desktop/);
+      const withoutDesktop = buildCodexDeveloperInstructions(mode, runtime, {
+        browser: true,
+        device: false,
+        desktop: false,
+      });
+      NodeAssert.doesNotMatch(withoutDesktop, /## Circe desktop/);
     }
   });
 
@@ -634,7 +653,8 @@ describe("T3 browser developer instructions", () => {
       const instructions = buildCodexDeveloperInstructions(mode, runtime, false);
       NodeAssert.doesNotMatch(instructions, /preview_status/);
       NodeAssert.doesNotMatch(instructions, /preview_open/);
-      NodeAssert.doesNotMatch(instructions, /Circe collaborative browser/);
+      NodeAssert.doesNotMatch(instructions, /Circe browsers/);
+      NodeAssert.doesNotMatch(instructions, /desktop_run_goal/);
       // Steering away from other browser automation must go with the tools;
       // keeping it would leave the model talked out of its only option.
       NodeAssert.doesNotMatch(instructions, /Do not switch to global browser skills/);

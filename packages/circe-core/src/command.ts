@@ -1,5 +1,7 @@
 import {
   isProviderAvailable,
+  type CirceClientToolCandidates,
+  type CirceClientToolName,
   type CirceProjectAlias,
   type CirceModelDraft,
   type CirceNeedsInputReason,
@@ -205,6 +207,15 @@ export type CirceCommandNeedsInput = {
       readonly taskRef?: CirceTaskRef;
       readonly label: string;
     }>;
+  };
+  /**
+   * Present when the question narrows a bounded lookup to the place the user
+   * should name. The origin client answers with the place alone, so the lookup
+   * never re-classifies a bare city as a new request.
+   */
+  readonly lookup?: {
+    readonly tool: "weather" | "time";
+    readonly day: "now" | "today" | "tomorrow";
   };
 };
 
@@ -430,6 +441,15 @@ export type CirceCommandContext = {
   readonly continueContext: boolean;
   readonly inputMode?: "voice";
   readonly requestMetadata?: CirceRequestMetadata;
+  /**
+   * Bounded device tools the origin client advertised as executable. A tool
+   * absent here is owned by no executor on this client, so it must never be
+   * offered to the classifier; a tool present here must be offered even when
+   * the turn arrives without a semantic proposal.
+   */
+  readonly clientTools?: ReadonlyArray<CirceClientToolName>;
+  /** Client-owned candidate sets for app and media tool parameters. */
+  readonly clientToolCandidates?: CirceClientToolCandidates;
   /**
    * Client-pinned answer identity. Null means the snapshot explicitly saw no
    * unique pending request; undefined skips verification for legacy callers.
@@ -1314,6 +1334,7 @@ function interpretCirceCommandProposal(
     proposal.action === "lookup" ||
     proposal.action === "open-website" ||
     proposal.action === "browse" ||
+    proposal.action === "preview" ||
     proposal.action === "computer"
   ) {
     return {
@@ -1445,7 +1466,7 @@ function interpretCirceCommandProposal(
   if (proposal.action === "converse") {
     const instruction = prepared.sourceUtterance.trim();
     const answer = proposal.answer?.trim() ?? "";
-    if (instruction.length === 0 || answer.length === 0) {
+    if (instruction.length === 0) {
       return {
         status: "needs-input",
         reason: "unsupported-command",
@@ -1475,7 +1496,16 @@ function interpretCirceCommandProposal(
     }
     const ambient = input.projects.find((candidate) => candidate.id === input.currentProjectId);
     if (ambient === undefined) {
-      // No project in scope: the answer speaks inline with no durable thread.
+      // No project in scope: the answer speaks inline with no durable thread,
+      // so it must exist before the turn can finish.
+      if (answer.length === 0) {
+        return {
+          status: "needs-input",
+          reason: "unsupported-command",
+          prompt: "I couldn't answer that just now.",
+          choices: [],
+        };
+      }
       return {
         status: "command",
         command: { type: "converse", instruction, answer },

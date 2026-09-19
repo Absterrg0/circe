@@ -37,6 +37,8 @@ export type CirceToolParameter =
       readonly name: string;
       readonly values: ReadonlyArray<string>;
       readonly required: boolean;
+      /** Value used when the user did not name one; absent means ask. */
+      readonly fallback?: string;
     }
   | { readonly kind: "boolean"; readonly name: string; readonly required: boolean }
   | {
@@ -74,6 +76,7 @@ const p = {
     name: "day",
     values: ["now", "today", "tomorrow"],
     required: true,
+    fallback: "now",
   }),
   website: (): CirceToolParameter => ({
     kind: "text",
@@ -155,7 +158,7 @@ export const CIRCE_TOOLS: ReadonlyArray<CirceTool> = [
     name: "open-website",
     host: "client",
     risk: "mutating",
-    description: "Open an allowlisted site name or a web address the user spoke.",
+    description: "Open one allowlisted site name or web address and nothing else.",
     parameters: [p.website()],
     renderAccepted: (args) => `Opening ${String(args.website ?? "that site")}.`,
   },
@@ -188,9 +191,27 @@ export const CIRCE_TOOLS: ReadonlyArray<CirceTool> = [
     host: "client",
     risk: "destructive",
     description:
-      "Operate the user's desktop to accomplish a goal: clicking, typing, scrolling, opening apps. A provider plans the goal and a fast decision model picks each grounded screen action.",
+      "Operate the user's own computer and its real apps, including opening a website in their real browser and using it. Use for goals that name the user's computer, their own browser, or an installed app. A provider plans the goal and a fast decision model picks each grounded screen action.",
     parameters: [p.residual()],
     renderAccepted: () => "Working on your computer.",
+  },
+  {
+    name: "browse",
+    host: "client",
+    risk: "destructive",
+    description:
+      "Operate the user's own real browser toward a goal over several grounded steps: open a site, search, click, read, fill in, submit. This uses their signed-in sessions. Use this for any web goal that is not development or testing against a preview.",
+    parameters: [p.residual()],
+    renderAccepted: () => "Working in your browser.",
+  },
+  {
+    name: "preview",
+    host: "client",
+    risk: "destructive",
+    description:
+      "Operate Circe's shared in-app preview browser toward a goal over several grounded steps. Use for development and testing against localhost, a dev server, or the project preview, where the user did not ask for their own browser.",
+    parameters: [p.residual()],
+    renderAccepted: () => "Working in the preview browser.",
   },
 ];
 

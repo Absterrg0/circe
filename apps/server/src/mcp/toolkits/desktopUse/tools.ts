@@ -5,6 +5,8 @@ import {
   DesktopUseInputResult,
   DesktopUseModifier,
   DesktopUseMouseButton,
+  DesktopUseState,
+  DesktopUseStateInput,
   DesktopUseStatus,
   DesktopUseWindowList,
   McpCapabilityUnavailableError,
@@ -61,9 +63,23 @@ export const DesktopStatusTool = Tool.make("desktop_status", {
   .annotate(Tool.Idempotent, true)
   .annotate(Tool.OpenWorld, false);
 
+export const DesktopStateTool = Tool.make("desktop_state", {
+  description:
+    "Read the grounded accessibility tree of this node's desktop: actionable elements with roles, names, and bounds. Use this to see what is on screen before acting. Prefer it over desktop_screenshot, which flashes the screen on GNOME and is only needed for canvas or GL surfaces.",
+  parameters: DesktopUseStateInput,
+  success: DesktopUseState,
+  failure: DesktopUseToolError,
+  dependencies,
+})
+  .annotate(Tool.Title, "Read desktop elements")
+  .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
 export const DesktopScreenshotTool = Tool.make("desktop_screenshot", {
   description:
-    "Capture the current desktop screen as a PNG. Returns the image plus display metadata, and reports the pointer position when the platform exposes it. Use this to see what is on screen before acting.",
+    "Capture the current desktop screen as a PNG. Returns the image plus display metadata, and reports the pointer position when the platform exposes it. On GNOME Wayland this flashes the screen; use desktop_state for element work and reserve this for canvas or GL surfaces.",
   parameters: Schema.Struct({ displayId: DisplayTarget }),
   success: DesktopUseFrame,
   failure: DesktopUseToolError,
@@ -246,7 +262,7 @@ const DesktopFocusWindowTool = Tool.make("desktop_focus_window", {
  */
 export const DesktopRunGoalTool = Tool.make("desktop_run_goal", {
   description:
-    "Achieve a short goal on this node's desktop with the grounded TypeSafe step loop, which selects among accessibility elements and performs each action. Prefer this over clicking step by step when the app exposes an accessibility tree. For canvas or GL apps where you are the only one who can see the target, use desktop_screenshot and desktop_click/desktop_type directly. The goal is an objective, never a prompt: the loop only selects grounded elements and finite actions.",
+    "Achieve a short goal on this node's desktop with the grounded TypeSafe step loop, which selects among accessibility elements and performs each action. Call desktop_state first when you need to see what is on screen. The goal is an objective, never a prompt: the loop only selects grounded elements and finite actions.",
   parameters: Schema.Struct({
     goal: TrimmedNonEmptyString.annotate({
       description: "What to accomplish, in plain language.",
@@ -274,6 +290,7 @@ export const DesktopRunGoalTool = Tool.make("desktop_run_goal", {
 
 export const DesktopUseToolkit = Toolkit.make(
   DesktopStatusTool,
+  DesktopStateTool,
   DesktopMoveTool,
   DesktopClickTool,
   DesktopDragTool,

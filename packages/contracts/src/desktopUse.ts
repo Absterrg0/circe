@@ -41,7 +41,10 @@ export const DesktopUseStatus = Schema.Struct({
   available: Schema.Boolean,
   platform: DesktopUsePlatform,
   backend: DesktopUseBackend,
-  /** Present when unavailable: why this node cannot drive its desktop. */
+  /**
+   * Why this node cannot drive its desktop, or which helper is missing when
+   * only part of the surface is available.
+   */
   reason: Schema.optional(TrimmedNonEmptyString),
   displays: Schema.Array(DesktopUseDisplay),
   supports: Schema.Struct({
@@ -49,9 +52,44 @@ export const DesktopUseStatus = Schema.Struct({
     pointer: Schema.Boolean,
     keyboard: Schema.Boolean,
     windows: Schema.Boolean,
+    /**
+     * Linux AT-SPI grounding and element actions. A node with accessibility
+     * can run element-based goals even when capture or pointer helpers are
+     * missing; capture is only required for canvas or GL surfaces.
+     */
+    accessibility: Schema.optional(Schema.Boolean),
   }),
 });
 export type DesktopUseStatus = typeof DesktopUseStatus.Type;
+
+/**
+ * One grounded element from the accessibility tree. This is what a provider
+ * reads instead of a screenshot: ids, roles, names, and bounds are enough to
+ * decide the next action, and reading them never touches the screen.
+ */
+export const DesktopUseElement = Schema.Struct({
+  id: TrimmedNonEmptyString,
+  role: Schema.NullOr(Schema.String.check(Schema.isMaxLength(80))),
+  name: Schema.String.check(Schema.isMaxLength(200)),
+  x: Schema.Finite,
+  y: Schema.Finite,
+  width: Schema.Finite,
+  height: Schema.Finite,
+});
+export type DesktopUseElement = typeof DesktopUseElement.Type;
+
+export const DesktopUseState = Schema.Struct({
+  title: Schema.optional(TrimmedNonEmptyString),
+  elements: Schema.Array(DesktopUseElement),
+});
+export type DesktopUseState = typeof DesktopUseState.Type;
+
+export const DesktopUseStateInput = Schema.Struct({
+  limit: Schema.optional(
+    Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)).check(Schema.isLessThanOrEqualTo(200)),
+  ),
+});
+export type DesktopUseStateInput = typeof DesktopUseStateInput.Type;
 
 export const DesktopUseCursor = Schema.Struct({
   x: Schema.Finite,

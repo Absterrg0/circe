@@ -3,6 +3,8 @@ import type {
   DesktopUseFrame,
   DesktopUseInputRequest,
   DesktopUseInputResult,
+  DesktopUseState,
+  DesktopUseStateInput,
   DesktopUseStatus,
   DesktopUseSubscribeFramesInput,
   DesktopUseWindow,
@@ -26,6 +28,9 @@ import {
 
 export interface DesktopUseShape {
   readonly getStatus: () => Effect.Effect<DesktopUseStatus>;
+  readonly state: (
+    input?: DesktopUseStateInput,
+  ) => Effect.Effect<DesktopUseState, import("@circe/contracts").DesktopUseError>;
   readonly capture: (
     input: DesktopUseCaptureInput,
   ) => Effect.Effect<
@@ -81,6 +86,10 @@ export const make = Effect.fn("DesktopUse.make")(function* () {
   // Status shares the desktop semaphore with capture and input, so a probe
   // never runs alongside an injected action or another probe.
   const getStatus: DesktopUseShape["getStatus"] = () => desktop.withPermits(1)(driver.getStatus());
+
+  // Element state is a read of the accessibility tree, so it shares the
+  // desktop semaphore with status rather than the input queue.
+  const state: DesktopUseShape["state"] = (input) => desktop.withPermits(1)(driver.state(input));
 
   const capture: DesktopUseShape["capture"] = Effect.fn("DesktopUse.capture")(function* (input) {
     const result = yield* driver.capture(
@@ -139,6 +148,7 @@ export const make = Effect.fn("DesktopUse.make")(function* () {
 
   return DesktopUse.of({
     getStatus,
+    state,
     capture: (request) => serialized(capture(request)),
     input: (request) => serialized(input(request)),
     listWindows,

@@ -46,14 +46,15 @@ describe("T3 orchestration provider instructions", () => {
     assert.equal(t3OrchestrationSystemPrompt(true), CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS);
   });
 
-  it("gives ACP sessions provider-neutral mode, browser, and orchestration guidance", () => {
+  it("gives ACP sessions provider-neutral mode, browser, desktop, and orchestration guidance", () => {
     const injected = t3AcpPromptWithInstructions({
       prompt: "Inspect the repository.",
       state: { interactionMode: "default", hasT3Mcp: true },
     });
 
     assert.include(injected, "Circe interaction mode: Default");
-    assert.include(injected, "Circe collaborative browser");
+    assert.include(injected, "Circe browsers");
+    assert.include(injected, "Circe desktop");
     assert.include(injected, "Circe orchestration");
     assert.include(injected, "<user_request>\nInspect the repository.\n</user_request>");
   });
@@ -79,7 +80,8 @@ describe("T3 orchestration provider instructions", () => {
       state: { interactionMode: "default", hasT3Mcp: false },
     });
     assert.include(withoutMcp, "Circe interaction mode: Default");
-    assert.notInclude(withoutMcp, "Circe collaborative browser");
+    assert.notInclude(withoutMcp, "Circe browsers");
+    assert.notInclude(withoutMcp, "Circe desktop");
     assert.notInclude(withoutMcp, "Circe orchestration");
   });
 });

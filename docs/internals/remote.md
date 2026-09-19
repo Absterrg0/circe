@@ -58,6 +58,13 @@ describes the server. Process replacement belongs to the launcher's
 [update protocol](./server-updates.md); the connection runtime handles the
 resulting disconnect.
 
+Discovery is not a compatibility authority for a directly reachable
+environment. The resolver revalidates the live descriptor before every direct
+connect, so a discovery report that lags the node (an older relay strips fields
+it does not know) must never disable a local or direct connection. Only
+relay-routed environments, which have no local probe, take their compatibility
+from discovery.
+
 ### Desktop without a local environment
 
 Desktop normally launches its own primary server, but the desktop setting `localEnvironmentEnabled`

@@ -13,6 +13,7 @@ import {
   type BoundaryCandidate,
   type DecisionBuildInput,
   type DecisionOptionTable,
+  type DecisionSegment,
   type DecisionState,
 } from "./decisionRequest.ts";
 import { composeDecision } from "./decisionCompose.ts";
@@ -40,7 +41,8 @@ const OUTCOME_CRITERIA: Readonly<Record<string, string>> = {
     "Create, continue, steer, queue, stop, focus, review, reroute, report, or list project work.",
   [CIRCE_OUTCOME_CONVERSATION]: "Answer a general question unrelated to any task or project.",
   [CIRCE_OUTCOME_REFUSAL]: "The request cannot be done as one action.",
-  [CIRCE_OUTCOME_CLARIFY]: "The request is ambiguous and needs one typed clarifying question.",
+  [CIRCE_OUTCOME_CLARIFY]:
+    "The request is genuinely ambiguous and one typed question resolves it. Never pick this when the user named a clear action, target, or tool.",
 };
 
 const OUTCOME_FLOOR = 0.6;
@@ -90,7 +92,10 @@ function parameterIsOfferable(
   if (parameter.kind !== "text" || !parameter.required) return true;
   switch (parameter.candidates.kind) {
     case "location":
-      return candidates.locationCandidates.length > 0;
+      // A place is open-ended: the tool stays offerable with no code-built
+      // candidates, and a missing place becomes a typed lookup clarification
+      // ("Which place should I check for weather?") instead of hiding weather.
+      return true;
     case "website":
       return candidates.websiteCandidates.length > 0;
     case "app":
@@ -98,7 +103,10 @@ function parameterIsOfferable(
     case "media-target":
       return candidates.mediaCandidates.length > 0;
     case "residual":
-      return false;
+      // The residual goal is the user's own instruction, which the host
+      // derives from the utterance after the tool is selected. It is never a
+      // Choice the model fills, so the tool stays offerable.
+      return true;
   }
 }
 
@@ -193,11 +201,16 @@ export function buildCirceOutcomeRequest(
   for (const tool of tools) outcomeCriteria[tool.name] = tool.description;
   const toolQuestions: Record<string, DecisionRequest["questions"][string]> = {};
   for (const tool of tools) Object.assign(toolQuestions, toolParameterQuestions(tool, input));
+  // Ambiguity is the outcome question's job now: leaving the legacy flag in
+  // lets a confused model ask "I need a little more detail" on a clear weather
+  // ask even after it selected the weather outcome.
+  const { needs_clarification: _legacyNeedsClarification, ...workQuestions } =
+    base.request.questions;
   return {
     request: {
       ...base.request,
       questions: {
-        ...base.request.questions,
+        ...workQuestions,
         outcome: {
           type: "choice",
           instructions:
@@ -227,6 +240,10 @@ export interface ComposeCirceOutcomeInput {
   readonly tools: ReadonlyArray<CirceTool>;
   readonly locationCandidates?: ReadonlyArray<string>;
   readonly websiteCandidates?: ReadonlyArray<string>;
+  /** Accepted segments of a compound work turn; absent for one command. */
+  readonly segments?: ReadonlyArray<DecisionSegment>;
+  /** Per-segment answers for a compound work turn, aligned with `segments`. */
+  readonly segmentAnswers?: ReadonlyArray<DecisionAnswers>;
   /** Bounded inline answer for a conversation; supplied by the provider path. */
   readonly conversationAnswer?: string;
   /** Host authority for work: validate the proposal and return typed commands. */
@@ -299,6 +316,10 @@ function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): C
     if (parameter.kind === "enum") {
       const value = readEnumArgument(input.answers, id);
       if (value === undefined) {
+        if (parameter.fallback !== undefined) {
+          entries.push([parameter.name, parameter.fallback]);
+          continue;
+        }
         if (!parameter.required) continue;
         return {
           kind: "clarification",
@@ -315,6 +336,12 @@ function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): C
     }
     const text = readTextArgument(input.answers, id, input.source);
     if ("missing" in text) {
+      if (parameter.candidates.kind === "residual") {
+        // The tool was selected and the goal is the user's own instruction;
+        // code supplies it verbatim instead of asking the model to copy text.
+        entries.push([parameter.name, input.source]);
+        continue;
+      }
       if (!parameter.required) continue;
       return {
         kind: "clarification",
@@ -369,6 +396,8 @@ function composeWorkOutcome(input: ComposeCirceOutcomeInput): CirceOutcome {
     answers: input.answers,
     boundaries: input.boundaries,
     state: input.state,
+    ...(input.segments === undefined ? {} : { segments: input.segments }),
+    ...(input.segmentAnswers === undefined ? {} : { segmentAnswers: input.segmentAnswers }),
   });
   if (composed.status === "needs-input") {
     return {

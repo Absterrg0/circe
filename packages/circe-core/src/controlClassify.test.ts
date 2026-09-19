@@ -20,7 +20,15 @@ const websiteCandidates = ["YouTube"];
 const offered = (): ReadonlyArray<CirceTool> =>
   offeredCirceTools({
     nodeTools: ["weather", "time", "task-status", "list-projects"],
-    clientTools: ["open-website", "open-app", "media", "clipboard", "computer"],
+    clientTools: [
+      "open-website",
+      "open-app",
+      "media",
+      "clipboard",
+      "browse",
+      "preview",
+      "computer",
+    ],
     locationCandidates,
     websiteCandidates,
   });
@@ -44,17 +52,60 @@ describe("offered tools", () => {
     expect(tools.map((tool) => tool.name)).toEqual(["weather"]);
   });
 
-  it("never offers a tool whose required text parameter has no candidates", () => {
-    // open-app and media need free-text arguments with no code-built
-    // candidate set, so they are not offered a Choice they cannot close.
+  it("offers a bounded tool only when its host advertised the capability", () => {
+    // open-app has no client-supplied candidate set, so it cannot close a
+    // Choice and is not offered; a residual goal does not need one because
+    // the host derives it from the user's own instruction.
     const names = offered().map((tool) => tool.name);
     expect(names).toContain("weather");
     expect(names).toContain("open-website");
+    expect(names).toContain("browse");
+    expect(names).toContain("computer");
     // An optional text argument is still closed: media can run without a target.
     expect(names).toContain("media");
-    // A required app or residual argument has no candidate set, so it is not offered.
     expect(names).not.toContain("open-app");
-    expect(names).not.toContain("computer");
+  });
+
+  it("keeps a lookup tool offered with no place candidates and asks a typed question", () => {
+    const state = {
+      utterance: "what is the weather",
+      currentProjectKey: null,
+      focusedTaskKey: null,
+      pendingRequest: "none" as const,
+      continueContext: false,
+    };
+    const catalog: DecisionCatalog = {
+      projects: [],
+      tasks: [],
+      providers: [],
+      efforts: [],
+    };
+    const built = buildCirceOutcomeRequest({
+      state,
+      catalog,
+      nodeTools: ["weather"],
+      clientTools: [],
+      locationCandidates: [],
+      websiteCandidates: [],
+    });
+    const outcome = built.request.questions.outcome;
+    expect(outcome?.type).toBe("choice");
+    if (outcome?.type !== "choice") return;
+    expect(Object.keys(outcome.criteria)).toContain("weather");
+    const composed = composeCirceOutcome({
+      source: state.utterance,
+      state,
+      table: built.table,
+      boundaries: built.boundaries,
+      answers: { outcome: choice("weather") },
+      tools: built.tools,
+      locationCandidates: [],
+      websiteCandidates: [],
+      work: () => workRefusal,
+    });
+    expect(composed.kind).toBe("clarification");
+    if (composed.kind !== "clarification") return;
+    expect(composed.clarification.kind).toBe("lookup");
   });
 });
 
@@ -122,6 +173,66 @@ describe("composing one CirceOutcome", () => {
       tool: "weather",
       risk: "read-only",
       args: { location: "Paris", day: "now" },
+    });
+  });
+
+  it("turns a browse outcome into a goal-carrying client action", () => {
+    const source = "open github and search for any pull requests in rivvl";
+    const state = {
+      utterance: source,
+      currentProjectKey: null,
+      focusedTaskKey: null,
+      pendingRequest: "none" as const,
+      continueContext: false,
+    };
+    const outcome = composeCirceOutcome({
+      source,
+      state,
+      table: { projects: [], tasks: [], providers: [], efforts: [] },
+      boundaries: [],
+      answers: { outcome: choice("browse") },
+      tools: offered(),
+      locationCandidates,
+      websiteCandidates,
+      work: () => workRefusal,
+    });
+    expect(outcome).toMatchObject({
+      kind: "client-action",
+      host: "client",
+      tool: "browse",
+      risk: "destructive",
+      args: { goal: source },
+      speech: "Working in your browser.",
+    });
+  });
+
+  it("turns a preview outcome into a goal-carrying preview client action", () => {
+    const source = "test the checkout flow against localhost";
+    const state = {
+      utterance: source,
+      currentProjectKey: null,
+      focusedTaskKey: null,
+      pendingRequest: "none" as const,
+      continueContext: false,
+    };
+    const outcome = composeCirceOutcome({
+      source,
+      state,
+      table: { projects: [], tasks: [], providers: [], efforts: [] },
+      boundaries: [],
+      answers: { outcome: choice("preview") },
+      tools: offered(),
+      locationCandidates,
+      websiteCandidates,
+      work: () => workRefusal,
+    });
+    expect(outcome).toMatchObject({
+      kind: "client-action",
+      host: "client",
+      tool: "preview",
+      risk: "destructive",
+      args: { goal: source },
+      speech: "Working in the preview browser.",
     });
   });
 

@@ -83,11 +83,19 @@ export const CirceSemanticProposalAction = Schema.Literals([
    */
   "open-website",
   /**
-   * Operate a website toward a goal over several grounded steps. The goal is
-   * the user's own instruction; the origin client confirms once per session
-   * and the node runs the TypeSafe step loop against its browser host.
+   * Operate the user's own real browser toward a goal over several grounded
+   * steps, with their signed-in sessions. The goal is the user's own
+   * instruction; the origin client starts it and the node runs the TypeSafe
+   * step loop against the real desktop.
    */
   "browse",
+  /**
+   * Operate Circe's shared in-app preview browser toward a goal over several
+   * grounded steps. Development and testing against localhost, a dev server,
+   * or a project preview; the origin client starts it and the node runs the
+   * TypeSafe step loop against its preview host.
+   */
+  "preview",
   /**
    * Operate this node's desktop toward a goal over several grounded steps.
    * The goal is the user's own instruction; the origin client confirms once
@@ -182,7 +190,7 @@ export const CirceSemanticProposal = Schema.Struct({
   website: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
   ),
-  /** Present only when action is browse: the bounded mission goal. */
+  /** Present only when action is browse or preview: the bounded mission goal. */
   browserGoal: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
   ),

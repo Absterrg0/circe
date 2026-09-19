@@ -648,6 +648,7 @@ export function buildCodexTurnStartParams(input: {
   readonly hasT3Mcp?: boolean;
   readonly browserToolsAvailable?: boolean;
   readonly deviceToolsAvailable?: boolean;
+  readonly desktopToolsAvailable?: boolean;
 }) {
   return Effect.gen(function* () {
     const runtimeModeDefaults = codexRuntimeModeTurnDefaults(input.runtimePolicy.runtimeMode);
@@ -678,6 +679,7 @@ export function buildCodexTurnStartParams(input: {
             {
               browser: input.browserToolsAvailable ?? true,
               device: input.deviceToolsAvailable ?? false,
+              desktop: input.desktopToolsAvailable ?? false,
             },
           );
     const collaborationMode: CodexSchema.ClientRequest__CollaborationMode | undefined =
@@ -5134,6 +5136,7 @@ export function makeCodexAdapterV2(adapterOptions: CodexAdapterV2Options): Provi
                 hasT3Mcp: mcpSession !== undefined,
                 browserToolsAvailable: mcpSession?.browserToolsAvailable ?? true,
                 deviceToolsAvailable: mcpSession?.capabilities?.has("device") ?? false,
+                desktopToolsAvailable: mcpSession?.capabilities?.has("desktop-use") ?? false,
               });
               yield* Ref.update(pendingRootTurns, (current) => {
                 const updated = new Map(current);

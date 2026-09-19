@@ -3,6 +3,7 @@ import { buildRuntimeInstructions } from "./RuntimeInstructions.ts";
 
 import {
   CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS,
+  CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS,
   CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS,
 } from "./T3OrchestrationInstructions.ts";
 
@@ -16,25 +17,28 @@ The \`circe\` MCP server also exposes \`device_*\` tools for iOS Simulators and 
 export interface T3CodeToolAvailability {
   readonly browser: boolean;
   readonly device: boolean;
+  readonly desktop: boolean;
 }
 
 const normalizeAvailability = (
   availability: boolean | T3CodeToolAvailability,
 ): T3CodeToolAvailability =>
-  typeof availability === "boolean" ? { browser: availability, device: false } : availability;
+  typeof availability === "boolean"
+    ? { browser: availability, device: false, desktop: false }
+    : availability;
 
 /**
  * Each block is omitted entirely when its tools aren't attached. Describing
- * `preview_*` or `device_*` tools that aren't in the turn's tool list would be
- * worse than saying nothing: the instructions actively steer the model away
- * from Playwright, agent-browser, and raw simctl/adb, so leaving them in would
- * talk it out of the only automation it still has.
+ * `preview_*`, `desktop_*`, or `device_*` tools that aren't in the turn's tool
+ * list would be worse than saying nothing: the instructions actively steer the
+ * model away from Playwright, agent-browser, and raw simctl/adb, so leaving
+ * them in would talk it out of the only automation it still has.
  */
 const browserToolInstructions = (availability: boolean | T3CodeToolAvailability): string => {
   const tools = normalizeAvailability(availability);
   return `${tools.browser ? CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS : ""}${
-    tools.device ? CIRCE_CODE_DEVICE_TOOL_INSTRUCTIONS : ""
-  }`;
+    tools.desktop ? CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS : ""
+  }${tools.device ? CIRCE_CODE_DEVICE_TOOL_INSTRUCTIONS : ""}`;
 };
 
 const codexPlanModeDeveloperInstructions = (

@@ -146,11 +146,19 @@ export const CirceSemanticProposalAction = Schema.Literals([
   "lookup",
   "open-website",
   /**
-   * Operate a website toward a goal over several grounded steps. The goal is
-   * the user's own instruction; the origin client confirms once per session
-   * and the node runs the TypeSafe step loop against its browser host.
+   * Operate the user's own real browser toward a goal over several grounded
+   * steps. The goal is the user's own instruction; the origin client starts
+   * it directly and the node runs the TypeSafe step loop against its desktop
+   * host, which opens the grounded site in the real browser.
    */
   "browse",
+  /**
+   * Operate the shared in-app preview browser toward a goal over several
+   * grounded steps, for development and testing. The goal is the user's own
+   * instruction; the origin client starts it directly and the node runs the
+   * TypeSafe step loop against its preview host.
+   */
+  "preview",
   /**
    * Operate this node's desktop toward a goal over several grounded steps.
    * The goal is the user's own instruction; the origin client confirms once
@@ -216,9 +224,9 @@ export const CirceSemanticProposal = Schema.Struct({
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
   ),
   /**
-   * Present only when action is browse: the bounded browser mission goal in
-   * the user's own words. Nonauthoritative; the origin client confirms once
-   * per session and the node grounds every step.
+   * Present only when action is browse or preview: the bounded browser
+   * mission goal in the user's own words. Nonauthoritative; the node grounds
+   * every step.
    */
   browserGoal: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(1_000))),
@@ -290,6 +298,35 @@ export type CirceInterpretPendingHint = typeof CirceInterpretPendingHint.Type;
  * IDs, and no acknowledgement. Pins (expectedReply, context threads) stay on
  * the owner node and are never sent here.
  */
+/**
+ * Bounded tool names a client can execute itself. A client advertises the
+ * tools it can actually run on the execute and interpret wires; the node
+ * offers the classifier only those tools, so a missing platform API becomes
+ * an absent capability instead of a "not on this device" refusal.
+ */
+export const CirceClientToolName = Schema.Literals([
+  "open-website",
+  "open-app",
+  "media",
+  "clipboard",
+  "browse",
+  "preview",
+  "computer",
+]);
+export type CirceClientToolName = typeof CirceClientToolName.Type;
+
+/**
+ * Code-built candidate sets the client owns (installed apps, media targets).
+ * The node cannot enumerate the user's device, so the client sends bounded
+ * candidate names; the classifier may pick only from them and the client
+ * revalidates its own pick against its live catalog.
+ */
+export const CirceClientToolCandidates = Schema.Struct({
+  apps: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
+  mediaTargets: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
+});
+export type CirceClientToolCandidates = typeof CirceClientToolCandidates.Type;
+
 export const CirceInterpretInput = Schema.Struct({
   utterance: CirceVerbatimUtterance,
   projects: Schema.Array(CirceInterpretEvidenceProject),
@@ -310,6 +347,13 @@ export const CirceInterpretInput = Schema.Struct({
   pendingHint: Schema.optional(CirceInterpretPendingHint),
   inputMode: Schema.optional(Schema.Literals(["voice", "text"])),
   /**
+   * Bounded device tools the asking client can run. The semantic node offers
+   * them to the classifier, so a multi-step browser goal resolves to the
+   * browser mission instead of a single site launch.
+   */
+  clientTools: Schema.optional(Schema.Array(CirceClientToolName)),
+  clientToolCandidates: Schema.optional(CirceClientToolCandidates),
+  /**
    * Request identity for pre-accept cancellation of the interpret call
    * itself. Tracked on the semantic node under the same acceptance key
    * derivation as execute; untracked when absent for legacy callers.
@@ -320,33 +364,6 @@ export type CirceInterpretInput = typeof CirceInterpretInput.Type;
 
 export const CirceInterpretResult = CirceSemanticProposal;
 export type CirceInterpretResult = typeof CirceInterpretResult.Type;
-
-/**
- * Bounded tool names a client can execute itself. A client advertises the
- * tools it can actually run on the execute wire; the node offers the
- * classifier only those tools, so a missing platform API becomes an absent
- * capability instead of a "not on this device" refusal.
- */
-export const CirceClientToolName = Schema.Literals([
-  "open-website",
-  "open-app",
-  "media",
-  "clipboard",
-  "computer",
-]);
-export type CirceClientToolName = typeof CirceClientToolName.Type;
-
-/**
- * Code-built candidate sets the client owns (installed apps, media targets).
- * The node cannot enumerate the user's device, so the client sends bounded
- * candidate names; the classifier may pick only from them and the client
- * revalidates its own pick against its live catalog.
- */
-export const CirceClientToolCandidates = Schema.Struct({
-  apps: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
-  mediaTargets: Schema.optional(Schema.Array(TrimmedNonEmptyString.check(Schema.isMaxLength(200)))),
-});
-export type CirceClientToolCandidates = typeof CirceClientToolCandidates.Type;
 
 export const CirceExecuteInput = Schema.Union([
   Schema.Struct({
@@ -458,6 +475,17 @@ export const CirceNeedsInput = Schema.Struct({
   expectedReply: Schema.optional(CirceExpectedReply),
   /** Binds the next answer to the saved frame this question belongs to. */
   clarificationFrameId: Schema.optional(TrimmedNonEmptyString),
+  /**
+   * Present when the question narrows a bounded lookup to the place the user
+   * should name. The origin client answers with the place alone, so the
+   * lookup never re-classifies a bare city as a new request.
+   */
+  lookup: Schema.optional(
+    Schema.Struct({
+      tool: Schema.Literals(["weather", "time"]),
+      day: Schema.Literals(["now", "today", "tomorrow"]),
+    }),
+  ),
 });
 export type CirceNeedsInput = typeof CirceNeedsInput.Type;
 

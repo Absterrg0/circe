@@ -75,7 +75,7 @@ import {
   decisionStateFromEvidence,
   extractLocationCandidates,
   extractWebsiteCandidates,
-  runCirceDecisionTier,
+  runCirceOutcomeTier,
 } from "../decisionTier.ts";
 import type { DecisionRequest } from "@circe/core/decision";
 import {
@@ -109,6 +109,7 @@ import {
   commandTaskFromThread,
   CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS,
   CIRCE_SEMANTIC_UNAVAILABLE_PROMPT,
+  CIRCE_SEMANTIC_WARM_PROMPT,
   looksLikeCirceBoundedCommand,
   navigationCandidateFromDesk,
   normalizeTaskDeskAnswer,
@@ -166,8 +167,8 @@ function buildMeshSemanticPrompt(input: {
     "A leading negation rules out the named control or target: Don't, do not, and never mark ruled-out names excluded, never a destination. 'Don't stop the auth task, tell status' is status, never stop. 'Check auth but not in Fable' cites Fable excluded, never destination, and keeps the full wording. 'excluding the billing endpoint' cites the endpoint excluded.",
     "When a heard project mention is shown, it is advisory evidence only. Cite the heard text exactly as written when routing to it. A typo or mishearing ('Rivvil' for Rivvl, 'Rival' for Rivvl) never spells a catalog name: cite what was heard as subject or excluded, or omit refs and let the host clarify. Established aliases resolve, but only when cited exactly as heard.",
     "A question about, or follow-up to, the focused task that names no other task or project continues it: use continue, not start. A general question unrelated to any listed project or task uses converse with the question answered in answer; answer is required for converse, null otherwise.",
-    "Actions: start creates new work; continue adds a new turn to a ready task; steer adds direction to running work; queue schedules a follow-up; stop interrupts; status reports state; review creates a review task; reroute recreates a task in another project; focus-project changes the project for new work; focus-task changes the selected task; list-projects lists the catalog; converse answers a general question that needs no project or task; lookup answers weather or local time in a named place; open-website opens a named website or web URL on the user's device; browse operates a website toward a goal over several steps; computer operates this node's desktop toward a goal over several steps; unsupported marks a request Circe cannot do as one action. The host decides steer versus continuation from the task's live state, not from hidden wording.",
-    "Quick actions take no project or task. A weather or local-time question uses action lookup with lookup {kind: weather|time, location, day: now|today|tomorrow}; copy location verbatim from the transcript and use day now unless the user says today or tomorrow. A request to open a site uses action open-website with website set to the named site or URL. Never use lookup or open-website for work that edits, deploys, or investigates a project. A request that combines a lookup or website launch with any other work is unsupported: quick actions never take refs and never combine. A request that needs several steps inside a website (find something, fill it in, submit it) uses action browse with browserGoal set to the user's own instruction to the same effect and no refs; the origin client confirms before it starts, and the node grounds every step. A request that needs several steps on this machine's own desktop (open an app, fill a form in it, click through a dialog) uses action computer with computerGoal set to the user's own instruction to the same effect and no refs; the origin client confirms before it starts, and the node grounds every step over accessibility elements.",
+    "Actions: start creates new work; continue adds a new turn to a ready task; steer adds direction to running work; queue schedules a follow-up; stop interrupts; status reports state; review creates a review task; reroute recreates a task in another project; focus-project changes the project for new work; focus-task changes the selected task; list-projects lists the catalog; converse answers a general question that needs no project or task; lookup answers weather or local time in a named place; open-website opens a named website or web URL on the user's device; browse operates the user's own real browser toward a goal over several steps; preview operates the shared in-app preview browser for development or testing toward a goal over several steps; computer operates this node's own desktop and its real apps toward a goal over several steps; unsupported marks a request Circe cannot do as one action. The host decides steer versus continuation from the task's live state, not from hidden wording.",
+    "Quick actions take no project or task. A weather or local-time question uses action lookup with lookup {kind: weather|time, location, day: now|today|tomorrow}; copy location verbatim from the transcript and use day now unless the user says today or tomorrow. A request to open a site uses action open-website with website set to the named site or URL. Never use lookup or open-website for work that edits, deploys, or investigates a project. A request that combines a lookup or website launch with any other work is unsupported: quick actions never take refs and never combine. A request that needs several steps inside the user's own browser (find something, fill it in, submit it) uses action browse with browserGoal set to the user's own instruction to the same effect and no refs; the origin client starts it directly and the node grounds every step in the user's real browser. A request that needs several steps in the shared in-app preview, only when the user asks for the preview, localhost, or a dev server, uses action preview with browserGoal set to the user's own instruction to the same effect and no refs; the origin client starts it directly and the node grounds every step in the preview. A request that needs several steps on this machine's own desktop (open an app, fill a form in it, click through a dialog) uses action computer with computerGoal set to the user's own instruction to the same effect and no refs; the origin client confirms before it starts, and the node grounds every step over accessibility elements.",
     "A pending approval or question is answered by continuing its task: a bare verdict ('yes', 'allow it', 'deny it') or an answer to the waiting question uses continue, never stop, status, or converse. The host binds the reply to the live request; never invent request identity.",
     "Use null when the user did not specify model, effort, or answer. The host dispatches the original transcript minus cited destination spans and composes acceptance speech from the accepted target; proposals carry no wording and no acknowledgement.",
     "Examples:",
@@ -493,44 +494,287 @@ const defaultInterpreterLayer = Layer.effect(
       };
     };
 
+    /**
+     * A typed clarification as the wire needs-input the client answers. Project
+     * and task candidates keep their durable-frame wiring; a lookup carries the
+     * tool and day so a bare place answer runs the lookup directly instead of
+     * being re-classified as a new request.
+     */
+    const needsInputFromClarification = (
+      clarification: CirceClarification,
+    ): CirceCommandNeedsInput => {
+      switch (clarification.kind) {
+        case "project":
+          return {
+            status: "needs-input",
+            reason: "control-target-required",
+            prompt: clarification.prompt,
+            choices: clarification.candidates.map((candidate) => candidate.label),
+            projectClarification: {
+              candidates: clarification.candidates.map((candidate) => ({
+                projectId: ProjectId.make(candidate.projectId),
+                label: candidate.label,
+              })),
+            },
+          };
+        case "task":
+          return {
+            status: "needs-input",
+            reason: "control-target-required",
+            prompt: clarification.prompt,
+            choices: clarification.candidates.map((candidate) => candidate.label),
+            taskClarification: {
+              candidates: clarification.candidates.map((candidate) => ({
+                threadId: ThreadId.make(candidate.threadId),
+                label: candidate.label,
+              })),
+            },
+          };
+        case "lookup":
+          return {
+            status: "needs-input",
+            reason: "control-target-required",
+            prompt: clarification.prompt,
+            choices: clarification.candidates,
+            lookup: {
+              tool: clarification.tool,
+              day: clarification.previous?.day ?? "now",
+            },
+          };
+        case "website":
+          return {
+            status: "needs-input",
+            reason: "control-target-required",
+            prompt: clarification.prompt,
+            choices: clarification.candidates,
+          };
+        case "model":
+          return {
+            status: "needs-input",
+            reason: "unsupported-command",
+            prompt: clarification.prompt,
+            choices: clarification.choices,
+          };
+        case "confirm":
+          return {
+            status: "needs-input",
+            reason: "control-target-required",
+            prompt: clarification.prompt,
+            choices: ["Confirm", "Cancel"],
+          };
+      }
+    };
+
+    /**
+     * The interpretation for an outcome that never reaches work. Tool and
+     * client-action outcomes return before the interpretation is read, so this
+     * only keeps the classified turn total and gives refusals honest copy.
+     */
+    const interpretationForOutcome = (outcome: CirceOutcome): CirceCommandInterpretation => {
+      if (outcome.kind === "clarification") {
+        return needsInputFromClarification(outcome.clarification);
+      }
+      if (outcome.kind === "conversation") {
+        return {
+          status: "needs-input",
+          reason: "unsupported-command",
+          prompt: outcome.answer,
+          choices: [],
+        };
+      }
+      if (outcome.kind === "refused") {
+        return {
+          status: "needs-input",
+          reason: "unsupported-command",
+          prompt: "I couldn't act on that. Say the action and the target.",
+          choices: [],
+        };
+      }
+      return {
+        status: "needs-input",
+        reason: "unsupported-command",
+        prompt: "",
+        choices: [],
+      };
+    };
+
+    /**
+     * The wire proposal for a non-work outcome, when one exists. The mesh
+     * handoff still rides on proposals; a clarification has no proposal shape,
+     * so it stays unsupported and the execution node asks the typed question
+     * itself.
+     */
+    const proposalFromOutcome = (
+      outcome: CirceOutcome,
+    ): typeof CirceSemanticProposal.Type | undefined => {
+      if (outcome.kind === "tool-answer") {
+        if (outcome.tool === "weather" || outcome.tool === "time") {
+          const location =
+            typeof outcome.args.location === "string" ? outcome.args.location : undefined;
+          if (location === undefined) return undefined;
+          const day =
+            outcome.args.day === "today" || outcome.args.day === "tomorrow"
+              ? outcome.args.day
+              : "now";
+          return {
+            action: "lookup",
+            refs: [],
+            model: null,
+            effort: null,
+            answer: null,
+            lookup: { kind: outcome.tool, location, day },
+          };
+        }
+        if (outcome.tool === "task-status") {
+          return { action: "status", refs: [], model: null, effort: null, answer: null };
+        }
+        if (outcome.tool === "list-projects") {
+          return { action: "list-projects", refs: [], model: null, effort: null, answer: null };
+        }
+        return undefined;
+      }
+      if (outcome.kind === "client-action" && outcome.tool === "open-website") {
+        const website = typeof outcome.args.website === "string" ? outcome.args.website : undefined;
+        if (website === undefined) return undefined;
+        return {
+          action: "open-website",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          website,
+        };
+      }
+      if (outcome.kind === "client-action" && outcome.tool === "browse") {
+        const browserGoal = typeof outcome.args.goal === "string" ? outcome.args.goal : undefined;
+        if (browserGoal === undefined) return undefined;
+        return {
+          action: "browse",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          browserGoal,
+        };
+      }
+      if (outcome.kind === "client-action" && outcome.tool === "preview") {
+        const browserGoal = typeof outcome.args.goal === "string" ? outcome.args.goal : undefined;
+        if (browserGoal === undefined) return undefined;
+        return {
+          action: "preview",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          browserGoal,
+        };
+      }
+      if (outcome.kind === "client-action" && outcome.tool === "computer") {
+        const computerGoal = typeof outcome.args.goal === "string" ? outcome.args.goal : undefined;
+        if (computerGoal === undefined) return undefined;
+        return {
+          action: "computer",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          computerGoal,
+        };
+      }
+      if (outcome.kind === "conversation") {
+        // No decision answer exists; the origin client either runs a durable
+        // provider thread (project in scope) or asks the node for a spoken
+        // answer.
+        return converseProposal;
+      }
+      return undefined;
+    };
+    const unsupportedProposal = {
+      action: "unsupported",
+      refs: [],
+      model: null,
+      effort: null,
+      answer: null,
+    } as const;
+
+    const converseProposal = {
+      action: "converse",
+      refs: [],
+      model: null,
+      effort: null,
+      answer: null,
+    } as const;
+
     const interpretTurn = (input: CirceCommandContext) => {
       const prepared = prepareCirceSemanticTurn(input);
       if (prepared.status === "needs-input") {
         return Effect.succeed({
           interpretation: prepared as CirceCommandInterpretation,
           proposal: undefined,
+          outcome: undefined,
           source: input.utterance,
         });
       }
       const source = prepared.sourceUtterance;
       return Effect.gen(function* () {
-        // System One decision tier: one or two finite requests, composed in
-        // code, then the ordinary Director. A composed needs-input is a
-        // deliberate Clarify and never falls through; only a decline (no
-        // key, timeout, 429, or network failure) reaches the provider net.
-        const tier = yield* runCirceDecisionTier({
+        // One TypeSafe decision over every outcome this host can produce. The
+        // composer consults only the questions the selected outcome owns, so a
+        // lookup never answers project, task, or compound questions. Work keeps
+        // the Director's authority through the supplied resolver; a composed
+        // needs-input is a deliberate typed question; only a decline (no key,
+        // timeout, 429, network, or conversation) reaches the provider net.
+        let workProposal: typeof CirceSemanticProposal.Type | undefined;
+        let workInterpretation: CirceCommandInterpretation | undefined;
+        const tier = yield* runCirceOutcomeTier({
           source,
           state: decisionStateFromContext(input, source),
           catalog: decisionCatalogFromContext(input),
+          nodeTools: nodeTools.available,
+          clientTools: input.clientTools ?? [],
+          locationCandidates: extractLocationCandidates(source),
+          websiteCandidates: extractWebsiteCandidates(source),
+          ...(input.clientToolCandidates?.apps === undefined
+            ? {}
+            : { appCandidates: input.clientToolCandidates.apps }),
+          ...(input.clientToolCandidates?.mediaTargets === undefined
+            ? {}
+            : { mediaCandidates: input.clientToolCandidates.mediaTargets }),
           decide: decision.decide,
+          work: (proposal) => {
+            const interpretation = interpretCirceCommand(input, prepared, proposal);
+            workProposal = proposal;
+            workInterpretation = interpretation;
+            return resolveWorkFromInterpretation(interpretation);
+          },
         });
-        if (tier.status === "proposal") {
-          return {
-            interpretation: interpretCirceCommand(input, prepared, tier.proposal),
-            proposal: tier.proposal,
-            source,
-          };
+        if (tier.status === "outcome") {
+          if (tier.outcome.kind === "conversation") {
+            // A conversation with a project in scope becomes a durable provider
+            // thread, and the provider's real answer arrives on the thread.
+            // Only a project-free question needs an answer before the turn can
+            // end, so that case falls through to the provider answer path.
+            const scoped = input.projects.some((project) => project.id === input.currentProjectId);
+            if (scoped) {
+              return {
+                interpretation: interpretCirceCommand(input, prepared, converseProposal),
+                proposal: converseProposal,
+                outcome: tier.outcome,
+                source,
+              };
+            }
+          } else {
+            return {
+              interpretation: workInterpretation ?? interpretationForOutcome(tier.outcome),
+              proposal: workProposal,
+              outcome: tier.outcome,
+              source,
+            };
+          }
         }
-        if (tier.status === "needs-input") {
-          return {
-            interpretation: tier.needsInput as CirceCommandInterpretation,
-            proposal: undefined,
-            source,
-          };
-        }
-        // The decision tier declined (no key, timeout, 429, or network).
-        // Fall back to one ordinary provider proposal as a safety net; the
-        // shared Director still owns all authority.
+        // The decision tier declined (no key, timeout, 429, network, or a
+        // conversation whose answer the provider net speaks). Fall back to one
+        // ordinary provider proposal as a safety net; the shared Director still
+        // owns all authority.
         const prompt = buildCirceSemanticPrompt(input, prepared);
         // Settings are advisory here: an unreadable settings store must not
         // fail interpretation, it only disables the provider-derived plan.
@@ -580,33 +824,72 @@ const defaultInterpreterLayer = Layer.effect(
 
     // Compose exactly one outcome from the accepted proposal. A node tool is
     // offered only when the host advertised its executor; client tools are
-    // offered only when the originating client advertised them (none here,
-    // because the execute wire does not yet carry client capabilities).
-    const classifyTurn = (turn: {
-      readonly interpretation: CirceCommandInterpretation;
-      readonly proposal: typeof CirceSemanticProposal.Type | undefined;
-      readonly source: string;
-    }): CirceClassifiedTurn => {
+    // offered only when the originating client advertised them, including on
+    // the no-proposal path where the execute wire carries no semantic
+    // proposal but still advertises what the device can run.
+    const classifyTurn = (
+      turn: {
+        readonly interpretation: CirceCommandInterpretation;
+        readonly proposal: typeof CirceSemanticProposal.Type | undefined;
+        /** The closed outcome when the tier produced one; absent on fallback. */
+        readonly outcome?: CirceOutcome;
+        readonly source: string;
+      },
+      context: CirceCommandContext,
+    ): CirceClassifiedTurn => {
       const offered = offeredCirceTools({
         nodeTools: nodeTools.available,
-        clientTools: [],
+        clientTools: context.clientTools ?? [],
         locationCandidates: extractLocationCandidates(turn.source),
         websiteCandidates: extractWebsiteCandidates(turn.source),
+        ...(context.clientToolCandidates?.apps === undefined
+          ? {}
+          : { appCandidates: context.clientToolCandidates.apps }),
+        ...(context.clientToolCandidates?.mediaTargets === undefined
+          ? {}
+          : { mediaCandidates: context.clientToolCandidates.mediaTargets }),
       });
       const outcome: CirceOutcome =
-        turn.proposal === undefined
+        turn.outcome ??
+        (turn.proposal === undefined
           ? { kind: "refused", reason: "unsupported-command" }
           : circeOutcomeFromProposal({
               proposal: turn.proposal,
               tools: offered,
               work: () => resolveWorkFromInterpretation(turn.interpretation),
-            });
+            }));
       return { outcome, interpretation: turn.interpretation };
     };
 
     return CirceControllerInterpreter.of({
       interpret: (input) => interpretTurn(input).pipe(Effect.map((turn) => turn.interpretation)),
-      classify: (input) => interpretTurn(input).pipe(Effect.map((turn) => classifyTurn(turn))),
+      classify: (input) =>
+        interpretTurn(input).pipe(Effect.map((turn) => classifyTurn(turn, input))),
+      warm: () =>
+        Effect.gen(function* () {
+          // The first provider fallback after a cold start pays CLI and server
+          // startup, so live voice pays it at activation instead of mid-turn.
+          const settings = yield* serverSettings.getSettings.pipe(
+            Effect.catchCause(() => Effect.succeed(null)),
+          );
+          if (settings === null) return;
+          const providers = yield* readSemanticProviders;
+          const plan = resolveCirceSupervisorPlan({
+            activeSelection:
+              settings.circeDefaultModelSelection ?? settings.circeSupervisorModelSelection,
+            providers,
+          });
+          const candidates = selectCirceSemanticCandidates({
+            configured: plan?.provider ?? settings.circeSupervisorModelSelection,
+            providers,
+          });
+          const first = candidates[0];
+          if (first === undefined) return;
+          yield* runSemanticCandidate(first, CIRCE_SEMANTIC_WARM_PROMPT).pipe(
+            Effect.timeoutOption("25 seconds"),
+            Effect.ignore,
+          );
+        }),
       propose: (input) =>
         Effect.gen(function* () {
           const source = input.utterance;
@@ -619,26 +902,33 @@ const defaultInterpreterLayer = Layer.effect(
               answer: null,
             };
           }
-          // Decision tier over untrusted evidence. No Director here; the
-          // execution node revalidates. A composed needs-input becomes
-          // unsupported, and only a decline reaches the provider net.
-          const tier = yield* runCirceDecisionTier({
+          // One TypeSafe outcome decision over untrusted evidence. No Director
+          // here; the execution node revalidates. A work proposal travels
+          // verbatim, a bounded tool maps to its wire proposal, and a composed
+          // question stays unsupported so the execution node asks it with the
+          // origin client's real capabilities.
+          let routedProposal: typeof CirceSemanticProposal.Type | undefined;
+          const tier = yield* runCirceOutcomeTier({
             source,
             state: decisionStateFromEvidence(input),
             catalog: decisionCatalogFromEvidence(input),
+            nodeTools: nodeTools.available,
+            clientTools: input.clientTools ?? [],
+            ...(input.clientToolCandidates?.apps === undefined
+              ? {}
+              : { appCandidates: input.clientToolCandidates.apps }),
+            ...(input.clientToolCandidates?.mediaTargets === undefined
+              ? {}
+              : { mediaCandidates: input.clientToolCandidates.mediaTargets }),
             decide: decision.decide,
+            work: (proposal) => {
+              routedProposal = proposal;
+              return { status: "refused", reason: "unsupported-command" };
+            },
           });
-          if (tier.status === "proposal") {
-            return tier.proposal;
-          }
-          if (tier.status === "needs-input") {
-            return {
-              action: "unsupported" as const,
-              refs: [],
-              model: null,
-              effort: null,
-              answer: null,
-            };
+          if (tier.status === "outcome") {
+            if (routedProposal !== undefined) return routedProposal;
+            return proposalFromOutcome(tier.outcome) ?? unsupportedProposal;
           }
           // Decision tier declined: one ordinary provider proposal as a
           // safety net. The execution node still revalidates.
@@ -889,7 +1179,12 @@ export const makeCirceControllerLive = <R>(
               }),
           providers: availableProviders,
           supervisorModelSelection: settings.circeSupervisorModelSelection,
-          nodeDefaultModelSelection: settings.circeDefaultModelSelection,
+          // A node-level Circe default wins; otherwise the user's chosen
+          // new-thread default applies. Without this fallback every spoken
+          // task landed on the first available provider instead of the model
+          // the user picked in Settings.
+          nodeDefaultModelSelection:
+            settings.circeDefaultModelSelection ?? settings.defaultModelSelection,
           ...(input.modelSelection === undefined ? {} : { modelSelection: input.modelSelection }),
           ...(input.confirmedProjectId === undefined
             ? {}
@@ -901,6 +1196,10 @@ export const makeCirceControllerLive = <R>(
           ...(input.requestMetadata === undefined
             ? {}
             : { requestMetadata: input.requestMetadata }),
+          ...(input.clientTools === undefined ? {} : { clientTools: input.clientTools }),
+          ...(input.clientToolCandidates === undefined
+            ? {}
+            : { clientToolCandidates: input.clientToolCandidates }),
           ...(input.expectedReply === undefined ? {} : { expectedReply: input.expectedReply }),
         };
         return {
@@ -3003,6 +3302,7 @@ export const makeCirceControllerLive = <R>(
         interpret,
         converse,
         cancelRequest,
+        warmSupervisor: () => interpreter.warm?.() ?? Effect.void,
       });
     }),
   ).pipe(Layer.provide(interpreterLayer), Layer.provideMerge(CirceFollowUpDispatcherLive));

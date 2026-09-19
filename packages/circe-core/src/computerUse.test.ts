@@ -41,13 +41,16 @@ const selecting = (...entries: ReadonlyArray<readonly [string, DecisionAnswer]>)
   Object.fromEntries(entries);
 
 describe("computer step request", () => {
-  it("offers only grounded elements and finite action kinds", () => {
+  it("offers only grounded elements, finite action kinds, and bounded type spans", () => {
     const request = buildComputerStepRequest({ model: "m", goal: "Open compose", surface });
     const action = request.questions["action"];
     expect(action?.type).toBe("choice");
     if (action?.type !== "choice") throw new Error("expected choice");
-    // Without planned text there is nothing for the model to invent.
-    expect(Object.keys(action.criteria)).not.toContain("type");
+    expect(Object.keys(action.criteria)).toContain("type");
+    // Typing has no free text: every offered span is a run of the user's words.
+    const typeText = request.questions["type_text"];
+    if (typeText?.type !== "choice") throw new Error("expected type_text choice");
+    expect(Object.keys(typeText.criteria)).toEqual(["Open compose", "Open", "compose"]);
     const element = request.questions["element"];
     if (element?.type !== "choice") throw new Error("expected element choice");
     expect(Object.keys(element.criteria)).toEqual([
@@ -57,7 +60,7 @@ describe("computer step request", () => {
     ]);
   });
 
-  it("enables the type action only when the plan supplied text", () => {
+  it("uses planned text and offers no span question when the plan supplied it", () => {
     const request = buildComputerStepRequest({
       model: "m",
       goal: "Send the note",
@@ -67,6 +70,7 @@ describe("computer step request", () => {
     const action = request.questions["action"];
     if (action?.type !== "choice") throw new Error("expected choice");
     expect(Object.keys(action.criteria)).toContain("type");
+    expect(request.questions["type_text"]).toBeUndefined();
   });
 });
 
@@ -107,11 +111,40 @@ describe("computer step composition", () => {
     expect(step).toEqual({ kind: "refused", reason: "missing-parameter" });
   });
 
-  it("refuses type when no planned text exists", () => {
+  it("refuses type when no span was chosen", () => {
     const step = composeComputerStep({
       goal: "Send the note",
       surface,
       answers: selecting(["action", choice("type")], ["element", choice("none")]),
+    });
+    expect(step).toEqual({ kind: "refused", reason: "missing-parameter" });
+  });
+
+  it("types the span of the user's own words that the model selected", () => {
+    const step = composeComputerStep({
+      goal: "open youtube and search tanmay bhat",
+      surface,
+      answers: selecting(
+        ["action", choice("type")],
+        ["element", choice("role=textbox[name='Search']")],
+        ["type_text", choice("tanmay bhat")],
+      ),
+    });
+    expect(step).toEqual({
+      kind: "action",
+      action: { kind: "type", elementId: "role=textbox[name='Search']", text: "tanmay bhat" },
+    });
+  });
+
+  it("refuses a span the goal never contained", () => {
+    const step = composeComputerStep({
+      goal: "open youtube and search tanmay bhat",
+      surface,
+      answers: selecting(
+        ["action", choice("type")],
+        ["element", choice("role=textbox[name='Search']")],
+        ["type_text", choice("buy crypto now")],
+      ),
     });
     expect(step).toEqual({ kind: "refused", reason: "missing-parameter" });
   });

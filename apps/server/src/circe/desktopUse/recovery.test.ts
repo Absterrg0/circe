@@ -164,7 +164,9 @@ it.effect("status probes readiness without spawning a screenshot helper", () =>
     const status = yield* driver.getStatus();
     expect(status.available).toBe(true);
     expect(status.supports.capture).toBe(true);
-    expect(calls).toEqual([]);
+    expect(status.supports.accessibility).toBe(true);
+    // Readiness may probe the accessibility bus; it must never take a capture.
+    expect(calls.every(([command]) => command !== "import")).toBe(true);
   }).pipe(Effect.provide(base)),
 );
 

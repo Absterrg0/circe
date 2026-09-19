@@ -406,6 +406,9 @@ export interface CirceMeshInterpretEvidenceOptions {
   readonly continueContext?: boolean;
   readonly pendingHint?: CirceInterpretInput["pendingHint"];
   readonly inputMode?: "voice" | "text";
+  /** Bounded device tools this client can run, so the semantic node offers them. */
+  readonly clientTools?: CirceInterpretInput["clientTools"];
+  readonly clientToolCandidates?: CirceInterpretInput["clientToolCandidates"];
   readonly tasks?: ReadonlyArray<{
     readonly title: string;
     readonly project?: string;
@@ -471,6 +474,10 @@ export function buildCirceInterpretInput(
     ...(options.continueContext === undefined ? {} : { continueContext: options.continueContext }),
     ...(options.pendingHint === undefined ? {} : { pendingHint: options.pendingHint }),
     ...(options.inputMode === undefined ? {} : { inputMode: options.inputMode }),
+    ...(options.clientTools === undefined ? {} : { clientTools: options.clientTools }),
+    ...(options.clientToolCandidates === undefined
+      ? {}
+      : { clientToolCandidates: options.clientToolCandidates }),
     ...(options.requestMetadata === undefined ? {} : { requestMetadata: options.requestMetadata }),
   };
 }

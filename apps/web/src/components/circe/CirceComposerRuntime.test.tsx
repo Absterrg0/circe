@@ -1149,7 +1149,7 @@ describe("Circe composer to runtime boundary", () => {
     });
   });
 
-  it("keeps the known pin and frame when a stale reply omits them", async () => {
+  it("keeps the known pin but drops a frame the server no longer echoes", async () => {
     const firstQuestion = deferred<void>();
     const secondQuestion = deferred<void>();
     state.execute.mockResolvedValueOnce({
@@ -1208,11 +1208,13 @@ describe("Circe composer to runtime boundary", () => {
     await state.drain?.();
     submitCirceComposerCommand({ text: "allow", inputMode: "text", captureId: "h3" });
     await finished.promise;
+    // The reply omitted the frame, so the server no longer owns it: the pin
+    // still binds the answer, but the dead frame must not be replayed.
     expect(state.execute.mock.calls[2]?.[0]).toMatchObject({
       utterance: "allow",
-      clarificationFrameId: "frame-A",
       expectedReply: { kind: "input", requestId: "req-A" },
     });
+    expect(state.execute.mock.calls[2]?.[0]).not.toHaveProperty("clarificationFrameId");
   });
 
   it("answers a newly arrived approval from the live desk, not the start-time snapshot", async () => {

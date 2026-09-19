@@ -8,12 +8,15 @@ import type {
 import type { ComputerUseRunResult, ComputerStepRefusal } from "@circe/core/computerUse";
 import { runComputerUse } from "@circe/core/computerUse";
 import type { DecisionRequest } from "@circe/core/decision";
+import { circeWebsiteUrl } from "@circe/core/website";
+import { HostProcessPlatform } from "@circe/shared/hostProcess";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 
 import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../desktopUse/DesktopUse.ts";
+import { extractWebsiteCandidates } from "../decisionTier.ts";
 import {
   buildAccessibilityActionCommand,
   decodeAccessibilityActionResultJson,
@@ -39,6 +42,8 @@ const DECISION_MODEL = "jev-latest";
 const COMMAND_TIMEOUT_MS = 8_000;
 const SCROLL_DELTA_PX = 400;
 const WAIT_MS = 300;
+/** Let an opened browser window map before the first observation. */
+const BROWSER_SETTLE_MS = 1_200;
 
 type MissionError = AccessibilityCommandError | DesktopUsePolicyError | DesktopUseError;
 
@@ -52,7 +57,7 @@ const refusalMessage = (reason: ComputerStepRefusal): string => {
     case "unknown-element":
       return "The screen changed before I could act on it.";
     case "missing-parameter":
-      return "That step was missing a target or value.";
+      return "I couldn't tell which thing to act on for that step.";
   }
 };
 
@@ -88,7 +93,9 @@ const scrollDeltas = (
 const supportedBackend = (backend: DesktopUseBackend): boolean =>
   backend === "linux-x11" || backend === "linux-wayland";
 
-export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
+export const make = (
+  options: { readonly backend?: DesktopUseBackend; readonly browserSettleMs?: number } = {},
+) =>
   Effect.gen(function* () {
     const desktopUse = yield* DesktopUse;
     const commands = yield* DesktopCommands;
@@ -100,9 +107,9 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
     }));
     const cancellation = yield* CirceMissionCancellation;
+    const platform = yield* HostProcessPlatform;
     const displayServer = detectDisplayServer(process.env);
-    const backend =
-      options.backend ?? resolveBackend({ platform: process.platform, displayServer });
+    const backend = options.backend ?? resolveBackend({ platform, displayServer });
 
     const runCommand: AccessibilityCommandRunner = (command, operation) =>
       commands.run(command, backend, operation, COMMAND_TIMEOUT_MS);
@@ -188,6 +195,31 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
       }
       const requestId = input.requestMetadata?.requestId;
       if (requestId !== undefined) yield* cancellation.register(requestId);
+      // A goal that names a site opens it in the user's real browser before the
+      // first step, so the loop works the page the user asked for instead of
+      // hunting for a browser window. The URL is grounded from the user's own
+      // words with the same allowlist as the quick action.
+      const startUrl = (() => {
+        for (const candidate of extractWebsiteCandidates(input.goal)) {
+          const url = circeWebsiteUrl(candidate, input.goal);
+          if (url !== null) return url;
+        }
+        return null;
+      })();
+      if (startUrl !== null) {
+        yield* commands
+          .run(
+            { command: "xdg-open", args: [startUrl] },
+            backend,
+            "desktop.browser.open",
+            COMMAND_TIMEOUT_MS,
+          )
+          .pipe(Effect.catch(() => Effect.void));
+        // Let the window map and the page start loading; the loop's own
+        // snapshots take over from here.
+        const settleMs = options.browserSettleMs ?? BROWSER_SETTLE_MS;
+        if (settleMs > 0) yield* Effect.sleep(settleMs);
+      }
       const observe = () => observeLinuxDesktop(runCommand, { backend, title: "Desktop" });
       const select = (request: DecisionRequest) =>
         decision
@@ -220,6 +252,16 @@ export const make = (options: { readonly backend?: DesktopUseBackend } = {}) =>
         ),
         Effect.catchTag("DesktopElementChangedError", (error) =>
           Effect.succeed({ status: "refused" as const, message: error.message }),
+        ),
+        // A missing input helper is a capability gap on this node, not a bad
+        // step. Reporting it as a refusal lets the origin client hand the goal
+        // to the provider instead of surfacing a raw backend error.
+        Effect.catchTag("DesktopUseUnavailableError", () =>
+          Effect.succeed({
+            status: "refused" as const,
+            message:
+              "This node can't inject pointer or keyboard input, so I couldn't take that step. Install ydotool to enable it.",
+          }),
         ),
         Effect.catch(() =>
           Effect.succeed({

@@ -63,6 +63,13 @@ describe("native platform contracts", () => {
       ),
     ).toEqual([]);
   });
+  it("falls back to the GNOME portal when no Wayland capture helper is installed", () => {
+    const tools = { ...wayland, tools: new Set<"python3">(["python3"]) };
+    const commands = buildCaptureCommands(tools, { outPath: "shot.png", display });
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toMatchObject({ command: "python3", area: "desktop" });
+    expect(commands[0]?.args).toContain("shot.png");
+  });
   it("presses Wayland modifiers around the key and releases in reverse", () => {
     expect(
       buildKeyboardCommands(wayland, {

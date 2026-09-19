@@ -75,11 +75,20 @@ filenames; only the registration order moved.
 
 ### One classifier, first-class outcomes
 
-The split paths (`decisionCompose`, `toolRegistry`, `converse` carrying an
-answer) are replaced by one TypeSafe classification that composes a single
-`CirceOutcome`: `work`, `tool-answer`, `client-action`, `clarification`,
-`conversation`, or `refused`. `converse` no longer doubles as a tool answer or a
-durable thread.
+One TypeSafe request asks the `outcome` question (`work`, a bounded tool,
+`conversation`, `refusal`, or `clarification`) plus the parameters that outcome
+owns; the composer consults only those, so a weather ask never drags project,
+task, or compound questions into the answer. The composed
+`CirceOutcome` is `work`, `tool-answer`, `client-action`, `clarification`,
+`conversation`, or `refused`. `converse` never doubles as a tool answer or a
+durable thread; a conversation has no decision answer, so the tier declines and
+the provider net speaks it.
+
+A place is not a language pattern. Code splits the transcript into maximal runs
+of non-vocabulary tokens, TypeSafe selects the run the user named, and the lookup
+re-grounds that selection into the transcript. An unanswered place becomes a
+typed lookup question, and the origin client answers it with the place alone
+rather than re-classifying a bare city name as new work.
 
 ### Tools declare their host and are capability-gated
 
@@ -105,22 +114,35 @@ sends bounded names and revalidates its own pick.
 
 ### Surface missions are TypeSafe-grounded, not model-coordinate
 
-A browser mission (`circe.browserUse`) runs a deterministic step loop on the
-target node: each step snapshots a grounded element catalog, one TypeSafe
-decision selects an action kind and an element id, and code derives the
-selector-targeted operation. The model never emits a selector, coordinate, key,
-or JavaScript. Typing is the one field that cannot be closed, so the provider or
-plan supplies the text and the selector chooses only where and when. The loop
-uses a Circe-owned automation identity because the preview broker scopes requests
-to a provider session, and a voice or text control turn is not one. A provider
-can delegate a goal to the same loop through `preview_run_goal` instead of
-stepping with `preview_click`/`preview_type` itself.
+A surface mission runs a deterministic step loop on the target node: each step
+snapshots a grounded element catalog, one TypeSafe decision selects an action
+kind and an element id, and code derives the selector-targeted operation. The
+model never emits a selector, coordinate, key, or JavaScript. Typing is the one
+field that cannot be closed from the surface, so it has two bounded sources: a
+provider plan supplies `typeText`, or the request offers every contiguous span
+of the user's own goal as a closed choice and code slices the selected span
+verbatim. The model never composes text. `circe.computerUse` drives the real
+machine: for a web goal it first opens the grounded site in the user's own
+signed-in browser and then steps that browser, and for a desktop goal it steps
+the real desktop. `circe.browserUse` drives the shared in-app preview and is the
+development and testing surface, never the default for an everyday web goal.
+The loop uses a Circe-owned automation identity because the preview broker
+scopes requests to a provider session, and a voice or text control turn is not
+one. A provider can delegate a goal to the same loop through `desktop_run_goal`
+or `preview_run_goal` instead of stepping with the focused interaction tools
+itself.
 
 ### Typed pending for every clarification kind
 
 Every clarification is a durable typed frame, including lookup and website
 refinement, which the old system left untyped. Pending state lives on the node
 and follows the user across paired clients.
+
+A frame id is a live-frame reference, never a retry token. Every needs-input
+that keeps the same frame echoes that frame's id and a fresh frame carries its
+new id, so an omitted id means the frame was consumed, expired, or replaced.
+Clients bind the next answer only to the id the server just reported; replaying
+a dead id is rejected before interpretation, which drops the user's request.
 
 ### Chat is not a project
 

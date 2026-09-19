@@ -65,7 +65,6 @@ import {
   createMobileCirceTurn,
   mobileTurnTaskRefs,
   resolveMobileFocusContextTask,
-  resolveRetainedFrameId,
   restoreMobileFocusFromDesk,
   routeMobileCirceTurn,
   type MobileCirceDraft,
@@ -979,20 +978,20 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           // server-side; an unmatched answer re-prompts instead of dispatching.
           const response = result.value.prompt;
           setMessage(response);
-          // A rejected answer omits the frame id: keep the sent one so the
-          // next answer stays bound to the old frame instead of going out
-          // fresh and unguarded.
-          const retainedFrameId = resolveRetainedFrameId(
-            result.value.clarificationFrameId,
-            args.clarificationFrameId,
-          );
+          // The server echoes the live frame id on every needs-input that
+          // keeps the same frame and a fresh id when it opens a new one. An
+          // omitted id means the frame was consumed, expired, or replaced, so
+          // a dead id must never be carried into the next answer: the server
+          // rejects it before interpretation and the request is dropped.
           pendingServerAnswer.current = {
             turn,
             projectRef,
             ...(result.value.expectedReply === undefined
               ? {}
               : { expectedReply: result.value.expectedReply }),
-            ...(retainedFrameId === undefined ? {} : { clarificationFrameId: retainedFrameId }),
+            ...(result.value.clarificationFrameId === undefined
+              ? {}
+              : { clarificationFrameId: result.value.clarificationFrameId }),
             requestId,
           };
           replaceActiveTurn(turn);
@@ -1503,6 +1502,8 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         inputMode: draft.inputMode,
         ...(pendingHint === undefined ? {} : { pendingHint }),
         tasks: evidenceTasks,
+        clientTools: mobileClientActionCapabilities().tools,
+        clientToolCandidates: mobileClientActionCapabilities().candidates,
         requestMetadata: {
           requestId: turnRequestId,
           origin: { originInteractionId: interpretOrigin },

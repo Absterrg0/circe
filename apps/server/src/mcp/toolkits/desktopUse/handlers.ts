@@ -12,6 +12,7 @@ const make = Effect.gen(function* () {
 
   return DesktopUseToolkit.of({
     desktop_status: () => requireCapability().pipe(Effect.andThen(desktopUse.getStatus())),
+    desktop_state: (input) => requireCapability().pipe(Effect.andThen(desktopUse.state(input))),
     desktop_move: (input) =>
       requireCapability().pipe(
         Effect.andThen(

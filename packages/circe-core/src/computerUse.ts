@@ -44,6 +44,35 @@ export interface ComputerSurface {
 export const COMPUTER_ACTION_KINDS = ["click", "type", "press", "scroll", "wait", "done"] as const;
 export type ComputerActionKind = (typeof COMPUTER_ACTION_KINDS)[number];
 
+/**
+ * Typing is the one value a closed step cannot pick from the surface, and a
+ * voice mission has no provider plan to supply it. The text must come from the
+ * user's own words, so the request offers every bounded contiguous span of the
+ * goal as a closed choice and composition slices the chosen span verbatim. The
+ * model never emits free text; it selects among spans code already built.
+ */
+export const COMPUTER_TYPE_TEXT_MAX_RUN_TOKENS = 5;
+export const COMPUTER_TYPE_TEXT_MAX_CANDIDATES = 48;
+
+export function buildTypeTextCandidates(goal: string): ReadonlyArray<string> {
+  const tokens = goal.split(/\s+/).filter((token) => token.length > 0);
+  const seen = new Set<string>();
+  const candidates: Array<string> = [];
+  // Longer runs first: a search phrase is a phrase, and the cap must never
+  // crowd out the multi-word spans in favor of single tokens.
+  for (let length = COMPUTER_TYPE_TEXT_MAX_RUN_TOKENS; length >= 1; length -= 1) {
+    for (let start = 0; start + length <= tokens.length; start += 1) {
+      const run = tokens.slice(start, start + length).join(" ");
+      if (run.length < 2 || !/[\p{Letter}\p{Number}]/u.test(run)) continue;
+      if (seen.has(run)) continue;
+      seen.add(run);
+      candidates.push(run);
+      if (candidates.length >= COMPUTER_TYPE_TEXT_MAX_CANDIDATES) return candidates;
+    }
+  }
+  return candidates;
+}
+
 /** Kept in step with `desktopUse/policy.ts` allowed keys. */
 export const COMPUTER_PRESS_KEYS = [
   "enter",
@@ -85,6 +114,7 @@ const ELEMENT_QUESTION = "element";
 const ACTION_QUESTION = "action";
 const PRESS_KEY_QUESTION = "press_key";
 const SCROLL_DIRECTION_QUESTION = "scroll_direction";
+const TYPE_TEXT_QUESTION = "type_text";
 
 const ACTION_CRITERIA: Readonly<Record<string, string>> = {
   click: "Press the chosen element once.",
@@ -133,8 +163,10 @@ function boundedSurface(surface: ComputerSurface, maxElements: number) {
 export function buildComputerStepRequest(input: BuildComputerStepRequestInput): DecisionRequest {
   const maxElements = input.maxElements ?? COMPUTER_STEP_DEFAULT_MAX_ELEMENTS;
   const elements = input.surface.elements.slice(0, maxElements);
+  const typeTextCandidates =
+    input.typeText === undefined ? buildTypeTextCandidates(input.goal) : [];
   const actionKinds = COMPUTER_ACTION_KINDS.filter(
-    (kind) => kind !== "type" || input.typeText !== undefined,
+    (kind) => kind !== "type" || input.typeText !== undefined || typeTextCandidates.length > 0,
   );
   const actionCriteria: Record<string, string | null> = {};
   for (const kind of actionKinds) actionCriteria[kind] = ACTION_CRITERIA[kind] ?? null;
@@ -175,6 +207,16 @@ export function buildComputerStepRequest(input: BuildComputerStepRequestInput): 
       instructions:
         "Which grounded element should the action target? Choose none only when no element applies.",
       criteria: elementCriteria,
+    };
+  }
+  if (typeTextCandidates.length > 0) {
+    const typeTextCriteria: Record<string, string | null> = {};
+    for (const candidate of typeTextCandidates) typeTextCriteria[candidate] = null;
+    questions[TYPE_TEXT_QUESTION] = {
+      type: "choice",
+      instructions:
+        "When the action is type, which span of the goal is the exact text to enter? Choose one of the user's own phrases, or none when no span applies.",
+      criteria: typeTextCriteria,
     };
   }
 
@@ -242,9 +284,16 @@ export function composeComputerStep(input: ComposeComputerStepInput): ComputerSt
   }
 
   if (action === "type") {
-    const text = input.typeText;
+    // Planned text wins; a voice mission has none, so the text must be a span
+    // of the user's own goal that code slices verbatim.
+    let text = input.typeText;
     if (text === undefined || text.length === 0) {
-      return { kind: "refused", reason: "missing-parameter" };
+      const chosen = readChoice(input.answers, TYPE_TEXT_QUESTION);
+      const candidates = buildTypeTextCandidates(input.goal);
+      if (chosen === undefined || chosen === NONE_OPTION || !candidates.includes(chosen)) {
+        return { kind: "refused", reason: "missing-parameter" };
+      }
+      text = chosen;
     }
     const element = selectedElement(input.surface, input.answers);
     if (element.status === "unknown") return { kind: "refused", reason: "unknown-element" };
@@ -292,8 +341,8 @@ export function describeComputerAction(action: ComputerAction): string {
       return `clicked ${action.elementId}`;
     case "type":
       return action.elementId === undefined
-        ? "typed the planned text"
-        : `typed the planned text into ${action.elementId}`;
+        ? `typed "${action.text.slice(0, 60)}"`
+        : `typed "${action.text.slice(0, 60)}" into ${action.elementId}`;
     case "press":
       return action.elementId === undefined
         ? `pressed ${action.key}`

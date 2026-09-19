@@ -653,7 +653,8 @@ describe("AcpAdapterV2", () => {
       assert.notInclude(command.prompt, "<circe_instructions>");
       const firstDefault = yield* runTurn(1, defaultPolicy, "First default request.");
       assert.include(firstDefault.prompt, "Circe interaction mode: Default");
-      assert.include(firstDefault.prompt, "Circe collaborative browser");
+      assert.include(firstDefault.prompt, "Circe browsers");
+      assert.include(firstDefault.prompt, "Circe desktop");
       assert.include(firstDefault.prompt, "Circe orchestration");
       assert.notInclude(
         firstDefault.methods,

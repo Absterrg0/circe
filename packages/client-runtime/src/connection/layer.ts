@@ -37,6 +37,20 @@ export const watchDiscoveredCompatibility = Effect.fn("connection.watchDiscovere
             const descriptor = status?.descriptor;
             if (status === null || descriptor === undefined) continue;
             const environmentId = entry.environment.environmentId;
+            // A direct target is reachable and probed here: the resolver
+            // revalidates its live descriptor before every connect. Remote
+            // discovery can lag the node (an older relay strips fields it does
+            // not know), so it must never disable a locally reachable
+            // environment that the node itself just proved compatible.
+            const registeredEntry = (yield* SubscriptionRef.get(registry.entries)).get(
+              environmentId,
+            );
+            if (
+              registeredEntry !== undefined &&
+              registeredEntry.target._tag !== "RelayConnectionTarget"
+            ) {
+              continue;
+            }
             const previous = seenChecks.get(environmentId);
             const fresh =
               previous?.checkedAt !== status.checkedAt ||

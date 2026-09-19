@@ -121,11 +121,15 @@ export const circeClientActionExecutors: CirceClientActionExecutors = {
 
 /**
  * Tools this client can run. Browser clients own the web launcher, clipboard,
- * and in-page media; app launching needs a native catalog the browser cannot
- * provide. Task-lifecycle notifications are dispatched by the node from
- * orchestration events, so the model never asks a client to raise one.
+ * and in-page media; the Electron host also drives browser and desktop
+ * missions because a plain web tab cannot confirm or execute them. Task
+ * lifecycle notifications are dispatched by the node from orchestration
+ * events, so the model never asks a client to raise one.
  */
 export function circeClientActionCapabilities(): CirceClientActionCapabilities {
-  const tools: ReadonlyArray<CirceClientToolName> = ["open-website", "clipboard", "media"];
+  const tools: Array<CirceClientToolName> = ["open-website", "clipboard", "media"];
+  if (typeof window !== "undefined" && window.desktopBridge !== undefined) {
+    tools.push("browse", "preview", "computer");
+  }
   return { tools, candidates: {} };
 }

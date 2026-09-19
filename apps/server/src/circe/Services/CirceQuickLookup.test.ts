@@ -78,18 +78,79 @@ describe("Circe quick lookup", () => {
       ).toBe("answer");
     }),
   );
-  it.effect("asks for a self-contained correction when the place is ambiguous", () =>
+  it.effect("takes the most prominent place when the user named no region", () =>
     Effect.gen(function* () {
-      const { http, calls } = fixture([ahmedabad, { ...ahmedabad, admin1: "Other state" }]);
+      const { http, calls } = fixture([ahmedabad, { ...ahmedabad, id: 2, admin1: "Other state" }]);
       const result = yield* runCirceQuickLookup(input, "full").pipe(
         Effect.provideService(HttpClient.HttpClient, http),
       );
+      expect(result).toMatchObject({ status: "answer" });
+      if (result.status !== "answer") return;
+      expect(result.message).toContain("Ahmedabad, Gujarat, India");
+      expect(calls).toHaveLength(2);
+    }),
+  );
+  it.effect("asks for a correction when a named region still matches several places", () =>
+    Effect.gen(function* () {
+      const { http, calls } = fixture([
+        ahmedabad,
+        { ...ahmedabad, id: 2, admin1: "Gujarat", country: "India" },
+      ]);
+      const result = yield* runCirceQuickLookup(
+        {
+          ...input,
+          location: "Ahmedabad, India",
+          sourceUtterance: "Weather in Ahmedabad, India.",
+        },
+        "full",
+      ).pipe(Effect.provideService(HttpClient.HttpClient, http));
       expect(result).toMatchObject({ status: "needs-input" });
       expect("message" in result && result.message).toContain("multiple places named Ahmedabad");
       expect("choices" in result).toBe(false);
       expect(calls).toHaveLength(1);
     }),
   );
+  it.effect("splits a comma-free location into a city and its qualifiers", () =>
+    Effect.gen(function* () {
+      const halol = {
+        id: 9,
+        name: "Halol",
+        admin1: "Gujarat",
+        country: "India",
+        country_code: "IN",
+        latitude: 22.5,
+        longitude: 73.5,
+        timezone: "Asia/Kolkata",
+      };
+      const calls: string[] = [];
+      const http = HttpClient.make((request) =>
+        Effect.sync(() => {
+          calls.push(request.url);
+          const name = new URL(request.url).searchParams.get("name") ?? "";
+          const body = request.url.includes("geocoding-api")
+            ? { results: name === "Halol" ? [halol] : [] }
+            : forecast;
+          return HttpClientResponse.fromWeb(request, Response.json(body, { status: 200 }));
+        }),
+      );
+      const result = yield* runCirceQuickLookup(
+        {
+          ...input,
+          location: "Halol Gujarat India",
+          sourceUtterance: "What's the weather in Halol Gujarat India?",
+        },
+        "full",
+      ).pipe(Effect.provideService(HttpClient.HttpClient, http));
+      expect(result.status).toBe("answer");
+      if (result.status !== "answer") return;
+      expect(result.message).toContain("Halol, Gujarat, India");
+      expect(new URL(calls[0]!).searchParams.get("name")).toBe("Halol Gujarat India");
+      expect(new URL(calls[1]!).searchParams.get("name")).toBe("Halol Gujarat");
+      expect(new URL(calls[2]!).searchParams.get("name")).toBe("Halol");
+      expect(calls).toHaveLength(4);
+    }),
+  );
+
   it.effect("grounds explicit state and country, and handles tomorrow", () =>
     Effect.gen(function* () {
       const { http } = fixture([ahmedabad, { ...ahmedabad, id: 2, country: "Elsewhere" }]);

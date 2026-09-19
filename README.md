@@ -1,5 +1,42 @@
 # Circe
 
+> [!IMPORTANT]
+> **Circe is paused.** I parked this project on 2026-09-20. The code stays
+> public and the work is real, but I am not shipping, supporting, or accepting
+> feature work on it right now.
+
+## What I was trying to build
+
+One assistant for all of my machines. Not a chat app, and not a coding tool
+with a voice layer — an operator. I say what I want, and it happens on the
+machine where it needs to happen, with my real accounts and my own provider
+subscriptions doing the thinking.
+
+The destination was a personal mesh of machines I own. "Get my resume from
+laptop A, put it in the portfolio on laptop B" should be one sentence, executed
+as a typed, auditable plan where every step names its node, every artifact is
+owned by a node, and a disconnected machine is reported rather than silently
+swapped for another. Voice is the interface, not the product.
+
+What is in this repo today:
+
+- The T3 coding foundation: orchestration, provider adapters (Codex, Claude,
+  Cursor, Grok, OpenCode, Antigravity), Git, terminals, approvals, and
+  event-sourced state.
+- Circe: deterministic voice control, grounded task routing against real
+  catalogs, multi-node discovery and remote control, and spoken reports.
+- Grounded surface missions: a closed, TypeSafe step loop that drives the real
+  desktop and the user's own browser on Linux, including GNOME Wayland
+  (AT-SPI element grounding, ydotool/uinput input, portal capture). The model
+  never invents a target, a coordinate, or typed text; typed text is selected
+  from bounded spans of the user's own words.
+
+What is not built: cross-node artifacts and mesh plans (the workflow engine
+this vision needs), window-scoped browser grounding, and the daily reliability
+work that would make the operator trustworthy enough to charge for.
+
+## What Circe was
+
 Circe is a control plane for coding agents. Direct provider CLIs from one calm
 interface across your machines: desktop workspace and local execution, remote
 control from phone or browser, deterministic voice control, task navigation,

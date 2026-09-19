@@ -2,6 +2,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import { describe, expect, it } from "vite-plus/test";
 
+import { DesktopUseUnavailableError } from "@circe/contracts";
+
 import { DesktopCommands } from "../desktopUse/DesktopCommands.ts";
 import { DesktopUse } from "../desktopUse/DesktopUse.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
@@ -45,30 +47,40 @@ const choose = (action: string) => ({
 const testLayer = (input: {
   readonly decisions: ReadonlyArray<string>;
   readonly operations: Array<string>;
+  readonly commands?: Array<string>;
   readonly actResult?: string;
+  readonly inputUnavailable?: boolean;
   readonly cancellation?: Layer.Layer<CirceMissionCancellation>;
 }) => {
   let index = 0;
-  return Layer.effect(CirceComputerUse, make({ backend: "linux-x11" })).pipe(
+  return Layer.effect(CirceComputerUse, make({ backend: "linux-x11", browserSettleMs: 0 })).pipe(
     Layer.provide(
       Layer.mock(DesktopUse)({
         input: (request) =>
-          Effect.sync(() => {
-            input.operations.push(request.action.type);
-            return {};
-          }),
+          input.inputUnavailable === true
+            ? Effect.fail(
+                new DesktopUseUnavailableError({
+                  platform: "linux",
+                  reason: "The selected backend does not support pointer.click",
+                }),
+              )
+            : Effect.sync(() => {
+                input.operations.push(request.action.type);
+                return {};
+              }),
       }),
     ),
     Layer.provide(
       Layer.mock(DesktopCommands)({
-        run: (_command, _backend, operation) =>
-          Effect.succeed({
-            stdout:
-              operation === "desktop.accessibility"
-                ? dump
-                : (input.actResult ?? JSON.stringify({ ok: true })),
-            stderr: "",
-            code: 0,
+        run: (command, _backend, operation) =>
+          Effect.sync(() => {
+            input.commands?.push(command.command);
+            return {
+              stdout:
+                operation === "desktop.accessibility" ? dump : (input.actResult ?? '{"ok":true}'),
+              stderr: "",
+              code: 0,
+            };
           }),
       }),
     ),
@@ -126,6 +138,17 @@ describe("Circe computer use", () => {
     expect(operations).toEqual([]);
   });
 
+  it("opens a site the goal named in the real browser before the first step", () => {
+    const operations: Array<string> = [];
+    const commands: Array<string> = [];
+    const result = run(
+      { goal: "open github and search for pull requests in rivvl", confirmed: true },
+      testLayer({ decisions: ["click", "done"], operations, commands }),
+    );
+    expect(result).toMatchObject({ status: "done" });
+    expect(commands[0]).toBe("xdg-open");
+  });
+
   it("refuses instead of clicking stale geometry when the element shifted", () => {
     const operations: Array<string> = [];
     const result = run(
@@ -142,6 +165,24 @@ describe("Circe computer use", () => {
     });
     // No coordinate fallback fired against the captured bounds.
     expect(operations).toEqual([]);
+  });
+
+  it("names the missing input helper instead of a raw backend failure", () => {
+    const operations: Array<string> = [];
+    const result = run(
+      { goal: "save the document", confirmed: true },
+      testLayer({
+        decisions: ["click", "done"],
+        operations,
+        actResult: JSON.stringify({ ok: false, error: "no-action" }),
+        inputUnavailable: true,
+      }),
+    );
+    expect(result).toEqual({
+      status: "refused",
+      message:
+        "This node can't inject pointer or keyboard input, so I couldn't take that step. Install ydotool to enable it.",
+    });
   });
 
   it("registers a mission, honors a stop, and clears it when done", () => {

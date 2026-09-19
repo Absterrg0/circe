@@ -25,6 +25,8 @@ describe("the bounded tool catalog", () => {
       "media",
       "clipboard",
       "computer",
+      "browse",
+      "preview",
     ]);
   });
 
@@ -38,10 +40,12 @@ describe("the bounded tool catalog", () => {
   });
 
   it("keeps the tool choice closed with an explicit none", () => {
-    const criteria = circeToolChoiceCriteria(availableCirceTools({
-      nodeTools: ["weather", "time", "task-status", "list-projects"],
-      clientTools: ["open-website"],
-    }));
+    const criteria = circeToolChoiceCriteria(
+      availableCirceTools({
+        nodeTools: ["weather", "time", "task-status", "list-projects"],
+        clientTools: ["open-website"],
+      }),
+    );
     expect(Object.keys(criteria)).toContain(NONE_TOOL);
     expect(criteria[NONE_TOOL]).toBeTruthy();
     for (const key of Object.keys(criteria)) expect(criteria[key]).toBeTruthy();

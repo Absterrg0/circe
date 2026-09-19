@@ -1,6 +1,7 @@
 import type {
   PreviewAutomationClickInput,
   PreviewAutomationElement,
+  PreviewAutomationNavigateInput,
   PreviewAutomationPressInput,
   PreviewAutomationScrollInput,
   PreviewAutomationSnapshot,
@@ -88,6 +89,7 @@ export function browserSurfaceFromSnapshot(
  * action has no browser operation (wait and done are handled by the runner).
  */
 export type BrowserAutomationOperation =
+  | { readonly operation: "navigate"; readonly input: PreviewAutomationNavigateInput }
   | { readonly operation: "click"; readonly input: PreviewAutomationClickInput }
   | { readonly operation: "type"; readonly input: PreviewAutomationTypeInput }
   | { readonly operation: "press"; readonly input: PreviewAutomationPressInput }

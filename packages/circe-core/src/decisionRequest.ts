@@ -161,10 +161,11 @@ const ACTION_CRITERIA: Readonly<Record<CirceSemanticProposalAction, string>> = {
   converse: "Answer a general question unrelated to any task or project.",
   lookup: "Answer weather or local time in a named place. No project or task.",
   "open-website": "Open a named site or web address on the user's device.",
-  browse:
-    "Operate a website toward a goal over several grounded steps; the origin client confirms first.",
+  browse: "Operate the user's own real browser toward a goal over several grounded steps.",
+  preview:
+    "Operate the shared in-app preview browser for development or testing over several grounded steps.",
   computer:
-    "Operate this node's desktop toward a goal over several grounded steps; the origin client confirms first.",
+    "Operate this node's desktop, including its real apps, toward a goal over several grounded steps.",
   unsupported: "A request Circe cannot do as one action.",
   sequence: "Two or more genuinely independent commands in one turn.",
 };
@@ -185,6 +186,7 @@ export const CIRCE_DECISION_ACTIONS: ReadonlyArray<CirceSemanticProposalAction> 
   "lookup",
   "open-website",
   "browse",
+  "preview",
   "computer",
   "unsupported",
   "sequence",

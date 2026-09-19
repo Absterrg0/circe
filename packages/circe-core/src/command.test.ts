@@ -500,10 +500,21 @@ describe("Beacon semantic command boundary", () => {
     });
   });
 
-  it("rejects a converse proposal without a bounded answer", () => {
+  it("routes a scoped converse proposal without an answer into a conversation thread", () => {
+    const result = interpret(
+      context({ utterance: "What is new today?" }),
+      proposal("converse", "What is new today?"),
+    );
+    expect(result).toMatchObject({
+      status: "command",
+      command: { type: "start", flow: "conversation" },
+    });
+  });
+
+  it("rejects a project-free converse proposal without a bounded answer", () => {
     expect(
       interpret(
-        context({ utterance: "What is new today?" }),
+        context({ utterance: "What is new today?", currentProjectId: null }),
         proposal("converse", "What is new today?"),
       ),
     ).toMatchObject({ status: "needs-input" });

@@ -157,19 +157,6 @@ export function classifyServerFrameCancel(
   return "failed";
 }
 
-/**
- * Carry the sent frame id across a rejected answer. A needs-input response
- * that omits it (like the exact-frame rejection) must not drop the binding:
- * the next answer still carries the old frame so the Host keeps rejecting
- * instead of consuming it as fresh work.
- */
-export function resolveRetainedFrameId(
-  responseFrameId: string | undefined,
-  sentFrameId: string | undefined,
-): string | undefined {
-  return responseFrameId ?? sentFrameId;
-}
-
 /** Narrow production shape for one mobile control execute: snapshot context plus identity. */
 export type MobileCirceExecuteInput = {
   readonly kind: "control";

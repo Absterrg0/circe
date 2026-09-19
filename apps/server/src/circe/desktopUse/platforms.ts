@@ -29,6 +29,7 @@ import {
   macWindows,
   MAC_KEYS,
 } from "./macos.ts";
+import { buildPortalScreenshotCommand } from "./gnomeScreenshot.ts";
 
 export const DESKTOP_TOOL_NAMES = [
   "xdotool",
@@ -44,6 +45,7 @@ export const DESKTOP_TOOL_NAMES = [
   "xrandr",
   "wlr-randr",
   "gjs",
+  "python3",
   "screencapture",
   "osascript",
   "powershell",
@@ -164,6 +166,11 @@ export function buildCaptureCommands(
           : []),
         ...(hasTool(tooling, "gnome-screenshot")
           ? [{ command: "gnome-screenshot", args: ["-f", outPath], area: "desktop" as const }]
+          : []),
+        // The portal is the only unattended GNOME Wayland path when neither
+        // grim (no wlr-screencopy on Mutter) nor gnome-screenshot is installed.
+        ...(hasTool(tooling, "python3")
+          ? [{ ...buildPortalScreenshotCommand(outPath), area: "desktop" as const }]
           : []),
         ...(hasTool(tooling, "spectacle")
           ? [{ command: "spectacle", args: ["-b", "-n", "-o", outPath], area: "desktop" as const }]

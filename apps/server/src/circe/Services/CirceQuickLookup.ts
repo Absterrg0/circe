@@ -95,36 +95,69 @@ export const runCirceQuickLookup = (
       };
     }
     const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
-    const [name, ...regions] = input.location.split(",").map((part) => part.trim());
-    if (!name)
+    // A comma-qualified location ("Halol, Gujarat, India") splits directly.
+    // A spoken one usually has no commas ("Halol Gujarat India"), so the
+    // longest prefix is tried as the place name first and the trailing words
+    // become the region qualifiers once the full name fails to geocode.
+    const splits: Array<{ readonly name: string; readonly regions: ReadonlyArray<string> }> = [];
+    const parts = input.location
+      .split(",")
+      .map((part) => part.trim())
+      .filter((part) => part.length > 0);
+    if (parts.length > 1) {
+      splits.push({ name: parts[0]!, regions: parts.slice(1) });
+    } else {
+      const words = (parts[0] ?? "").split(/\s+/u).filter((word) => word.length > 0);
+      for (let count = words.length; count >= 1; count -= 1) {
+        splits.push({
+          name: words.slice(0, count).join(" "),
+          regions: count < words.length ? words.slice(count) : [],
+        });
+      }
+    }
+    if (splits.length === 0) {
       return {
         status: "needs-input",
         message: "Name a city, optionally followed by its state and country.",
       };
-    const geocoding = new URL("https://geocoding-api.open-meteo.com/v1/search");
-    geocoding.search = new URLSearchParams({
-      name,
-      count: "10",
-      language: "en",
-      format: "json",
-    }).toString();
-    const placesResponse = yield* client.get(geocoding.href);
-    const places = yield* HttpClientResponse.schemaBodyJson(Places)(placesResponse);
-    const candidates = (places.results ?? []).filter((place) =>
-      regions.every((region) =>
-        [place.admin1, place.country, place.country_code].some(
-          (value) => value !== undefined && normalized(value) === normalized(region),
+    }
+    let selected: typeof Place.Type | undefined;
+    let ambiguousName: string | undefined;
+    for (const split of splits) {
+      const geocoding = new URL("https://geocoding-api.open-meteo.com/v1/search");
+      geocoding.search = new URLSearchParams({
+        name: split.name,
+        count: "10",
+        language: "en",
+        format: "json",
+      }).toString();
+      const placesResponse = yield* client.get(geocoding.href);
+      const places = yield* HttpClientResponse.schemaBodyJson(Places)(placesResponse);
+      const candidates = (places.results ?? []).filter((place) =>
+        split.regions.every((region) =>
+          [place.admin1, place.country, place.country_code].some(
+            (value) => value !== undefined && normalized(value) === normalized(region),
+          ),
         ),
-      ),
-    );
-    const selected = candidates.length === 1 ? candidates[0] : undefined;
+      );
+      if (candidates.length === 0) continue;
+      if (split.regions.length === 0 || candidates.length === 1) {
+        selected = candidates[0];
+        break;
+      }
+      ambiguousName = split.name;
+      break;
+    }
     if (selected === undefined) {
+      if (ambiguousName !== undefined) {
+        return {
+          status: "needs-input",
+          message: `I found multiple places named ${ambiguousName}. Ask again with the city, state, or country.`,
+        };
+      }
       return {
         status: "needs-input",
-        message:
-          candidates.length === 0
-            ? `I couldn't find ${input.location}. Try the city, state, and country.`
-            : `I found multiple places named ${name}. Ask again with the city, state, or country.`,
+        message: `I couldn't find ${input.location}. Try the city, state, and country.`,
       };
     }
     const label = placeLabel(selected);

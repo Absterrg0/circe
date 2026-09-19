@@ -8,6 +8,7 @@ import {
   circeMeshNodeReadiness,
   selectCirceQuickLookupNode,
   selectCirceSemanticNode,
+  type CirceMeshCatalog,
   type CirceMeshProject,
   type CirceMeshProjectCandidate,
 } from "@circe/client-runtime/circe/mesh";
@@ -20,6 +21,7 @@ import {
 import { circePlanTargetOutcomes } from "@circe/client-runtime/circe/planPresentation";
 import {
   circeClientActionSpeech,
+  circeClientActionTextArg,
   runCirceClientAction,
 } from "@circe/client-runtime/circe/clientActions";
 import { circeClientActionCapabilities, circeClientActionExecutors } from "./circeClientActions";
@@ -113,6 +115,24 @@ interface CirceVoiceRuntimeProps {
     threadId: ThreadId,
   ) => Promise<void> | void;
   readonly onPendingChange?: (pending: boolean) => void;
+}
+
+/**
+ * The project a provider hand-off should continue in on a mission node: the
+ * current target when it already lives there, else any project on that node,
+ * else none. A mission without a resolvable project reports honestly instead
+ * of inventing a target for provider work.
+ */
+function resolveMissionHandoffProject(
+  catalog: CirceMeshCatalog | null,
+  nodeId: EnvironmentId,
+  preferred: CirceProjectRef | null | undefined,
+): CirceProjectRef | undefined {
+  if (preferred !== undefined && preferred !== null && preferred.nodeId === nodeId) {
+    return preferred;
+  }
+  const project = catalog?.projects.find((candidate) => candidate.ref.nodeId === nodeId);
+  return project === undefined ? undefined : project.ref;
 }
 
 /**
@@ -459,9 +479,11 @@ export function CirceVoiceRuntime({
   // the node treats `confirmed` as an assertion.
   const surfaceConfirmedRef = useRef(false);
   const pendingSurfaceRef = useRef<{
-    readonly surface: "browser" | "computer";
+    readonly surface: "real-browser" | "preview" | "computer";
     readonly goal: string;
     readonly nodeId: EnvironmentId;
+    /** Project on the mission node a provider hand-off can continue in. */
+    readonly projectRef?: CirceProjectRef;
   } | null>(null);
   // The one running surface mission, addressed by the request id its loop polls
   // for a stop. Cleared when the mission settles.
@@ -748,19 +770,19 @@ export function CirceVoiceRuntime({
       readonly inputMode: SubmissionInputMode;
       readonly previous: CircePendingClarification | null;
     }): void => {
-      // An explicitly supplied pin or frame replaces the known ones. A reply
-      // that omits them never erases what the paused target already holds:
-      // the next answer would otherwise bypass the server guard.
+      // An explicitly supplied pin replaces the known one. A reply that omits
+      // a pin never erases what the paused target already holds: the next
+      // answer would otherwise bypass the server guard.
       const retainedPin =
         input.result.expectedReply !== undefined
           ? retainedReplyPin(input.result.expectedReply)
           : (input.previous?.target?.pendingReply ?? input.target.pendingReply);
-      const frameId =
-        input.result.clarificationFrameId ?? input.previous?.clarification.clarificationFrameId;
-      const clarification: CirceNeedsInput =
-        frameId === undefined || input.result.clarificationFrameId !== undefined
-          ? input.result
-          : { ...input.result, clarificationFrameId: frameId };
+      // The server echoes the live frame id on every needs-input that keeps
+      // the same frame and a fresh id when it opens a new one. An omitted id
+      // means the frame was consumed, expired, or replaced, so a dead id must
+      // never be carried into the next answer: the server rejects it before
+      // interpretation and the user's request is dropped.
+      const clarification: CirceNeedsInput = input.result;
       const pinnedTarget: CirceVoiceTarget = {
         projectRef: input.target.projectRef,
         ...(input.target.projectTitle === undefined
@@ -1347,19 +1369,22 @@ export function CirceVoiceRuntime({
    */
   const startSurfaceMission = useCallback(
     async (
-      surface: "browser" | "computer",
+      surface: "real-browser" | "preview" | "computer",
       goal: string,
       nodeId: EnvironmentId,
       inputMode: SubmissionInputMode,
+      projectRef?: CirceProjectRef,
     ) => {
       surfaceConfirmedRef.current = true;
       const requestId = randomUUID();
       const captureId = `circe-${surface}-${requestId}`;
       emitFeedback({
         text:
-          surface === "browser"
-            ? `Working on the browser: ${goal}`
-            : `Working on the computer: ${goal}`,
+          surface === "computer"
+            ? `Working on the computer: ${goal}`
+            : surface === "preview"
+              ? `Working in the preview: ${goal}`
+              : `Working in your browser: ${goal}`,
         kind: "working",
         inputMode,
         captureId,
@@ -1371,8 +1396,12 @@ export function CirceVoiceRuntime({
         origin: { originInteractionId: circeReporterIdentity() },
       };
       activeMissionRef.current = { requestId, nodeId };
+      // The preview surface runs the grounded DOM loop on the in-app browser.
+      // Every other browser goal drives the user's own real browser through
+      // the desktop mission, which opens the grounded site and steps the real
+      // machine. Plain desktop goals use the same desktop mission.
       const result =
-        surface === "browser"
+        surface === "preview"
           ? await browserUse({
               environmentId: nodeId,
               input: { goal, confirmed: true, requestMetadata },
@@ -1383,16 +1412,82 @@ export function CirceVoiceRuntime({
             }).catch(() => null);
       activeMissionRef.current = null;
       const value = result !== null && result._tag === "Success" ? result.value : null;
-      emitFeedback({
-        text: value?.message ?? "I couldn't run that mission.",
-        kind: value === null ? "error" : "done",
-        inputMode,
-        captureId,
-        requestId,
-      });
+      // The grounded loop stopped short. Hand the already-confirmed goal to
+      // the provider, whose system instructions cover both the desktop tools
+      // (real browser) and the preview tools, so the same work continues
+      // without harness wording in the user's message.
+      const willHandOff =
+        surface !== "computer" &&
+        projectRef !== undefined &&
+        value !== null &&
+        (value.status === "budget" || value.status === "refused");
+      // One continuous action reads as one message: a mission that continues
+      // through the provider must not first report a failure and then retract
+      // it, which is what "missing a target" followed by a hand-off sounded
+      // like.
+      if (!willHandOff) {
+        emitFeedback({
+          text: value?.message ?? "I couldn't run that mission.",
+          kind: value === null ? "error" : "done",
+          inputMode,
+          captureId,
+          requestId,
+        });
+      }
+      if (willHandOff) {
+        emitFeedback({
+          text:
+            surface === "preview"
+              ? "Handing that to your provider to continue in the preview."
+              : "Handing that to your provider to continue in your browser.",
+          kind: "working",
+          inputMode,
+          captureId,
+          requestId,
+          speak: false,
+        });
+        const handoffRequestId = randomUUID();
+        const handoff = await executeInstruction({
+          kind: "control",
+          projectRef,
+          // The goal is the user's own words, so the thread reads as their
+          // request. The provider already carries the collaborative-browser
+          // instructions in its developer/system prompt (preview_* tools, the
+          // shared in-app browser), so no harness wording belongs in the
+          // message the user sees.
+          utterance: goal,
+          semanticProposal: {
+            action: "start",
+            refs: [],
+            model: null,
+            effort: null,
+            answer: null,
+          },
+          requestMetadata: buildCirceRequestMetadata({
+            requestId: handoffRequestId,
+            originInteractionId: circeReporterIdentity(),
+            originNodeId,
+            inputMode,
+            sourceUtterance: goal,
+          }),
+          clientTools: circeClientActionCapabilities().tools,
+          clientToolCandidates: circeClientActionCapabilities().candidates,
+        }).catch(() => null);
+        const handoffValue = handoff !== null && handoff._tag === "Success" ? handoff.value : null;
+        emitFeedback({
+          text:
+            handoffValue !== null && handoffValue.status === "started"
+              ? (handoffValue.acknowledgement ?? "Continuing in the browser.")
+              : "I couldn't hand that to your provider.",
+          kind: handoffValue !== null && handoffValue.status === "started" ? "done" : "error",
+          inputMode,
+          captureId,
+          requestId: handoffRequestId,
+        });
+      }
       syncPending();
     },
-    [browserUse, computerUse, emitFeedback, syncPending],
+    [browserUse, computerUse, emitFeedback, executeInstruction, originNodeId, syncPending],
   );
 
   /**
@@ -1424,6 +1519,7 @@ export function CirceVoiceRuntime({
           pendingSurface.goal,
           pendingSurface.nodeId,
           options.inputMode,
+          pendingSurface.projectRef,
         ).finally(() => {
           submissionBusyRef.current = false;
           syncPending();
@@ -1817,6 +1913,11 @@ export function CirceVoiceRuntime({
               : { pendingHint: pendingHintForEvidence }),
             inputMode,
             tasks: evidenceTasks,
+            // Advertise the bounded tools this device can run so the semantic
+            // node offers the browser mission for a multi-step web goal
+            // instead of resolving every web request to one site launch.
+            clientTools: circeClientActionCapabilities().tools,
+            clientToolCandidates: circeClientActionCapabilities().candidates,
             requestMetadata: {
               requestId: turnRequestId,
               origin: { originInteractionId: turnOrigin },
@@ -1861,7 +1962,11 @@ export function CirceVoiceRuntime({
             (interpreted !== null && interpreted._tag === "Success"
               ? interpreted.value
               : undefined);
-          if (interpretedProposal !== undefined) {
+          // An unsupported proposal is a closed "cannot act" answer, not a
+          // question. Dropping it here lets the execution node classify the
+          // utterance with this client's real capabilities and ask its own
+          // typed question instead of replaying the refusal.
+          if (interpretedProposal !== undefined && interpretedProposal.action !== "unsupported") {
             meshProposal = interpretedProposal;
             conversationCacheRef.current.set(conversationCacheKey, interpretedProposal);
             // A lookup or website launch is a bounded assistant action with no
@@ -1932,11 +2037,14 @@ export function CirceVoiceRuntime({
               const surfaceGoal =
                 interpretedProposal.action === "browse" &&
                 typeof interpretedProposal.browserGoal === "string"
-                  ? { surface: "browser" as const, goal: interpretedProposal.browserGoal }
-                  : interpretedProposal.action === "computer" &&
-                      typeof interpretedProposal.computerGoal === "string"
-                    ? { surface: "computer" as const, goal: interpretedProposal.computerGoal }
-                    : null;
+                  ? { surface: "real-browser" as const, goal: interpretedProposal.browserGoal }
+                  : interpretedProposal.action === "preview" &&
+                      typeof interpretedProposal.browserGoal === "string"
+                    ? { surface: "preview" as const, goal: interpretedProposal.browserGoal }
+                    : interpretedProposal.action === "computer" &&
+                        typeof interpretedProposal.computerGoal === "string"
+                      ? { surface: "computer" as const, goal: interpretedProposal.computerGoal }
+                      : null;
               if (surfaceGoal !== null) {
                 // Prefer a node that advertises the surface capability, the
                 // same way a lookup picks its node, so a headless node never
@@ -1946,10 +2054,34 @@ export function CirceVoiceRuntime({
                     primaryEnvironmentId,
                     semanticNode.nodeId,
                   ])?.nodeId ?? semanticNode.nodeId;
+                const missionProjectRef = resolveMissionHandoffProject(
+                  submissionCatalog,
+                  nodeId,
+                  target?.projectRef,
+                );
                 if (!surfaceConfirmedRef.current) {
-                  pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
+                  // Browser missions are the user's own explicit request and
+                  // start without a confirmation round-trip: the real browser
+                  // is where they already are, and the preview is a sandbox.
+                  // Desktop control stays behind one yes: it can move the
+                  // pointer and type anywhere, far beyond the named goal.
+                  if (surfaceGoal.surface !== "computer") {
+                    await startSurfaceMission(
+                      surfaceGoal.surface,
+                      surfaceGoal.goal,
+                      nodeId,
+                      inputMode,
+                      missionProjectRef,
+                    );
+                    return;
+                  }
+                  pendingSurfaceRef.current = {
+                    ...surfaceGoal,
+                    nodeId,
+                    ...(missionProjectRef === undefined ? {} : { projectRef: missionProjectRef }),
+                  };
                   emitFeedback({
-                    text: `I'll control the ${surfaceGoal.surface === "browser" ? "browser" : "computer"} in this session to ${surfaceGoal.goal}. Say yes to start.`,
+                    text: `I'll control the computer in this session to ${surfaceGoal.goal}. Say yes to start.`,
                     kind: "needs-input",
                     inputMode,
                     captureId: voiceSubmission.captureId,
@@ -1958,7 +2090,13 @@ export function CirceVoiceRuntime({
                   syncPending();
                   return;
                 }
-                await startSurfaceMission(surfaceGoal.surface, surfaceGoal.goal, nodeId, inputMode);
+                await startSurfaceMission(
+                  surfaceGoal.surface,
+                  surfaceGoal.goal,
+                  nodeId,
+                  inputMode,
+                  missionProjectRef,
+                );
                 return;
               }
             }
@@ -2573,6 +2711,74 @@ export function CirceVoiceRuntime({
       syncPending();
 
       try {
+        // A lookup question waits only for the place. The answer is the
+        // location; run the lookup on a capable node directly instead of
+        // re-classifying a bare city name as a new request.
+        const lookupClarification = pendingVoiceClarification;
+        const pendingLookup = lookupClarification?.clarification.lookup;
+        if (lookupClarification !== null && pendingLookup !== undefined) {
+          const location = capturedInstruction.trim();
+          const commandShaped =
+            /^(?:open|start|stop|show|tell|set|switch|play|pause|list|focus|status|cancel|fix|add|update|remove)\b/iu.test(
+              location,
+            ) || location.split(/\s+/u).length > 6;
+          if (commandShaped) {
+            // The user moved on: retire the question and run the new request.
+            voiceClarificationRef.current = null;
+            enqueueUnifiedSubmission({
+              captureId: randomUUID(),
+              transcript: capturedInstruction,
+              sourceTranscript: capturedInstruction,
+              inputMode,
+            });
+            return;
+          }
+          const lookupNodeId =
+            (submissionCatalog === null
+              ? undefined
+              : selectCirceQuickLookupNode(submissionCatalog, [primaryEnvironmentId])?.nodeId) ??
+            primaryEnvironmentId;
+          if (lookupNodeId === null) {
+            emitFeedback({
+              text: "I'm still connecting. Try again in a moment.",
+              kind: "needs-input",
+              inputMode,
+              captureId: voiceSubmission.captureId,
+              requestId: lookupClarification.requestId,
+            });
+            syncPending();
+            return;
+          }
+          const lookupResult = await quickLookup({
+            environmentId: lookupNodeId,
+            input: {
+              kind: pendingLookup.tool,
+              location,
+              day: pendingLookup.day,
+              sourceUtterance: location,
+            },
+          }).catch(() => null);
+          const value =
+            lookupResult !== null && lookupResult._tag === "Success" ? lookupResult.value : null;
+          emitFeedback({
+            text: value?.message ?? "I couldn't complete that lookup. Try again in a moment.",
+            kind:
+              value?.status === "answer"
+                ? "done"
+                : value?.status === "needs-input"
+                  ? "needs-input"
+                  : "error",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            requestId: lookupClarification.requestId,
+          });
+          if (value?.status === "answer") {
+            voiceClarificationRef.current = null;
+            voiceSubmissionSnapshotsRef.current.delete(voiceSubmission.captureId);
+          }
+          syncPending();
+          return;
+        }
         // Reuse the interpret request identity for the fresh proposal path so
         // one explicit cancel addresses both phases. Clarification answers
         // and bound retries keep their own parked identity.
@@ -2741,6 +2947,57 @@ export function CirceVoiceRuntime({
             voiceSubmissionSnapshotsRef.current.delete(pendingVoiceClarification.captureId);
           }
           if (pendingVoiceClarification !== null) voiceClarificationRef.current = null;
+          if (result.tool === "browse" || result.tool === "preview" || result.tool === "computer") {
+            // A surface mission is not a one-shot executor: the node's TypeSafe
+            // step loop drives the real browser, the in-app preview, or the
+            // desktop. A plain web tab cannot, so it refuses honestly.
+            const goal = circeClientActionTextArg(result.args, "goal") ?? "";
+            const surface =
+              result.tool === "browse"
+                ? ("real-browser" as const)
+                : result.tool === "preview"
+                  ? ("preview" as const)
+                  : ("computer" as const);
+            if (window.desktopBridge === undefined || goal.trim().length === 0) {
+              emitFeedback({
+                text:
+                  window.desktopBridge === undefined
+                    ? "Browser and desktop missions need the Circe desktop app."
+                    : result.speech,
+                kind: "error",
+                inputMode,
+                captureId: voiceSubmission.captureId,
+                requestId,
+              });
+            } else if (surface === "computer") {
+              pendingSurfaceRef.current = {
+                surface,
+                goal: goal.trim(),
+                nodeId: submissionTarget.projectRef.nodeId,
+                projectRef: submissionTarget.projectRef,
+              };
+              emitFeedback({
+                text: `I'll control the computer to ${goal.trim()}. Say yes to start.`,
+                kind: "needs-input",
+                inputMode,
+                captureId: voiceSubmission.captureId,
+                requestId,
+              });
+            } else {
+              // Browser missions start right away, in the user's own browser
+              // or the shared preview.
+              void startSurfaceMission(
+                surface,
+                goal.trim(),
+                submissionTarget.projectRef.nodeId,
+                inputMode,
+                submissionTarget.projectRef,
+              );
+            }
+            onTargetConsumed();
+            syncPending();
+            return;
+          }
           const actionResult = await runCirceClientAction({
             tool: result.tool,
             args: result.args,

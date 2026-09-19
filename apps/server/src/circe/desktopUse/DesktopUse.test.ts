@@ -24,6 +24,13 @@ const captured: Array<string> = [];
 
 const driverLayer = Layer.succeed(DesktopDriverModule.DesktopDriver, {
   getStatus: () => Effect.succeed(status),
+  state: () =>
+    Effect.succeed({
+      title: "Desktop",
+      elements: [
+        { id: "app:0/0", role: "push button", name: "Save", x: 1, y: 2, width: 3, height: 4 },
+      ],
+    }),
   capture: () =>
     Effect.succeed({
       png: pngBytes,

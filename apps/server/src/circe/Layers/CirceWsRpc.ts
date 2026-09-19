@@ -5,6 +5,7 @@ import * as Effect from "effect/Effect";
 import * as DateTime from "effect/DateTime";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
@@ -316,6 +317,8 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const pushRegistrations = yield* CircePushRegistrationRepository;
     const authSessions = yield* AuthSessionRepository;
     const presentationFanout = yield* CircePresentationFanout;
+    const warmScope = yield* Effect.scope;
+    const warming = yield* Ref.make(false);
     return {
       build: (context: WsRpcExtensionContext) =>
         Effect.succeed(
@@ -480,7 +483,29 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 runCirceVoiceLiveStart(input, {
                   presetOffersVoice: (config.circeNodePreset ?? "full") !== "headless",
                   liveVoice,
-                }),
+                }).pipe(
+                  // The user is about to speak, so pay a cold provider start
+                  // now: the first provider fallback then answers inside its
+                  // attempt budget. Forked in the server scope so the warm-up
+                  // outlives this RPC, and deduped so held-down hotkeys cannot
+                  // stack provider processes.
+                  Effect.tap(() =>
+                    Ref.getAndSet(warming, true).pipe(
+                      Effect.flatMap((alreadyWarming) =>
+                        alreadyWarming
+                          ? Effect.void
+                          : circe
+                              .warmSupervisor()
+                              .pipe(
+                                Effect.ensuring(Ref.set(warming, false)),
+                                Effect.ignore,
+                                Effect.forkIn(warmScope),
+                                Effect.asVoid,
+                              ),
+                      ),
+                    ),
+                  ),
+                ),
                 { "rpc.aggregate": "circe.voice" },
               ),
             // Renderer liveness for an active session. Unknown ids are a no-op,

@@ -252,13 +252,21 @@ export const CIRCE_SEMANTIC_FALLBACK_MAX_ATTEMPTS = 2;
 
 /** Honest prompt when every semantic candidate is unavailable. */
 export const CIRCE_SEMANTIC_UNAVAILABLE_PROMPT =
-  "My semantic model providers are unavailable right now. Check provider limits or choose another supervisor.";
+  "I couldn't reach a model to work that out. Try again in a moment.";
 
 /**
- * One supervisor attempt must not hold the whole turn. After this long the
- * candidate is treated as failed and the next provider runs.
+ * One supervisor attempt must not hold the whole turn. The first turn after a
+ * cold provider start pays CLI and server startup, so the budget covers that;
+ * a warm provider answers far inside it.
  */
-export const CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS = 4_500;
+export const CIRCE_SEMANTIC_ATTEMPT_TIMEOUT_MS = 15_000;
+
+/**
+ * A tiny well-formed ask whose answer is discarded. The provider process and
+ * its warm session are the point, so keep it short.
+ */
+export const CIRCE_SEMANTIC_WARM_PROMPT =
+  'Warm-up request. Utterance: "warm up". No project, task, provider, or model was named. Answer with action "unsupported", empty refs, and no answer text.';
 
 const isOpencodeDriver = (driver: string): boolean => driver === "opencode";
 
