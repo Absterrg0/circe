@@ -89,8 +89,7 @@ const makeHarness = () =>
           (chunk) => chunk.at(-1)!.result as Tool.Success<(typeof DesktopUseToolkit.tools)[Name]>,
         ),
         Effect.provideService(McpInvocationContext.McpInvocationContext, invocation(capabilities)),
-        Effect.provide(service),
-        Effect.provide(computerUse),
+        Effect.provide(Layer.merge(service, computerUse)),
       );
     return { calls, goalRuns, call };
   });
