@@ -5,6 +5,13 @@
 > public and the work is real, but I am not shipping, supporting, or accepting
 > feature work on it right now.
 
+Circe is built on top of [T3 Code](https://github.com/pingdotgg/t3code), the
+open-source coding-agent harness. T3 provides the orchestration engine,
+provider adapters, Git, terminals, approvals, and the detailed coding UI;
+Circe adds the voice-first control plane, multi-node routing, and grounded
+surface missions on top of it. This repository is a fork of T3 Code, not a
+from-scratch product.
+
 ## What I was trying to build
 
 One assistant for all of my machines. Not a chat app, and not a coding tool
@@ -20,9 +27,10 @@ swapped for another. Voice is the interface, not the product.
 
 What is in this repo today:
 
-- The T3 coding foundation: orchestration, provider adapters (Codex, Claude,
-  Cursor, Grok, OpenCode, Antigravity), Git, terminals, approvals, and
-  event-sourced state.
+- The T3 Code foundation, forked from
+  [pingdotgg/t3code](https://github.com/pingdotgg/t3code): orchestration,
+  provider adapters (Codex, Claude, Cursor, Grok, OpenCode, Antigravity), Git,
+  terminals, approvals, and event-sourced state.
 - Circe: deterministic voice control, grounded task routing against real
   catalogs, multi-node discovery and remote control, and spoken reports.
 - Grounded surface missions: a closed, TypeSafe step loop that drives the real
