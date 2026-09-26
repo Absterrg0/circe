@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "prepare": "effect-tsgo patch && vp config --no-agent && node scripts/fetch-circe-core.ts",
+    "prepare": "effect-tsgo patch && vp config --no-agent && node scripts/fetch-circe-core.mjs",
     "dev": "node scripts/dev-runner.ts dev",
     "dev:share": "node scripts/dev-runner.ts dev --share",
     "dev:server": "node scripts/dev-runner.ts dev:server",

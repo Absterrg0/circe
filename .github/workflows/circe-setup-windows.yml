@@ -28,7 +28,7 @@ permissions:
   contents: read
 
 # Installs fetch circe-core, Circe's private core, when this token can read it
-# (scripts/fetch-circe-core.ts); without it the build ships with the Circe
+# (scripts/fetch-circe-core.mjs); without it the build ships with the Circe
 # host layer off.
 env:
   CIRCE_CORE_TOKEN: ${{ secrets.CIRCE_CORE_TOKEN }}

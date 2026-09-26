@@ -2,7 +2,7 @@
  * What this server uses from circe-core (`@absterrg0/circe-core`), Circe's
  * private interpretation core. Public checkouts build and run without it: it
  * is fetched on install only when a token can read it
- * (scripts/fetch-circe-core.ts), and without it the Circe host layer is off.
+ * (scripts/fetch-circe-core.mjs), and without it the Circe host layer is off.
  * When it is installed, the calls into it are checked against its own types,
  * so these cannot drift from it unnoticed.
  */
