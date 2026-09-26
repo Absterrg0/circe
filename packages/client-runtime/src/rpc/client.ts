@@ -68,6 +68,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeWorktreeSetup
   | typeof WS_METHODS.subscribeProjectClones
   | typeof WS_METHODS.subscribeCircePresentation
+  | typeof WS_METHODS.subscribeCirceHostNotices
   | typeof WS_METHODS.terminalAttach;
 
 export type EnvironmentStreamRpcTag = RpcStreamTag;

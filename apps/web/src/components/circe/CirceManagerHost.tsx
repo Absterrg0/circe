@@ -17,7 +17,9 @@ import {
   shouldHandleCirceShortcutInRenderer,
 } from "./CirceManager.logic";
 import { CirceDesktopOrbReporter } from "./CirceDesktopOrbReporter";
+import { CirceHostNoticeReporter } from "./CirceHostNoticeReporter";
 import { CirceLiveVoiceRuntime } from "./CirceLiveVoiceRuntime";
+import { CirceVoiceCapture } from "./CirceVoiceCapture";
 import { getCirceLiveVoiceUiState, setCirceLiveVoiceActive } from "./CirceLiveVoice.bridge";
 import { CirceVoiceReporter } from "./CirceVoiceReporter";
 
@@ -140,6 +142,16 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
     <>
       <CirceVoiceReporter />
       <CirceLiveVoiceRuntime />
+      {isElectron && primaryEnvironmentId !== null ? (
+        <CirceVoiceCapture
+          environmentId={primaryEnvironmentId}
+          routeTarget={routeCommandTarget}
+          onThreadStarted={handleThreadStarted}
+        />
+      ) : null}
+      {primaryEnvironmentId !== null ? (
+        <CirceHostNoticeReporter environmentId={primaryEnvironmentId} />
+      ) : null}
       {isElectron && primaryEnvironmentId !== null ? (
         <CirceDesktopOrbReporter environmentId={primaryEnvironmentId} />
       ) : null}

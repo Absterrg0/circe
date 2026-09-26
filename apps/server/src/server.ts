@@ -137,6 +137,7 @@ import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
+import { CirceHostRuntimeLive } from "./circe/Layers/CirceHostRuntime.ts";
 import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
@@ -647,6 +648,8 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CircePushRegistrationsLive),
         // One shared projection fans out to every presentation listener.
         Layer.provide(CircePresentationFanoutLive),
+        // The Circe host layer: messages interpreted and carried out on this node.
+        Layer.provide(CirceHostRuntimeLive),
         // Browser missions reuse the previewAutomation broker under a
         // Circe-owned scope, so voice and text control drive the same host a
         // provider session would.

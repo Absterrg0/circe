@@ -35,6 +35,16 @@ export class RelayConfiguration extends Context.Service<
       readonly voice: string;
     };
     /**
+     * Circe voice: speech to text for spoken messages and text to speech for
+     * replies, with the deployment's OpenAI key. A null key turns it off.
+     */
+    readonly voice?: {
+      readonly apiKey: Redacted.Redacted<string> | null;
+      readonly transcribeModel: string;
+      readonly speechModel: string;
+      readonly voice: string;
+    };
+    /**
      * Deployment-owned TypeSafe decision tier. A null key disables the managed
      * path. Request and response bodies cross this relay in memory only: they
      * are never persisted, logged, or attached to traces.

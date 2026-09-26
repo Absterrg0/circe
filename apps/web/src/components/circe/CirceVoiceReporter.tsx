@@ -30,7 +30,11 @@ export function speakPresentation(
   presentation: CircePresentationEvent,
   deliveryId = presentation.presentationId,
 ): Promise<CirceSpeechOutcome> {
-  const text = spokenPresentationText(presentation);
+  return speakCirceText(spokenPresentationText(presentation), deliveryId);
+}
+
+/** Speaks one line through whichever voice lane is active; shared by reports and host notices. */
+export function speakCirceText(text: string, deliveryId: string): Promise<CirceSpeechOutcome> {
   // A live conversation owns speech: append the report for the live model to
   // say instead of starting a separate local utterance.
   const liveSink = getCirceLiveVoiceSink();

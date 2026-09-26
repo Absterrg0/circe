@@ -23,12 +23,12 @@ import {
 describe("DesktopCirceOrb", () => {
   it("maps every live state to a readable status, marking active sessions", () => {
     const profiles = [
-      ["idle", "Circe is idle", false],
-      ["requesting", "Starting live conversation", true],
-      ["connecting", "Connecting live conversation", true],
-      ["live", "Live conversation", true],
-      ["closing", "Ending live conversation", false],
-      ["failed", "Live conversation failed", false],
+      ["idle", "Circe", false],
+      ["requesting", "Starting conversation", true],
+      ["connecting", "Connecting", true],
+      ["live", "Listening", true],
+      ["closing", "Ending conversation", true],
+      ["failed", "That didn't work", false],
     ] as const;
 
     for (const [status, label, animated] of profiles) {
@@ -78,10 +78,10 @@ describe("DesktopCirceOrb", () => {
     expect(html).not.toContain("data-status-label");
     expect(html).not.toContain('class="status"');
     expect(html).toContain("picker-hint");
-    expect(html).toContain("Ctrl+Shift+J toggles voice.");
-    expect(html.indexOf("Ctrl+Shift+J toggles voice.")).toBeGreaterThan(
-      html.indexOf("data-provider-list"),
-    );
+    expect(html).toContain("Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation.");
+    expect(
+      html.indexOf("Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation."),
+    ).toBeGreaterThan(html.indexOf("data-provider-list"));
     // Selected rows carry an inline check SVG, matching the app dropdown.
     expect(html).toContain("row-check");
     expect(html).toContain('<svg class="row-check"');

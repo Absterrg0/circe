@@ -1234,6 +1234,11 @@ export const DesktopCirceLiveVoiceStateSchema = Schema.Struct({
   level: Schema.optional(Schema.Number),
   /** Short caption shown with the orb (status or transcript). */
   caption: Schema.optional(Schema.String),
+  /**
+   * `live`: a GPT-Live conversation. `message`: one push-to-talk message to
+   * Circe. Absent means live, for renderers that predate push-to-talk.
+   */
+  mode: Schema.optional(Schema.Literals(["live", "message"])),
 });
 export type DesktopCirceLiveVoiceState = typeof DesktopCirceLiveVoiceStateSchema.Type;
 
@@ -1245,6 +1250,8 @@ export interface DesktopCirceLiveVoiceBridge {
    * guaranteed in a packaged window.
    */
   onToggle: (listener: () => void) => () => void;
+  /** Push-to-talk edges: Circe voice records while the hotkey is held. */
+  onHold?: (listener: (phase: "press" | "release") => void) => () => void;
 }
 
 /**

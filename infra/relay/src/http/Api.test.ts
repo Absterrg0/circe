@@ -57,6 +57,7 @@ import * as AgentActivityPublisher from "../agentActivity/AgentActivityPublisher
 import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublishSignatures.ts";
 import * as LiveVoiceSessions from "../voice/LiveVoiceSessions.ts";
 import * as TypeSafeUpstream from "../decision/TypeSafeUpstream.ts";
+import * as VoiceUpstream from "../voice/VoiceUpstream.ts";
 import * as TypeSafeUsage from "../decision/TypeSafeUsage.ts";
 
 vi.mock("@clerk/backend", () => ({
@@ -667,12 +668,23 @@ describe("relay routing fallback", () => {
       const typesafeUsage = Layer.succeed(TypeSafeUsage.TypeSafeUsage, {
         reserve: () => Effect.void,
       });
+      const voiceUpstream = Layer.succeed(VoiceUpstream.VoiceUpstream, {
+        transcribe: () => Effect.die("relay voice is not exercised in this test"),
+        speak: () => Effect.die("relay voice is not exercised in this test"),
+      });
       const routes = HttpApiBuilder.layer(
         HttpApi.make("RelayApi").add(RelayApi.groups.server),
       ).pipe(
         Layer.provide(
           serverApi.pipe(
-            Layer.provide([publisher, signatures, liveVoice, typesafeUpstream, typesafeUsage]),
+            Layer.provide([
+              publisher,
+              signatures,
+              liveVoice,
+              typesafeUpstream,
+              typesafeUsage,
+              voiceUpstream,
+            ]),
           ),
         ),
         Layer.provide(auth),

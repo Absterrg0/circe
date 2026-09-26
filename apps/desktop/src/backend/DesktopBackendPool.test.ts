@@ -101,6 +101,7 @@ function makePoolLayer(
           dispatchSnapShotEvent: () => Effect.void,
           dispatchMainRendererAction: () => Effect.die("unexpected renderer action"),
           sendLiveVoiceToggle: Effect.void,
+          sendVoiceHold: () => Effect.void,
           sendOrbSelection: () => Effect.void,
           setCloseToTrayEnabled: () => Effect.void,
           allowClose: () => undefined,

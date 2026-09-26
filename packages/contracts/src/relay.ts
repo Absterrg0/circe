@@ -281,6 +281,45 @@ export const RelayTypeSafeDecisionResponse = Schema.Struct({
 });
 export type RelayTypeSafeDecisionResponse = typeof RelayTypeSafeDecisionResponse.Type;
 
+/**
+ * Circe voice: speech in and out for a linked node, with the deployment key.
+ * Audio and text cross the relay in memory only; like managed decisions they
+ * are never persisted, logged, or attached to spans.
+ */
+export const RELAY_VOICE_MAX_AUDIO_BASE64 = 4_000_000;
+
+export const RelayVoiceTranscribeRequest = Schema.Struct({
+  audio: Schema.String.check(
+    Schema.isMinLength(1),
+    Schema.isMaxLength(RELAY_VOICE_MAX_AUDIO_BASE64),
+  ).annotate({
+    description: "One spoken message, base64-encoded.",
+  }),
+  mimeType: Schema.Literals(["audio/webm", "audio/ogg", "audio/wav", "audio/mp4", "audio/mpeg"]),
+  vocabulary: Schema.optional(
+    Schema.String.check(Schema.isMaxLength(2_000)).annotate({
+      description: "Names the speaker is likely to say, such as projects and threads.",
+    }),
+  ),
+}).annotate({ description: "Transcribes one spoken message with the relay deployment key." });
+export type RelayVoiceTranscribeRequest = typeof RelayVoiceTranscribeRequest.Type;
+
+export const RelayVoiceTranscribeResponse = Schema.Struct({
+  text: Schema.String,
+}).annotate({ description: "What was said, in words." });
+export type RelayVoiceTranscribeResponse = typeof RelayVoiceTranscribeResponse.Type;
+
+export const RelayVoiceSpeakRequest = Schema.Struct({
+  text: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(4_000)),
+}).annotate({ description: "Speaks one reply with the relay deployment key." });
+export type RelayVoiceSpeakRequest = typeof RelayVoiceSpeakRequest.Type;
+
+export const RelayVoiceSpeakResponse = Schema.Struct({
+  audio: Schema.String,
+  mimeType: Schema.Literal("audio/mpeg"),
+}).annotate({ description: "The reply as base64-encoded audio." });
+export type RelayVoiceSpeakResponse = typeof RelayVoiceSpeakResponse.Type;
+
 export const RelayEnvironmentLinkScope = Schema.Literals([
   "agent_activity_notifications",
   "managed_tunnels",
@@ -710,6 +749,58 @@ export class RelayTypeSafeInvalidRequestError extends Schema.TaggedError<RelayTy
   }
 }
 
+export class RelayVoiceNotConfiguredError extends Schema.TaggedError<RelayVoiceNotConfiguredError>()(
+  "RelayVoiceNotConfiguredError",
+  {
+    code: Schema.Literal("voice_not_configured"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 503 },
+) {
+  override get message(): string {
+    return "Circe voice is not configured on this relay";
+  }
+}
+
+export class RelayVoiceEnvironmentDisabledError extends Schema.TaggedError<RelayVoiceEnvironmentDisabledError>()(
+  "RelayVoiceEnvironmentDisabledError",
+  {
+    code: Schema.Literal("voice_environment_disabled"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 403 },
+) {
+  override get message(): string {
+    return "Circe voice is turned off for this device";
+  }
+}
+
+export class RelayVoiceInvalidRequestError extends Schema.TaggedError<RelayVoiceInvalidRequestError>()(
+  "RelayVoiceInvalidRequestError",
+  {
+    code: Schema.Literal("voice_invalid_request"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 400 },
+) {
+  override get message(): string {
+    return "The spoken message could not be read";
+  }
+}
+
+export class RelayVoiceUpstreamError extends Schema.TaggedError<RelayVoiceUpstreamError>()(
+  "RelayVoiceUpstreamError",
+  {
+    code: Schema.Literal("voice_upstream_failed"),
+    traceId: TrimmedNonEmptyString,
+  },
+  { httpApiStatus: 502 },
+) {
+  override get message(): string {
+    return "Circe voice could not reach the speech service";
+  }
+}
+
 export class RelayLiveVoiceEnvironmentDisabledError extends Schema.TaggedError<RelayLiveVoiceEnvironmentDisabledError>()(
   "RelayLiveVoiceEnvironmentDisabledError",
   {
@@ -852,6 +943,15 @@ const RelayLiveVoiceSessionErrors = [
   RelayLiveVoiceSessionInUseError,
   RelayLiveVoiceUsageLimitError,
   RelayLiveVoiceUpstreamError,
+  RelayInternalError,
+] as const;
+
+const RelayVoiceErrors = [
+  RelayAuthInvalidError,
+  RelayVoiceNotConfiguredError,
+  RelayVoiceEnvironmentDisabledError,
+  RelayVoiceInvalidRequestError,
+  RelayVoiceUpstreamError,
   RelayInternalError,
 ] as const;
 
@@ -1434,6 +1534,18 @@ const RelayServerGroup = HttpApiGroup.make("server")
         error: RelayTypeSafeDecisionErrors,
       },
     ).annotate(OpenApi.Summary, "Run one managed TypeSafe decision"),
+    HttpApiEndpoint.post("transcribeVoice", "/v1/environments/:environmentId/voice/transcribe", {
+      params: Schema.Struct({ environmentId: EnvironmentId }),
+      payload: RelayVoiceTranscribeRequest,
+      success: RelayVoiceTranscribeResponse,
+      error: RelayVoiceErrors,
+    }).annotate(OpenApi.Summary, "Transcribe one spoken message for Circe"),
+    HttpApiEndpoint.post("speakVoice", "/v1/environments/:environmentId/voice/speak", {
+      params: Schema.Struct({ environmentId: EnvironmentId }),
+      payload: RelayVoiceSpeakRequest,
+      success: RelayVoiceSpeakResponse,
+      error: RelayVoiceErrors,
+    }).annotate(OpenApi.Summary, "Speak one Circe reply"),
   )
   .annotate(OpenApi.Description, "Environment-authenticated activity publication and cloud voice.")
   .middleware(RelayEnvironmentAuth);

@@ -30,10 +30,11 @@ describe("DesktopCirceShell", () => {
     expect(dispatch.mock.calls).toEqual([["circe.live-voice-toggle"]]);
   });
 
-  it("turns the one hotkey into a live conversation toggle when a key is configured", async () => {
+  it("records one spoken message while the hotkey is held", async () => {
     let onPressed: (() => void) | undefined;
     let onReleased: (() => void) | undefined;
     const sendLiveVoiceToggle = vi.fn();
+    const sendVoiceHold = vi.fn();
     const shell = createDesktopCirceShell({
       displayName: "Circe",
       iconPath: null,
@@ -45,6 +46,7 @@ describe("DesktopCirceShell", () => {
         return { close: async () => undefined };
       },
       sendLiveVoiceToggle,
+      sendVoiceHold,
       getLiveVoiceState: () => ({ enabled: true, active: false, status: "idle" }),
       revealMain: vi.fn(),
       quit: vi.fn(),
@@ -58,7 +60,8 @@ describe("DesktopCirceShell", () => {
     onPressed?.();
     onReleased?.();
 
-    expect(sendLiveVoiceToggle).toHaveBeenCalledTimes(2);
+    expect(sendVoiceHold.mock.calls).toEqual([["press"], ["release"], ["press"], ["release"]]);
+    expect(sendLiveVoiceToggle).not.toHaveBeenCalled();
     shell.stop();
   });
 
@@ -104,6 +107,12 @@ describe("DesktopCirceShell", () => {
     onLiveState?.({ enabled: true, active: true, status: "live" });
     expect(trayTemplate.map((item) => item.label)).toContain(
       "End live conversation (Ctrl+Shift+J)",
+    );
+
+    // A push-to-talk message is not a live conversation.
+    onLiveState?.({ enabled: true, active: true, status: "live", mode: "message" } as never);
+    expect(trayTemplate.map((item) => item.label)).toContain(
+      "Start live conversation (Ctrl+Shift+J)",
     );
     shell.stop();
   });
@@ -264,6 +273,7 @@ describe("DesktopCirceShell", () => {
 
   it("promotes Linux Wayland to true hold when the portal reports Activated/Deactivated", async () => {
     const sendLiveVoiceToggle = vi.fn();
+    const sendVoiceHold = vi.fn();
     let onPressed: (() => void) | undefined;
     let onReleased: (() => void) | undefined;
     const close = vi.fn(async () => undefined);
@@ -299,6 +309,7 @@ describe("DesktopCirceShell", () => {
         return {} as never;
       },
       sendLiveVoiceToggle,
+      sendVoiceHold,
       getLiveVoiceState: () => ({ enabled: true, active: false, status: "idle" }),
       revealMain: vi.fn(),
       quit: vi.fn(),
@@ -308,18 +319,22 @@ describe("DesktopCirceShell", () => {
     await Promise.resolve();
     await Promise.resolve();
     expect(onPressed).toBeDefined();
-    expect(trayTemplate.map((item) => item.label)).toContain(
+    expect(trayTemplate.map((item) => item.label)).toEqual([
+      "Open Circe",
       "Start live conversation (Ctrl+Shift+J)",
-    );
+      "Hold Ctrl+Shift+J to talk to Circe",
+      undefined,
+      "Quit",
+    ]);
     expect(unregister).not.toHaveBeenCalled();
 
     onPressed?.();
     onPressed?.();
-    expect(sendLiveVoiceToggle).toHaveBeenCalledTimes(2);
     onReleased?.();
+    // A second release has nothing left to end.
     onReleased?.();
-    // Release never toggles: live is a toggle, not a hold.
-    expect(sendLiveVoiceToggle).toHaveBeenCalledTimes(2);
+    expect(sendVoiceHold.mock.calls).toEqual([["press"], ["press"], ["release"]]);
+    expect(sendLiveVoiceToggle).not.toHaveBeenCalled();
 
     shell.stop();
     expect(close).toHaveBeenCalledTimes(1);
@@ -528,7 +543,7 @@ describe("DesktopCirceShell", () => {
         hide: vi.fn(),
         webContents: { executeJavaScript: vi.fn(() => Promise.resolve()), once: vi.fn() },
       };
-      const sendLiveVoiceToggle = vi.fn();
+      const sendVoiceHold = vi.fn();
       const shell = createDesktopCirceShell({
         displayName: "Circe",
         iconPath: null,
@@ -537,7 +552,7 @@ describe("DesktopCirceShell", () => {
         globalShortcut: { register: vi.fn(() => true), unregister: vi.fn() },
         loadPushToTalkHook: async () => hook,
         createOverlay: () => overlay as never,
-        sendLiveVoiceToggle,
+        sendVoiceHold,
         getLiveVoiceState: () => ({ enabled: true, active: false, status: "idle" }),
         revealMain: vi.fn(),
         quit: vi.fn(),
@@ -553,7 +568,7 @@ describe("DesktopCirceShell", () => {
       } as never);
       vi.advanceTimersByTime(950);
       expect(overlay.hide).not.toHaveBeenCalled();
-      expect(sendLiveVoiceToggle).toHaveBeenCalledTimes(1);
+      expect(sendVoiceHold.mock.calls).toEqual([["press"]]);
 
       shell.stop();
       vi.useRealTimers();

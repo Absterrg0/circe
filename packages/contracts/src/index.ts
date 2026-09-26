@@ -56,6 +56,7 @@ export * from "./usage.ts";
 export * from "./circe.ts";
 export * from "./circeBrowserUse.ts";
 export * from "./circeComputerUse.ts";
+export * from "./circeHost.ts";
 export * from "./circeLiveVoice.ts";
 export * from "./circeQuickActions.ts";
 export * from "./scheduledTask.ts";

@@ -31,6 +31,12 @@ concurrency:
   group: circe-desktop-mac-${{ github.ref }}
   cancel-in-progress: false
 
+# Installs fetch circe-core, Circe's private core, when this token can read it
+# (scripts/fetch-circe-core.mjs); without it the build ships with the Circe
+# host layer off.
+env:
+  CIRCE_CORE_TOKEN: ${{ secrets.CIRCE_CORE_TOKEN }}
+
 jobs:
   build:
     name: Build and verify Circe macOS ${{ matrix.arch }} desktop

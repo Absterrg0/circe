@@ -25,6 +25,11 @@ import {
 } from "../../circeBus";
 
 const state = vi.hoisted(() => ({
+  // The node's Circe host layer is off here, so the Director path runs.
+  hostSay: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { status: "unavailable" as const, said: "off", started: [] },
+  })),
   catalog: null as CirceMeshCatalog | null,
   effects: [] as Array<() => void>,
   cleanups: [] as Array<() => void>,
@@ -102,6 +107,7 @@ vi.mock("../../state/circeMesh", () => ({
     cancelRequest: "cancelRequest",
   },
 }));
+vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (
     command:
@@ -111,7 +117,8 @@ vi.mock("../../state/use-atom-command", () => ({
       | "interpret"
       | "converse"
       | "desk"
-      | "cancelRequest",
+      | "cancelRequest"
+      | "hostSay",
   ) => state[command],
 }));
 vi.mock("../../circeIdentity", () => ({ circeReporterIdentity: () => "interaction" }));
