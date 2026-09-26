@@ -34,6 +34,7 @@ import {
 } from "../host/core.ts";
 import { makeNodeHost } from "../host/nodeHost.ts";
 import { makeNodeVoice } from "../host/nodeVoice.ts";
+import { CirceBots } from "../Services/CirceBots.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceHostRuntime } from "../Services/CirceHostRuntime.ts";
 import { withPresentationResubscribe } from "./CircePresentationFanout.ts";
@@ -78,6 +79,7 @@ export const CirceHostRuntimeLive = Layer.effect(
     const crypto = yield* Crypto.Crypto;
     const orchestrator = yield* OrchestratorV2;
     const decision = yield* CirceDecision;
+    const bots = yield* CirceBots;
     const host = yield* makeNodeHost;
     const voice = yield* makeNodeVoice;
     const context = yield* Effect.context<never>();
@@ -151,8 +153,12 @@ export const CirceHostRuntimeLive = Layer.effect(
     );
     if (circe !== undefined) {
       yield* Effect.promise(() => circe.refresh().catch(() => []));
+      // Grok Bot messages and replies change the world too, so a bot's
+      // answer reaches circe-core the same way an agent finishing does.
       const pump = orchestrator.streamDomainEvents.pipe(
         Stream.filter((event) => STATE_EVENTS.has(event.type)),
+        Stream.map((): void => undefined),
+        Stream.merge(bots.changes),
         Stream.debounce(Duration.millis(300)),
         Stream.runForEach(() =>
           Effect.promise(() => circe.refresh()).pipe(

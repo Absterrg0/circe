@@ -1,5 +1,10 @@
 import type { CirceCommandTarget } from "../../circeBus";
-import type { DesktopCirceLiveVoiceState, EnvironmentId, ThreadId } from "@circe/contracts";
+import type {
+  CirceHostFocus,
+  DesktopCirceLiveVoiceState,
+  EnvironmentId,
+  ThreadId,
+} from "@circe/contracts";
 import { useEffect, useRef } from "react";
 
 import { publishCirceCommandFeedback } from "../../circeBus";
@@ -49,10 +54,13 @@ function toBase64(blob: Blob): Promise<string> {
 export function CirceVoiceCapture({
   environmentId,
   routeTarget,
+  hostFocus,
   onThreadStarted,
 }: {
   readonly environmentId: EnvironmentId;
   readonly routeTarget: CirceCommandTarget | null;
+  /** What the host layer is told is on screen, including bot pages. */
+  readonly hostFocus?: CirceHostFocus | undefined;
   readonly onThreadStarted: (
     environmentId: EnvironmentId,
     threadId: ThreadId,
@@ -67,9 +75,9 @@ export function CirceVoiceCapture({
     reportDefect: false,
   });
   // The hotkey handlers are installed once; they read the latest props here.
-  const latest = useRef({ environmentId, routeTarget, onThreadStarted, listen, speak });
+  const latest = useRef({ environmentId, routeTarget, hostFocus, onThreadStarted, listen, speak });
   useEffect(() => {
-    latest.current = { environmentId, routeTarget, onThreadStarted, listen, speak };
+    latest.current = { environmentId, routeTarget, hostFocus, onThreadStarted, listen, speak };
   });
 
   useEffect(() => {
@@ -210,17 +218,19 @@ export function CirceVoiceCapture({
       const {
         environmentId: node,
         routeTarget: target,
+        hostFocus: onScreen,
         onThreadStarted: show,
         listen: send,
         speak: say,
       } = latest.current;
       const focus =
-        target !== null && target.environmentId === node
+        onScreen ??
+        (target !== null && target.environmentId === node
           ? {
               projectId: target.projectId,
               ...(target.contextThreadId === undefined ? {} : { threadId: target.contextThreadId }),
             }
-          : undefined;
+          : undefined);
       const result = await send({
         environmentId: node,
         input: {

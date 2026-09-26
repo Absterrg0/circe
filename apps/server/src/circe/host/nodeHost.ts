@@ -1,12 +1,17 @@
 import {
-  CIRCE_CONVERSATIONS_PROJECT_TITLE,
+  CIRCE_BOT_MESSAGE_MAX_CHARS,
+  circeBotIdOfPlace,
+  circeBotPlaceId,
   CommandId,
+  isChatWorkspace,
   DEFAULT_RUNTIME_MODE,
   MessageId,
   ProjectId,
   RunId,
   RuntimeRequestId,
   ThreadId,
+  type CirceBotId,
+  type CirceBotMessageId,
   type ModelSelection,
   type OrchestrationProjectShell,
   type OrchestrationV2ThreadProjection,
@@ -24,6 +29,8 @@ import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
 import { taskTitle } from "../controllerHelpers.ts";
+import { CirceBots } from "../Services/CirceBots.ts";
+import { botProject, botThread } from "./botPlaces.ts";
 import type { CirceHost, HostSnapshot, PendingRequest, Project, Step, Thread } from "./core.ts";
 
 /**
@@ -67,6 +74,7 @@ export const makeNodeHost = Effect.gen(function* () {
   const orchestrator = yield* OrchestratorV2;
   const projections = yield* ProjectionSnapshotQuery;
   const settings = yield* ServerSettingsService;
+  const bots = yield* CirceBots;
   const crypto = yield* Crypto.Crypto;
   const fs = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
@@ -135,19 +143,33 @@ export const makeNodeHost = Effect.gen(function* () {
     );
     const projects = yield* Effect.forEach(shown, describeProject, { concurrency: 4 });
     const nowMs = DateTime.toEpochMillis(now);
+    // A gateway problem hides the bots from this turn; it never hides the
+    // node's coding work.
+    const botPlaces = yield* bots.places().pipe(
+      Effect.catch((error) =>
+        Effect.logWarning("Grok Bots left out of the Circe world", {
+          reason: error.message,
+        }).pipe(Effect.as([])),
+      ),
+    );
     const threads = [
       ...open.map((thread) => toThread(thread, detailById.get(thread.id), false, nowMs)),
+      ...botPlaces.map((place) => botThread(place, nowMs)),
       ...closed.map((thread) => toThread(thread, undefined, true, nowMs)),
     ];
-    return { projects, threads, focus: {} } satisfies HostSnapshot;
+    return {
+      projects: [...projects, ...botPlaces.map(botProject)],
+      threads,
+      focus: {},
+    } satisfies HostSnapshot;
   });
 
   const describeProject = (project: OrchestrationProjectShell) =>
     Effect.gen(function* () {
-      // The node's Conversations project is where its agents answer general
-      // questions with live data; Circe sends questions about nothing in the
-      // user's projects there.
-      if (project.title === CIRCE_CONVERSATIONS_PROJECT_TITLE) {
+      // The node's chat space is where its agents answer general questions
+      // with live data; Circe sends questions about nothing in the user's
+      // projects there.
+      if (isChatWorkspace(project)) {
         return {
           id: project.id,
           name: project.title,
@@ -261,6 +283,30 @@ export const makeNodeHost = Effect.gen(function* () {
 
   const creation = { createdBy: "user", creationSource: "server" } as const;
 
+  /** Hand the words to the bot; a message the gateway did not take is a refusal. */
+  const sendToBot = (botId: CirceBotId, text: string) =>
+    Effect.gen(function* () {
+      const message = yield* bots
+        .send({
+          botId,
+          messageId: (yield* uuid) as CirceBotMessageId,
+          text: text.trim().slice(0, CIRCE_BOT_MESSAGE_MAX_CHARS),
+        })
+        .pipe(Effect.mapError((error) => new CirceHostOperationError({ reason: error.message })));
+      if (message.delivery === "failed" || message.delivery === "expired") {
+        return yield* refuse(message.error ?? "the bot did not take the message");
+      }
+      return circeBotPlaceId(botId);
+    });
+
+  /** What a bot cannot do, in the words Circe tells the user. */
+  const botLimit = {
+    respond: "Grok Bots don't ask Circe for approvals; answer the bot in Grok",
+    stop: "Circe can't stop a Grok Bot; stop it in Grok, or choose Stop waiting on the bot's page",
+    close: "a Grok Bot conversation can't be closed; clear it from the bot's page",
+    withdraw: "a message already went to the Grok Bot and can't be taken back",
+  } as const;
+
   const send = (
     threadId: ThreadId,
     text: string,
@@ -288,6 +334,8 @@ export const makeNodeHost = Effect.gen(function* () {
     start: (projectId, text) =>
       run(
         Effect.gen(function* () {
+          const botId = circeBotIdOfPlace(projectId);
+          if (botId !== null) return yield* sendToBot(botId, text);
           const project = ProjectId.make(projectId);
           const modelSelection = yield* defaultModel(project);
           const threadId = ThreadId.make(yield* uuid);
@@ -325,6 +373,12 @@ export const makeNodeHost = Effect.gen(function* () {
     deliver: (threadId, text, delivery) =>
       run(
         Effect.gen(function* () {
+          // A bot has one conversation and no queue: every delivery is a new message.
+          const botId = circeBotIdOfPlace(threadId);
+          if (botId !== null) {
+            yield* sendToBot(botId, text);
+            return;
+          }
           const shell = yield* threadShell(threadId);
           if (delivery.mode === "reply") {
             const pending = (yield* detailFor(shell)).pending;
@@ -365,6 +419,7 @@ export const makeNodeHost = Effect.gen(function* () {
     respond: (threadId, requestId, decision) =>
       run(
         Effect.gen(function* () {
+          if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.respond);
           yield* orchestrator.dispatch({
             type: "runtime-request.respond",
             commandId: CommandId.make(yield* uuid),
@@ -378,6 +433,7 @@ export const makeNodeHost = Effect.gen(function* () {
     stop: (threadId) =>
       run(
         Effect.gen(function* () {
+          if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.stop);
           const shell = yield* threadShell(threadId);
           if (shell.activeRunId === null) return;
           yield* orchestrator.dispatch({
@@ -393,6 +449,7 @@ export const makeNodeHost = Effect.gen(function* () {
     close: (threadId) =>
       run(
         Effect.gen(function* () {
+          if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.close);
           const shell = yield* threadShell(threadId);
           if (shell.activeRunId !== null) {
             yield* orchestrator.dispatch({
@@ -413,6 +470,7 @@ export const makeNodeHost = Effect.gen(function* () {
     withdraw: (threadId, text) =>
       run(
         Effect.gen(function* () {
+          if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.withdraw);
           const shell = yield* threadShell(threadId);
           details.delete(shell.id);
           const queued = (yield* detailFor(shell)).queued.findLast((entry) => entry.text === text);
