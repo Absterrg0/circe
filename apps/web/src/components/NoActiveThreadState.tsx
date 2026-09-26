@@ -1,6 +1,10 @@
+import { Link } from "@tanstack/react-router";
+
+import { isElectron } from "../env";
+import { CirceOrb } from "./circe/CirceOrb";
+import { Button } from "./ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { SidebarInset } from "./ui/sidebar";
-import { isElectron } from "../env";
 import { WorkspacePageHeader } from "./WorkspacePageHeader";
 
 export function NoActiveThreadState() {
@@ -8,29 +12,24 @@ export function NoActiveThreadState() {
     <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
         <WorkspacePageHeader electron={isElectron} className="border-b border-border">
-          {isElectron ? (
-            <span className="text-xs text-muted-foreground/50">No active thread</span>
-          ) : (
-            <div className="flex items-center gap-2">
-              <span className="text-sm font-medium text-foreground md:text-muted-foreground/60">
-                No active thread
-              </span>
-            </div>
-          )}
+          <span className="text-xs text-muted-foreground">No active thread</span>
         </WorkspacePageHeader>
 
         <Empty className="flex-1">
-          <div className="w-full max-w-lg px-8 py-12">
-            <EmptyHeader className="max-w-none">
-              <p className="circe-section-label mb-3">Circe workspace</p>
-              <EmptyTitle className="circe-title text-foreground text-xl font-semibold tracking-tight">
-                Pick a thread to continue
+          <div className="flex w-full max-w-md flex-col items-center px-8 py-12 text-center">
+            <CirceOrb size="xl" />
+            <EmptyHeader className="mt-7 max-w-none">
+              <EmptyTitle className="text-xl font-semibold tracking-tight text-foreground">
+                Pick up where you left off
               </EmptyTitle>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
-                Select an existing thread or create a new one to get started. Open Circe command
-                center for devices, projects, and voice.
+                Choose a bot, chat, or agent from the sidebar, or tell Circe what you want done and
+                it finds the right machine.
               </EmptyDescription>
             </EmptyHeader>
+            <Button className="mt-6 rounded-full px-5" render={<Link to="/circe" />}>
+              Open command center
+            </Button>
           </div>
         </Empty>
       </div>

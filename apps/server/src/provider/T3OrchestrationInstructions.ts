@@ -21,7 +21,7 @@ export const CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
 You are running inside Circe. Browser surfaces belong to the user.
 
-- The user's own signed-in browser is the default for their everyday web goals. When the server exposes \`desktop_*\` tools, carry out those goals with \`desktop_run_goal\`: the grounded loop opens the named site in the real browser and steps the real machine. Never rebuild the user's signed-in state through a shell CLI or a provider API.
+- The user's own signed-in browser is the default for their everyday web goals. When the server exposes \`computer_*\` tools and a computer mission is active, open the named site with \`computer_launch_app\` (pass its URL in \`urls\`) and drive the real window. Never rebuild the user's signed-in state through a shell CLI or a provider API.
 - The \`preview_*\` tools operate the shared in-app preview browser. Use them for development and testing: localhost, dev servers, the project's preview, page inspection, screenshots, and recordings. When the server exposes \`preview_*\` tools, prefer them for that work.
 
 For preview work, first call \`preview_status\`. If no automation-capable preview is attached, call \`preview_open\` before concluding that it is unavailable. Then use \`preview_navigate\`, \`preview_snapshot\`, and the focused interaction tools. Prefer snapshot-provided locators over coordinates.
@@ -35,9 +35,9 @@ export const CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS = `
 
 ## Circe desktop
 
-When the \`circe\` server exposes \`desktop_*\` tools, they drive this node's real desktop, including the user's real browser. Call \`desktop_status\` once: \`supports.accessibility\` means grounded element actions and text entry run over AT-SPI, \`supports.pointer\` and \`supports.keyboard\` mean injected input is available, and \`supports.capture\` means screenshots. Call \`desktop_state\` to see what is on screen: it reads the accessibility tree and never touches the display. Never call \`desktop_screenshot\` for element work; on GNOME Wayland it flashes the user's screen. Reserve it for canvas or GL surfaces where no element tree exists.
+When the \`circe\` server exposes \`computer_*\` tools, they drive this node's real desktop. Call \`computer_status\` first: it reports whether this node hosts a desktop driver and whether a mission is active. These tools only act under a computer mission delegated to this exact session; a mission the user started elsewhere is not yours to use. When no delegated mission is active, say that the desktop tools are unavailable for this task and continue without them instead of retrying.
 
-Use \`desktop_run_goal\` for a bounded goal on the real machine. It selects among grounded accessibility elements and performs each action, and it opens a named site in the user's own browser when the goal names one. Pass \`typeText\` when the goal needs text the loop cannot select off the screen. Prefer these tools over any CLI, API, or headless browser that would bypass the user's signed-in session; do not substitute a shell command for an interactive goal while an accessibility or input path is available.
+Find the target with \`computer_list_apps\` and \`computer_list_windows\`, then read \`computer_window_state\` for the grounded element tree. Element tokens are snapshot-scoped: re-observe after any action and prefer a token over raw coordinates. Clicks, typing, keys, and scrolling run in the background and never raise the window. Prefer these tools over any CLI, API, or headless browser that would bypass the user's signed-in session; do not substitute a shell command for an interactive goal while a grounded path is available.
 `;
 
 const CIRCE_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS = `## Circe interaction mode: Default

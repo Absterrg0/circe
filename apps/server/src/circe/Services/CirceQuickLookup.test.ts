@@ -252,4 +252,68 @@ describe("Circe quick lookup", () => {
       expect(result.status).toBe("answer");
     }),
   );
+  it.effect("grounds a place from a spoken answer with filler words", () =>
+    Effect.gen(function* () {
+      const london = {
+        id: 2643743,
+        name: "London",
+        admin1: "England",
+        country: "United Kingdom",
+        country_code: "GB",
+        latitude: 51.5,
+        longitude: -0.12,
+        timezone: "Europe/London",
+      };
+      const calls: string[] = [];
+      const http = HttpClient.make((request) =>
+        Effect.sync(() => {
+          calls.push(request.url);
+          const name = new URL(request.url).searchParams.get("name") ?? "";
+          const body = request.url.includes("geocoding-api")
+            ? { results: name.toLowerCase() === "london" ? [london] : [] }
+            : forecast;
+          return HttpClientResponse.fromWeb(request, Response.json(body, { status: 200 }));
+        }),
+      );
+      const result = yield* runCirceQuickLookup(
+        { ...input, location: "in London", sourceUtterance: "in London" },
+        "full",
+      ).pipe(Effect.provideService(HttpClient.HttpClient, http));
+      expect(result.status).toBe("answer");
+      if (result.status !== "answer") return;
+      expect(result.message).toContain("London, England, United Kingdom");
+    }),
+  );
+  it.effect("grounds a place embedded in a spoken answer sentence", () =>
+    Effect.gen(function* () {
+      const london = {
+        id: 2643743,
+        name: "London",
+        admin1: "England",
+        country: "United Kingdom",
+        country_code: "GB",
+        latitude: 51.5,
+        longitude: -0.12,
+        timezone: "Europe/London",
+      };
+      const http = HttpClient.make((request) =>
+        Effect.sync(() => {
+          const name = new URL(request.url).searchParams.get("name") ?? "";
+          const body = request.url.includes("geocoding-api")
+            ? { results: name.toLowerCase() === "london" ? [london] : [] }
+            : forecast;
+          return HttpClientResponse.fromWeb(request, Response.json(body, { status: 200 }));
+        }),
+      );
+      const result = yield* runCirceQuickLookup(
+        {
+          ...input,
+          location: "it's in London actually",
+          sourceUtterance: "it's in London actually",
+        },
+        "full",
+      ).pipe(Effect.provideService(HttpClient.HttpClient, http));
+      expect(result.status).toBe("answer");
+    }),
+  );
 });

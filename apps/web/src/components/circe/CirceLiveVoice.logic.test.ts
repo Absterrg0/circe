@@ -4,6 +4,7 @@ import {
   buildCirceLiveVoiceContext,
   createCirceLiveVoiceController,
   CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS,
+  CIRCE_LIVE_VOICE_ENDPOINT_MS,
   CIRCE_LIVE_VOICE_DEFAULT_MAX_SESSION_MS,
   type CirceLiveVoiceAudioElement,
   type CirceLiveVoiceBrowser,
@@ -132,6 +133,7 @@ function fixture(
       context?: string;
     }) => Promise<CirceLiveVoiceStartResult>;
     readonly delegate?: (utterance: string, delegationId: string) => boolean;
+    readonly awaitingReply?: () => boolean;
     readonly idleTimeoutMs?: number;
     readonly maxSessionMs?: number;
     readonly startupTimeoutMs?: number;
@@ -190,6 +192,7 @@ function fixture(
       );
     },
     delegate: options.delegate ?? (() => true),
+    ...(options.awaitingReply === undefined ? {} : { awaitingReply: options.awaitingReply }),
     onStatus: (status) => statuses.push(status),
     onFailure: (message) => failures.push(message),
     onClosed: (reason) => {
@@ -332,6 +335,58 @@ describe("Circe live voice controller", () => {
     await f.controller.close();
   });
 
+  it("admits one spoken turn when the backend revises its transcript", async () => {
+    const delegated: Array<{ utterance: string; delegationId: string }> = [];
+    const f = fixture({
+      delegate: (utterance, delegationId) => {
+        delegated.push({ utterance, delegationId });
+        return true;
+      },
+    });
+    await f.controller.start();
+    f.peer.channel.emit(started);
+    // One audio item, revised fragment: the first partial is committed.
+    f.peer.channel.emit({
+      type: "session.input_transcript.delta",
+      delta: "open you",
+      start_ms: 100,
+      end_ms: 500,
+    });
+    f.peer.channel.emit({
+      type: "session.delegation.created",
+      delegation: { id: "item_1", target: "client" },
+    });
+    expect(delegated).toEqual([{ utterance: "open you", delegationId: "item_1" }]);
+    // The correction of the same audio item must not admit a second turn.
+    f.peer.channel.emit({
+      type: "session.input_transcript.delta",
+      delta: "open youtube",
+      start_ms: 100,
+      end_ms: 900,
+    });
+    f.peer.channel.emit({
+      type: "session.delegation.created",
+      delegation: { id: "item_2", target: "client" },
+    });
+    expect(delegated).toEqual([{ utterance: "open you", delegationId: "item_1" }]);
+    // A new audio item opens a new turn.
+    f.peer.channel.emit({
+      type: "session.input_transcript.delta",
+      delta: "search cats",
+      start_ms: 3000,
+      end_ms: 3600,
+    });
+    f.peer.channel.emit({
+      type: "session.delegation.created",
+      delegation: { id: "item_3", target: "client" },
+    });
+    expect(delegated).toEqual([
+      { utterance: "open you", delegationId: "item_1" },
+      { utterance: "search cats", delegationId: "item_3" },
+    ]);
+    await f.controller.close();
+  });
+
   it("holds a delegation until its transcript delta arrives", async () => {
     const delegated: Array<{ utterance: string; delegationId: string }> = [];
     const f = fixture({
@@ -353,51 +408,132 @@ describe("Circe live voice controller", () => {
     await f.controller.close();
   });
 
-  it("delegates the last utterance when the model refuses for lack of tools", async () => {
-    const delegated: string[] = [];
-    const f = fixture({
-      delegate: (utterance) => {
-        delegated.push(utterance);
-        return true;
-      },
-    });
-    await f.controller.start();
-    f.peer.channel.emit(started);
-    f.peer.channel.emit({
-      type: "session.input_transcript.delta",
-      delta: "what's the weather in ahmedabad",
-    });
-    f.peer.channel.emit({
-      type: "session.output_transcript.delta",
-      delta: "I don't have live weather access right now.",
-    });
-    expect(delegated).toEqual(["what's the weather in ahmedabad"]);
-    // One auto-delegation per user turn: the rest of the refusal is ignored.
-    f.peer.channel.emit({
-      type: "session.output_transcript.delta",
-      delta: " Please check a weather app.",
-    });
-    expect(delegated).toHaveLength(1);
-    await f.controller.close();
+  it("admits the committed utterance at the silence endpoint, not when the model speaks", async () => {
+    vi.useFakeTimers();
+    try {
+      const delegated: string[] = [];
+      const f = fixture({
+        closeTimeoutMs: 1,
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({
+        type: "session.input_transcript.delta",
+        delta: "what's the weather in ahmedabad",
+      });
+      // The model answering or refusing never admits a request on its own.
+      f.peer.channel.emit({
+        type: "session.output_transcript.delta",
+        delta: "I don't have live weather access right now.",
+      });
+      f.peer.channel.emit({
+        type: "session.output_transcript.delta",
+        delta: " Please check a weather app.",
+      });
+      expect(delegated).toEqual([]);
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS);
+      expect(delegated).toEqual(["what's the weather in ahmedabad"]);
+      const closing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(2);
+      await closing;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
-  it("does not delegate a normal assistant answer", async () => {
-    const delegated: string[] = [];
-    const f = fixture({
-      delegate: (utterance) => {
-        delegated.push(utterance);
-        return true;
-      },
-    });
-    await f.controller.start();
-    f.peer.channel.emit(started);
-    f.peer.channel.emit({ type: "session.input_transcript.delta", delta: "fix the login bug" });
-    f.peer.channel.emit({
-      type: "session.output_transcript.delta",
-      delta: "Sure, I'll take a look at that.",
-    });
-    expect(delegated).toEqual([]);
-    await f.controller.close();
+  it("admits the user's reply at the silence endpoint while the host holds a pending question", async () => {
+    vi.useFakeTimers();
+    try {
+      const delegated: string[] = [];
+      const f = fixture({
+        closeTimeoutMs: 1,
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+        awaitingReply: () => true,
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({
+        type: "session.input_transcript.delta",
+        delta: "uh, I'm from Ahmedabad, India",
+      });
+      f.peer.channel.emit({
+        type: "session.output_transcript.delta",
+        delta: "Let me check that for you.",
+      });
+      expect(delegated).toEqual([]);
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS);
+      expect(delegated).toEqual(["uh, I'm from Ahmedabad, India"]);
+      const closing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(2);
+      await closing;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("does not admit a fragment before the endpoint window closes", async () => {
+    vi.useFakeTimers();
+    try {
+      const delegated: string[] = [];
+      const f = fixture({
+        closeTimeoutMs: 1,
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({ type: "session.input_transcript.delta", delta: "fix the " });
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS - 500);
+      expect(delegated).toEqual([]);
+      f.peer.channel.emit({ type: "session.input_transcript.delta", delta: "login bug" });
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS - 500);
+      expect(delegated).toEqual([]);
+      await vi.advanceTimersByTimeAsync(500);
+      expect(delegated).toEqual(["fix the login bug"]);
+      const closing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(2);
+      await closing;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("admits one utterance per turn when the provider delegation follows the endpoint", async () => {
+    vi.useFakeTimers();
+    try {
+      const delegated: string[] = [];
+      const f = fixture({
+        closeTimeoutMs: 1,
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({ type: "session.input_transcript.delta", delta: "fix the login bug" });
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS);
+      expect(delegated).toEqual(["fix the login bug"]);
+      f.peer.channel.emit({
+        type: "session.delegation.created",
+        delegation: { id: "item_late", target: "client" },
+      });
+      expect(delegated).toEqual(["fix the login bug"]);
+      const closing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(2);
+      await closing;
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it("dedupes delegation ids so a retried event cannot double-submit", async () => {
@@ -562,6 +698,9 @@ describe("Circe live voice controller", () => {
       await vi.advanceTimersByTimeAsync(50_000);
       expect(f.controller.getStatus()).toBe("live");
       expect(f.closed).toEqual([]);
+      // The backend result settles the delegated turn; the idle clock still
+      // runs from the user's last speech.
+      f.controller.speak("The check finished.");
       await vi.advanceTimersByTimeAsync(10_000);
       expect(f.peer.channel.events()).toContainEqual({ type: "session.close" });
       f.peer.channel.emit({ type: "session.closed", reason: "close_requested" });

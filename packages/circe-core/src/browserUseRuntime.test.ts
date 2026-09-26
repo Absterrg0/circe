@@ -47,8 +47,27 @@ describe("browser use runtime", () => {
         selecting(["action", choice("click")], ["element", choice("role=button[name='Compose']")]),
         selecting(["action", choice("done")]),
       ];
+      // A click that changed nothing cannot back a completion claim, so the
+      // page moves after the first observation.
+      let snapshots = 0;
       const invoker: BrowserAutomationInvoker = {
-        snapshot: () => Effect.succeed(snapshot),
+        snapshot: () => {
+          snapshots += 1;
+          return Effect.succeed(
+            snapshots === 1
+              ? snapshot
+              : {
+                  ...snapshot,
+                  title: "Compose",
+                  interactiveElements: [
+                    {
+                      ...snapshot.interactiveElements[0]!,
+                      name: `Compose ${snapshots}`,
+                    },
+                  ],
+                },
+          );
+        },
         apply: (operation) =>
           Effect.sync(() => {
             operations.push(operation);
@@ -60,7 +79,12 @@ describe("browser use runtime", () => {
         invoker,
         select: () => Effect.succeed(scripted[step++]!),
       });
-      expect(result).toEqual({ status: "done", steps: 2, summary: "Open compose" });
+      expect(result).toEqual({
+        status: "done",
+        steps: 2,
+        summary: "Open compose",
+        verified: true,
+      });
       expect(operations).toEqual([
         { operation: "click", input: { locator: "role=button[name='Compose']" } },
       ]);

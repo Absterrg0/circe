@@ -600,13 +600,29 @@ const defaultInterpreterLayer = Layer.effect(
 
     /**
      * The wire proposal for a non-work outcome, when one exists. The mesh
-     * handoff still rides on proposals; a clarification has no proposal shape,
-     * so it stays unsupported and the execution node asks the typed question
-     * itself.
+     * handoff still rides on proposals. A clarification stays unsupported
+     * because it authorizes no action, but a lookup question travels with it:
+     * the origin client asks the typed prompt and retains the question, so
+     * the place answer resumes the lookup instead of being routed as new work.
      */
     const proposalFromOutcome = (
       outcome: CirceOutcome,
     ): typeof CirceSemanticProposal.Type | undefined => {
+      if (outcome.kind === "clarification" && outcome.clarification.kind === "lookup") {
+        return {
+          action: "unsupported",
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          clarification: {
+            kind: "lookup",
+            prompt: outcome.clarification.prompt,
+            tool: outcome.clarification.tool,
+            day: outcome.clarification.previous?.day ?? "now",
+          },
+        };
+      }
       if (outcome.kind === "tool-answer") {
         if (outcome.tool === "weather" || outcome.tool === "time") {
           const location =

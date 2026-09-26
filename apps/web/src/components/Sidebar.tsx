@@ -65,6 +65,9 @@ import {
   Undo2Icon,
   XIcon,
 } from "lucide-react";
+import { SidebarBotsSection } from "./bots/SidebarBots";
+import { SidebarSectionHeading } from "./sidebar/SidebarSectionHeading";
+import { CirceCommandLauncher } from "./sidebar/CirceCommandLauncher";
 import {
   memo,
   useCallback,
@@ -269,6 +272,7 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 const SETTLED_SHELF_EXPANDED_KEY = "circe:sidebar:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "circe:sidebar:snoozed-expanded";
 const CONVERSATIONS_SHELF_EXPANDED_KEY = "circe:sidebar:conversations-expanded";
+const AGENTS_COLLAPSED_KEY = "circe:sidebar:agents-collapsed";
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -2812,6 +2816,26 @@ export default function Sidebar() {
     () => setConversationsExpanded((value) => !value),
     [setConversationsExpanded],
   );
+  const [agentsCollapsed, setAgentsCollapsed] = useLocalStorage(
+    AGENTS_COLLAPSED_KEY,
+    false,
+    Schema.Boolean,
+  );
+  const toggleAgents = useCallback(
+    () => setAgentsCollapsed((value) => !value),
+    [setAgentsCollapsed],
+  );
+  // Chats live in each node's Conversations project; a new chat starts a
+  // draft there, preferring this device's node.
+  const conversationsProjectRef = useMemo(() => {
+    const candidates = projects.filter(
+      (project) => project.title.trim() === CIRCE_CONVERSATIONS_PROJECT_TITLE,
+    );
+    const project =
+      candidates.find((candidate) => candidate.environmentId === primaryEnvironmentId) ??
+      candidates[0];
+    return project === undefined ? null : scopeProjectRef(project.environmentId, project.id);
+  }, [primaryEnvironmentId, projects]);
   const renderedSettledThreads = useMemo(() => {
     if (settledShelfExpanded) return visibleSettledThreads;
     if (routeThreadKey === null) return EMPTY_THREADS;
@@ -4467,7 +4491,8 @@ export default function Sidebar() {
         fixedHeader={
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
-          <SidebarGroup className="relative z-[1] p-[var(--sidebar-content-inset)] pt-1">
+          <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
+            <CirceCommandLauncher />
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
               hasProjects={projectGroups.length > 0}
@@ -4847,7 +4872,60 @@ export default function Sidebar() {
                         );
                       };
                       const from = dragState?.activeSection ?? null;
-                      const items: ReactNode[] = [
+                      // Three groups, in this order: the user's Grok Bots,
+                      // Circe chats (the Conversations project), then coding
+                      // agents. Bot and chat rows are not sortable.
+                      const items: ReactNode[] = [<SidebarBotsSection key="bots-section" />];
+                      items.push(
+                        <SidebarSectionHeading
+                          key="chats-heading"
+                          label="Chats"
+                          count={conversationThreads.length}
+                          collapsed={!conversationsExpanded}
+                          onToggle={toggleConversations}
+                          {...(conversationsProjectRef === null
+                            ? {}
+                            : {
+                                action: {
+                                  label: "New chat",
+                                  icon: <PlusIcon />,
+                                  onClick: () => {
+                                    if (isMobile) setOpenMobile(false);
+                                    void handleNewThreadRef.current(conversationsProjectRef);
+                                  },
+                                },
+                              })}
+                        />,
+                      );
+                      if (conversationsExpanded) {
+                        for (const thread of conversationThreads) {
+                          items.push(renderThreadRow(thread, "active"));
+                        }
+                        if (conversationThreads.length === 0) {
+                          items.push(
+                            <li key="chats-hint" className="circe-sidebar-hint">
+                              Questions you ask Circe that are not about a project land here.
+                            </li>,
+                          );
+                        }
+                      }
+                      items.push(
+                        <SidebarSectionHeading
+                          key="agents-heading"
+                          label="Agents"
+                          count={pinnedThreads.length + activeThreads.length}
+                          collapsed={agentsCollapsed}
+                          onToggle={toggleAgents}
+                          action={{
+                            label: "New agent thread",
+                            icon: <SquarePenIcon />,
+                            disabled: projects.length === 0,
+                            onClick: () => handleNewThreadClick(),
+                          }}
+                        />,
+                      );
+                      if (agentsCollapsed) return items;
+                      items.push(
                         <SidebarDraftBlock
                           key="draft-sessions"
                           projectByKey={projectByKey}
@@ -4856,44 +4934,7 @@ export default function Sidebar() {
                           routeDraftId={routeDraftIdForRows}
                           onNavigateToDraft={navigateToDraft}
                         />,
-                      ];
-                      // Conversations keep their own collapsible section so
-                      // general-question threads never mix into the coding
-                      // sections. Rows are non-draggable (not in the sortable
-                      // id set) and reuse the ordinary thread row.
-                      if (conversationThreads.length > 0) {
-                        items.push(
-                          <li key="conversations-header" className="list-none">
-                            <button
-                              type="button"
-                              onClick={toggleConversations}
-                              className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-sidebar-muted-foreground/60 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-                            >
-                              <span>
-                                {conversationsExpanded
-                                  ? "Conversations"
-                                  : `Conversations (${conversationThreads.length})`}
-                              </span>
-                              <span
-                                aria-hidden
-                                className="h-px min-w-2 flex-1 bg-sidebar-border/60"
-                              />
-                              <ChevronDownIcon
-                                aria-hidden
-                                className={cn(
-                                  "size-3.5 shrink-0 transition-transform",
-                                  !conversationsExpanded && "-rotate-90",
-                                )}
-                              />
-                            </button>
-                          </li>,
-                        );
-                        if (conversationsExpanded) {
-                          for (const thread of conversationThreads) {
-                            items.push(renderThreadRow(thread, "active"));
-                          }
-                        }
-                      }
+                      );
                       for (const item of sidebarListItems) {
                         if (item.kind === "thread") {
                           items.push(renderThreadRow(threadByKey.get(item.key)!, item.section));
@@ -5000,7 +5041,7 @@ export default function Sidebar() {
                       }
                       return items;
                     })()}
-                    {settledShelfExpanded && hiddenSettledCount > 0 ? (
+                    {!agentsCollapsed && settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
                         <button
                           type="button"

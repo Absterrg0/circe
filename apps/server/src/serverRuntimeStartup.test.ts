@@ -6,9 +6,11 @@ import {
   ProviderInstanceId,
 } from "@circe/contracts";
 import * as Deferred from "effect/Deferred";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
+import * as TestClock from "effect/testing/TestClock";
 import * as Ref from "effect/Ref";
 
 import * as GitVcsDriver from "./vcs/GitVcsDriver.ts";
@@ -184,4 +186,44 @@ it.effect("automatic pull only updates enabled, behind, clean default-branch che
     ).pipe(Effect.provideService(GitVcsDriver.GitVcsDriver, git));
     assert.deepStrictEqual(pulled, ["/inherited"]);
   }),
+);
+
+it.effect("passes once the HTTP listener reports ready", () =>
+  Effect.gen(function* () {
+    const listening = yield* Deferred.make<void>();
+    yield* Deferred.succeed(listening, undefined);
+    yield* ServerRuntimeStartup.awaitHttpListener(listening);
+  }),
+);
+
+it.effect("names the signal that never reported ready", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const waiting = yield* ServerRuntimeStartup.awaitServerLayerSignal(
+        Effect.never,
+        "its parked roots",
+        Duration.millis(1),
+      ).pipe(Effect.exit, Effect.forkScoped);
+      yield* TestClock.adjust(Duration.millis(2));
+      const exit = yield* Fiber.join(waiting);
+      assert.isTrue(Exit.isFailure(exit));
+      assert.include(String(exit), "never reported its parked roots");
+    }),
+  ),
+);
+
+it.effect("fails loudly when the HTTP listener never reports ready", () =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const listening = yield* Deferred.make<void>();
+      const waiting = yield* ServerRuntimeStartup.awaitHttpListener(
+        listening,
+        Duration.millis(1),
+      ).pipe(Effect.exit, Effect.forkScoped);
+      yield* TestClock.adjust(Duration.millis(2));
+      const exit = yield* Fiber.join(waiting);
+      assert.isTrue(Exit.isFailure(exit));
+      assert.include(String(exit), "never reported the HTTP listener");
+    }),
+  ),
 );

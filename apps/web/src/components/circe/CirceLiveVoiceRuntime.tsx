@@ -17,6 +17,7 @@ import {
   getCirceLiveVoiceEnabled,
   getCirceLiveVoiceSink,
   getCirceLiveVoiceUiState,
+  hasCirceLiveVoicePendingReply,
   setCirceLiveVoiceActive,
   setCirceLiveVoiceEnabled,
   setCirceLiveVoiceSink,
@@ -144,6 +145,9 @@ function CirceLiveVoiceEnvironmentRuntime({
       },
       delegate: (utterance, delegationId) =>
         submitCirceLiveVoiceDelegation(utterance, delegationId),
+      // A pending question owns its answer: delegate the reply the moment the
+      // model starts responding, without waiting for it to choose.
+      awaitingReply: hasCirceLiveVoicePendingReply,
       onStatus: (status) => {
         if (disposed) return;
         setCirceLiveVoiceStatus(status);

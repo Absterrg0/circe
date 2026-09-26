@@ -53,7 +53,7 @@ describe("browser operation mapping", () => {
     ).toEqual({ operation: "click", input: { locator: "role=button[name='Compose']" } });
   });
 
-  it("types into a grounded field and into the focused field when omitted", () => {
+  it("types only into a grounded field", () => {
     expect(
       browserOperationForAction({
         kind: "type",
@@ -63,10 +63,6 @@ describe("browser operation mapping", () => {
     ).toEqual({
       operation: "type",
       input: { text: "hello", locator: "role=textbox[name='Search']" },
-    });
-    expect(browserOperationForAction({ kind: "type", text: "hello" })).toEqual({
-      operation: "type",
-      input: { text: "hello" },
     });
   });
 
@@ -82,11 +78,15 @@ describe("browser operation mapping", () => {
   });
 
   it("translates press keys to the host's canonical names", () => {
-    expect(browserOperationForAction({ kind: "press", key: "enter" })).toEqual({
+    expect(
+      browserOperationForAction({ kind: "press", elementId: "role=textbox", key: "enter" }),
+    ).toEqual({
       operation: "press",
       input: { key: "Enter" },
     });
-    expect(browserOperationForAction({ kind: "press", key: "arrowup" })).toEqual({
+    expect(
+      browserOperationForAction({ kind: "press", elementId: "role=textbox", key: "arrowup" }),
+    ).toEqual({
       operation: "press",
       input: { key: "ArrowUp" },
     });

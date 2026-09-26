@@ -5136,7 +5136,7 @@ export function makeCodexAdapterV2(adapterOptions: CodexAdapterV2Options): Provi
                 hasT3Mcp: mcpSession !== undefined,
                 browserToolsAvailable: mcpSession?.browserToolsAvailable ?? true,
                 deviceToolsAvailable: mcpSession?.capabilities?.has("device") ?? false,
-                desktopToolsAvailable: mcpSession?.capabilities?.has("desktop-use") ?? false,
+                desktopToolsAvailable: mcpSession?.capabilities?.has("computer-use") ?? false,
               });
               yield* Ref.update(pendingRootTurns, (current) => {
                 const updated = new Map(current);

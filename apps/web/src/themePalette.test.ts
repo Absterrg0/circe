@@ -90,16 +90,17 @@ describe("theme files", () => {
     }
   });
 
-  it("keeps stock dark controls in the neutral-black surface hierarchy", () => {
+  it("keeps stock dark controls in the Circe midnight surface hierarchy", () => {
     expectThemeColors(getStandardThemeColors("dark"), {
-      canvas: "#0a0a0a",
-      surface: "#111111",
-      surfaceRaised: "#111111",
-      surfaceOverlay: "#111111",
-      toolbarControl: "#111111",
-      secondary: "#111111",
-      muted: "#111111",
-      accentSurface: "#141414",
+      canvas: "#0f1620",
+      chrome: "#0b1119",
+      surface: "#151b22",
+      surfaceRaised: "#151b22",
+      toolbarControl: "#151b22",
+      secondary: "#1b222b",
+      muted: "#1b222b",
+      accentSurface: "#1f2731",
+      accent: "#e08a66",
     });
   });
 

@@ -124,3 +124,11 @@ When generating a new Circe screen: pick light or dark semantic tokens, use only
 ## Adoption note
 
 The mobile app currently uses DM Sans where this system specifies Inter; switch to Inter via the Expo font plugin when touching the font stack. The `circe-copper`, `circe-peach`, and canvas tokens in `apps/mobile` map to this palette (`#C97857`, `#E8AE93`, `#FAF7F3`, `#0F1620`); older hex values from the draft system must not be reintroduced. The in-app voice orb echoes the brand gradient in layered solids; the embedded-raster mark itself is reserved for logo surfaces per section 2.
+
+## Web implementation notes
+
+The palette above is the web app's default: the base `:root` block in `apps/web/src/index.css` applies whenever no named theme is selected. `CIRCE_CODE_*_THEME_COLORS` in `apps/web/src/themePalette.ts` repeat the same values to seed new themes in the editor. Change both together.
+
+White text on the brand copper `#C97857` measures 3.3:1, below the 4.5:1 body-text minimum. Light mode therefore fills buttons with a deepened copper, `#A9573A` (4.9:1 with `#FFFAF6`). The brand copper stays on focus rings, active indicators, and the orb. Dark mode fills with `#E08A66` under dark text.
+
+The orb (`CirceOrb`) is the only animated brand element. It moves only while Circe is listening or working, uses stepped keyframes, and holds still under reduced motion.

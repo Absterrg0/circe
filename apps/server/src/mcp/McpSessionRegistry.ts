@@ -145,7 +145,7 @@ const makeWithOptions = Effect.fn("McpSessionRegistry.make")(function* (
           "pull-requests",
           ...(request.capabilities ??
             (browserToolsAvailable && request.preview !== false ? (["preview"] as const) : [])),
-          ...(descriptor.capabilities.desktopUse ? (["desktop-use"] as const) : []),
+          ...(descriptor.capabilities.desktopUse ? (["computer-use"] as const) : []),
         ]),
         issuedAt,
       };

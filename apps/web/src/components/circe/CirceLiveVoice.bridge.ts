@@ -9,6 +9,8 @@ export interface CirceLiveVoiceSink {
 
 export type CirceLiveVoiceDelegateHandler = (utterance: string, delegationId: string) => boolean;
 
+export type CirceLiveVoicePendingReplyReader = () => boolean;
+
 export interface CirceLiveVoiceUiState {
   readonly active: boolean;
   readonly status: CirceLiveVoiceStatus;
@@ -16,6 +18,7 @@ export interface CirceLiveVoiceUiState {
 
 let sink: CirceLiveVoiceSink | null = null;
 let delegate: CirceLiveVoiceDelegateHandler | null = null;
+let pendingReplyReader: CirceLiveVoicePendingReplyReader | null = null;
 let uiState: CirceLiveVoiceUiState = { active: false, status: "idle" };
 let liveVoiceEnabled = false;
 let activationReason: "user" | "announcement" = "user";
@@ -57,6 +60,22 @@ export const registerCirceLiveVoiceDelegate = (
 
 export const submitCirceLiveVoiceDelegation = (utterance: string, delegationId: string): boolean =>
   delegate?.(utterance, delegationId) ?? false;
+
+/**
+ * The voice runtime owns pending clarifications and surface confirmations. The
+ * live session asks whether a reply is owed so the user's answer is delegated
+ * directly instead of waiting for the speech model to choose.
+ */
+export const registerCirceLiveVoicePendingReply = (
+  reader: CirceLiveVoicePendingReplyReader,
+): (() => void) => {
+  pendingReplyReader = reader;
+  return () => {
+    if (pendingReplyReader === reader) pendingReplyReader = null;
+  };
+};
+
+export const hasCirceLiveVoicePendingReply = (): boolean => pendingReplyReader?.() ?? false;
 
 export const getCirceLiveVoiceUiState = (): CirceLiveVoiceUiState => uiState;
 

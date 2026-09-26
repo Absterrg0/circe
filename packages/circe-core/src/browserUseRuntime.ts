@@ -59,8 +59,10 @@ export const makeBrowserUseRuntime = <E = never>(
   select: input.select,
   apply: (action) => {
     const operation = browserOperationForAction(action);
-    if (operation === null) return input.invoker.wait?.() ?? Effect.void;
-    return input.invoker.apply(operation);
+    if (operation === null) {
+      return (input.invoker.wait?.() ?? Effect.void).pipe(Effect.as(true));
+    }
+    return input.invoker.apply(operation).pipe(Effect.as(true));
   },
 });
 
@@ -74,6 +76,9 @@ export interface RunBrowserGoalInput<E = never> extends BrowserUseRuntimeInput<E
     index: number,
   ) => Effect.Effect<void, E>;
   readonly shouldStop?: () => Effect.Effect<boolean, E>;
+  readonly verify?: (
+    input: import("./computerUse.ts").ComputerUseVerificationInput,
+  ) => Effect.Effect<boolean, E>;
 }
 
 /** Plan-free browser loop: the selector chooses each grounded action. */
@@ -89,4 +94,5 @@ export const runBrowserGoal = <E = never>(
     ...(input.maxElements === undefined ? {} : { maxElements: input.maxElements }),
     ...(input.onStep === undefined ? {} : { onStep: input.onStep }),
     ...(input.shouldStop === undefined ? {} : { shouldStop: input.shouldStop }),
+    ...(input.verify === undefined ? {} : { verify: input.verify }),
   });

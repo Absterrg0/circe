@@ -50,7 +50,7 @@ describe("DesktopCirceOrb", () => {
     );
   });
 
-  it("ships a liquid-glass orb with providers and running agents", () => {
+  it("ships the ORB-25 crease orb with providers and running agents", () => {
     const html = decodeURIComponent(
       desktopCirceOverlayDataUrl().replace(/^data:text\/html;charset=utf-8,/, ""),
     );
@@ -104,6 +104,17 @@ describe("DesktopCirceOrb", () => {
     expect(html).toContain("getContext");
     expect(html).toContain("requestAnimationFrame");
     expect(html).toContain("visibilitychange");
+    // ORB-25: the hand-differenced crease field, with the component's state
+    // palettes and motion presets carried into the overlay.
+    expect(html).toContain("creaseField");
+    expect(html).toContain("creaseRender");
+    expect(html).toContain("tanh1");
+    expect(html).toContain("u_tint");
+    expect(html).toContain("u_body");
+    expect(html).toContain("u_sheen");
+    expect(html).toContain("#dbe8f7");
+    expect(html).toContain("#a8c8f0");
+    expect(html).toContain("#0d1118");
     // The orb is draggable: pointer capture keeps moves flowing after the
     // cursor leaves the tiny window, and a drag must not toggle the panel.
     expect(html).toContain("pointerdown");

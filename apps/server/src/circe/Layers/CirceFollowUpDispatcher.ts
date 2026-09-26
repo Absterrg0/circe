@@ -213,22 +213,24 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
         const pendingStart = yield* turns.getPendingTurnStartByThreadId({
           threadId: input.threadId,
         });
+        // The V2 run projection is the live authority. The legacy detail does
+        // not carry V2 run state, so gating on it alone reported "not running"
+        // while a provider turn was actually live and left it running.
+        const projection = yield* orchestration.getThreadProjection(input.threadId);
+        const activeRun = latestActiveRun(projection);
         const shouldInterrupt =
+          activeRun !== undefined ||
           Option.isSome(pendingStart) ||
           (Option.isSome(detail) && hasActiveCirceTurn(detail.value));
         let interrupted = false;
-        if (shouldInterrupt) {
-          const projection = yield* orchestration.getThreadProjection(input.threadId);
-          const activeRun = latestActiveRun(projection);
-          if (activeRun !== undefined) {
-            yield* orchestration.dispatch({
-              type: "run.interrupt",
-              commandId: input.commandId,
-              threadId: input.threadId,
-              runId: activeRun.id,
-            });
-            interrupted = true;
-          }
+        if (shouldInterrupt && activeRun !== undefined) {
+          yield* orchestration.dispatch({
+            type: "run.interrupt",
+            commandId: input.commandId,
+            threadId: input.threadId,
+            runId: activeRun.id,
+          });
+          interrupted = true;
         }
         return { interrupted, cancelledFollowUps };
       }),

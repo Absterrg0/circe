@@ -141,6 +141,32 @@ describe("Circe controller interpreter outcome classification", () => {
     }).pipe(Effect.provide(layer));
   });
 
+  it.effect("carries a typed lookup question on the mesh proposal", () => {
+    const layer = interpreterLayer({ outcome: choice("weather") });
+    return Effect.gen(function* () {
+      const interpreter = yield* CirceControllerInterpreter;
+      const propose = interpreter.propose;
+      expect(propose).toBeDefined();
+      if (propose === undefined) return;
+      const proposal = yield* propose({
+        utterance: "what's the weather",
+        projects: [],
+        tasks: [],
+        providers: [],
+        requestMetadata: { requestId: "weather-clarify", origin: { originInteractionId: "test" } },
+      });
+      expect(proposal).toMatchObject({
+        action: "unsupported",
+        clarification: {
+          kind: "lookup",
+          prompt: "Which place should I check for weather?",
+          tool: "weather",
+          day: "now",
+        },
+      });
+    }).pipe(Effect.provide(layer));
+  });
+
   it.effect("dispatches a website launch a client advertised", () => {
     const layer = interpreterLayer({
       outcome: choice("open-website"),

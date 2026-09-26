@@ -8,6 +8,7 @@
     "./describeApproval": "./src/describeApproval.ts",
     "./destinationSpan": "./src/destinationSpan.ts",
     "./deriveTaskState": "./src/deriveTaskState.ts",
+    "./desktopApp": "./src/desktopApp.ts",
     "./requestIdentity": "./src/requestIdentity.ts",
     "./semantic": "./src/semantic.ts",
     "./semanticEvidence": "./src/semanticEvidence.ts",
@@ -16,6 +17,7 @@
     "./clarification": "./src/clarification.ts",
     "./projectChoice": "./src/projectChoice.ts",
     "./groundVoiceTurn": "./src/groundVoiceTurn.ts",
+    "./interaction": "./src/interaction.ts",
     "./decision": "./src/decision.ts",
     "./decisionRequest": "./src/decisionRequest.ts",
     "./decisionCompose": "./src/decisionCompose.ts",
@@ -28,9 +30,11 @@
     "./browserUse": "./src/browserUse.ts",
     "./browserUseRuntime": "./src/browserUseRuntime.ts",
     "./modelChoice": "./src/modelChoice.ts",
+    "./place": "./src/place.ts",
     "./spokenSummary": "./src/spokenSummary.ts",
     "./timing": "./src/timing.ts",
-    "./website": "./src/website.ts"
+    "./website": "./src/website.ts",
+    "./singleClickGoal": "./src/singleClickGoal.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",

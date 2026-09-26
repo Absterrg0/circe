@@ -35,6 +35,32 @@ const state = vi.hoisted(() => ({
   converse: vi.fn(),
   desk: vi.fn(),
   cancelRequest: vi.fn(),
+  computerStatus: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { available: false },
+  })),
+  deviceReadiness: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: {
+      nodeId: "local",
+      preset: "full",
+      controlAllowed: false,
+      adapterSupported: false,
+      sessionActive: false,
+      permissionGranted: false,
+      surfaces: [],
+    },
+  })),
+  submitInteraction: vi.fn(async () => ({ _tag: "Failure" as const, cause: "not under test" })),
+  computerUse: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { status: "unavailable" as const, message: "test" },
+  })),
+  cancelComputerMission: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { cancelled: false },
+  })),
+  interruptInteraction: vi.fn(),
   drain: undefined as (() => Promise<void>) | undefined,
 }));
 vi.mock("react", async (importOriginal) => {
@@ -100,6 +126,13 @@ vi.mock("../../state/circeMesh", () => ({
     converse: "converse",
     getTaskDesk: "desk",
     cancelRequest: "cancelRequest",
+    interactInteraction: "interruptInteraction",
+    interruptInteraction: "interruptInteraction",
+    deviceReadiness: "deviceReadiness",
+    submitInteraction: "submitInteraction",
+    computerStatus: "computerStatus",
+    computerUse: "computerUse",
+    cancelComputerMission: "cancelComputerMission",
   },
 }));
 vi.mock("../../state/use-atom-command", () => ({
@@ -111,7 +144,13 @@ vi.mock("../../state/use-atom-command", () => ({
       | "interpret"
       | "converse"
       | "desk"
-      | "cancelRequest",
+      | "cancelRequest"
+      | "interruptInteraction"
+      | "deviceReadiness"
+      | "submitInteraction"
+      | "computerStatus"
+      | "computerUse"
+      | "cancelComputerMission",
   ) => state[command],
 }));
 vi.mock("../../circeIdentity", () => ({ circeReporterIdentity: () => "interaction" }));
@@ -189,6 +228,24 @@ describe("ControlCenter composer to runtime boundary", () => {
     state.cancelRequest.mockReset().mockResolvedValue({
       _tag: "Success",
       value: { status: "unknown", requestId: "request-1" },
+    });
+    state.interruptInteraction.mockReset().mockResolvedValue({
+      _tag: "Success",
+      value: {
+        stopRequested: true,
+        stopConfirmed: true,
+        state: {
+          interactionId: "interaction-1",
+          ownerNodeId: "local",
+          revision: 1,
+          goal: { kind: "conversation" },
+          pending: null,
+          target: null,
+          operationId: null,
+          outcome: null,
+          updatedAt: "2026-09-21T00:00:00.000Z",
+        },
+      },
     });
     // Proposal-first runtime: interpret returns an ambient proposal by
     // default so console submissions execute without a second inference.

@@ -11,20 +11,10 @@ import {
   applyCirceLiveVoiceTranscript,
   createCirceLiveVoiceTranscript,
   circeLiveVoiceAppendCommand,
-  isCirceLiveVoiceQuickAction,
-  lastCirceLiveVoiceUtterance,
   parseCirceLiveVoiceServerEvent,
   takeCirceLiveVoiceDelegateUtterance,
   type CirceLiveVoiceTranscriptState,
 } from "./liveVoice.ts";
-
-/**
- * Clear refusals that mean "I cannot do this without backend tools". When one
- * arrives without a client delegation, the controller forwards the user's
- * last utterance to the backend so the request still runs.
- */
-const CIRCE_LIVE_VOICE_TOOL_REFUSAL =
-  /(?:i (?:don'?t|do not|can'?t|cannot|am not able to|do not have|don'?t have)|as an ai)[^.\n]{0,80}(?:access|fetch|retrieve|check|get|provide|real-?time|live|weather|current)/iu;
 
 export type CirceLiveVoiceStatus =
   | "idle"
@@ -55,6 +45,14 @@ export type CirceLiveVoiceStartupStage =
  * when the next input fragment lands.
  */
 export const CIRCE_LIVE_VOICE_DELEGATION_RETRY_MS = 2_500;
+
+/**
+ * Silence endpointing for providers that do not delegate. After this long
+ * without new input speech, the committed utterance is admitted anyway. This
+ * replaces transcript-shape heuristics and assistant-output triggers: one
+ * admission contract, two endpoint signals.
+ */
+export const CIRCE_LIVE_VOICE_ENDPOINT_MS = 2_000;
 
 export const CIRCE_LIVE_VOICE_DEFAULT_IDLE_TIMEOUT_MS = 60_000;
 /** 10 minutes hard cap on one billed session. */
@@ -143,6 +141,13 @@ export interface CirceLiveVoiceControllerOptions {
   }) => Promise<CirceLiveVoiceStartResult>;
   /** Hand one delegated utterance to the Circe Director. Returns false when no runtime accepted it. */
   readonly delegate: (utterance: string, delegationId: string) => boolean;
+  /**
+   * True while the host holds a typed question (a lookup clarification or a
+   * surface confirmation) whose reply is owed. The session then delegates the
+   * user's answer directly, with no transcript-shape heuristic, instead of
+   * waiting for the speech model to decide to delegate.
+   */
+  readonly awaitingReply?: () => boolean;
   readonly onStatus?: (status: CirceLiveVoiceStatus) => void;
   readonly onTranscript?: (state: CirceLiveVoiceTranscriptState) => void;
   /** Combined mic/output amplitude 0..1 for the orb; optional. */
@@ -414,13 +419,25 @@ export function createCirceLiveVoiceController(
   // Speak a short cue the moment the line is live, so the user knows when
   // Circe can hear them instead of talking into a connecting session.
   let greetedSession = false;
-  // The model can end its turn with a refusal instead of delegating. One
-  // auto-delegation per user turn keeps the request alive without replaying.
-  let delegationHandledSinceUserSpeech = false;
+  // One committed utterance per user turn. Every admission trigger routes
+  // through `commitUtterance`, which stamps a monotonic revision and a stable
+  // host id, so partial fragments, a provider delegation, and the silence
+  // fallback can never submit the same turn twice.
+  let committedUtteranceRevision = 0;
+  let committedForCurrentTurn = false;
+  /**
+   * The audio turn the current input transcript belongs to. The backend's
+   * start_ms is the item identity; a delta that repeats it is a revision of
+   * the same spoken turn, not a new one. Without it, a new turn only opens
+   * once the assistant has answered the committed turn.
+   */
+  let currentInputTurnStartMs: number | null = null;
+  let lastInputTurnHadOutput = false;
+  let endpointTimer: TimeoutHandle | null = null;
   // A delegated request is still outstanding at the backend. The session must
-  // not idle-close while it waits, or the spoken result is cut off.
+  // not idle-close while it waits, or the spoken result is cut off. Only new
+  // user speech or session teardown ends the wait; a short backchannel does not.
   let awaitingDelegation = false;
-  let autoDelegationSeq = 0;
 
   const setStatus = (next: CirceLiveVoiceStatus) => {
     if (status === next) return;
@@ -457,6 +474,9 @@ export function createCirceLiveVoiceController(
     deferralTimer = clearTimer(deferralTimer);
     deferredDelegationId = null;
   };
+  const clearEndpointTimer = () => {
+    endpointTimer = clearTimer(endpointTimer);
+  };
   const clearRenewTimer = () => {
     if (renewTimer !== null) {
       clearInterval(renewTimer);
@@ -469,6 +489,7 @@ export function createCirceLiveVoiceController(
     clearMaxTimer();
     clearCloseTimer();
     clearDeferral();
+    clearEndpointTimer();
     clearRenewTimer();
   };
 
@@ -733,6 +754,52 @@ export function createCirceLiveVoiceController(
     notifyClosed(finishedReason);
   };
 
+  /**
+   * The single admission point. A committed utterance carries a monotonic
+   * revision and one stable host id; a trigger that arrives after the turn was
+   * already committed is ignored rather than submitted again.
+   */
+  const commitUtterance = (
+    text: string,
+    hostId: string | null,
+    _cause: "provider-delegation" | "silence-endpoint",
+  ): void => {
+    if (committedForCurrentTurn) return;
+    const trimmed = text.trim();
+    if (trimmed.length === 0) return;
+    committedForCurrentTurn = true;
+    awaitingDelegation = true;
+    committedUtteranceRevision += 1;
+    const id = hostId ?? `circe-live-utterance-${committedUtteranceRevision}`;
+    if (!options.delegate(trimmed, id)) {
+      append("commentary", "I could not submit that request on this device.");
+    }
+  };
+
+  /**
+   * Endpoint fallback: after a silence window with no provider delegation, the
+   * user's committed speech is admitted anyway. This is silence endpointing,
+   * not a guess at the transcript's shape, and it never runs while the
+   * assistant is speaking.
+   */
+  const scheduleEndpoint = () => {
+    clearEndpointTimer();
+    if (!listen || readStatus() !== "live") return;
+    const gen = generation;
+    endpointTimer = setTimeout(() => {
+      endpointTimer = null;
+      if (gen !== generation || readStatus() !== "live" || committedForCurrentTurn) return;
+      const taken = takeCirceLiveVoiceDelegateUtterance(transcript, {
+        ownedReply: options.awaitingReply?.() === true,
+      });
+      if (taken.utterance.length === 0) return;
+      transcript = taken.state;
+      options.onTranscript?.(transcript);
+      clearDeferral();
+      commitUtterance(taken.utterance, null, "silence-endpoint");
+    }, CIRCE_LIVE_VOICE_ENDPOINT_MS);
+  };
+
   const handleEvent = (raw: string) => {
     const event = parseCirceLiveVoiceServerEvent(raw);
     switch (event.type) {
@@ -742,6 +809,8 @@ export function createCirceLiveVoiceController(
         }
         clearStartupTimer();
         lastUserSpeechAt = now();
+        currentInputTurnStartMs = null;
+        lastInputTurnHadOutput = false;
         setStatus("live");
         if (!listen) {
           // Announcement sessions never listen, even if a track exists.
@@ -764,52 +833,48 @@ export function createCirceLiveVoiceController(
         transcript = applyCirceLiveVoiceTranscript(transcript, event);
         options.onTranscript?.(transcript);
         if (event.type === "session.input_transcript.delta" && event.delta.length > 0) {
+          const startMs = event.startMs;
+          // A delta that revises the same audio item must not reopen
+          // admission: partial transcript revisions would otherwise admit the
+          // same spoken turn more than once. A new turn is a different
+          // start_ms, or (when the backend reports none) speech that follows
+          // the assistant's answer to the committed turn.
+          const newTurn =
+            currentInputTurnStartMs === null ||
+            (startMs !== null && startMs !== currentInputTurnStartMs) ||
+            (startMs === null && committedForCurrentTurn && lastInputTurnHadOutput);
+          if (newTurn) {
+            currentInputTurnStartMs = startMs;
+            lastInputTurnHadOutput = false;
+            committedForCurrentTurn = false;
+            awaitingDelegation = false;
+          }
           lastUserSpeechAt = now();
-          delegationHandledSinceUserSpeech = false;
           scheduleIdle();
+          scheduleEndpoint();
           // A held delegation retries the moment its transcript arrives, so a
-          // short answer like "gujarat" is submitted instead of dropped.
-          if (deferredDelegationId !== null) {
+          // short answer like "gujarat" is submitted instead of dropped. An
+          // already-committed turn owes nothing and never retries.
+          if (deferredDelegationId !== null && !committedForCurrentTurn) {
             const retryId = deferredDelegationId;
-            const retry = takeCirceLiveVoiceDelegateUtterance(transcript);
+            const retry = takeCirceLiveVoiceDelegateUtterance(transcript, {
+              ownedReply: options.awaitingReply?.() === true,
+            });
             transcript = retry.state;
             options.onTranscript?.(transcript);
             if (retry.utterance.length > 0) {
               clearDeferral();
-              delegationHandledSinceUserSpeech = true;
-              awaitingDelegation = true;
-              if (!options.delegate(retry.utterance, retryId)) {
-                append("commentary", "I could not submit that request on this device.");
-              }
+              commitUtterance(retry.utterance, retryId, "provider-delegation");
             }
           }
         }
         if (event.type === "session.output_transcript.delta" && event.delta.length > 0) {
-          awaitingDelegation = false;
+          // The assistant speaking does not finish the backend operation and
+          // does not admit a request; only the committed utterance does. It
+          // does, however, close the committed audio turn: speech after the
+          // answer is a new turn even when the backend reports no start_ms.
+          lastInputTurnHadOutput = true;
           scheduleIdle();
-        }
-        if (
-          event.type === "session.output_transcript.delta" &&
-          event.delta.length > 0 &&
-          !delegationHandledSinceUserSpeech
-        ) {
-          const utterance = lastCirceLiveVoiceUtterance(transcript);
-          // A deterministic quick action (weather, local time) is delegated the
-          // moment the model starts responding, whatever it is about to say. It
-          // is a fixed backend tool, so its reliability must not depend on the
-          // speech model choosing to delegate — the model is only the voice.
-          // A refusal is still caught the same way for everything else.
-          const quickAction = utterance.length > 0 && isCirceLiveVoiceQuickAction(utterance);
-          const refusal = CIRCE_LIVE_VOICE_TOOL_REFUSAL.test(transcript.assistantText.slice(-400));
-          if (utterance.length > 0 && (quickAction || refusal)) {
-            delegationHandledSinceUserSpeech = true;
-            awaitingDelegation = true;
-            autoDelegationSeq += 1;
-            const autoId = `circe-live-auto-${autoDelegationSeq}`;
-            if (!options.delegate(utterance, autoId)) {
-              append("commentary", "I could not submit that request on this device.");
-            }
-          }
         }
         break;
       }
@@ -821,14 +886,19 @@ export function createCirceLiveVoiceController(
         if (seenDelegationIds.has(event.delegationId)) break;
         seenDelegationIds.add(event.delegationId);
         delegationId = event.delegationId;
-        const taken = takeCirceLiveVoiceDelegateUtterance(transcript);
+        const taken = takeCirceLiveVoiceDelegateUtterance(transcript, {
+          ownedReply: options.awaitingReply?.() === true,
+        });
         transcript = taken.state;
         options.onTranscript?.(transcript);
         if (taken.utterance.length === 0) {
           // The event can land before the transcript delta for the words it
           // answers. Hold it and retry on the next input fragment; only after
           // the window does this mean there is genuinely nothing to submit.
+          // A turn that was already committed by the silence fallback owes
+          // nothing, so it never holds a deferral.
           clearDeferral();
+          if (committedForCurrentTurn) break;
           deferredDelegationId = event.delegationId;
           deferralTimer = setTimeout(() => {
             deferralTimer = null;
@@ -837,11 +907,7 @@ export function createCirceLiveVoiceController(
           break;
         }
         clearDeferral();
-        delegationHandledSinceUserSpeech = true;
-        awaitingDelegation = true;
-        if (!options.delegate(taken.utterance, event.delegationId)) {
-          append("commentary", "I could not submit that request on this device.");
-        }
+        commitUtterance(taken.utterance, event.delegationId, "provider-delegation");
         break;
       }
       case "session.closed": {
@@ -1067,7 +1133,12 @@ export function createCirceLiveVoiceController(
   return {
     start,
     close,
-    speak: (text) => queueAppend("commentary", text),
+    // A spoken result is the host's settlement signal: the delegated turn is
+    // no longer outstanding, so idle may close once the user stops speaking.
+    speak: (text) => {
+      awaitingDelegation = false;
+      queueAppend("commentary", text);
+    },
     note: (text) => queueAppend("thinking", text),
     getStatus: () => status,
     getTranscript: () => transcript,

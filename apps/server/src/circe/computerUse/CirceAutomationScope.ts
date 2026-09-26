@@ -14,7 +14,7 @@ import type { McpCapability, McpInvocationScope } from "../../mcp/McpInvocationC
  */
 export const CIRCE_AUTOMATION_CAPABILITIES: ReadonlySet<McpCapability> = new Set([
   "preview",
-  "desktop-use",
+  "computer-use",
 ]);
 
 const CIRCE_CONTROL_INSTANCE = ProviderInstanceId.make("circe-control");

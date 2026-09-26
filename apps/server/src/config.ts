@@ -16,7 +16,7 @@ import * as Path from "effect/Path";
 import type * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 
-import type { CirceNodePreset } from "@circe/contracts";
+import type { CirceNodePreset, ComputerHostBootstrap } from "@circe/contracts";
 import { sweepStalePendingAttachments } from "./attachmentStore.ts";
 import { OtlpProtocol } from "@circe/shared/observability";
 
@@ -111,6 +111,13 @@ export class ServerConfig extends Context.Service<
     readonly noBrowser: boolean;
     readonly startupPresentation: StartupPresentation;
     readonly desktopBootstrapToken: string | undefined;
+    /**
+     * The desktop app's computer-use host for this node. Present only when the
+     * local server was launched by the app and the host accepted a socket.
+     * The server connects as an authenticated guest; it never spawns the
+     * driver itself.
+     */
+    readonly computerHost?: ComputerHostBootstrap | undefined;
     readonly desktopTelemetryFd?: number | undefined;
     readonly desktopTelemetryControlFd?: number | undefined;
     readonly resourceMonitorPath?: string | undefined;

@@ -57,6 +57,12 @@ import * as DesktopPreReadyPlatform from "./app/DesktopPreReadyPlatform.ts";
 import * as DesktopShellEnvironment from "./shell/DesktopShellEnvironment.ts";
 import * as DesktopCirceShell from "./shell/DesktopCirceShell.ts";
 import {
+  isBrowserConnectorNativeHost,
+  runBrowserConnectorNativeHost,
+} from "./browserConnector/nativeHost.ts";
+import { layer as DesktopBrowserConnectorLayer } from "./browserConnector/DesktopBrowserConnector.ts";
+import * as DesktopComputerHost from "./computer/DesktopComputerHost.ts";
+import {
   isDesktopCirceOverlayHelper,
   runDesktopCirceOverlayHelper,
 } from "./shell/DesktopCirceOverlayHelper.ts";
@@ -141,6 +147,7 @@ const electronLayer = Layer.mergeAll(
 
 const desktopFoundationLayer = Layer.mergeAll(
   MacPermissions.layer,
+  DesktopBrowserConnectorLayer,
   DesktopState.layer,
   DesktopShutdown.layer,
   DesktopAppSettings.layer,
@@ -148,6 +155,7 @@ const desktopFoundationLayer = Layer.mergeAll(
   DesktopConnectionCatalogStore.layer.pipe(Layer.provideMerge(DesktopSavedEnvironments.layer)),
   DesktopAssets.layer,
   DesktopObservability.layer,
+  DesktopComputerHost.layer(),
 ).pipe(Layer.provideMerge(desktopEnvironmentLayer));
 
 const desktopSshLayer = desktopSshEnvironmentLayer.pipe(
@@ -242,7 +250,9 @@ const desktopRuntimeLayer = desktopClerkLayer.pipe(
   Layer.provideMerge(DesktopPreReadyPlatform.layer),
 );
 
-if (isDesktopCirceOverlayHelper(process.argv)) {
+if (isBrowserConnectorNativeHost(process.argv)) {
+  void runBrowserConnectorNativeHost();
+} else if (isDesktopCirceOverlayHelper(process.argv)) {
   void runDesktopCirceOverlayHelper();
 } else {
   DesktopApp.program.pipe(Effect.provide(desktopRuntimeLayer), NodeRuntime.runMain);

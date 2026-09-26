@@ -1,6 +1,8 @@
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Ref from "effect/Ref";
+import * as Schedule from "effect/Schedule";
 
 import {
   CirceMissionCancellation,
@@ -31,8 +33,14 @@ const without = (current: ReadonlySet<string>, requestId: string): ReadonlySet<s
   return next;
 };
 
+const SETTLE_POLL = Duration.millis(50);
+const SETTLE_TIMEOUT = Duration.seconds(5);
+
 export const make: Effect.Effect<CirceMissionCancellationShape> = Effect.gen(function* () {
   const ref = yield* Ref.make<MissionState>({ active: new Set(), stop: new Set() });
+
+  const isActive: CirceMissionCancellationShape["isActive"] = (requestId) =>
+    Ref.get(ref).pipe(Effect.map((state) => state.active.has(requestId)));
 
   const register: CirceMissionCancellationShape["register"] = (requestId) =>
     Ref.update(ref, (state) => ({
@@ -55,7 +63,28 @@ export const make: Effect.Effect<CirceMissionCancellationShape> = Effect.gen(fun
       stop: without(state.stop, requestId),
     }));
 
-  return CirceMissionCancellation.of({ register, isCancelled, requestStop, clear });
+  const awaitSettled: CirceMissionCancellationShape["awaitSettled"] = (
+    requestId,
+    timeout = SETTLE_TIMEOUT,
+  ) =>
+    isActive(requestId).pipe(
+      Effect.repeat({
+        while: (active: boolean) => active,
+        schedule: Schedule.spaced(SETTLE_POLL),
+      }),
+      Effect.timeoutOption(timeout),
+      Effect.map((outcome) => (outcome._tag === "None" ? false : !outcome.value)),
+      Effect.orElseSucceed(() => false),
+    );
+
+  return CirceMissionCancellation.of({
+    register,
+    isCancelled,
+    requestStop,
+    clear,
+    isActive,
+    awaitSettled,
+  });
 });
 
 export const CirceMissionCancellationLive = Layer.effect(CirceMissionCancellation, make);

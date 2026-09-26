@@ -637,7 +637,7 @@ describe("T3 browser developer instructions", () => {
         device: false,
         desktop: true,
       });
-      NodeAssert.match(withDesktop, /desktop_run_goal/);
+      NodeAssert.match(withDesktop, /computer_status/);
       NodeAssert.match(withDesktop, /Circe desktop/);
       const withoutDesktop = buildCodexDeveloperInstructions(mode, runtime, {
         browser: true,
@@ -654,7 +654,7 @@ describe("T3 browser developer instructions", () => {
       NodeAssert.doesNotMatch(instructions, /preview_status/);
       NodeAssert.doesNotMatch(instructions, /preview_open/);
       NodeAssert.doesNotMatch(instructions, /Circe browsers/);
-      NodeAssert.doesNotMatch(instructions, /desktop_run_goal/);
+      NodeAssert.doesNotMatch(instructions, /computer_status/);
       // Steering away from other browser automation must go with the tools;
       // keeping it would leave the model talked out of its only option.
       NodeAssert.doesNotMatch(instructions, /Do not switch to global browser skills/);

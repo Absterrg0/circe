@@ -4,7 +4,9 @@ import {
   consumeCirceLiveVoiceActivationReason,
   getCirceLiveVoiceSink,
   getCirceLiveVoiceUiState,
+  hasCirceLiveVoicePendingReply,
   registerCirceLiveVoiceDelegate,
+  registerCirceLiveVoicePendingReply,
   requestCirceLiveVoiceAnnouncement,
   setCirceLiveVoiceActive,
   setCirceLiveVoiceEnabled,
@@ -67,5 +69,15 @@ describe("Circe live voice bridge", () => {
     expect(seen).toEqual([{ utterance: "fix the login", delegationId: "item_1" }]);
     unregister();
     expect(submitCirceLiveVoiceDelegation("fix the login", "item_2")).toBe(false);
+  });
+
+  it("publishes whether the host is waiting for a reply", () => {
+    let waiting = false;
+    const unregister = registerCirceLiveVoicePendingReply(() => waiting);
+    expect(hasCirceLiveVoicePendingReply()).toBe(false);
+    waiting = true;
+    expect(hasCirceLiveVoicePendingReply()).toBe(true);
+    unregister();
+    expect(hasCirceLiveVoicePendingReply()).toBe(false);
   });
 });

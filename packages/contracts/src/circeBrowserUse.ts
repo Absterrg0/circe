@@ -2,6 +2,7 @@ import * as Schema from "effect/Schema";
 
 import { TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { CirceRequestMetadata } from "./circe.ts";
+import { CirceDeviceTarget } from "./circeInteraction.ts";
 
 /**
  * A bounded, project-free browser mission. The node runs the TypeSafe step
@@ -30,6 +31,13 @@ export const CirceBrowserUseInput = Schema.Struct({
   sourceUtterance: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(16_000))),
   /** Request identity for pre-accept cancellation and retry idempotency. */
   requestMetadata: Schema.optional(CirceRequestMetadata),
+  /**
+   * The accepted physical target. When present the adapter must use exactly
+   * this node, profile, application, or tab, or refuse. It never repeats
+   * default selection mid-mission: a disconnected profile is an error, not a
+   * reason to drive whichever connection happens to remain.
+   */
+  target: Schema.optional(CirceDeviceTarget),
 });
 export type CirceBrowserUseInput = typeof CirceBrowserUseInput.Type;
 

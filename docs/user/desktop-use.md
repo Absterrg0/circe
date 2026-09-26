@@ -47,11 +47,13 @@ key positions. Wayland window discovery and focus are currently unsupported.
 
 macOS: capture and input use system tools. Grant Screen Recording and Accessibility to the app
 or terminal hosting the node when macOS requests them. Window discovery and shortcuts can also
-request Automation access to System Events. Restart the node after changing permissions.
+request Automation access to System Events. Restart the node after changing permissions. Circe
+reads app controls through System Events; autonomous native control on macOS is still validated
+per app.
 
 Windows: capture and input use built-in PowerShell. Run the node in the signed-in graphical
-session. Windows can refuse input to elevated applications and secure desktops; desktop use
-does not bypass those restrictions.
+session. Circe reads app controls through UI Automation. Windows can refuse input to elevated
+applications and secure desktops; desktop use does not bypass those restrictions.
 
 ## Action limits
 

@@ -159,6 +159,19 @@ export const CirceSemanticLookup = Schema.Struct({
 export type CirceSemanticLookup = typeof CirceSemanticLookup.Type;
 
 /**
+ * A typed question the deterministic tier resolved instead of an action. The
+ * origin client speaks the prompt and keeps the question as pending state, so
+ * the reply resumes the exact request instead of being classified as new work.
+ */
+export const CirceSemanticClarification = Schema.Struct({
+  kind: Schema.Literal("lookup"),
+  prompt: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(400)),
+  tool: Schema.Literals(["weather", "time"]),
+  day: Schema.Literals(["now", "today", "tomorrow"]),
+});
+export type CirceSemanticClarification = typeof CirceSemanticClarification.Type;
+
+/**
  * One supervisor inference. The proposal carries no project or task IDs,
  * no dispatch wording, and no spoken acknowledgement: the host resolves
  * every name against bounded catalogs, derives the instruction from the
@@ -186,6 +199,12 @@ export const CirceSemanticProposal = Schema.Struct({
   answer: Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(400))),
   /** Present only when action is lookup; the host requires the place in source. */
   lookup: Schema.optional(Schema.NullOr(CirceSemanticLookup)),
+  /**
+   * Present when the deterministic tier resolved the turn to a typed question
+   * rather than an action. The action stays `unsupported` because no execution
+   * is authorized; the question itself is what the origin client asks.
+   */
+  clarification: Schema.optional(Schema.NullOr(CirceSemanticClarification)),
   /** Present only when action is open-website: a named site or web URL. */
   website: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
