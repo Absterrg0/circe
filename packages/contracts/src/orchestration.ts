@@ -28,7 +28,7 @@ import {
   RuntimeMode,
 } from "./providerPolicy.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
-import { ProjectScript, ProjectIconOverride } from "./project.ts";
+import { ProjectScript, ProjectIconOverride, WorkspaceKind } from "./project.ts";
 export { ProjectIconColor, ProjectIconOverride } from "./project.ts";
 import { RepositoryIdentity, ThreadEnvMode } from "./environment.ts";
 import { OrchestrationProjectShell } from "./orchestrationProject.ts";
@@ -78,6 +78,7 @@ export type ProjectFaviconPath = typeof ProjectFaviconPath.Type;
 
 export const OrchestrationProject = Schema.Struct({
   id: ProjectId,
+  kind: Schema.optional(WorkspaceKind),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),

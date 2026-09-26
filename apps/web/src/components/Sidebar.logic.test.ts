@@ -54,6 +54,7 @@ import {
   type SidebarListMarker,
   type SidebarSection,
   resolveSidebarDropVerb,
+  partitionSidebarChats,
 } from "./Sidebar.logic";
 import { EnvironmentId, ProjectId, ProviderInstanceId, RunId, ThreadId } from "@circe/contracts";
 import {
@@ -2101,4 +2102,47 @@ describe("navigation after parking a thread", () => {
       ).toBe(expected);
     },
   );
+});
+
+describe("partitionSidebarChats", () => {
+  const thread = (projectId: string, id: string) => ({
+    environmentId: "local",
+    projectId,
+    id,
+  });
+  const workspaceByKey = new Map([
+    ["local:chats", { title: "Anything", kind: "chats" as const }],
+    ["local:billing", { title: "Billing", kind: "project" as const }],
+    ["local:site", { title: "Conversations", kind: "project" as const }],
+  ]);
+
+  it("puts chat-space threads in Chats by kind, not title", () => {
+    const { chats, agents } = partitionSidebarChats({
+      threads: [thread("chats", "a"), thread("billing", "b"), thread("site", "c")],
+      workspaceByKey,
+      scopedProjectKeys: null,
+    });
+    expect(chats.map((entry) => entry.id)).toEqual(["a"]);
+    expect(agents.map((entry) => entry.id)).toEqual(["b", "c"]);
+  });
+
+  it("scopes agents to a project but never hides chats", () => {
+    const { chats, agents } = partitionSidebarChats({
+      threads: [thread("chats", "a"), thread("billing", "b"), thread("site", "c")],
+      workspaceByKey,
+      scopedProjectKeys: new Set(["local:site"]),
+    });
+    expect(chats.map((entry) => entry.id)).toEqual(["a"]);
+    expect(agents.map((entry) => entry.id)).toEqual(["c"]);
+  });
+
+  it("treats a thread whose workspace has not loaded as agent work", () => {
+    const { chats, agents } = partitionSidebarChats({
+      threads: [thread("unknown", "z")],
+      workspaceByKey,
+      scopedProjectKeys: null,
+    });
+    expect(chats).toEqual([]);
+    expect(agents.map((entry) => entry.id)).toEqual(["z"]);
+  });
 });

@@ -20,7 +20,13 @@ import {
 } from "../logicalProject";
 import { resolveProjectSettings } from "@circe/shared/projectSettings";
 import { resolveDefaultThreadEnvMode } from "@circe/shared/threadEnvMode";
-import { readProjects, readThreadShell, useProjects, useThreadShell } from "../state/entities";
+import {
+  readProjects,
+  readThreadShell,
+  useChatSpaces,
+  useThreadShell,
+  useUserProjects,
+} from "../state/entities";
 import {
   hasExplicitComposerModelSelection,
   resolveNewDraftStartFromOrigin,
@@ -452,7 +458,9 @@ export function useHandleNewThread() {
         : useComposerDraftStore.getState().getDraftSession(routeTarget.draftId)
       : null,
   );
-  const projects = useProjects();
+  // New work defaults to a codebase; with none, it starts a chat.
+  const projects = useUserProjects();
+  const chatSpaces = useChatSpaces();
   const orderedProjects = useMemo(() => {
     return orderItemsByPreferredIds({
       items: projects,
@@ -471,7 +479,9 @@ export function useHandleNewThread() {
     activeThread,
     defaultProjectRef: orderedProjects[0]
       ? scopeProjectRef(orderedProjects[0].environmentId, orderedProjects[0].id)
-      : null,
+      : chatSpaces[0]
+        ? scopeProjectRef(chatSpaces[0].environmentId, chatSpaces[0].id)
+        : null,
     handleNewThread,
     routeDraftId,
     routeThreadRef,

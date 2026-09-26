@@ -21,7 +21,7 @@ import {
 } from "../../onboarding/firstRun.logic";
 import {
   useAllEnvironmentShellsBootstrapped,
-  useProjects,
+  useUserProjects,
   useThreadShells,
 } from "../../state/entities";
 import { useEnvironments } from "../../state/environments";
@@ -87,7 +87,9 @@ export function FirstRunGate({
   const onboardingCompletedAt = useClientSettings((settings) => settings.onboardingCompletedAt);
   const bootstrapped = useAllEnvironmentShellsBootstrapped();
   const { environments, isReady: environmentCatalogReady } = useEnvironments();
-  const projects = useProjects();
+  // Each node creates its chat space on startup, so it is never evidence of
+  // user state; the user's chats still count through their threads.
+  const projects = useUserProjects();
   const threads = useThreadShells();
   const serverConfig = useAtomValue(primaryServerConfigAtom);
   const serverWelcome = useAtomValue(primaryServerWelcomeAtom);

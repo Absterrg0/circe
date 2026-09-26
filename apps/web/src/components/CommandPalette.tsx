@@ -57,6 +57,7 @@ import {
   SquarePenIcon,
   SunIcon,
   TextSearchIcon,
+  MessageCircleIcon,
 } from "lucide-react";
 import {
   useCallback,
@@ -97,7 +98,14 @@ import { sourceControlEnvironment } from "../state/sourceControl";
 import { useAtomCommand } from "../state/use-atom-command";
 import { useAtomQueryRunner } from "../state/use-atom-query-runner";
 import { useEnvironments, usePrimaryEnvironmentId } from "../state/environments";
-import { useProjects, useServerConfigs, useThreadShells, waitForProject } from "../state/entities";
+import {
+  useChatSpaces,
+  useProjects,
+  useServerConfigs,
+  useThreadShells,
+  useUserProjects,
+  waitForProject,
+} from "../state/entities";
 import { useThreadSearch } from "../state/queries";
 import { resolveThreadActionProjectRef, startNewThreadFromContext } from "../lib/chatThreadActions";
 import {
@@ -697,6 +705,11 @@ function OpenCommandPaletteDialog(props: {
   const { activeDraftThread, activeThread, defaultProjectRef, handleNewThread } =
     useHandleNewThread();
   const projects = useProjects();
+  // Pickers list the user's codebases; each node's chat space is not a project.
+  const userProjects = useUserProjects();
+  const chatSpaces = useChatSpaces();
+  const chatSpace =
+    chatSpaces.find((space) => space.environmentId === primaryEnvironmentId) ?? chatSpaces[0];
   const referenceThreadRef =
     pathname === "/pull-requests"
       ? environments.some(
@@ -865,7 +878,7 @@ function OpenCommandPaletteDialog(props: {
   const orderedProjects = useMemo(
     () =>
       orderItemsByPreferredIds({
-        items: projects,
+        items: userProjects,
         preferredIds: projectOrder,
         getId: getProjectOrderKey,
         getPreferenceIds: (project) => [
@@ -873,12 +886,13 @@ function OpenCommandPaletteDialog(props: {
           legacyProjectCwdPreferenceKey(project.workspaceRoot),
         ],
       }),
-    [projectOrder, projects],
+    [projectOrder, userProjects],
   );
   const unsortedProjectGroups = useMemo(
     () =>
       buildSidebarProjectSnapshots({
-        projects: clientSettings.sidebarProjectSortOrder === "manual" ? orderedProjects : projects,
+        projects:
+          clientSettings.sidebarProjectSortOrder === "manual" ? orderedProjects : userProjects,
         settings: projectGroupingSettings,
         primaryEnvironmentId,
         resolveEnvironmentLabel: (environmentId) => environmentLabelById.get(environmentId) ?? null,
@@ -889,7 +903,7 @@ function OpenCommandPaletteDialog(props: {
       orderedProjects,
       primaryEnvironmentId,
       projectGroupingSettings,
-      projects,
+      userProjects,
     ],
   );
   const projectGroups = useMemo(
@@ -1726,7 +1740,20 @@ function OpenCommandPaletteDialog(props: {
 
   const actionItems: Array<CommandPaletteActionItem | CommandPaletteSubmenuItem> = [];
 
-  if (projects.length > 0) {
+  if (chatSpace !== undefined) {
+    actionItems.push({
+      kind: "action",
+      value: "action:new-chat",
+      searchTerms: ["new chat", "chat", "ask", "question", "conversation"],
+      title: "New chat",
+      icon: <MessageCircleIcon className={ITEM_ICON_CLASS} />,
+      run: async () => {
+        await handleNewThread(scopeProjectRef(chatSpace.environmentId, chatSpace.id));
+      },
+    });
+  }
+
+  if (userProjects.length > 0) {
     const activeProjectTitle =
       projectPickerEntries.find((entry) => entry.isPreferred)?.group.displayName ??
       (currentProjectId ? (projectTitleById.get(currentProjectId) ?? null) : null);

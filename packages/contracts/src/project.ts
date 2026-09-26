@@ -127,8 +127,35 @@ export const ProjectIconOverride = Schema.Union([
 );
 export type ProjectIconOverride = typeof ProjectIconOverride.Type;
 
+/**
+ * What a workspace is. Every thread runs in a workspace, because a provider
+ * runs in a directory. `project` is a user's codebase. `chats` is the node's
+ * built-in space for conversations that are not about a codebase: the node
+ * creates it, one per node, and clients never present it as a project. Absent
+ * on the wire from nodes older than this field.
+ */
+export const WorkspaceKind = Schema.Literals(["project", "chats"]);
+export type WorkspaceKind = typeof WorkspaceKind.Type;
+
+/** Title older nodes gave their chat space before `kind` existed. */
+const LEGACY_CHAT_SPACE_TITLE = "Conversations";
+
+/**
+ * Whether a workspace is its node's chat space. Uses `kind` when the node
+ * sends it; only a node that predates `kind` is recognized by its old title.
+ */
+export function isChatWorkspace(workspace: {
+  readonly kind?: WorkspaceKind | undefined;
+  readonly title: string;
+}): boolean {
+  return workspace.kind === undefined
+    ? workspace.title.trim() === LEGACY_CHAT_SPACE_TITLE
+    : workspace.kind === "chats";
+}
+
 export const Project = Schema.Struct({
   id: ProjectId,
+  kind: Schema.optional(WorkspaceKind),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),

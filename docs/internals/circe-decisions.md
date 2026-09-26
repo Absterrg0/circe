@@ -146,11 +146,21 @@ a dead id is rejected before interpretation, which drops the user's request.
 
 ### Chat is not a project
 
-General conversation is a durable chat surface, not a synthetic `Conversations`
-project. Work launched from chat references its task; the T3 thread remains the
-provider's durable history for that work. Projects carry shared context that
-conversations inherit. (This is the target; the current branch still carries the
-old conversation-project path in V1 code and will be replaced in the rebuild.)
+A thread always runs in a workspace, because a provider always runs in a
+directory. A workspace is typed: `project` is a user's codebase, and `chats` is
+the node's chat space, one per node, created at startup under the node's base
+directory (`apps/server/src/circe/chatSpace.ts`). Chats therefore keep a
+`projectId` internally, and that is deliberate: making `projectId` optional
+would touch the event log, the thread table, and every git, worktree, diff, and
+pull request path, for no behavior a user could see.
+
+The chat space's root decides its kind, not its title, and `ProjectService`
+refuses to rename, move, or delete it. Clients must never show it as a project:
+lists and pickers read `useUserProjects`, while lookups by id keep using
+`useProjects`, because chat threads still resolve their workspace there.
+`isChatWorkspace` falls back to the old `Conversations` title only for a node
+that predates `kind`. Grok Bot conversations are not threads at all; see
+[Circe bots](./circe-bots.md).
 
 ## Open for review
 

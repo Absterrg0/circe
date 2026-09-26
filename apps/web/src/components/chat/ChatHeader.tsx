@@ -1,8 +1,8 @@
-import { type EnvironmentId, type ThreadId } from "@circe/contracts";
+import { isChatWorkspace, type EnvironmentId, type ThreadId } from "@circe/contracts";
 import { scopeThreadRef } from "@circe/client/environment";
 import type { EnvironmentProject } from "@circe/client/state/shell";
 import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
-import { ChevronDownIcon } from "lucide-react";
+import { ChevronDownIcon, MessageCircleIcon } from "lucide-react";
 import {
   memo,
   useCallback,
@@ -81,7 +81,10 @@ export const ChatHeader = memo(function ChatHeader({
   onNewThreadInProject,
   onOpenProjectSettings,
 }: ChatHeaderProps) {
-  const activeProjectName = activeProject?.title;
+  // A chat's workspace is its node's chat space, which is not a project.
+  const isChat = activeProject !== null && isChatWorkspace(activeProject);
+  const activeProjectName = isChat ? "Chats" : activeProject?.title;
+  const newThreadLabel = isChat ? "New chat" : `New thread in ${activeProjectName}`;
   const activeProjectCwd = activeProject?.workspaceRoot ?? null;
   const activeThreadRef = useMemo(
     () => scopeThreadRef(activeThreadEnvironmentId, activeThreadId),
@@ -257,16 +260,20 @@ export const ChatHeader = memo(function ChatHeader({
                   render={
                     <button
                       type="button"
-                      aria-label={`New thread in ${activeProjectName}`}
+                      aria-label={newThreadLabel}
                       onClick={onNewThreadInProject}
                       className={PROJECT_BREADCRUMB_BUTTON_CLASS}
                     />
                   }
                 >
-                  <ProjectFavicon project={activeProject} className="size-3.5" />
+                  {isChat ? (
+                    <MessageCircleIcon aria-hidden className="size-3.5" />
+                  ) : (
+                    <ProjectFavicon project={activeProject} className="size-3.5" />
+                  )}
                   <span className="max-w-40 truncate">{activeProjectName}</span>
                 </TooltipTrigger>
-                <TooltipPopup side="top">New thread in {activeProjectName}</TooltipPopup>
+                <TooltipPopup side="top">{newThreadLabel}</TooltipPopup>
               </Tooltip>
             </WorkspaceBreadcrumbItem>
             <WorkspaceBreadcrumbSeparator />
