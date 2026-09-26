@@ -12,6 +12,7 @@ import {
 import { ProviderOptionSelections } from "./model.ts";
 import { ModelSelection } from "./modelSelection.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
+import { WorkspaceKind } from "./project.ts";
 
 export const CirceUtterance = TrimmedNonEmptyString.check(Schema.isMaxLength(16_000));
 export type CirceUtterance = typeof CirceUtterance.Type;
@@ -179,6 +180,19 @@ export const CirceSemanticLookup = Schema.Struct({
 });
 export type CirceSemanticLookup = typeof CirceSemanticLookup.Type;
 
+/**
+ * A typed question the deterministic tier resolved instead of an action. The
+ * origin client speaks the prompt and keeps the question as pending state, so
+ * the reply resumes the exact request instead of being classified as new work.
+ */
+export const CirceSemanticClarification = Schema.Struct({
+  kind: Schema.Literal("lookup"),
+  prompt: TrimmedNonEmptyString,
+  tool: Schema.Literals(["weather", "time"]),
+  day: Schema.Literals(["now", "today", "tomorrow"]),
+});
+export type CirceSemanticClarification = typeof CirceSemanticClarification.Type;
+
 /** A single command inside a multi-command turn; steps never nest. */
 export const CirceSemanticStepAction = Schema.Literals([
   "start",
@@ -219,6 +233,13 @@ export const CirceSemanticProposal = Schema.Struct({
   answer: Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(400))),
   /** Present only when action is lookup; the host requires the place in source. */
   lookup: Schema.optional(Schema.NullOr(CirceSemanticLookup)),
+  /**
+   * Present when the deterministic tier resolved the turn to a typed question
+   * rather than an action. The action stays `unsupported` because no
+   * execution is authorized; the question itself is the payload the origin
+   * client asks and retains.
+   */
+  clarification: Schema.optional(Schema.NullOr(CirceSemanticClarification)),
   /** Present only when action is open-website: a named site or web URL. */
   website: Schema.optional(
     Schema.NullOr(Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(2048))),
@@ -894,6 +915,8 @@ export type CirceProjectAlias = typeof CirceProjectAlias.Type;
 
 export const CirceProjectVocabularyEntry = Schema.Struct({
   projectId: ProjectId,
+  /** The node's chat space is `chats`; absent from nodes older than the field. */
+  kind: Schema.optional(WorkspaceKind),
   nodeId: Schema.optional(CirceNodeId),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
@@ -964,8 +987,8 @@ export type CirceFocusTaskResult = typeof CirceFocusTaskResult.Type;
 export const CIRCE_CONVERSATION_TITLE_PREFIX = "Conversation:";
 
 /**
- * Circe keeps general-question threads in one dedicated project per node so
- * they never mix into the user's coding projects.
+ * The title a node gives its chat space when it creates it. Clients recognize
+ * the chat space by `kind: "chats"` on the workspace, never by this title.
  */
 export const CIRCE_CONVERSATIONS_PROJECT_TITLE = "Conversations";
 

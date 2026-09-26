@@ -252,127 +252,240 @@ export function resolveDesktopCirceOverlayBounds(
 const ORB_VERTEX_SHADER = "attribute vec2 a_pos; void main(){ gl_Position = vec4(a_pos,0.0,1.0); }";
 
 /**
- * Liquid-glass orb. A displaced sphere is shaded with environment reflection,
- * thin-film iridescence, and an inner glow, then tone mapped. The whole shader
- * is analytic: no ray marching, so a 72px canvas stays cheap enough to animate.
+ * ORB-25 from shadercn, by XorDev (non-commercial use, attribution kept),
+ * ported from TypeGPU to GLSL for the overlay's WebGL context. The folds of a
+ * warped field drawn by their own steepness: a dome is wrapped through a
+ * stereographic projection, then eight octaves of sine warp fold it, and the
+ * rim is the hand-differenced derivative of those folds. Input folds the field
+ * harder and output steepens what counts as a crease, so the orb reads live
+ * voice and agent work without a label. State palettes and presets mirror the
+ * component's own meta; the answer is told apart by its fold and scale.
  */
-const ORB_FRAGMENT_SHADER = `precision highp float;
+const ORB25_BASE = {
+  speed: 3,
+  drift: 0.6,
+  swirl: 0.05,
+  radius: 0.9,
+  scale: 7.5,
+  bulge: 0.3,
+  warp: 0.4,
+  zoom: 1.111,
+  ripple: 0.3,
+  edgeGain: 10,
+  blur: 2.5,
+  fringe: 0.09,
+  exposure: 0.8,
+  contrast: 1.15,
+  saturation: 1.5,
+  floorLevel: 0.16,
+  light: 0.35,
+  rim: 0.45,
+} as const;
+
+/** Numeric params lerped per frame; colors are handled separately. */
+const ORB25_PARAM_KEYS = [
+  "speed",
+  "drift",
+  "swirl",
+  "radius",
+  "scale",
+  "bulge",
+  "warp",
+  "zoom",
+  "ripple",
+  "edgeGain",
+  "blur",
+  "fringe",
+  "exposure",
+  "contrast",
+  "saturation",
+  "floorLevel",
+  "light",
+  "rim",
+] as const;
+
+const ORB25_STATES = {
+  idle: {
+    tint: "#dbe8f7",
+    body: "#0d1118",
+    sheen: "#a8c8f0",
+    ...ORB25_BASE,
+    contrast: 1.15,
+    drift: 0.6,
+    edgeGain: 12.5,
+    exposure: 0.8,
+    speed: 3,
+    swirl: 0.05,
+    warp: 0.4,
+    zoom: 1.07,
+  },
+  speaking: {
+    tint: "#c2d6f5",
+    body: "#090d1c",
+    sheen: "#8fb4f2",
+    ...ORB25_BASE,
+    blur: 2,
+    bulge: 2.22,
+    contrast: 1.35,
+    drift: 0.8,
+    edgeGain: 5,
+    exposure: 2.35,
+    fringe: 0.23,
+    ripple: 1.18,
+    scale: 11.5,
+    speed: 1.4,
+    swirl: 0.6,
+    warp: 1.55,
+    zoom: 0.945,
+  },
+  thinking: {
+    tint: "#c2d6f5",
+    body: "#090d1c",
+    sheen: "#8fb4f2",
+    ...ORB25_BASE,
+    blur: 2.75,
+    bulge: 0.38,
+    contrast: 1.5,
+    drift: 0.15,
+    edgeGain: 33,
+    exposure: 0.55,
+    fringe: 0.2,
+    light: 0.525,
+    rim: 0.69,
+    ripple: 0.18,
+    saturation: 2,
+    speed: 4.7,
+    swirl: 0.02,
+    warp: 0.34,
+    zoom: 1.12,
+  },
+} as const;
+
+const ORB25_FRAGMENT_SHADER = `precision highp float;
 
 uniform vec2  u_res;
 uniform float u_time;
-uniform float u_level;
-uniform float u_active;
-uniform vec3  u_a;
-uniform vec3  u_b;
+uniform float u_drift;
+uniform float u_swirl;
+uniform float u_input;
+uniform float u_output;
+uniform vec3  u_tint;
+uniform vec3  u_body;
+uniform vec3  u_sheen;
+uniform float u_radius;
+uniform float u_scale;
+uniform float u_bulge;
+uniform float u_warp;
+uniform float u_zoom;
+uniform float u_ripple;
+uniform float u_edgeGain;
+uniform float u_blur;
+uniform float u_fringe;
+uniform float u_exposure;
+uniform float u_contrast;
+uniform float u_saturation;
+uniform float u_floorLevel;
+uniform float u_light;
+uniform float u_rim;
 
-float hash13(vec3 p3){
-  p3 = fract(p3 * 0.1031);
-  p3 += dot(p3, p3.zyx + 31.32);
-  return fract((p3.x + p3.y) * p3.z);
+mat2 rot2(float angle){
+  float c = cos(angle);
+  float s = sin(angle);
+  return mat2(c, -s, s, c);
 }
-float vnoise(vec3 x){
-  vec3 i = floor(x);
-  vec3 f = fract(x);
-  f = f*f*(3.0 - 2.0*f);
-  return mix(mix(mix(hash13(i+vec3(0,0,0)), hash13(i+vec3(1,0,0)), f.x),
-                 mix(hash13(i+vec3(0,1,0)), hash13(i+vec3(1,1,0)), f.x), f.y),
-             mix(mix(hash13(i+vec3(0,0,1)), hash13(i+vec3(1,0,1)), f.x),
-                 mix(hash13(i+vec3(0,1,1)), hash13(i+vec3(1,1,1)), f.x), f.y), f.z);
+
+float tanh1(float xIn){
+  float x = clamp(xIn, -10.0, 10.0);
+  float e = exp(2.0 * x);
+  return (e - 1.0) / (e + 1.0);
 }
-float fbm(vec3 p){
-  float s = 0.0, a = 0.5;
-  for(int i=0;i<4;i++){
-    s += a*vnoise(p);
-    p = p*2.02 + vec3(4.7, 9.2, 2.3);
-    a *= 0.5;
+
+// Dome, stereographic wrap, then the eight-octave warp, for one pixel centre.
+// Called three times per sample so the derivative below can be differenced by
+// hand: fwidth is unavailable in GLSL ES 1.00.
+vec2 creaseField(vec2 fragCoord, float t, float drift, float sw, float creaseWarp){
+  vec2 uv = (2.0 * fragCoord - u_res) / min(u_res.x, u_res.y);
+  vec2 pl = uv / max(u_radius, 0.001);
+  float z = sqrt(max(1.0 - dot(pl, pl), 0.0));
+
+  vec2 p = (pl / (z + 1.0 + u_bulge)) * u_scale;
+  p = rot2(sw) * p;
+  p += vec2(drift);
+
+  // 6-8-10 is a Pythagorean triple, so the listing's matrix is a true
+  // rotation through the 3-4-5 angle times a clean zoom.
+  mat2 octaveRot = mat2(0.6, -0.8, 0.8, 0.6);
+  for (int i = 0; i < 8; i++){
+    float fi = float(i) + 1.0;
+    p += sin(p + vec2(t + fi)) * creaseWarp;
+    p = octaveRot * p * u_zoom;
   }
-  return s;
+  return p;
 }
-mat2 rot(float a){ float c=cos(a), s=sin(a); return mat2(c,-s,s,c); }
 
-float liquid(vec3 dir, float t){
-  vec3 p = dir;
-  p.xz = rot(t*0.20) * p.xz;
-  p.xy = rot(t*0.11) * p.xy;
-  p.y += t*0.09;
-  float w = fbm(p*2.3);
-  float q = fbm(p*3.9 + w*1.6 + vec3(0.0, -t*0.10, 0.0));
-  return q;
-}
-float surfaceR(vec3 dir, float t){
-  float d = liquid(dir, t) - 0.5;
-  float r = fbm(dir*5.0 + vec3(t*0.13)) - 0.5;
-  return 0.66 + d*0.032 + r*0.010*(0.5 + u_active*0.5);
-}
-float field(vec3 p, float t){
-  return length(p) - surfaceR(normalize(p + 1e-6), t);
-}
-vec3 fieldNormal(vec3 p, float t){
-  vec2 e = vec2(0.0022, 0.0);
-  return normalize(vec3(
-    field(p+e.xyy,t)-field(p-e.xyy,t),
-    field(p+e.yxy,t)-field(p-e.yxy,t),
-    field(p+e.yyx,t)-field(p-e.yyx,t)));
-}
-// Neutral studio environment: a soft floor-to-sky gradient with one key light.
-// No coloured fill lights, so the glass never turns into a light show.
-vec3 env(vec3 d){
-  float y = d.y;
-  vec3 col = mix(vec3(0.030,0.034,0.040), vec3(0.34,0.38,0.44), smoothstep(-0.8, 1.0, y));
-  col += vec3(1.0,0.99,0.97) * smoothstep(0.90, 0.999, dot(d, normalize(vec3(-0.40,0.80,0.46)))) * 1.5;
+vec3 creaseRender(vec2 fragCoord, float creaseWarp, float creaseGain){
+  // Three taps the difference needs. u_blur is how far apart they sit: at one
+  // pixel this is fwidth exactly, wider is a deliberate rim width.
+  vec2 p0 = creaseField(fragCoord, u_time, u_drift, u_swirl, creaseWarp);
+  vec2 px = creaseField(fragCoord + vec2(u_blur, 0.0), u_time, u_drift, u_swirl, creaseWarp);
+  vec2 py = creaseField(fragCoord + vec2(0.0, u_blur), u_time, u_drift, u_swirl, creaseWarp);
+
+  // fwidth by hand, once per channel; offsetting each channel's ripple phase
+  // is what puts warm and cool fringes on the edges.
+  float ph0 = 0.0;
+  float ph1 = u_fringe;
+  float ph2 = 2.0 * u_fringe;
+  vec2 v0 = sin(p0 * u_ripple + vec2(ph0));
+  vec2 v1 = sin(p0 * u_ripple + vec2(ph1));
+  vec2 v2 = sin(p0 * u_ripple + vec2(ph2));
+  vec2 d0 = abs(sin(px * u_ripple + vec2(ph0)) - v0) + abs(sin(py * u_ripple + vec2(ph0)) - v0);
+  vec2 d1 = abs(sin(px * u_ripple + vec2(ph1)) - v1) + abs(sin(py * u_ripple + vec2(ph1)) - v1);
+  vec2 d2 = abs(sin(px * u_ripple + vec2(ph2)) - v2) + abs(sin(py * u_ripple + vec2(ph2)) - v2);
+  float exposure = max(u_exposure, 0.001);
+  vec3 e = vec3(
+    tanh1(length(d0) * creaseGain / exposure),
+    tanh1(length(d1) * creaseGain / exposure),
+    tanh1(length(d2) * creaseGain / exposure)
+  );
+  e = pow(clamp(e, 0.0, 1.0), vec3(u_contrast));
+
+  vec3 col = u_tint * e;
+  // A dark body under the filigree, so the flat regions read as the ball.
+  col += u_body * u_floorLevel;
+
+  float lum = dot(col, vec3(0.299, 0.587, 0.114));
+  col = mix(vec3(lum), col, u_saturation);
+
+  // Dome shading keeps the ball a ball under the folds.
+  vec2 pl = (2.0 * fragCoord - u_res) / min(u_res.x, u_res.y) / max(u_radius, 0.001);
+  float z = sqrt(max(1.0 - dot(pl, pl), 0.0));
+  vec3 n = vec3(pl.x, pl.y, z);
+  float lambert = clamp(dot(n, normalize(vec3(-0.45, 0.55, 0.72))), 0.0, 1.0);
+  col *= 0.62 + u_light * lambert;
+
+  float fres = 1.0 - z;
+  col += u_sheen * (u_rim * fres * fres * fres);
+
   return col;
 }
-vec3 aces(vec3 x){
-  return clamp((x*(2.51*x+0.03))/(x*(2.43*x+0.59)+0.14), 0.0, 1.0);
-}
+
 void main(){
-  vec2 uv = (2.0*gl_FragCoord.xy - u_res)/u_res.y;
-  float r = length(uv);
-  vec2 dir2 = uv/max(r,1e-5);
-  float Rl = surfaceR(vec3(dir2,0.12), u_time);
-  float inside = smoothstep(Rl+0.005, Rl-0.005, r);
+  vec2 fragCoord = gl_FragCoord.xy;
+  vec2 orbUv = (2.0 * fragCoord - u_res) / min(u_res.x, u_res.y);
 
-  vec3 col = vec3(0.0);
-  float alpha = 0.0;
+  // Volume coupling: the user's voice folds the field harder, the agent's
+  // steepens what counts as a crease.
+  float creaseWarp = u_warp * (1.0 + 0.4 * u_input);
+  float creaseGain = u_edgeGain * (1.0 + 0.5 * u_output);
 
-  if(inside > 0.001){
-    float rr = min(r, Rl-1e-4);
-    float z = sqrt(max(0.0, Rl*Rl - rr*rr));
-    vec3 p = vec3(uv, z)/Rl;
-    vec3 n = fieldNormal(p, u_time);
-    vec3 V = normalize(vec3(uv*0.45, 1.0));
-    vec3 I = -V;
+  // Surface orb bounded by a soft mask; alpha IS coverage, so premultiply.
+  float edge = length(orbUv) - max(u_radius, 0.001);
+  float mask = clamp((0.012 - edge) / 0.024, 0.0, 1.0);
+  mask = mask * mask * (3.0 - 2.0 * mask);
+  if (mask <= 0.0) { gl_FragColor = vec4(0.0); return; }
 
-    vec3 ldir = normalize(vec3(-0.5, 0.78, 0.62));
-    float ndl = max(dot(n, ldir), 0.0);
-    float ndv = max(dot(n, V), 0.0);
-    vec3 ref = reflect(I, n);
-    vec3 reflCol = env(ref);
-    float fres = pow(1.0 - ndv, 4.0);
-
-    // Neutral reflective glass with a single crisp key specular and one soft
-    // fill. The accent only tints the grazing rim and a faint inner glow.
-    vec3 colr = reflCol;
-    colr += vec3(1.0,0.99,0.96) * pow(max(dot(ref, V), 0.0), 180.0) * 1.7;
-    colr += vec3(0.78,0.84,0.90) * pow(max(dot(ref, normalize(vec3(0.80,0.22,0.42))), 0.0), 24.0) * 0.16;
-
-    float rimT = pow(1.0 - ndv, 5.0);
-    colr += u_a * rimT * (0.28 + u_level * 0.75);
-
-    float inner = fbm(p*3.0 + n*1.6 + vec3(u_time*0.10));
-    colr += mix(u_a, u_b, 0.5) * pow(inner, 5.0) * (0.05 + u_level * 0.45);
-
-    col = aces(colr);
-    alpha = inside;
-  }
-
-  // A hair of neutral edge light just outside the silhouette. There is no
-  // coloured halo band, so the overlay never shows a glow bar behind the orb.
-  float edge = smoothstep(0.020, 0.0, abs(r - Rl));
-  col += mix(vec3(0.62,0.68,0.74), u_a, 0.30) * edge * 0.06;
-  alpha = clamp(alpha + edge * 0.10, 0.0, 1.0);
-
-  gl_FragColor = vec4(col*alpha, alpha);
+  vec3 col = creaseRender(fragCoord, creaseWarp, creaseGain);
+  gl_FragColor = vec4(max(col, vec3(0.0)) * mask, mask);
 }
 `;
 
@@ -392,6 +505,8 @@ const orbScript = `<script>
   if (!main || !orb || !canvas || !picker || !list || !runningSection || !runningList || !errorRow || !liveLabel) return;
 
   const profiles = ${serializedOrbProfiles};
+  const orbStates = ${JSON.stringify(ORB25_STATES)};
+  const paramKeys = ${JSON.stringify(ORB25_PARAM_KEYS)};
   let liveState = { enabled: false, active: false, status: "idle" };
   let catalog = { providers: [], selected: null, pendingSelection: null, error: null };
   let expanded = false;
@@ -416,10 +531,13 @@ const orbScript = `<script>
   let running = false;
   let lastTickAt = 0;
   let lastDrawAt = 0;
-  let accentA = [0.5, 0.78, 0.75];
-  let accentB = [0.44, 0.53, 0.85];
-  let targetA = accentA;
-  let targetB = accentB;
+  let phase = 0;
+  let driftPhase = 0;
+  let swirlPhase = 0;
+  let tint = [0.86, 0.91, 0.97];
+  let body = [0.05, 0.07, 0.09];
+  let sheen = [0.66, 0.78, 0.94];
+  let params = { ...orbStates.idle };
 
   const isActiveStatus = () =>
     liveState.active &&
@@ -430,23 +548,43 @@ const orbScript = `<script>
     typeof liveState.level === "number" && isFinite(liveState.level)
       ? Math.max(0, Math.min(1, liveState.level))
       : 0;
+  // Cool steel at rest; the working states share cold indigo and are told
+  // apart by fold and scale. Live audio outranks the live status so the orb
+  // answers the microphone immediately.
+  const orbState = () => {
+    if (liveState.active && liveState.status === "live")
+      return readLevel() > 0.12 ? "speaking" : "thinking";
+    if (liveState.active && (liveState.status === "requesting" || liveState.status === "connecting"))
+      return "speaking";
+    return "idle";
+  };
 
   const drawFrame = (now) => {
-    const profile = profiles[liveState.status] || profiles.idle;
-    targetA = hexToRgb(profile.accent);
-    targetB = hexToRgb(profile.accentSecondary);
+    const preset = orbStates[orbState()] || orbStates.idle;
     const dt = lastTickAt === 0 ? 0.016 : Math.min(0.05, (now - lastTickAt) / 1000);
     lastTickAt = now;
     const k = 1 - Math.pow(0.0015, dt);
-    accentA = lerp3(accentA, targetA, k);
-    accentB = lerp3(accentB, targetB, k);
+    tint = lerp3(tint, hexToRgb(preset.tint), k);
+    body = lerp3(body, hexToRgb(preset.body), k);
+    sheen = lerp3(sheen, hexToRgb(preset.sheen), k);
+    for (const key of paramKeys) params[key] = lerp(params[key], preset[key], k);
+    // Speed, drift, and swirl integrate over time in the component; the
+    // shader receives the accumulated phases.
+    phase += dt * params.speed;
+    driftPhase += dt * params.drift;
+    swirlPhase += dt * params.swirl;
     gl.viewport(0, 0, canvas.width, canvas.height);
     gl.uniform2f(uniforms.res, canvas.width, canvas.height);
-    gl.uniform1f(uniforms.time, now / 1000);
-    gl.uniform1f(uniforms.level, readLevel());
-    gl.uniform1f(uniforms.active, isActiveStatus() ? 1 : 0);
-    gl.uniform3f(uniforms.a, accentA[0], accentA[1], accentA[2]);
-    gl.uniform3f(uniforms.b, accentB[0], accentB[1], accentB[2]);
+    gl.uniform1f(uniforms.time, phase);
+    gl.uniform1f(uniforms.drift, driftPhase);
+    gl.uniform1f(uniforms.swirl, swirlPhase);
+    gl.uniform1f(uniforms.input, readLevel());
+    gl.uniform1f(uniforms.output, isActiveStatus() ? (orbState() === "thinking" ? 1 : 0.35) : 0.12);
+    gl.uniform3f(uniforms.tint, tint[0], tint[1], tint[2]);
+    gl.uniform3f(uniforms.body, body[0], body[1], body[2]);
+    gl.uniform3f(uniforms.sheen, sheen[0], sheen[1], sheen[2]);
+    for (const key of paramKeys)
+      gl.uniform1f(uniforms[key], params[key]);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
@@ -525,10 +663,28 @@ const orbScript = `<script>
       uniforms = {
         res: gl.getUniformLocation(program, "u_res"),
         time: gl.getUniformLocation(program, "u_time"),
-        level: gl.getUniformLocation(program, "u_level"),
-        active: gl.getUniformLocation(program, "u_active"),
-        a: gl.getUniformLocation(program, "u_a"),
-        b: gl.getUniformLocation(program, "u_b"),
+        input: gl.getUniformLocation(program, "u_input"),
+        output: gl.getUniformLocation(program, "u_output"),
+        tint: gl.getUniformLocation(program, "u_tint"),
+        body: gl.getUniformLocation(program, "u_body"),
+        sheen: gl.getUniformLocation(program, "u_sheen"),
+        drift: gl.getUniformLocation(program, "u_drift"),
+        swirl: gl.getUniformLocation(program, "u_swirl"),
+        radius: gl.getUniformLocation(program, "u_radius"),
+        scale: gl.getUniformLocation(program, "u_scale"),
+        bulge: gl.getUniformLocation(program, "u_bulge"),
+        warp: gl.getUniformLocation(program, "u_warp"),
+        zoom: gl.getUniformLocation(program, "u_zoom"),
+        ripple: gl.getUniformLocation(program, "u_ripple"),
+        edgeGain: gl.getUniformLocation(program, "u_edgeGain"),
+        blur: gl.getUniformLocation(program, "u_blur"),
+        fringe: gl.getUniformLocation(program, "u_fringe"),
+        exposure: gl.getUniformLocation(program, "u_exposure"),
+        contrast: gl.getUniformLocation(program, "u_contrast"),
+        saturation: gl.getUniformLocation(program, "u_saturation"),
+        floorLevel: gl.getUniformLocation(program, "u_floorLevel"),
+        light: gl.getUniformLocation(program, "u_light"),
+        rim: gl.getUniformLocation(program, "u_rim"),
       };
       gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
@@ -847,22 +1003,22 @@ body{color:#f3f1ed;font:400 13px/1.4 system-ui,-apple-system,"Segoe UI",sans-ser
 *{box-sizing:border-box}main{position:absolute;inset:0;--accent:#9db4c7;--accent-secondary:#5f7186;--level:0}
 .orb-wrap{position:absolute;right:0;top:calc(50% - 36px);width:72px;height:72px;display:grid;place-items:center;transition:transform .26s cubic-bezier(.22,.9,.28,1)}
 .orb-canvas{position:absolute;inset:0;width:72px;height:72px;pointer-events:none}
-.orb{position:relative;z-index:2;width:52px;height:52px;border:1px solid rgba(255,255,255,.16);border-radius:50%;cursor:grab;padding:0;outline:none;background:radial-gradient(circle at 34% 28%,rgba(255,255,255,.55),rgba(255,255,255,0) 42%),radial-gradient(circle at 50% 46%,#3a4450,#0b0d11 78%);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.18),inset 0 -6px 14px rgba(0,0,0,.40);transition:box-shadow .2s ease;touch-action:none;user-select:none;-webkit-user-select:none}
+.orb{position:relative;z-index:2;width:52px;height:52px;border:1px solid rgba(255,255,255,.16);border-radius:50%;cursor:grab;padding:0;outline:none;background:radial-gradient(circle at 34% 28%,rgba(168,200,240,.45),rgba(255,255,255,0) 42%),radial-gradient(circle at 50% 46%,#2b3a52,#0d1118 78%);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.18),inset 0 -6px 14px rgba(0,0,0,.40);transition:box-shadow .2s ease;touch-action:none;user-select:none;-webkit-user-select:none}
 main.webgl .orb{background:transparent;border-color:transparent;box-shadow:none}
 .orb:hover{box-shadow:0 10px 28px rgba(0,0,0,.48),inset 0 1px 2px rgba(255,255,255,.22),inset 0 -6px 14px rgba(0,0,0,.40)}
 .orb.dragging{cursor:grabbing}
 .orb:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 75%,white);outline-offset:3px}
 main[data-expanded="true"] .orb-wrap{transform:scale(1.08)}
-.picker{position:absolute;left:0;top:0;bottom:0;width:calc(100% - 84px);padding:18px 12px;overflow:auto;scrollbar-width:thin;scrollbar-color:#44443d transparent;border:1px solid #3c3c35;border-radius:13px;background:#151512;color:#f3f1ed;opacity:0;transform:translateX(10px) scale(.985);transform-origin:100% 50%;transition:opacity .18s ease,transform .24s cubic-bezier(.22,.9,.28,1)}
+.picker{position:absolute;left:0;top:0;bottom:0;width:calc(100% - 84px);padding:16px 12px;overflow:auto;scrollbar-width:thin;scrollbar-color:#44443d transparent;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:linear-gradient(180deg,rgba(28,28,24,.94),rgba(18,18,15,.96));backdrop-filter:blur(18px) saturate(1.15);box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);color:#f3f1ed;opacity:0;transform:translateX(10px) scale(.985);transform-origin:100% 50%;transition:opacity .18s ease,transform .24s cubic-bezier(.22,.9,.28,1)}
 main[data-expanded="true"] .picker{opacity:1;transform:none}
 .picker[hidden]{display:none}.picker-brand{display:flex;justify-content:space-between;align-items:center;margin:0 6px 4px;font-size:15px;font-weight:600;letter-spacing:-.02em}.picker-brand span{color:#aaa89f;font-size:11px;font-weight:400;letter-spacing:0}
 .live-label{margin:0 6px 22px;color:#aaa89f;font-size:11px}.picker-label,.running-label{margin:0 6px 8px;color:#aaa89f;font-size:12px;font-weight:500}
 .picker-list,.running-list{display:flex;flex-direction:column;gap:4px}
 .provider-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;width:100%;padding:9px 12px;text-align:left;color:#f3f1ed;background:transparent;border:1px solid transparent;border-radius:10px;cursor:pointer;transition:background .15s ease,border-color .15s ease}
-.provider-row:hover:not(:disabled){background:#23231d}.provider-row[data-selected="true"]{background:#23231d;border-color:#4a4a40}.provider-row[data-available="false"],.provider-row:disabled{cursor:default;opacity:.5}.provider-row:focus-visible{outline:2px solid #aaa89f;outline-offset:-2px}.row-text{display:grid;gap:2px;min-width:0}.row-provider{font-size:13px;font-weight:500}.row-model{font-size:11px;color:#aaa89f}.row-state{font-size:10px;color:#c9c7bc}.row-check{width:14px;height:14px;fill:none;stroke:#c9c7bc;stroke-width:1.5}.picker-empty{margin:0;padding:8px 6px;color:#aaa89f;font-size:12px}.picker-error{padding:8px;color:#cf8b80;font-size:11px}.picker-error[hidden]{display:none}.picker-hint{margin:20px 6px 0;color:#8d8c82;font-size:10px}
+.provider-row:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 10%,#23231d)}.provider-row[data-selected="true"]{background:color-mix(in srgb,var(--accent) 14%,#1d1d18);border-color:color-mix(in srgb,var(--accent) 38%,#4a4a40)}.provider-row[data-available="false"],.provider-row:disabled{cursor:default;opacity:.5}.provider-row:focus-visible{outline:2px solid #aaa89f;outline-offset:-2px}.row-text{display:grid;gap:2px;min-width:0}.row-provider{font-size:13px;font-weight:500}.row-model{font-size:11px;color:#aaa89f}.row-state{font-size:10px;color:#c9c7bc}.row-check{width:14px;height:14px;fill:none;stroke:#c9c7bc;stroke-width:1.5}.picker-empty{margin:0;padding:8px 6px;color:#aaa89f;font-size:12px}.picker-error{padding:8px;color:#cf8b80;font-size:11px}.picker-error[hidden]{display:none}.picker-hint{margin:20px 6px 0;color:#8d8c82;font-size:10px}
 .running-section{margin-top:18px;padding-top:18px;border-top:1px solid #34342d}.agent-row{display:flex;align-items:center;gap:8px;padding:9px 6px}.agent-marker{width:5px;height:5px;flex:none;border-radius:50%;background:#91ba79}.agent-row[data-status="offline"] .agent-marker{background:#8d8c82}.agent-row[data-status="waiting"] .agent-marker{background:#c9ad73}.agent-text{min-width:0;flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agent-text small{display:block;color:#aaa89f;font-size:10px;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.agent-status{font-size:10px;color:#aaa89f;text-transform:capitalize}
 @media(prefers-reduced-motion: reduce){.orb-wrap,.picker,.orb{transition:none!important}main[data-expanded="true"] .orb-wrap{transform:none}}
-</style></head><body><main data-orb-root data-live="idle" data-expanded="false"><div class="orb-wrap"><canvas class="orb-canvas" data-orb-canvas aria-hidden="true"></canvas><button class="orb" data-orb aria-expanded="false" aria-label="Circe. Activate to choose providers and running agents."></button></div><section class="picker" aria-label="Circe activity" data-picker hidden><div class="picker-brand">Circe<span>Activity</span></div><p class="live-label" data-live-label></p><p class="picker-label">Default agent</p><div class="picker-list" data-provider-list></div><section class="running-section" data-running-section hidden><p class="running-label">Running agents</p><div class="running-list" data-running-list></div></section><p class="picker-error" data-picker-error hidden></p><p class="picker-hint">Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation.</p></section></main><script type="x-shader/x-fragment" id="orb-frag">${ORB_FRAGMENT_SHADER}</script>${orbScript}</body></html>`;
+</style></head><body><main data-orb-root data-live="idle" data-expanded="false"><div class="orb-wrap"><canvas class="orb-canvas" data-orb-canvas aria-hidden="true"></canvas><button class="orb" data-orb aria-expanded="false" aria-label="Circe. Activate to choose providers and running agents."></button></div><section class="picker" aria-label="Circe activity" data-picker hidden><div class="picker-brand">Circe<span>Activity</span></div><p class="live-label" data-live-label></p><p class="picker-label">Default agent</p><div class="picker-list" data-provider-list></div><section class="running-section" data-running-section hidden><p class="running-label">Running agents</p><div class="running-list" data-running-list></div></section><p class="picker-error" data-picker-error hidden></p><p class="picker-hint">Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation.</p></section></main><script type="x-shader/x-fragment" id="orb-frag">${ORB25_FRAGMENT_SHADER}</script>${orbScript}</body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 

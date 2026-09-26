@@ -1,4 +1,28 @@
 import { CirceQuickLookupInput, CirceQuickLookupResult } from "./circeQuickActions.ts";
+import {
+  CirceBotConversation,
+  CirceBotConversationInput,
+  CirceBotError,
+  CirceBotSendInput,
+  CirceBotStopWaitingInput,
+  CirceBotUserMessage,
+  CirceBotsRefreshInput,
+  CirceBotsState,
+  CirceBotsSubscribeInput,
+} from "./circeBots.ts";
+import {
+  CirceDeviceReadiness,
+  CirceDeviceReadinessInput,
+  CirceInteractionError,
+  CirceInteractionInterruptInput,
+  CirceInteractionInterruptResult,
+  CirceInteractionReadInput,
+  CirceInteractionReadResult,
+  CirceInteractionState,
+  CirceInteractionSubmitInput,
+  CirceInteractionSubmitResult,
+  CirceInteractionSubscriptionInput,
+} from "./circeInteraction.ts";
 import { OrchestrationDispatchCommandError } from "./orchestration.ts";
 import * as Schema from "effect/Schema";
 import * as Rpc from "effect/unstable/rpc/Rpc";
@@ -255,16 +279,6 @@ import {
   PreviewAutomationStreamEvent,
 } from "./previewAutomation.ts";
 import {
-  DesktopUseCaptureInput,
-  DesktopUseError,
-  DesktopUseFrame,
-  DesktopUseInputRequest,
-  DesktopUseInputResult,
-  DesktopUseStatus,
-  DesktopUseSubscribeFramesInput,
-  DesktopUseWindowList,
-} from "./desktopUse.ts";
-import {
   ServerConfigStreamEvent,
   DesktopUpdateCommitInput,
   ServerConfig,
@@ -355,7 +369,12 @@ import {
   CircePushRegistrationError,
 } from "./circe.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
-import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
+import {
+  CirceComputerStatus,
+  CirceComputerStatusInput,
+  CirceComputerUseInput,
+  CirceComputerUseResult,
+} from "./circeComputerUse.ts";
 import {
   CirceHostListenInput,
   CirceHostListenResult,
@@ -384,6 +403,7 @@ export const WS_METHODS = {
   circeCancelRequest: "circe.cancelRequest",
   circeBrowserUse: "circe.browserUse",
   circeComputerUse: "circe.computerUse",
+  circeComputerStatus: "circe.computerStatus",
   circeCancelMission: "circe.cancelMission",
   circeGetTaskDesk: "circe.getTaskDesk",
   circeFocusTask: "circe.focusTask",
@@ -397,9 +417,20 @@ export const WS_METHODS = {
   circeHostListen: "circe.host.listen",
   circeHostSpeak: "circe.host.speak",
   subscribeCirceHostNotices: "circe.host.subscribeNotices",
+  circeInteractionSubmit: "circe.interaction.submit",
+  circeInteractionRead: "circe.interaction.read",
+  circeInteractionInterrupt: "circe.interaction.interrupt",
+  subscribeCirceInteraction: "circe.interaction.subscribe",
+  circeDeviceReadiness: "circe.device.readiness",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
+  subscribeCirceBots: "circe.bots.subscribe",
+  circeBotsRefresh: "circe.bots.refresh",
+  circeBotSend: "circe.bots.send",
+  subscribeCirceBotConversation: "circe.bots.conversation.subscribe",
+  circeBotStopWaiting: "circe.bots.stopWaiting",
+  circeBotClearConversation: "circe.bots.clearConversation",
 
   // Project registry methods
   projectsList: "projects.list",
@@ -478,11 +509,6 @@ export const WS_METHODS = {
   previewAutomationFocusHost: "previewAutomation.focusHost",
 
   // Desktop use (in-house computer control on the node's own display)
-  desktopUseGetStatus: "desktopUse.getStatus",
-  desktopUseCapture: "desktopUse.capture",
-  desktopUseInput: "desktopUse.input",
-  desktopUseListWindows: "desktopUse.listWindows",
-  desktopUseSubscribeFrames: "desktopUse.subscribeFrames",
   // Device methods
   deviceConfigure: "device.configure",
   deviceList: "device.list",
@@ -636,6 +662,13 @@ const WsCirceComputerUseRpc = Rpc.make(WS_METHODS.circeComputerUse, {
   error: EnvironmentAuthorizationError,
 });
 
+/** Read the node's desktop-host availability and active computer mission. */
+const WsCirceComputerStatusRpc = Rpc.make(WS_METHODS.circeComputerStatus, {
+  payload: CirceComputerStatusInput,
+  success: CirceComputerStatus,
+  error: EnvironmentAuthorizationError,
+});
+
 /** Stop one running node mission by the request id it registered under. */
 const WsCirceCancelMissionRpc = Rpc.make(WS_METHODS.circeCancelMission, {
   payload: CirceCancelMissionInput,
@@ -727,6 +760,42 @@ const WsSubscribeCirceHostNoticesRpc = Rpc.make(WS_METHODS.subscribeCirceHostNot
   stream: true,
 });
 
+/** Submit one utterance to the node-owned interaction. */
+const WsCirceInteractionSubmitRpc = Rpc.make(WS_METHODS.circeInteractionSubmit, {
+  payload: CirceInteractionSubmitInput,
+  success: CirceInteractionSubmitResult,
+  error: Schema.Union([CirceInteractionError, EnvironmentAuthorizationError]),
+});
+
+/** Read the current interaction state; null when the node has none active. */
+const WsCirceInteractionReadRpc = Rpc.make(WS_METHODS.circeInteractionRead, {
+  payload: CirceInteractionReadInput,
+  success: CirceInteractionReadResult,
+  error: Schema.Union([CirceInteractionError, EnvironmentAuthorizationError]),
+});
+
+/** Stop the interaction's active operation. Stop is never queued behind input. */
+const WsCirceInteractionInterruptRpc = Rpc.make(WS_METHODS.circeInteractionInterrupt, {
+  payload: CirceInteractionInterruptInput,
+  success: CirceInteractionInterruptResult,
+  error: Schema.Union([CirceInteractionError, EnvironmentAuthorizationError]),
+});
+
+/** Live state changes; reconnect reads the durable state instead of replaying. */
+const WsSubscribeCirceInteractionRpc = Rpc.make(WS_METHODS.subscribeCirceInteraction, {
+  payload: CirceInteractionSubscriptionInput,
+  success: CirceInteractionState,
+  error: Schema.Union([CirceInteractionError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+/** Observed desktop readiness for this node; clients act only on ready surfaces. */
+const WsCirceDeviceReadinessRpc = Rpc.make(WS_METHODS.circeDeviceReadiness, {
+  payload: CirceDeviceReadinessInput,
+  success: CirceDeviceReadiness,
+  error: Schema.Union([CirceInteractionError, EnvironmentAuthorizationError]),
+});
+
 const WsCirceVoiceLiveReleaseRpc = Rpc.make(WS_METHODS.circeVoiceLiveRelease, {
   payload: CirceLiveVoiceReleaseInput,
   success: Schema.Void,
@@ -758,6 +827,50 @@ const WsCirceVoiceLiveStartRpc = Rpc.make(WS_METHODS.circeVoiceLiveStart, {
     CirceLiveVoiceRuntimeError,
     EnvironmentAuthorizationError,
   ]),
+});
+
+/** The node's Grok Bot roster and per-bot activity; emits the current state first. */
+const WsSubscribeCirceBotsRpc = Rpc.make(WS_METHODS.subscribeCirceBots, {
+  payload: CirceBotsSubscribeInput,
+  success: CirceBotsState,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+/** Re-read the gateway roster on demand; there is no background polling. */
+const WsCirceBotsRefreshRpc = Rpc.make(WS_METHODS.circeBotsRefresh, {
+  payload: CirceBotsRefreshInput,
+  success: CirceBotsState,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
+});
+
+/** Prompt one bot; idempotent by the client-generated message id. */
+const WsCirceBotSendRpc = Rpc.make(WS_METHODS.circeBotSend, {
+  payload: CirceBotSendInput,
+  success: CirceBotUserMessage,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
+});
+
+/** One bot's recorded exchange; emits the stored conversation first. */
+const WsSubscribeCirceBotConversationRpc = Rpc.make(WS_METHODS.subscribeCirceBotConversation, {
+  payload: CirceBotConversationInput,
+  success: CirceBotConversation,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
+  stream: true,
+});
+
+/** Close a message's reply URL. The bot's own run is not stopped. */
+const WsCirceBotStopWaitingRpc = Rpc.make(WS_METHODS.circeBotStopWaiting, {
+  payload: CirceBotStopWaitingInput,
+  success: CirceBotUserMessage,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
+});
+
+/** Forget this node's record of a bot conversation and close its reply URLs. */
+const WsCirceBotClearConversationRpc = Rpc.make(WS_METHODS.circeBotClearConversation, {
+  payload: CirceBotConversationInput,
+  success: Schema.Void,
+  error: Schema.Union([CirceBotError, EnvironmentAuthorizationError]),
 });
 
 const WsServerRemoveKeybindingRpc = Rpc.make(WS_METHODS.serverRemoveKeybinding, {
@@ -1586,37 +1699,6 @@ const WsPreviewAutomationFocusHostRpc = Rpc.make(WS_METHODS.previewAutomationFoc
   error: EnvironmentAuthorizationError,
 });
 
-const WsDesktopUseGetStatusRpc = Rpc.make(WS_METHODS.desktopUseGetStatus, {
-  payload: Schema.Struct({}),
-  success: DesktopUseStatus,
-  error: Schema.Union([DesktopUseError, EnvironmentAuthorizationError]),
-});
-
-const WsDesktopUseCaptureRpc = Rpc.make(WS_METHODS.desktopUseCapture, {
-  payload: DesktopUseCaptureInput,
-  success: DesktopUseFrame,
-  error: Schema.Union([DesktopUseError, EnvironmentAuthorizationError]),
-});
-
-const WsDesktopUseInputRpc = Rpc.make(WS_METHODS.desktopUseInput, {
-  payload: DesktopUseInputRequest,
-  success: DesktopUseInputResult,
-  error: Schema.Union([DesktopUseError, EnvironmentAuthorizationError]),
-});
-
-const WsDesktopUseListWindowsRpc = Rpc.make(WS_METHODS.desktopUseListWindows, {
-  payload: Schema.Struct({}),
-  success: DesktopUseWindowList,
-  error: Schema.Union([DesktopUseError, EnvironmentAuthorizationError]),
-});
-
-const WsDesktopUseSubscribeFramesRpc = Rpc.make(WS_METHODS.desktopUseSubscribeFrames, {
-  payload: DesktopUseSubscribeFramesInput,
-  success: DesktopUseFrame,
-  error: Schema.Union([DesktopUseError, EnvironmentAuthorizationError]),
-  stream: true,
-});
-
 const WsSubscribePreviewEventsRpc = Rpc.make(WS_METHODS.subscribePreviewEvents, {
   payload: Schema.Struct({}),
   success: PreviewEvent,
@@ -1880,6 +1962,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceCancelRequestRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceComputerStatusRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -1893,10 +1976,20 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceHostListenRpc,
   WsCirceHostSpeakRpc,
   WsSubscribeCirceHostNoticesRpc,
+  WsCirceInteractionSubmitRpc,
+  WsCirceInteractionReadRpc,
+  WsCirceInteractionInterruptRpc,
+  WsSubscribeCirceInteractionRpc,
+  WsCirceDeviceReadinessRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
-  WsServerSetEnvironmentLabelRpc,
+  WsSubscribeCirceBotsRpc,
+  WsCirceBotsRefreshRpc,
+  WsCirceBotSendRpc,
+  WsSubscribeCirceBotConversationRpc,
+  WsCirceBotStopWaitingRpc,
+  WsCirceBotClearConversationRpc,
   WsCirceExecuteRpc,
   WsCirceInterpretRpc,
   WsCirceCancelRequestRpc,
@@ -2052,11 +2145,6 @@ export const WsRpcGroup = RpcGroup.make(
   WsPreviewAutomationConnectRpc,
   WsPreviewAutomationRespondRpc,
   WsPreviewAutomationFocusHostRpc,
-  WsDesktopUseGetStatusRpc,
-  WsDesktopUseCaptureRpc,
-  WsDesktopUseInputRpc,
-  WsDesktopUseListWindowsRpc,
-  WsDesktopUseSubscribeFramesRpc,
   WsSubscribePreviewEventsRpc,
   WsSubscribeDiscoveredLocalServersRpc,
   WsDeviceConfigureRpc,
@@ -2093,6 +2181,7 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceCancelRequestRpc,
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
+  WsCirceComputerStatusRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -2106,9 +2195,20 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceHostListenRpc,
   WsCirceHostSpeakRpc,
   WsSubscribeCirceHostNoticesRpc,
+  WsCirceInteractionSubmitRpc,
+  WsCirceInteractionReadRpc,
+  WsCirceInteractionInterruptRpc,
+  WsSubscribeCirceInteractionRpc,
+  WsCirceDeviceReadinessRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
+  WsSubscribeCirceBotsRpc,
+  WsCirceBotsRefreshRpc,
+  WsCirceBotSendRpc,
+  WsSubscribeCirceBotConversationRpc,
+  WsCirceBotStopWaitingRpc,
+  WsCirceBotClearConversationRpc,
 );
 
 /** Generic T3 RPCs; product handlers are supplied by their composition layer. */
@@ -2118,6 +2218,7 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeCancelRequest,
   WS_METHODS.circeBrowserUse,
   WS_METHODS.circeComputerUse,
+  WS_METHODS.circeComputerStatus,
   WS_METHODS.circeCancelMission,
   WS_METHODS.circeGetTaskDesk,
   WS_METHODS.circeFocusTask,
@@ -2131,7 +2232,18 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeHostListen,
   WS_METHODS.circeHostSpeak,
   WS_METHODS.subscribeCirceHostNotices,
+  WS_METHODS.circeInteractionSubmit,
+  WS_METHODS.circeInteractionRead,
+  WS_METHODS.circeInteractionInterrupt,
+  WS_METHODS.subscribeCirceInteraction,
+  WS_METHODS.circeDeviceReadiness,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,
+  WS_METHODS.subscribeCirceBots,
+  WS_METHODS.circeBotsRefresh,
+  WS_METHODS.circeBotSend,
+  WS_METHODS.subscribeCirceBotConversation,
+  WS_METHODS.circeBotStopWaiting,
+  WS_METHODS.circeBotClearConversation,
 );

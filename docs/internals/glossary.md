@@ -82,6 +82,14 @@ The installer-selected capability set for one Circe installation: Full, Controll
 
 The one user-facing Circe product installed on a device. It owns one launcher, uninstall entry, node directory, and lifecycle even when isolated helper processes provide execution.
 
+#### Chat space
+
+The one workspace each node keeps for chats: conversations that are not about a codebase. Every thread runs in a workspace, so chats run here, but clients never present it as a project and the node refuses to rename, move, or delete it. Marked `kind: "chats"` on the wire. See [Chat is not a project](./circe-decisions.md#chat-is-not-a-project).
+
+#### Grok Bot
+
+A named bot from the Grok Bot app, reached through the loopback gateway on the node that runs it. A bot is node-owned like a project: clients address it as (node, bot id), and a disconnected node reports its bots offline instead of routing elsewhere. See [Circe bots](./circe-bots.md).
+
 #### Execution node
 
 The node that actually owns and runs a Circe task. The execution node is carried by `TaskRef` and is authoritative for the provider process, workspace, thread, checkpoints, and continuation. A controller may be connected to another node, but a continuation never moves to that controller's node just because it is visible there.
@@ -125,6 +133,41 @@ The TypeSafe System One classifier behind `CirceDecision`. It answers a map of f
 #### Presentation event
 
 An ephemeral, origin-directed summary of a Circe-managed thread's actual final output, question, approval request, or failure. It is projected live from durable T3 events and is never replayed or acknowledged. See [circe-controller.md][25].
+
+#### Interaction
+
+The durable, node-owned record of one assistant conversation: its goal, pending question, revision, bound device target, and active operation reference. Clients submit typed input and render the returned state; they never decide locally what an answer resumes. See [circe-interactions.md](./circe-interactions.md).
+
+#### Interaction revision
+
+The monotonic ordering authority for one interaction. Every state transition increments it; a submission may carry the revision it answered, and a mismatch returns `stale` instead of consuming the question twice.
+
+#### Pending question
+
+The interaction's typed question before it is spoken: kind, missing slot, known arguments, offered choices, and owner. It is server state, not a client ref.
+
+#### Device target
+
+A qualified physical target: node, desktop session generation, application, and, for a browser, profile and tab. Tab ids are session-scoped and never survive a reconnect.
+
+#### Operation
+
+One accepted device effect owned by the target node, persisted before execution with its interaction revision, target, authorized scope, goal, and expected outcome. Its result stays `unknown` until observed. See [circe-interactions.md](./circe-interactions.md).
+
+#### Browser connector
+
+The Chrome extension plus native messaging host that lets a node observe and act on one visible tab
+in the user's own signed-in Chrome profile. It connects over a token-protected local socket, never a
+public debugging port, and falls back to desktop accessibility control when it is absent.
+
+#### Recovery plan
+
+A bounded provider-proposed sequence of grounded steps the step loop may apply once when it stalls.
+Every step is validated against the surface the selector just saw; an invalid step is dropped.
+
+#### Device readiness
+
+The observed ability of a node to control a surface: preset permission, adapter support, active desktop session, granted permission, and per-surface readiness. It is a probe result, not a policy promise; a preset permits control without proving a controllable session.
 
 #### Assistant delivery mode
 

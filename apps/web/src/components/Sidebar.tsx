@@ -1,4 +1,4 @@
-import { CIRCE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
+import { isChatWorkspace } from "@circe/contracts";
 import { releaseComposerDraftUploads } from "../lib/composerDraftUploads";
 import { setThreadChangeRequestSnapshot } from "./ThreadStatusIndicators";
 import { requestCustomSnooze } from "./CustomSnoozeDialog";
@@ -65,6 +65,9 @@ import {
   Undo2Icon,
   XIcon,
 } from "lucide-react";
+import { SidebarBotsSection } from "./bots/SidebarBots";
+import { SidebarSectionHeading } from "./sidebar/SidebarSectionHeading";
+import { CirceCommandLauncher } from "./sidebar/CirceCommandLauncher";
 import {
   memo,
   useCallback,
@@ -134,6 +137,8 @@ import {
   useAllEnvironmentProjectSnapshotsReady,
   useProjects,
   useThreadShells,
+  useUserProjects,
+  useChatSpaces,
 } from "../state/entities";
 import { environmentServerConfigsAtom, primaryServerKeybindingsAtom } from "../state/server";
 import { vcsEnvironment } from "../state/vcs";
@@ -156,6 +161,7 @@ import {
   animateSidebarLayoutChanges,
   applySidebarThreadDrop,
   filterSidebarV2VisibleThreads,
+  partitionSidebarChats,
   buildBulkTitleRegenerationContextMenuItem,
   buildBulkUnpinContextMenuItem,
   deleteSelectedThreadEntries,
@@ -269,6 +275,7 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 const SETTLED_SHELF_EXPANDED_KEY = "circe:sidebar:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "circe:sidebar:snoozed-expanded";
 const CONVERSATIONS_SHELF_EXPANDED_KEY = "circe:sidebar:conversations-expanded";
+const AGENTS_COLLAPSED_KEY = "circe:sidebar:agents-collapsed";
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -1537,7 +1544,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       </span>
     ) : null;
 
-  const isConversation = thread.title.startsWith(CIRCE_CONVERSATION_TITLE_PREFIX);
+  // A chat runs in its node's chat space; older chats carry only the title prefix.
+  const isConversation =
+    (props.project !== null && isChatWorkspace(props.project)) ||
+    thread.title.startsWith(CIRCE_CONVERSATION_TITLE_PREFIX);
   const conversationIndicator = isConversation ? (
     <span
       role="img"
@@ -1710,7 +1720,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                   "opacity-40 grayscale group-focus-within/sidebar-row:opacity-100 group-focus-within/sidebar-row:grayscale-0 group-hover/sidebar-row:opacity-100 group-hover/sidebar-row:grayscale-0",
               )}
             >
-              {props.project ? <ProjectFavicon project={props.project} className="size-4" /> : null}
+              {props.project && !isConversation ? (
+                <ProjectFavicon project={props.project} className="size-4" />
+              ) : null}
             </span>
             {draftIndicator}
             {conversationIndicator}
@@ -1858,7 +1870,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
           <div className="relative z-10 h-[4.875rem] px-[var(--sidebar-row-content-inset)] py-[var(--sidebar-content-inset)]">
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
-              {props.project ? (
+              {props.project && !isConversation ? (
                 <ProjectFavicon project={props.project} className="size-4 shrink-0" />
               ) : null}
               {props.projectDisplayName ? (
@@ -2216,6 +2228,10 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
 
 export default function Sidebar() {
   const projects = useProjects();
+  // Agents are grouped and scoped by codebase; each node's chat space is not
+  // a project the user picks.
+  const userProjects = useUserProjects();
+  const chatSpaces = useChatSpaces();
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const threads = useThreadShells();
   const router = useRouter();
@@ -2348,7 +2364,7 @@ export default function Sidebar() {
   const orderedProjects = useMemo(
     () =>
       orderItemsByPreferredIds({
-        items: projects,
+        items: userProjects,
         preferredIds: projectOrder,
         getId: getProjectOrderKey,
         getPreferenceIds: (project) => [
@@ -2356,12 +2372,12 @@ export default function Sidebar() {
           legacyProjectCwdPreferenceKey(project.workspaceRoot),
         ],
       }),
-    [projectOrder, projects],
+    [projectOrder, userProjects],
   );
   const unsortedProjectGroups = useMemo(
     () =>
       buildSidebarProjectSnapshots({
-        projects: sidebarProjectSortOrder === "manual" ? orderedProjects : projects,
+        projects: sidebarProjectSortOrder === "manual" ? orderedProjects : userProjects,
         settings: projectGroupingSettings,
         primaryEnvironmentId,
         resolveEnvironmentLabel: (environmentId) => environmentLabelById.get(environmentId) ?? null,
@@ -2371,8 +2387,8 @@ export default function Sidebar() {
       orderedProjects,
       primaryEnvironmentId,
       projectGroupingSettings,
-      projects,
       sidebarProjectSortOrder,
+      userProjects,
     ],
   );
   const projectGroups = useMemo(
@@ -2603,7 +2619,8 @@ export default function Sidebar() {
     const preciseNow = new Date().toISOString();
     // Subagent child threads live in the parent's Agents surface, not the
     // sidebar roster (v2 models them as real threads with lineage).
-    const visible = filterSidebarV2VisibleThreads(threads, scopedProjectKeys);
+    // Project scope narrows Agents only; chats are never inside a project.
+    const visible = filterSidebarV2VisibleThreads(threads, null);
     const pinned: EnvironmentThreadShell[] = [];
     const active: EnvironmentThreadShell[] = [];
     const snoozed: EnvironmentThreadShell[] = [];
@@ -2612,16 +2629,11 @@ export default function Sidebar() {
     const activeReorderable = new Set<string>();
     // Conversation threads are grouped under their own section, separate from
     // the coding-thread sections, so they never mix into pinned/active/settled.
-    const conversations: EnvironmentThreadShell[] = [];
-    const rest: EnvironmentThreadShell[] = [];
-    for (const thread of visible) {
-      const display = projectDisplayNameByKey.get(`${thread.environmentId}:${thread.projectId}`);
-      if (display !== undefined && display.trim() === CIRCE_CONVERSATIONS_PROJECT_TITLE) {
-        conversations.push(thread);
-        continue;
-      }
-      rest.push(thread);
-    }
+    const { chats: conversations, agents: rest } = partitionSidebarChats({
+      threads: visible,
+      workspaceByKey: projectByKey,
+      scopedProjectKeys,
+    });
     for (const thread of rest) {
       const capabilities = serverConfigs.get(thread.environmentId)?.environment.capabilities;
       // Threads on servers without the settlement capability (old server,
@@ -2709,7 +2721,7 @@ export default function Sidebar() {
   }, [
     nowMinute,
     optimisticDrop,
-    projectDisplayNameByKey,
+    projectByKey,
     scopedProjectKeys,
     serverConfigs,
     snoozeWakeTick,
@@ -2721,8 +2733,14 @@ export default function Sidebar() {
   const [activeSearchResultIndex, setActiveSearchResultIndex] = useState(0);
   const isSearchingThreads = threadSearchQuery.trim().length > 0;
   const searchableThreads = useMemo(
-    () => [...pinnedThreads, ...activeThreads, ...snoozedThreads, ...settledThreads],
-    [activeThreads, pinnedThreads, settledThreads, snoozedThreads],
+    () => [
+      ...conversationThreads,
+      ...pinnedThreads,
+      ...activeThreads,
+      ...snoozedThreads,
+      ...settledThreads,
+    ],
+    [activeThreads, conversationThreads, pinnedThreads, settledThreads, snoozedThreads],
   );
   const threadSearchResults = useMemo(
     () => searchSidebarThreads(searchableThreads, threadSearchQuery),
@@ -2812,6 +2830,15 @@ export default function Sidebar() {
     () => setConversationsExpanded((value) => !value),
     [setConversationsExpanded],
   );
+  const [agentsCollapsed, setAgentsCollapsed] = useLocalStorage(
+    AGENTS_COLLAPSED_KEY,
+    false,
+    Schema.Boolean,
+  );
+  const toggleAgents = useCallback(
+    () => setAgentsCollapsed((value) => !value),
+    [setAgentsCollapsed],
+  );
   const renderedSettledThreads = useMemo(() => {
     if (settledShelfExpanded) return visibleSettledThreads;
     if (routeThreadKey === null) return EMPTY_THREADS;
@@ -2884,6 +2911,19 @@ export default function Sidebar() {
   // a ref keeps it out of attemptSettle's dependency array.
   const handleNewThreadRef = useRef(newThreadContext.handleNewThread);
   handleNewThreadRef.current = newThreadContext.handleNewThread;
+  // A new chat starts a draft in a node's chat space, preferring this
+  // device's node. No project choice is involved.
+  const chatSpaceRef = useMemo(() => {
+    const space =
+      chatSpaces.find((candidate) => candidate.environmentId === primaryEnvironmentId) ??
+      chatSpaces[0];
+    return space === undefined ? null : scopeProjectRef(space.environmentId, space.id);
+  }, [chatSpaces, primaryEnvironmentId]);
+  const startNewChat = useCallback(() => {
+    if (chatSpaceRef === null) return;
+    if (isMobile) setOpenMobile(false);
+    void handleNewThreadRef.current(chatSpaceRef);
+  }, [chatSpaceRef, isMobile, setOpenMobile]);
   const settledThreadKeys = useMemo(
     () =>
       new Set(
@@ -4458,7 +4498,142 @@ export default function Sidebar() {
   const newThreadShortcutLabel =
     shortcutLabelForCommand(keybindings, "chat.new") ??
     (projectGroups.length <= 1 ? shortcutLabelForCommand(keybindings, "chat.newLocal") : undefined);
-  const newThreadInProjectShortcutLabel = shortcutLabelForCommand(keybindings, "chat.newLocal");
+  // Scoping narrows Agents to one codebase, so the picker sits on that group.
+  const projectScopeControl =
+    projectGroups.length > 0 ? (
+      <Combobox
+        items={projectScopeItems}
+        filteredItems={filteredProjectScopeItems}
+        autoHighlight
+        itemToStringLabel={(item) => item.label}
+        isItemEqualToValue={(a, b) => a.value === b.value}
+        open={projectScopeMenuState.open}
+        onOpenChange={(open) => {
+          if (open) suppressNextScopeChangeRef.current = false;
+          dispatchProjectScopeMenu({ type: "open-changed", open });
+        }}
+        onItemHighlighted={(item) => {
+          highlightedProjectScopeKeyRef.current = item?.value ?? null;
+        }}
+        value={selectedProjectScopeItem}
+        onValueChange={(item) => {
+          if (suppressNextScopeChangeRef.current) {
+            suppressNextScopeChangeRef.current = false;
+            return;
+          }
+          if (!item) return;
+          setProjectScopeKey(item.value === "all" ? null : item.value);
+        }}
+      >
+        <ComboboxTrigger
+          render={
+            <SidebarHeaderIconButton
+              label={
+                scopedProjectGroup
+                  ? `Filter threads by project: ${scopedProjectGroup.displayName}`
+                  : "Filter threads by project"
+              }
+            />
+          }
+        >
+          {scopedProjectGroup ? (
+            // Wrapped so the button's direct-child svg color rule cannot override
+            // a project's own icon color.
+            <span className="flex shrink-0">
+              <ProjectFavicon project={scopedProjectGroup} className="size-4" />
+            </span>
+          ) : (
+            <FolderIcon className="size-4" />
+          )}
+        </ComboboxTrigger>
+        <ComboboxPopup
+          align="start"
+          // Anchored to the search field, not the 28px trigger: the
+          // popup opens under the field, is at least as wide as it,
+          // and grows to fit project names up to a cap, past which
+          // the rows truncate.
+          className="max-w-[min(18rem,var(--available-width))] overflow-hidden"
+        >
+          <ComboboxSearchInput
+            aria-label="Search projects"
+            placeholder="Search projects..."
+            value={projectScopeMenuState.query}
+            onKeyDown={(event) => {
+              if (
+                event.defaultPrevented ||
+                event.nativeEvent.isComposing ||
+                event.ctrlKey ||
+                event.altKey ||
+                event.metaKey ||
+                (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10"))
+              ) {
+                return;
+              }
+              // Combobox items use virtual focus: keyboard events
+              // stay on this input, not on the highlighted option.
+              const scopeKey = highlightedProjectScopeKeyRef.current;
+              const project = scopeKey ? projectGroupByScopeKey.get(scopeKey) : null;
+              if (project) handleProjectSettings(event, project);
+            }}
+            onChange={(event) =>
+              dispatchProjectScopeMenu({
+                type: "query-changed",
+                query: event.target.value,
+              })
+            }
+          />
+          <ComboboxEmpty>No matching projects.</ComboboxEmpty>
+          <ComboboxList>
+            {(item: (typeof projectScopeItems)[number]) => {
+              const project = projectGroupByScopeKey.get(item.value) ?? null;
+              return (
+                <ComboboxItem
+                  key={item.value}
+                  hideIndicator
+                  value={item}
+                  className="h-8 min-h-8 py-0 font-medium"
+                  contentClassName="flex min-w-0 items-center gap-2"
+                  onContextMenu={(event) => {
+                    if (project) handleProjectSettings(event, project);
+                  }}
+                >
+                  {project ? (
+                    <ProjectFavicon project={project} className="size-4 shrink-0" />
+                  ) : (
+                    <FolderIcon className="size-4 shrink-0" />
+                  )}
+                  <span className="min-w-0 flex-1 truncate text-sm">{item.label}</span>
+                  {project && showProjectEnvironments ? (
+                    <ProjectEnvironmentBadge
+                      group={project}
+                      primaryEnvironmentId={primaryEnvironmentId}
+                      machineByEnvironmentId={environmentMachineById}
+                    />
+                  ) : null}
+                  {project ? (
+                    <Button
+                      size="icon-xs"
+                      variant="ghost-muted"
+                      tabIndex={-1}
+                      aria-hidden="true"
+                      title={`Project settings for ${project.displayName}`}
+                      className="ml-auto size-6 [--control-icon-color:currentColor] text-icon-muted focus-visible:bg-accent focus-visible:text-foreground"
+                      onPointerDown={(event) => event.stopPropagation()}
+                      onClick={(event) => {
+                        void handleProjectSettings(event, project);
+                      }}
+                    >
+                      <SettingsIcon className="size-3.5" />
+                    </Button>
+                  ) : null}
+                </ComboboxItem>
+              );
+            }}
+          </ComboboxList>
+        </ComboboxPopup>
+      </Combobox>
+    ) : null;
+
   return (
     <>
       <SidebarChromeHeader isElectron={isElectron} />
@@ -4467,150 +4642,15 @@ export default function Sidebar() {
         fixedHeader={
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
-          <SidebarGroup className="relative z-[1] p-[var(--sidebar-content-inset)] pt-1">
+          <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
+            <CirceCommandLauncher />
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
-              hasProjects={projectGroups.length > 0}
-              projectScope={
-                <Combobox
-                  items={projectScopeItems}
-                  filteredItems={filteredProjectScopeItems}
-                  autoHighlight
-                  itemToStringLabel={(item) => item.label}
-                  isItemEqualToValue={(a, b) => a.value === b.value}
-                  open={projectScopeMenuState.open}
-                  onOpenChange={(open) => {
-                    if (open) suppressNextScopeChangeRef.current = false;
-                    dispatchProjectScopeMenu({ type: "open-changed", open });
-                  }}
-                  onItemHighlighted={(item) => {
-                    highlightedProjectScopeKeyRef.current = item?.value ?? null;
-                  }}
-                  value={selectedProjectScopeItem}
-                  onValueChange={(item) => {
-                    if (suppressNextScopeChangeRef.current) {
-                      suppressNextScopeChangeRef.current = false;
-                      return;
-                    }
-                    if (!item) return;
-                    setProjectScopeKey(item.value === "all" ? null : item.value);
-                  }}
-                >
-                  <ComboboxTrigger
-                    render={
-                      <SidebarHeaderIconButton
-                        label={
-                          scopedProjectGroup
-                            ? `Filter threads by project: ${scopedProjectGroup.displayName}`
-                            : "Filter threads by project"
-                        }
-                      />
-                    }
-                  >
-                    {scopedProjectGroup ? (
-                      // Wrapped so the button's direct-child svg color rule cannot override
-                      // a project's own icon color.
-                      <span className="flex shrink-0">
-                        <ProjectFavicon project={scopedProjectGroup} className="size-4" />
-                      </span>
-                    ) : (
-                      <FolderIcon className="size-4" />
-                    )}
-                  </ComboboxTrigger>
-                  <ComboboxPopup
-                    align="start"
-                    // Anchored to the search field, not the 28px trigger: the
-                    // popup opens under the field, is at least as wide as it,
-                    // and grows to fit project names up to a cap, past which
-                    // the rows truncate.
-                    anchor={headerSearchRef}
-                    className="max-w-[min(18rem,var(--available-width))] overflow-hidden"
-                  >
-                    <ComboboxSearchInput
-                      aria-label="Search projects"
-                      placeholder="Search projects..."
-                      value={projectScopeMenuState.query}
-                      onKeyDown={(event) => {
-                        if (
-                          event.defaultPrevented ||
-                          event.nativeEvent.isComposing ||
-                          event.ctrlKey ||
-                          event.altKey ||
-                          event.metaKey ||
-                          (event.key !== "ContextMenu" && !(event.shiftKey && event.key === "F10"))
-                        ) {
-                          return;
-                        }
-                        // Combobox items use virtual focus: keyboard events
-                        // stay on this input, not on the highlighted option.
-                        const scopeKey = highlightedProjectScopeKeyRef.current;
-                        const project = scopeKey ? projectGroupByScopeKey.get(scopeKey) : null;
-                        if (project) handleProjectSettings(event, project);
-                      }}
-                      onChange={(event) =>
-                        dispatchProjectScopeMenu({
-                          type: "query-changed",
-                          query: event.target.value,
-                        })
-                      }
-                    />
-                    <ComboboxEmpty>No matching projects.</ComboboxEmpty>
-                    <ComboboxList>
-                      {(item: (typeof projectScopeItems)[number]) => {
-                        const project = projectGroupByScopeKey.get(item.value) ?? null;
-                        return (
-                          <ComboboxItem
-                            key={item.value}
-                            hideIndicator
-                            value={item}
-                            className="h-8 min-h-8 py-0 font-medium"
-                            contentClassName="flex min-w-0 items-center gap-2"
-                            onContextMenu={(event) => {
-                              if (project) handleProjectSettings(event, project);
-                            }}
-                          >
-                            {project ? (
-                              <ProjectFavicon project={project} className="size-4 shrink-0" />
-                            ) : (
-                              <FolderIcon className="size-4 shrink-0" />
-                            )}
-                            <span className="min-w-0 flex-1 truncate text-sm">{item.label}</span>
-                            {project && showProjectEnvironments ? (
-                              <ProjectEnvironmentBadge
-                                group={project}
-                                primaryEnvironmentId={primaryEnvironmentId}
-                                machineByEnvironmentId={environmentMachineById}
-                              />
-                            ) : null}
-                            {project ? (
-                              <Button
-                                size="icon-xs"
-                                variant="ghost-muted"
-                                tabIndex={-1}
-                                aria-hidden="true"
-                                title={`Project settings for ${project.displayName}`}
-                                className="ml-auto size-6 [--control-icon-color:currentColor] text-icon-muted focus-visible:bg-accent focus-visible:text-foreground"
-                                onPointerDown={(event) => event.stopPropagation()}
-                                onClick={(event) => {
-                                  void handleProjectSettings(event, project);
-                                }}
-                              >
-                                <SettingsIcon className="size-3.5" />
-                              </Button>
-                            ) : null}
-                          </ComboboxItem>
-                        );
-                      }}
-                    </ComboboxList>
-                  </ComboboxPopup>
-                </Combobox>
-              }
-              onNewProject={openAddProjectCommandPalette}
-              onNewThread={handleNewThreadClick}
-              newThreadDisabled={projects.length === 0}
-              newThreadShortcutLabel={newThreadShortcutLabel}
-              newThreadInProjectShortcutLabel={newThreadInProjectShortcutLabel}
-              showNewThreadInProjectHint={projectGroups.length > 1}
+              onNewChat={chatSpaceRef === null ? null : startNewChat}
+              onNewAgentThread={() => handleNewThreadClick()}
+              newAgentThreadDisabled={userProjects.length === 0}
+              newAgentThreadShortcutLabel={newThreadShortcutLabel}
+              onAddProject={openAddProjectCommandPalette}
               searchInputRef={threadSearchInputRef}
               searchQuery={threadSearchQuery}
               onSearchQueryChange={(value) => {
@@ -4847,7 +4887,58 @@ export default function Sidebar() {
                         );
                       };
                       const from = dragState?.activeSection ?? null;
-                      const items: ReactNode[] = [
+                      // Three groups, in this order: the user's Grok Bots,
+                      // Circe chats (the Conversations project), then coding
+                      // agents. Bot and chat rows are not sortable.
+                      const items: ReactNode[] = [<SidebarBotsSection key="bots-section" />];
+                      items.push(
+                        <SidebarSectionHeading
+                          key="chats-heading"
+                          label="Chats"
+                          count={conversationThreads.length}
+                          collapsed={!conversationsExpanded}
+                          onToggle={toggleConversations}
+                          {...(chatSpaceRef === null
+                            ? {}
+                            : {
+                                action: {
+                                  label: "New chat",
+                                  icon: <PlusIcon />,
+                                  onClick: startNewChat,
+                                },
+                              })}
+                        />,
+                      );
+                      if (conversationsExpanded) {
+                        for (const thread of conversationThreads) {
+                          items.push(renderThreadRow(thread, "active"));
+                        }
+                        if (conversationThreads.length === 0) {
+                          items.push(
+                            <li key="chats-hint" className="circe-sidebar-hint">
+                              Questions you ask Circe that are not about a project land here.
+                            </li>,
+                          );
+                        }
+                      }
+                      items.push(
+                        <SidebarSectionHeading
+                          key="agents-heading"
+                          label="Agents"
+                          count={pinnedThreads.length + activeThreads.length}
+                          collapsed={agentsCollapsed}
+                          onToggle={toggleAgents}
+                          accessory={projectScopeControl}
+                          action={{
+                            label: "New agent thread",
+                            icon: <SquarePenIcon />,
+                            disabled: userProjects.length === 0,
+                            onClick: (event) => handleNewThreadClick(event),
+                          }}
+                        />,
+                      );
+                      if (agentsCollapsed) return items;
+                      items.push(
                         <SidebarDraftBlock
                           key="draft-sessions"
                           projectByKey={projectByKey}
@@ -4856,44 +4947,7 @@ export default function Sidebar() {
                           routeDraftId={routeDraftIdForRows}
                           onNavigateToDraft={navigateToDraft}
                         />,
-                      ];
-                      // Conversations keep their own collapsible section so
-                      // general-question threads never mix into the coding
-                      // sections. Rows are non-draggable (not in the sortable
-                      // id set) and reuse the ordinary thread row.
-                      if (conversationThreads.length > 0) {
-                        items.push(
-                          <li key="conversations-header" className="list-none">
-                            <button
-                              type="button"
-                              onClick={toggleConversations}
-                              className="flex h-8 w-full cursor-pointer items-center gap-2 rounded-md px-2.5 text-left text-xs font-medium text-sidebar-muted-foreground/60 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
-                            >
-                              <span>
-                                {conversationsExpanded
-                                  ? "Conversations"
-                                  : `Conversations (${conversationThreads.length})`}
-                              </span>
-                              <span
-                                aria-hidden
-                                className="h-px min-w-2 flex-1 bg-sidebar-border/60"
-                              />
-                              <ChevronDownIcon
-                                aria-hidden
-                                className={cn(
-                                  "size-3.5 shrink-0 transition-transform",
-                                  !conversationsExpanded && "-rotate-90",
-                                )}
-                              />
-                            </button>
-                          </li>,
-                        );
-                        if (conversationsExpanded) {
-                          for (const thread of conversationThreads) {
-                            items.push(renderThreadRow(thread, "active"));
-                          }
-                        }
-                      }
+                      );
                       for (const item of sidebarListItems) {
                         if (item.kind === "thread") {
                           items.push(renderThreadRow(threadByKey.get(item.key)!, item.section));
@@ -5000,7 +5054,7 @@ export default function Sidebar() {
                       }
                       return items;
                     })()}
-                    {settledShelfExpanded && hiddenSettledCount > 0 ? (
+                    {!agentsCollapsed && settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
                         <button
                           type="button"
@@ -5018,6 +5072,7 @@ export default function Sidebar() {
             </TooltipProvider>
           ) : null}
           {!isSearchingThreads &&
+          !agentsCollapsed &&
           visibleDraftSessionCount === 0 &&
           pinnedThreads.length +
             activeThreads.length +
@@ -5025,9 +5080,9 @@ export default function Sidebar() {
             settledThreads.length ===
             0 ? (
             <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs text-muted-foreground/60">
-              {projects.length === 0 ? (
+              {userProjects.length === 0 ? (
                 <>
-                  <span>No projects yet</span>
+                  <span>Add a project to run coding agents on it.</span>
                   <button
                     type="button"
                     onClick={openAddProjectCommandPalette}
@@ -5038,9 +5093,9 @@ export default function Sidebar() {
                   </button>
                 </>
               ) : scopedProjectGroup ? (
-                `No threads in ${scopedProjectGroup.displayName} yet`
+                `No agent threads in ${scopedProjectGroup.displayName} yet`
               ) : (
-                "No threads yet"
+                "No agent threads yet"
               )}
             </div>
           ) : null}

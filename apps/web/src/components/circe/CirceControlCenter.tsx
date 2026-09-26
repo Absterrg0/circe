@@ -1,5 +1,6 @@
 import { squashAtomCommandFailure } from "@circe/client/state/runtime";
 import {
+  isChatWorkspace,
   type EnvironmentId,
   type CirceProjectRef,
   type CirceTaskPendingReply,
@@ -16,10 +17,13 @@ import {
   ActivityIcon,
   CircleAlertIcon,
   FolderGit2Icon,
+  ListTodoIcon,
+  MonitorIcon,
   RefreshCwIcon,
   ServerIcon,
   Settings2Icon,
   WifiOffIcon,
+  XIcon,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -46,7 +50,6 @@ import {
   setCirceLiveVoiceActive,
   subscribeCirceLiveVoice,
 } from "./CirceLiveVoice.bridge";
-import { WorkspacePageContainer } from "../WorkspacePageContainer";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import {
   WorkspaceBreadcrumb,
@@ -67,9 +70,11 @@ import { circeErrorMessage } from "./CirceManager.logic";
 import { buildCirceVoiceWaitingView } from "@circe/client-runtime/circe/voiceWaiting";
 import { CirceLiveAgents } from "./CirceLiveAgents";
 import { CirceMeshDevices } from "./CirceMeshDevices";
+import { CirceComputerSection } from "./CirceComputerSection";
 import { CirceNodeAgentSettings } from "./CirceNodeAgentSettings";
 import { ProviderInstanceIcon } from "../chat/ProviderInstanceIcon";
 import { circePresenceMode } from "./CircePresence.logic";
+import { CirceOrb, type CirceOrbState } from "./CirceOrb";
 import "./CirceControlCenter.css";
 
 const EMPTY_CATALOG: CirceMeshCatalog = { nodes: [], projects: [], providers: [] };
@@ -78,60 +83,105 @@ function StatusDot({ online }: { readonly online: boolean }) {
   return (
     <span
       aria-hidden
-      className={cn(
-        "circe-status-dot size-1.5 shrink-0 rounded-full",
-        online ? "circe-status-dot-live bg-emerald-500" : "bg-muted-foreground/40",
-      )}
+      className={cn("circe-status-dot shrink-0", online && "circe-status-dot-live")}
     />
   );
 }
 
-function EnvironmentSummary({ summary }: { readonly summary: CirceControlCenterView["summary"] }) {
-  return (
-    <span className="circe-summary">
-      <StatusDot online={summary.onlineDevices > 0} />
-      {summary.onlineDevices} of {summary.devices} devices connected
-    </span>
-  );
+/** Where each machine sits around Circe, as percentages of the map. */
+export function constellationPositions(count: number): ReadonlyArray<{ x: number; y: number }> {
+  if (count === 0) return [];
+  if (count === 1) return [{ x: 80, y: 50 }];
+  const start = count === 2 ? 180 : -90;
+  return Array.from({ length: count }, (_, index) => {
+    const angle = ((start + (360 * index) / count) * Math.PI) / 180;
+    return {
+      x: Math.round((50 + 34 * Math.cos(angle)) * 10) / 10,
+      y: Math.round((50 + 34 * Math.sin(angle)) * 10) / 10,
+    };
+  });
 }
 
-function DeviceTabs({
+/**
+ * Every connected machine drawn around Circe. Selecting a machine scopes the
+ * rail below to it; the map is also the device picker.
+ */
+function DeviceConstellation({
   devices,
   selectedNodeId,
   onSelect,
+  summary,
 }: {
   readonly devices: ReadonlyArray<CirceControlCenterDevice>;
   readonly selectedNodeId: EnvironmentId | null;
   readonly onSelect: (nodeId: EnvironmentId) => void;
+  readonly summary: CirceControlCenterView["summary"];
 }) {
-  if (devices.length <= 1) return null;
+  const positions = constellationPositions(devices.length);
+  const center = devices.length === 1 ? { x: 24, y: 50 } : { x: 50, y: 50 };
   return (
-    <div className="circe-device-tabs flex flex-wrap items-center gap-1.5">
-      {devices.map((device) => {
-        const selected = device.node.nodeId === selectedNodeId;
-        const online = device.node.reachability === "online";
-        return (
-          <button
-            key={device.node.nodeId}
-            type="button"
-            aria-pressed={selected}
-            onClick={() => onSelect(device.node.nodeId)}
-            className={cn(
-              "circe-device-tab inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition-colors outline-hidden focus-visible:ring-2 focus-visible:ring-ring",
-              selected
-                ? "border-border bg-card text-foreground"
-                : "border-transparent text-muted-foreground hover:bg-card/60 hover:text-foreground",
-            )}
-          >
-            <StatusDot online={online} />
-            {device.node.label}
-            {device.isCurrentDevice ? (
-              <span className="text-[10px] text-muted-foreground">this device</span>
-            ) : null}
-          </button>
-        );
-      })}
-    </div>
+    <section className="circe-constellation" aria-label="Your machines">
+      <header className="circe-rail-heading">
+        <h3>Machines</h3>
+        <span className="circe-summary">
+          <StatusDot online={summary.onlineDevices > 0} />
+          {summary.onlineDevices} of {summary.devices} online
+        </span>
+      </header>
+      <div className="circe-constellation__map">
+        <svg aria-hidden viewBox="0 0 100 100" preserveAspectRatio="none">
+          {devices.map((device, index) => {
+            const position = positions[index]!;
+            return (
+              <line
+                key={device.node.nodeId}
+                x1={center.x}
+                y1={center.y}
+                x2={position.x}
+                y2={position.y}
+                data-online={device.node.reachability === "online"}
+                vectorEffect="non-scaling-stroke"
+              />
+            );
+          })}
+        </svg>
+        <span
+          className="circe-constellation__center"
+          style={{ left: `${center.x}%`, top: `${center.y}%` }}
+        >
+          <CirceOrb size="md" />
+        </span>
+        {devices.map((device, index) => {
+          const position = positions[index]!;
+          const online = device.node.reachability === "online";
+          const selected = device.node.nodeId === selectedNodeId;
+          return (
+            <button
+              key={device.node.nodeId}
+              type="button"
+              aria-pressed={selected}
+              className="circe-constellation__node"
+              data-online={online}
+              style={{ left: `${position.x}%`, top: `${position.y}%` }}
+              onClick={() => onSelect(device.node.nodeId)}
+            >
+              <span className="circe-constellation__glyph">
+                {device.node.capabilities?.ui === false ? (
+                  <ServerIcon className="size-3.5" />
+                ) : (
+                  <MonitorIcon className="size-3.5" />
+                )}
+                <StatusDot online={online} />
+              </span>
+              <span className="circe-constellation__label">{device.node.label}</span>
+              {device.isCurrentDevice ? (
+                <span className="circe-constellation__tag">This device</span>
+              ) : null}
+            </button>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -140,16 +190,21 @@ function DeviceHero({ device }: { readonly device: CirceControlCenterDevice }) {
   return (
     <section className="circe-device-info">
       <span className="circe-device-icon">
-        <ServerIcon className="size-4" />
+        {device.node.capabilities?.ui === false ? (
+          <ServerIcon className="size-4" />
+        ) : (
+          <MonitorIcon className="size-4" />
+        )}
       </span>
       <div className="min-w-0 flex-1">
         <h2>{device.node.label}</h2>
         <p>
-          {device.isCurrentDevice ? "This device" : "Connected device"} <span aria-hidden> / </span>{" "}
+          {device.isCurrentDevice ? "This device" : "Connected machine"}
+          <span aria-hidden> · </span>
           {device.node.capabilities?.preset ?? "Unknown preset"}
         </p>
       </div>
-      <span className="circe-device-state">
+      <span className="circe-device-state" data-online={online}>
         <StatusDot online={online} />
         {online ? "Online" : "Offline"}
       </span>
@@ -333,7 +388,9 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
     setDraft("");
   }, [commandPending, canRetry]);
 
-  const projects = catalog?.projects ?? [];
+  // Targets are codebases; questions that are not about one go to the chat
+  // space without being picked.
+  const projects = (catalog?.projects ?? []).filter((project) => !isChatWorkspace(project));
   const targetProject = projects.find(
     (project) =>
       project.ref.nodeId === targetSnapshot?.projectRef?.nodeId &&
@@ -371,142 +428,49 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
     error: feedback?.kind === "error" ? feedback.text : null,
   });
 
+  const orbState: CirceOrbState =
+    presenceMode === "listening" || presenceMode === "speaking"
+      ? "listening"
+      : presenceMode === "working"
+        ? "working"
+        : presenceMode === "attention"
+          ? "attention"
+          : presenceMode === "error"
+            ? "error"
+            : "idle";
+  const presenceLabel = {
+    idle: "Ready",
+    listening: "Listening",
+    working: "Working",
+    speaking: "Speaking",
+    attention: "Needs you",
+    error: "Needs attention",
+  }[presenceMode];
+
   return (
-    <section aria-label="Circe command" className="circe-command-panel min-w-0">
-      <header className="circe-console-header">
-        <h2>Task desk</h2>
-        <span className="circe-presence-label" data-state={presenceMode} aria-live="polite">
-          <span aria-hidden />
-          {
-            {
-              idle: "Ready",
-              listening: "Voice on",
-              working: "Working",
-              speaking: "Speaking",
-              attention: "Needs you",
-              error: "Needs attention",
-            }[presenceMode]
-          }
-        </span>
-      </header>
-      <div className="circe-agent-tabs" aria-label="Task views">
-        <button
-          type="button"
-          aria-pressed={activityView === "recent"}
-          onClick={() => setActivityView("recent")}
-        >
-          Recent tasks
-        </button>
-        <button
-          type="button"
-          aria-pressed={activityView === "active"}
-          onClick={() => setActivityView("active")}
-        >
-          Running agents
-        </button>
-      </div>
-      <CirceLiveAgents catalog={catalog} view={activityView} />
-      <div className="circe-compose-area">
-        <div className="circe-target-context" aria-live="polite">
-          <span>{targetSnapshot?.projectRef ? targetLabel : "Choose where to work"}</span>
-          {targetSnapshot?.projectRef ? (
-            <button
-              type="button"
-              className="circe-text-action"
-              disabled={commandPending}
-              onClick={() => requestCirceTarget({ type: "clear" })}
-            >
-              Clear
-            </button>
-          ) : null}
-        </div>
-        <div className="circe-command-fields">
-          <div className="circe-field-group">
-            <label className="circe-field-label" htmlFor="circe-target-project">
-              Project
-            </label>
-            <select
-              id="circe-target-project"
-              aria-label="Circe project target"
-              className="circe-select min-w-44"
-              disabled={commandPending}
-              value={
-                targetSnapshot?.projectRef
-                  ? `${targetSnapshot.projectRef.nodeId}:${targetSnapshot.projectRef.projectId}`
-                  : ""
-              }
-              onChange={(event) => {
-                const value = event.target.value;
-                if (value === "") {
-                  requestCirceTarget({ type: "clear" });
-                  return;
-                }
-                const project = projects.find(
-                  (candidate) => `${candidate.ref.nodeId}:${candidate.ref.projectId}` === value,
-                );
-                if (project) {
-                  requestCirceTarget({
-                    type: "select-project",
-                    projectRef: project.ref,
-                    projectTitle: project.title,
-                    nodeLabel: project.nodeLabel,
-                  });
-                }
-              }}
-            >
-              <option value="">Choose a project</option>
-              {projects.map((project) => (
-                <option
-                  key={`${project.ref.nodeId}:${project.ref.projectId}`}
-                  value={`${project.ref.nodeId}:${project.ref.projectId}`}
-                >
-                  {project.title} — {project.nodeLabel}
-                </option>
-              ))}
-            </select>
+    <section aria-label="Circe command" className="circe-console min-w-0">
+      <div className="circe-hero">
+        <div className="circe-hero__presence">
+          <CirceOrb state={orbState} size="xl" />
+          <div className="min-w-0">
+            <p className="circe-presence-label" data-state={presenceMode} aria-live="polite">
+              <span aria-hidden />
+              {presenceLabel}
+            </p>
+            <h2 className="circe-hero__title">{greetingForHour(new Date().getHours())}</h2>
+            <p className="circe-hero__subtitle">
+              Tell Circe what you want done. It finds the right machine and project.
+            </p>
           </div>
-          {tasks.length > 0 ? (
-            <div className="circe-field-group">
-              <label className="circe-field-label" htmlFor="circe-target-task">
-                Task context
-              </label>
-              <select
-                id="circe-target-task"
-                aria-label="Circe task target"
-                className="circe-select min-w-44"
-                disabled={commandPending}
-                value={targetSnapshot?.contextThreadId ?? ""}
-                onChange={(event) => {
-                  const threadId = event.target.value;
-                  if (threadId === "") return;
-                  const task = tasks.find((candidate) => candidate.threadId === threadId);
-                  if (task === undefined) return;
-                  requestCirceTarget({
-                    type: "select-task",
-                    projectRef: task.projectRef,
-                    threadId: task.threadId,
-                    title: task.title,
-                    ...(task.taskRef === undefined ? {} : { taskRef: task.taskRef }),
-                    ...(task.pendingReply === undefined ? {} : { pendingReply: task.pendingReply }),
-                  });
-                }}
-              >
-                <option value="">Current task</option>
-                {tasks.map((task) => (
-                  <option key={task.threadId} value={task.threadId}>
-                    {task.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          ) : null}
         </div>
 
         <div className="circe-composer-frame">
           <textarea
             aria-label="Circe instruction"
             className="circe-composer w-full"
-            placeholder="Give an instruction…"
+            placeholder={
+              awaitingAnswer ? "Answer Circe…" : "Fix the failing billing tests on my laptop…"
+            }
             value={draft}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {
@@ -516,49 +480,152 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
               }
             }}
           />
-          <div className="circe-composer-footer flex flex-wrap items-center gap-2">
-            <Button
-              size="sm"
-              variant={liveVoice.active ? "destructive" : "outline"}
-              aria-pressed={liveVoice.active}
-              disabled={!liveVoice.active && catalog === null}
-              onClick={() => setCirceLiveVoiceActive(!liveVoice.active)}
-            >
-              <MicIcon className="size-3.5" />
-              {liveVoice.active
-                ? liveVoice.status === "live"
-                  ? "End conversation"
-                  : liveVoice.status === "closing"
-                    ? "Ending…"
-                    : "Connecting…"
-                : "Voice"}
-            </Button>
-            {canRetry ? (
+          <div className="circe-composer-footer">
+            <div className="circe-command-fields">
+              <label className="circe-chip" data-selected={Boolean(targetSnapshot?.projectRef)}>
+                <FolderGit2Icon aria-hidden className="size-3.5 shrink-0" />
+                <span className="circe-field-label">Project</span>
+                <select
+                  id="circe-target-project"
+                  aria-label="Circe project target"
+                  className="circe-select"
+                  disabled={commandPending}
+                  value={
+                    targetSnapshot?.projectRef
+                      ? `${targetSnapshot.projectRef.nodeId}:${targetSnapshot.projectRef.projectId}`
+                      : ""
+                  }
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    if (value === "") {
+                      requestCirceTarget({ type: "clear" });
+                      return;
+                    }
+                    const project = projects.find(
+                      (candidate) => `${candidate.ref.nodeId}:${candidate.ref.projectId}` === value,
+                    );
+                    if (project) {
+                      requestCirceTarget({
+                        type: "select-project",
+                        projectRef: project.ref,
+                        projectTitle: project.title,
+                        nodeLabel: project.nodeLabel,
+                      });
+                    }
+                  }}
+                >
+                  <option value="">Anywhere</option>
+                  {projects.map((project) => (
+                    <option
+                      key={`${project.ref.nodeId}:${project.ref.projectId}`}
+                      value={`${project.ref.nodeId}:${project.ref.projectId}`}
+                    >
+                      {project.title} — {project.nodeLabel}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {tasks.length > 0 ? (
+                <label
+                  className="circe-chip"
+                  data-selected={Boolean(targetSnapshot?.contextThreadId)}
+                >
+                  <ListTodoIcon aria-hidden className="size-3.5 shrink-0" />
+                  <span className="circe-field-label">Task context</span>
+                  <select
+                    id="circe-target-task"
+                    aria-label="Circe task target"
+                    className="circe-select"
+                    disabled={commandPending}
+                    value={targetSnapshot?.contextThreadId ?? ""}
+                    onChange={(event) => {
+                      const threadId = event.target.value;
+                      if (threadId === "") return;
+                      const task = tasks.find((candidate) => candidate.threadId === threadId);
+                      if (task === undefined) return;
+                      requestCirceTarget({
+                        type: "select-task",
+                        projectRef: task.projectRef,
+                        threadId: task.threadId,
+                        title: task.title,
+                        ...(task.taskRef === undefined ? {} : { taskRef: task.taskRef }),
+                        ...(task.pendingReply === undefined
+                          ? {}
+                          : { pendingReply: task.pendingReply }),
+                      });
+                    }}
+                  >
+                    <option value="">Current task</option>
+                    {tasks.map((task) => (
+                      <option key={task.threadId} value={task.threadId}>
+                        {task.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              {targetSnapshot?.projectRef ? (
+                <button
+                  type="button"
+                  className="circe-chip-clear"
+                  aria-label="Clear target"
+                  disabled={commandPending}
+                  onClick={() => requestCirceTarget({ type: "clear" })}
+                >
+                  <XIcon className="size-3.5" />
+                </button>
+              ) : null}
+            </div>
+            <div className="circe-composer-actions">
+              {canRetry ? (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => requestCirceCommandAction({ type: "retry", inputMode: "text" })}
+                >
+                  Retry
+                </Button>
+              ) : null}
+              {commandPending || canRetry || draft.length > 0 ? (
+                <Button size="sm" variant="ghost" onClick={cancelPending}>
+                  Cancel
+                </Button>
+              ) : null}
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => requestCirceCommandAction({ type: "retry", inputMode: "text" })}
+                className="circe-voice-button"
+                aria-pressed={liveVoice.active}
+                disabled={!liveVoice.active && catalog === null}
+                onClick={() => setCirceLiveVoiceActive(!liveVoice.active)}
               >
-                Retry
+                <MicIcon className="size-3.5" />
+                {liveVoice.active
+                  ? liveVoice.status === "live"
+                    ? "End conversation"
+                    : liveVoice.status === "closing"
+                      ? "Ending…"
+                      : "Connecting…"
+                  : "Voice"}
               </Button>
-            ) : null}
-            {commandPending || canRetry || draft.length > 0 ? (
-              <Button size="sm" variant="ghost" onClick={cancelPending}>
-                Cancel
+              <Button
+                className="circe-send-button"
+                size="icon-sm"
+                aria-label={commandBusy ? "Working" : awaitingAnswer ? "Send answer" : "Send"}
+                title="Send instruction (Ctrl or Command + Enter)"
+                disabled={sendDisabled}
+                onClick={sendDraft}
+              >
+                <ArrowUpIcon className="size-4" />
               </Button>
-            ) : null}
-            <Button
-              className="circe-send-button"
-              size="icon-sm"
-              aria-label={commandBusy ? "Working" : awaitingAnswer ? "Send answer" : "Send"}
-              title="Send instruction (Ctrl or Command + Enter)"
-              disabled={sendDisabled}
-              onClick={sendDraft}
-            >
-              <ArrowUpIcon className="size-4" />
-            </Button>
+            </div>
           </div>
         </div>
+        <p className="circe-target-context" aria-live="polite">
+          {targetSnapshot?.projectRef
+            ? `Working in ${targetLabel}`
+            : "No target chosen. Circe picks the project from what you say, and asks when it is not sure."}
+        </p>
         {liveVoice.active ? (
           <p className="circe-inline-note" aria-live="polite">
             Live conversation owns the microphone. End it to type.
@@ -585,8 +652,39 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
           </p>
         ) : null}
       </div>
+
+      <div className="circe-board">
+        <header className="circe-board__header">
+          <h3>Work</h3>
+          <div className="circe-agent-tabs" aria-label="Task views">
+            <button
+              type="button"
+              aria-pressed={activityView === "recent"}
+              onClick={() => setActivityView("recent")}
+            >
+              Recent tasks
+            </button>
+            <button
+              type="button"
+              aria-pressed={activityView === "active"}
+              onClick={() => setActivityView("active")}
+            >
+              Running agents
+            </button>
+          </div>
+        </header>
+        <CirceLiveAgents catalog={catalog} view={activityView} />
+      </div>
     </section>
   );
+}
+
+/** Plain time-of-day greeting for the command center hero. */
+export function greetingForHour(hour: number): string {
+  if (hour < 5) return "Working late";
+  if (hour < 12) return "Good morning";
+  if (hour < 18) return "Good afternoon";
+  return "Good evening";
 }
 
 export function CirceControlCenter() {
@@ -674,8 +772,8 @@ export function CirceControlCenter() {
           <WorkspaceBreadcrumb ariaLabel="Circe environment breadcrumb" className="min-w-0">
             <WorkspaceBreadcrumbItem current>
               <span className="flex items-center gap-2">
-                <img src={CIRCE_MARK_SRC} alt="" className="size-4 rounded-[2px]" />
-                <h1 className="text-sm font-semibold tracking-tight">Circe</h1>
+                <img src={CIRCE_MARK_SRC} alt="" className="size-4" />
+                <h1 className="text-sm font-semibold tracking-tight">Command center</h1>
               </span>
             </WorkspaceBreadcrumbItem>
             {selectedDevice ? (
@@ -710,49 +808,46 @@ export function CirceControlCenter() {
         </WorkspacePageHeader>
 
         <ScrollArea className="min-h-0 flex-1">
-          <WorkspacePageContainer width="expanded" className="circe-page-container">
-            <div className="circe-page">
-              <header className="circe-page-heading">
-                <h1>Command center</h1>
-                <EnvironmentSummary summary={view.summary} />
-              </header>
+          <div className="circe-page">
+            {error ? (
+              <div className="circe-alert flex items-start gap-2 rounded-xl border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-xs text-destructive-foreground">
+                <CircleAlertIcon className="mt-0.5 size-3.5 shrink-0" /> {error}
+              </div>
+            ) : null}
 
-              <DeviceTabs
-                devices={view.devices}
-                selectedNodeId={selectedDevice?.node.nodeId ?? null}
-                onSelect={setSelectedNodeId}
-              />
-
-              {error ? (
-                <div className="circe-alert flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/8 px-3 py-2.5 text-xs text-destructive-foreground">
-                  <CircleAlertIcon className="mt-0.5 size-3.5 shrink-0" /> {error}
-                </div>
-              ) : null}
-
-              {pending && catalog === null && view.devices.length === 0 ? (
-                <div className="circe-empty-state grid min-h-40 place-items-center rounded-2xl border border-border text-sm text-muted-foreground">
-                  <div className="text-center">
-                    <p className="mt-4">Loading your environment…</p>
-                  </div>
-                </div>
-              ) : view.devices.length === 0 ? (
-                <div className="circe-empty-state grid min-h-52 place-items-center rounded-2xl border border-dashed border-border px-6 text-center">
-                  <div>
-                    <ServerIcon className="mx-auto size-5 text-muted-foreground" />
-                    <div className="mt-3 text-base font-medium">No devices connected</div>
-                    <div className="mt-1 text-xs text-muted-foreground">
-                      Open Connections to pair or reconnect a node.
-                    </div>
-                  </div>
-                </div>
-              ) : selectedDevice ? (
-                <div className="circe-command-layout">
-                  <main className="min-w-0">
-                    <CirceCommandConsole catalog={liveCatalog} />
-                  </main>
-                  <aside className="circe-side-rail">
+            {pending && catalog === null && view.devices.length === 0 ? (
+              <div className="circe-empty-state" role="status">
+                <CirceOrb state="working" size="lg" />
+                <p>Finding your machines…</p>
+              </div>
+            ) : view.devices.length === 0 ? (
+              <div className="circe-empty-state">
+                <CirceOrb size="lg" />
+                <h2>No machines connected</h2>
+                <p>Pair or reconnect a machine in Connections, and it appears here.</p>
+                <Button size="sm" onClick={() => void navigate({ to: "/settings/connections" })}>
+                  Open Connections
+                </Button>
+              </div>
+            ) : selectedDevice ? (
+              <div className="circe-command-layout">
+                <main className="min-w-0">
+                  <CirceCommandConsole catalog={liveCatalog} />
+                </main>
+                <aside className="circe-side-rail">
+                  <DeviceConstellation
+                    devices={view.devices}
+                    selectedNodeId={selectedDevice.node.nodeId}
+                    onSelect={setSelectedNodeId}
+                    summary={view.summary}
+                  />
+                  <div className="circe-rail-card">
                     <DeviceHero device={selectedDevice} />
-                    <CirceMeshDevices />
+                    <CirceComputerSection
+                      key={selectedDevice.node.nodeId}
+                      environmentId={selectedDevice.node.nodeId}
+                      online={selectedDevice.node.reachability === "online"}
+                    />
                     <ProviderSection
                       providers={selectedDevice.providers}
                       onManage={() =>
@@ -762,18 +857,23 @@ export function CirceControlCenter() {
                         })
                       }
                     />
-                    <ProjectSection projects={selectedDevice.projects} />
+                    <ProjectSection
+                      projects={selectedDevice.projects.filter(
+                        (project) => !isChatWorkspace(project),
+                      )}
+                    />
                     <CirceNodeAgentSettings
                       key={selectedDevice.node.nodeId}
                       environmentId={selectedDevice.node.nodeId}
                       online={selectedDevice.node.reachability === "online"}
                       executionEnabled={selectedDevice.node.capabilities?.execution === true}
                     />
-                  </aside>
-                </div>
-              ) : null}
-            </div>
-          </WorkspacePageContainer>
+                  </div>
+                  <CirceMeshDevices />
+                </aside>
+              </div>
+            ) : null}
+          </div>
         </ScrollArea>
       </div>
     </SidebarInset>

@@ -34,6 +34,36 @@ const state = vi.hoisted(() => ({
   interpret: vi.fn(),
   desk: vi.fn(),
   cancelRequest: vi.fn(),
+  converse: vi.fn(async () => ({ _tag: "Failure" as const, cause: "not under test" })),
+  interruptInteraction: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { stopRequested: true, stopConfirmed: true, state: null },
+  })),
+  deviceReadiness: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: {
+      nodeId: "local",
+      preset: "full",
+      controlAllowed: false,
+      adapterSupported: false,
+      sessionActive: false,
+      permissionGranted: false,
+      surfaces: [],
+    },
+  })),
+  submitInteraction: vi.fn(async () => ({ _tag: "Failure" as const, cause: "not under test" })),
+  computerStatus: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { available: false },
+  })),
+  computerUse: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { status: "unavailable" as const, message: "test" },
+  })),
+  cancelComputerMission: vi.fn(async () => ({
+    _tag: "Success" as const,
+    value: { cancelled: false },
+  })),
   drain: undefined as (() => Promise<void>) | undefined,
   retryFailed: undefined as (() => Promise<void>) | undefined,
   speechEnqueued: [] as Array<{ readonly text: string; readonly deliveryId: string }>,
@@ -102,6 +132,13 @@ vi.mock("../../state/circeMesh", () => ({
     interpret: "interpret",
     getTaskDesk: "desk",
     cancelRequest: "cancelRequest",
+    converse: "converse",
+    interruptInteraction: "interruptInteraction",
+    deviceReadiness: "deviceReadiness",
+    submitInteraction: "submitInteraction",
+    computerStatus: "computerStatus",
+    computerUse: "computerUse",
+    cancelComputerMission: "cancelComputerMission",
   },
 }));
 vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
@@ -114,6 +151,13 @@ vi.mock("../../state/use-atom-command", () => ({
       | "interpret"
       | "desk"
       | "cancelRequest"
+      | "converse"
+      | "interruptInteraction"
+      | "deviceReadiness"
+      | "submitInteraction"
+      | "computerStatus"
+      | "computerUse"
+      | "cancelComputerMission"
       | "hostSay",
   ) => state[command],
 }));
