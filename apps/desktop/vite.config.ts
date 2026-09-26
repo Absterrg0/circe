@@ -74,6 +74,7 @@ export default defineConfig({
       outExtensions: () => ({ js: ".cjs" }),
       define: publicConfigDefine,
       entry: [
+        "src/browserConnector/browser-connector-host.ts",
         "src/electron/WindowsForegroundFocusWorker.ts",
         "src/snapShot/GlobalShiftShortcutWorker.ts",
         "src/snapShot/RegionSnapShotWorker.ts",

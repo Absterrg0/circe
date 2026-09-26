@@ -81,7 +81,7 @@ function configuredMcpToolAvailability(
   return {
     browser: mcpCapabilities.has("preview"),
     device: mcpCapabilities.has("device"),
-    desktop: mcpCapabilities.has("desktop-use"),
+    desktop: mcpCapabilities.has("computer-use"),
   };
 }
 

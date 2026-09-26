@@ -21,6 +21,14 @@ const state = vi.hoisted(() => ({
   cancelRequest: vi.fn(),
   interpret: vi.fn(),
   converse: vi.fn(),
+  submitInteraction: vi.fn(),
+  readInteraction: vi.fn(),
+  interruptInteraction: vi.fn(),
+  deviceReadiness: vi.fn(),
+  pendingLookup: null as {
+    readonly tool: "weather" | "time";
+    readonly day: "now" | "today" | "tomorrow";
+  } | null,
   quickLookup: vi.fn(),
   browserUse: vi.fn(),
   computerUse: vi.fn(),
@@ -106,6 +114,10 @@ vi.mock("../../state/circeMesh", () => ({
     cancelRequest: "cancelRequest",
     interpret: "interpret",
     converse: "converse",
+    submitInteraction: "submitInteraction",
+    readInteraction: "readInteraction",
+    interruptInteraction: "interruptInteraction",
+    deviceReadiness: "deviceReadiness",
   },
 }));
 vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
@@ -119,6 +131,10 @@ vi.mock("../../state/use-atom-command", () => ({
       | "cancelRequest"
       | "interpret"
       | "converse"
+      | "submitInteraction"
+      | "readInteraction"
+      | "interruptInteraction"
+      | "deviceReadiness"
       | "quickLookup"
       | "browserUse"
       | "computerUse"
@@ -253,6 +269,165 @@ describe("Circe voice runtime", () => {
     // The semantic interpret lane is integration-owned; fail it closed here
     // so submissions keep the direct execute path these speech tests cover.
     state.interpret.mockReset().mockResolvedValue({ _tag: "Failure", cause: "not under test" });
+    // The interaction submit wraps the semantic interpret lane for these
+    // tests: a classified proposal comes back as a delegated result, and a
+    // failed classification stays a failure.
+    state.pendingLookup = null;
+    state.deviceReadiness
+      .mockReset()
+      .mockResolvedValue({ _tag: "Failure", cause: "not under test" });
+    // The interaction submit is the node-owned conversation: these tests
+    // emulate the server's lookup handling (run it, ask for a missing place,
+    // bind the answer to the pending question) and delegate everything else.
+    state.submitInteraction
+      .mockReset()
+      .mockImplementation(
+        async (input: {
+          readonly nodeId: string;
+          readonly utterance: string;
+          readonly interactionId?: string;
+          readonly expectedRevision?: number;
+        }) => {
+          const baseState = (goal: unknown) => ({
+            interactionId: input.interactionId ?? "interaction-test",
+            ownerNodeId: input.nodeId,
+            revision: (input.expectedRevision ?? 0) + 1,
+            goal,
+            pending: null,
+            target: null,
+            operationId: null,
+            outcome: null,
+            updatedAt: "2026-09-20T12:00:00.000Z",
+          });
+          const runLookup = async (
+            tool: "weather" | "time",
+            day: "now" | "today" | "tomorrow",
+            location: string,
+          ) => {
+            const result = await state.quickLookup({
+              environmentId: input.nodeId,
+              input: { kind: tool, location, day, sourceUtterance: input.utterance },
+            });
+            return result?._tag === "Success" ? result.value : null;
+          };
+          if (input.interactionId !== undefined && state.pendingLookup !== null) {
+            const pending = state.pendingLookup;
+            const location = input.utterance.trim();
+            const goal = { kind: "lookup", tool: pending.tool, day: pending.day, location };
+            const value = await runLookup(pending.tool, pending.day, location);
+            if (value?.status === "answer") {
+              state.pendingLookup = null;
+              state.deviceReadiness
+                .mockReset()
+                .mockResolvedValue({ _tag: "Failure", cause: "not under test" });
+              return {
+                _tag: "Success" as const,
+                value: {
+                  status: "answered" as const,
+                  state: baseState(goal),
+                  message: value.message,
+                  source: value.source,
+                },
+              };
+            }
+            return {
+              _tag: "Success" as const,
+              value: {
+                status: "question" as const,
+                state: {
+                  ...baseState(goal),
+                  pending: {
+                    questionId: "lookup:test",
+                    kind: "argument" as const,
+                    slot: "location",
+                    prompt: value?.message ?? "Which place should I check?",
+                    known: {},
+                    choices: [],
+                  },
+                },
+              },
+            };
+          }
+          const interpreted = await state.interpret(input);
+          if (interpreted === null || interpreted._tag !== "Success") {
+            return { _tag: "Failure" as const, cause: "not under test" };
+          }
+          const proposal = interpreted.value;
+          const lookup = proposal.action === "lookup" ? proposal.lookup : null;
+          if (lookup !== null && lookup !== undefined) {
+            const location =
+              typeof lookup.location === "string" && lookup.location.length > 0
+                ? lookup.location
+                : null;
+            const goal = {
+              kind: "lookup" as const,
+              tool: lookup.kind,
+              day: lookup.day,
+              ...(location === null ? {} : { location }),
+            };
+            if (location === null) {
+              state.pendingLookup = { tool: lookup.kind, day: lookup.day };
+              return {
+                _tag: "Success" as const,
+                value: {
+                  status: "question" as const,
+                  state: {
+                    ...baseState(goal),
+                    pending: {
+                      questionId: "lookup:test",
+                      kind: "argument" as const,
+                      slot: "location",
+                      prompt: "Which place should I check for weather?",
+                      known: {},
+                      choices: [],
+                    },
+                  },
+                },
+              };
+            }
+            const value = await runLookup(lookup.kind, lookup.day, location);
+            if (value?.status === "answer") {
+              return {
+                _tag: "Success" as const,
+                value: {
+                  status: "answered" as const,
+                  state: baseState(goal),
+                  message: value.message,
+                  source: value.source,
+                },
+              };
+            }
+            if (value?.status === "needs-input") {
+              state.pendingLookup = { tool: lookup.kind, day: lookup.day };
+              return {
+                _tag: "Success" as const,
+                value: {
+                  status: "question" as const,
+                  state: {
+                    ...baseState(goal),
+                    pending: {
+                      questionId: "lookup:test",
+                      kind: "argument" as const,
+                      slot: "location",
+                      prompt: value.message,
+                      known: {},
+                      choices: [],
+                    },
+                  },
+                },
+              };
+            }
+          }
+          return {
+            _tag: "Success" as const,
+            value: {
+              status: "delegated" as const,
+              state: baseState({ kind: "coding" as const }),
+              proposal,
+            },
+          };
+        },
+      );
     state.converse.mockReset().mockResolvedValue({ _tag: "Failure", cause: "not under test" });
     state.cancelRequest
       .mockReset()
@@ -411,14 +586,15 @@ describe("Circe voice runtime", () => {
 
   it("runs a lookup question's place answer directly without re-classifying it", async () => {
     await ready();
-    state.execute.mockResolvedValueOnce({
+    state.interpret.mockResolvedValue({
       _tag: "Success",
       value: {
-        status: "needs-input",
-        reason: "control-target-required",
-        prompt: "Which place should I check for weather?",
-        choices: [],
-        lookup: { tool: "weather", day: "now" },
+        action: "lookup",
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+        lookup: { kind: "weather", location: null, day: "now" },
       },
     });
     state.quickLookup.mockResolvedValue({
@@ -430,6 +606,131 @@ describe("Circe voice runtime", () => {
     transcript("Ahmedabad", { captureId: "weather-place", purpose: "command" });
     await state.drain?.();
     expect(state.quickLookup).toHaveBeenCalledWith({
+      environmentId: "local",
+      input: {
+        kind: "weather",
+        location: "Ahmedabad",
+        day: "now",
+        sourceUtterance: "Ahmedabad",
+      },
+    });
+    expect(events.some((event) => event.includes("31°C"))).toBe(true);
+  });
+
+  it("keeps a spoken place answer with filler words as the lookup answer", async () => {
+    await ready();
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: {
+        action: "lookup",
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+        lookup: { kind: "weather", location: null, day: "now" },
+      },
+    });
+    state.quickLookup.mockResolvedValue({
+      _tag: "Success",
+      value: { status: "answer", message: "Ahmedabad: 31°C.", source: "https://open-meteo.com/" },
+    });
+    transcript("what's the weather", { captureId: "weather-ask-filler", purpose: "command" });
+    await state.drain?.();
+    transcript("it's in Ahmedabad actually", {
+      captureId: "weather-place-filler",
+      purpose: "command",
+    });
+    await state.drain?.();
+    expect(state.quickLookup).toHaveBeenCalledWith({
+      environmentId: "local",
+      input: {
+        kind: "weather",
+        location: "it's in Ahmedabad actually",
+        day: "now",
+        sourceUtterance: "it's in Ahmedabad actually",
+      },
+    });
+    expect(events.some((event) => event.includes("31°C"))).toBe(true);
+  });
+
+  it("asks a lookup question and resumes it without project routing", async () => {
+    await ready();
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: {
+        action: "lookup",
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+        lookup: { kind: "weather", location: null, day: "now" },
+      },
+    });
+    state.quickLookup.mockResolvedValue({
+      _tag: "Success",
+      value: { status: "answer", message: "Ahmedabad: 31°C.", source: "https://open-meteo.com/" },
+    });
+    const feedback: CirceCommandFeedback[] = [];
+    onCirceCommandFeedback((entry) => {
+      feedback.push(entry);
+    });
+    transcript("what's the weather", { captureId: "weather-clarify", purpose: "command" });
+    await state.drain?.();
+    expect(
+      feedback.some(
+        (entry) =>
+          entry.kind === "needs-input" && entry.text === "Which place should I check for weather?",
+      ),
+    ).toBe(true);
+    // The typed question is the turn: no project routing and no dispatch.
+    expect(state.execute).not.toHaveBeenCalled();
+    transcript("Uh, I'm from Ahmedabad, India", {
+      captureId: "weather-clarify-answer",
+      purpose: "command",
+    });
+    await state.drain?.();
+    expect(state.quickLookup).toHaveBeenCalledWith({
+      environmentId: "local",
+      input: {
+        kind: "weather",
+        location: "Uh, I'm from Ahmedabad, India",
+        day: "now",
+        sourceUtterance: "Uh, I'm from Ahmedabad, India",
+      },
+    });
+    expect(events.some((event) => event.includes("31°C"))).toBe(true);
+  });
+
+  it("retains a lookup question when the place cannot be resolved", async () => {
+    await ready();
+    state.interpret.mockResolvedValue({
+      _tag: "Success",
+      value: {
+        action: "lookup",
+        refs: [],
+        model: null,
+        effort: null,
+        answer: null,
+        lookup: { kind: "weather", location: "India", day: "now" },
+      },
+    });
+    state.quickLookup.mockResolvedValueOnce({
+      _tag: "Success",
+      value: { status: "needs-input", message: "I found multiple places named India." },
+    });
+    transcript("what's the weather in India", {
+      captureId: "weather-ambiguous",
+      purpose: "command",
+    });
+    await state.drain?.();
+    expect(state.execute).not.toHaveBeenCalled();
+    state.quickLookup.mockResolvedValueOnce({
+      _tag: "Success",
+      value: { status: "answer", message: "Ahmedabad: 31°C.", source: "https://open-meteo.com/" },
+    });
+    transcript("Ahmedabad", { captureId: "weather-ambiguous-answer", purpose: "command" });
+    await state.drain?.();
+    expect(state.quickLookup).toHaveBeenLastCalledWith({
       environmentId: "local",
       input: {
         kind: "weather",
@@ -453,7 +754,7 @@ describe("Circe voice runtime", () => {
     expect(state.execute.mock.calls[0]?.[0]).not.toHaveProperty("semanticProposal");
   });
 
-  it("runs a browse action in the real browser right away and hands a short mission to the provider", async () => {
+  it("reports a stopped real-browser mission in the browser instead of creating a provider task", async () => {
     const goal = "open github and search for pull requests in rivvl";
     await ready();
     vi.stubGlobal("window", { desktopBridge: {}, setTimeout, clearTimeout });
@@ -479,10 +780,7 @@ describe("Circe voice runtime", () => {
         },
       });
       transcript(goal, { captureId: "browse-ask", purpose: "command" });
-      for (let turn = 0; turn < 50 && state.execute.mock.calls.length < 2; turn += 1) {
-        await Promise.resolve();
-        render();
-      }
+      await state.drain?.();
       // No confirmation round-trip: the mission starts from the same turn, and
       // an everyday web goal drives the real browser through the desktop
       // mission rather than the in-app preview.
@@ -493,19 +791,19 @@ describe("Circe voice runtime", () => {
         }),
       );
       expect(state.browserUse).not.toHaveBeenCalled();
-      expect(state.execute).toHaveBeenCalledTimes(2);
-      expect(state.execute.mock.calls[1]?.[0]).toMatchObject({
-        utterance: goal,
-        semanticProposal: { action: "start" },
-      });
-      // One continuous action reads as one message: the refusal must not be
-      // spoken or shown just before the hand-off retracts it.
-      expect(feedback.map((entry) => entry.text)).not.toContain(
-        "I couldn't tell which thing to act on for that step.",
-      );
+      // The mission owns its failure: no coding-provider task is created from
+      // the browser goal, and the failure is reported as an error.
+      expect(state.execute).toHaveBeenCalledTimes(1);
       expect(feedback.some((entry) => entry.text.includes("Handing that to your provider"))).toBe(
-        true,
+        false,
       );
+      expect(
+        feedback.some(
+          (entry) =>
+            entry.kind === "error" &&
+            entry.text === "I couldn't tell which thing to act on for that step.",
+        ),
+      ).toBe(true);
     } finally {
       vi.unstubAllGlobals();
     }

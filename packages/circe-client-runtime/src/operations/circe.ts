@@ -4,17 +4,53 @@ import {
   type CirceCancelMissionInput,
   type CirceComputerUseInput,
   type CirceCancelRequestInput,
+  type CirceDeviceReadinessInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
   type CirceHostListenInput,
   type CirceHostSayInput,
   type CirceHostSpeakInput,
   type CirceInterpretInput,
+  type CirceInteractionInterruptInput,
+  type CirceInteractionReadInput,
+  type CirceInteractionSubmitInput,
   type CirceManageProjectAliasInput,
 } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
 import { request } from "@circe/client/rpc";
+
+/**
+ * Submit one utterance to the node-owned interaction. The server resolves the
+ * relation to the active goal, asks or answers the pending question, and
+ * returns either state to render or a grounded proposal for ordinary work.
+ */
+export const submitCirceInteraction = Effect.fn("Circe.interactionSubmit")(function* (
+  input: CirceInteractionSubmitInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionSubmit, input);
+});
+
+/** Read the active interaction, or one exact interaction, from its owner node. */
+export const readCirceInteraction = Effect.fn("Circe.interactionRead")(function* (
+  input: CirceInteractionReadInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionRead, input);
+});
+
+/** Stop the interaction's operation or pending question on its owner node. */
+export const interruptCirceInteraction = Effect.fn("Circe.interactionInterrupt")(function* (
+  input: CirceInteractionInterruptInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionInterrupt, input);
+});
+
+/** Observed desktop readiness for this node; clients act only on ready surfaces. */
+export const getCirceDeviceReadiness = Effect.fn("Circe.deviceReadiness")(function* (
+  input: CirceDeviceReadinessInput,
+) {
+  return yield* request(WS_METHODS.circeDeviceReadiness, input);
+});
 
 /** Send one text or transcribed voice instruction to the T3 Circe manager. */
 export const executeCirceInstruction = Effect.fn("Circe.executeInstruction")(function* (
@@ -88,6 +124,11 @@ export const useCirceComputer = Effect.fn("Circe.computerUse")(function* (
   input: CirceComputerUseInput,
 ) {
   return yield* request(WS_METHODS.circeComputerUse, input);
+});
+
+/** Read the node's desktop-host availability and active computer mission. */
+export const getCirceComputerStatus = Effect.fn("Circe.computerStatus")(function* () {
+  return yield* request(WS_METHODS.circeComputerStatus, {});
 });
 
 /**

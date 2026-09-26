@@ -496,6 +496,10 @@ export const PreviewAutomationElement = Schema.Struct({
   y: Schema.Number,
   width: Schema.Number,
   height: Schema.Number,
+  /** Current field or display text, when the observer can read it. */
+  value: Schema.optional(Schema.String),
+  /** Compact state names such as checked, selected, expanded, focused. */
+  state: Schema.optional(Schema.String),
 });
 export type PreviewAutomationElement = typeof PreviewAutomationElement.Type;
 

@@ -1,6 +1,7 @@
 import * as Schema from "effect/Schema";
 
 import { PortSchema, PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { ComputerHostBootstrap } from "./computerHost.ts";
 
 export const DesktopBackendBootstrap = Schema.Struct({
   mode: Schema.Literal("desktop"),
@@ -19,6 +20,8 @@ export const DesktopBackendBootstrap = Schema.Struct({
   desktopTelemetryFd: Schema.optionalKey(PositiveInt),
   desktopTelemetryControlFd: Schema.optionalKey(PositiveInt),
   resourceMonitorPath: Schema.optionalKey(TrimmedNonEmptyString),
+  // Present when the desktop app hosts a computer-use driver for this backend.
+  computerHost: Schema.optionalKey(ComputerHostBootstrap),
 });
 
 export type DesktopBackendBootstrap = typeof DesktopBackendBootstrap.Type;

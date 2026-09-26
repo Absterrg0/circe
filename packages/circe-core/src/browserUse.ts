@@ -50,6 +50,8 @@ export function computerElementFromPreview(element: PreviewAutomationElement): C
     id: element.selector,
     role: element.role,
     name: element.name,
+    ...(element.value === undefined || element.value.length === 0 ? {} : { value: element.value }),
+    ...(element.state === undefined || element.state.length === 0 ? {} : { state: element.state }),
     bounds: { x: element.x, y: element.y, width: element.width, height: element.height },
   };
 }
@@ -104,10 +106,7 @@ export function browserOperationForAction(
     case "type":
       return {
         operation: "type",
-        input:
-          action.elementId === undefined
-            ? { text: action.text }
-            : { text: action.text, locator: action.elementId },
+        input: { text: action.text, locator: action.elementId },
       };
     case "press":
       // The browser press operation targets only the focused element, so a

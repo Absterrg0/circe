@@ -259,7 +259,12 @@ const makeRaceHarness = Effect.gen(function* () {
   const queue = yield* CirceFollowUpQueue;
   const commands: Array<OrchestrationV2Command> = [];
   let current = readyThread;
-  let projection = projectionWithRun("running");
+  // Before acceptance there is no run yet; an accepted dispatch below makes
+  // the V2 projection live, which is what a stop then sees.
+  let projection: OrchestrationV2ThreadProjection = {
+    ...projectionWithRun("running"),
+    runs: [],
+  };
   let beforeStatusReturn: Effect.Effect<void> = Effect.void;
   let beforeDispatch: (
     command: OrchestrationV2Command,

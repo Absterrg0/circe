@@ -1,6 +1,11 @@
 import type * as Cause from "effect/Cause";
 import type * as HttpClientError from "effect/unstable/http/HttpClientError";
-import { CirceQuickLookupInput, type CirceQuickLookupResult } from "@circe/contracts";
+import {
+  CirceQuickLookupInput,
+  type CirceLookupDay,
+  type CirceQuickLookupResult,
+} from "@circe/contracts";
+import { extractLocationCandidates } from "@circe/core/place";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
@@ -71,13 +76,51 @@ const condition = (code: number) => {
   return "conditions unavailable";
 };
 
-/** Fixed-origin, read-only tools. No model, provider session, filesystem, or task dispatch. */
-export const runCirceQuickLookup = (
-  rawInput: CirceQuickLookupInput,
+/**
+ * Structured lookup outcome. A missing or ambiguous place is a question the
+ * interaction owns, not a failed request: the slot, prompt, known arguments,
+ * and offered choices travel together so any device can answer it.
+ */
+export type CirceLookupOutcome =
+  | {
+      readonly status: "answer";
+      readonly message: string;
+      readonly source: string;
+      readonly location: string;
+      readonly day: CirceLookupDay;
+    }
+  | {
+      readonly status: "question";
+      readonly slot: "location" | "day";
+      readonly reason:
+        | "place-not-mentioned"
+        | "ambiguous-place"
+        | "place-not-found"
+        | "day-unavailable";
+      readonly prompt: string;
+      readonly choices: ReadonlyArray<string>;
+      readonly known: Readonly<Record<string, string>>;
+    }
+  | { readonly status: "unavailable"; readonly message: string };
+
+export type CirceLookupInput = {
+  readonly kind: "weather" | "time";
+  readonly location: string;
+  readonly day: CirceLookupDay;
+  readonly sourceUtterance: string;
+};
+
+/**
+ * Fixed-origin, read-only tools. No model, provider session, filesystem, or
+ * task dispatch. The place must appear in the user's own utterance; the
+ * runner returns a typed question instead of guessing.
+ */
+export const runCirceLookup = (
+  rawInput: CirceLookupInput,
   preset: "full" | "controller" | "headless",
-) =>
+): Effect.Effect<CirceLookupOutcome, never, HttpClient.HttpClient> =>
   Effect.gen(function* (): Effect.fn.Return<
-    CirceQuickLookupResult,
+    CirceLookupOutcome,
     Schema.SchemaError | HttpClientError.HttpClientError | Cause.UnknownError,
     HttpClient.HttpClient
   > {
@@ -87,89 +130,124 @@ export const runCirceQuickLookup = (
         message: "Quick assistant lookups need a Full or Controller node.",
       };
     const input = yield* decodeLookupInput(rawInput);
+    // The user's own words are the only place source. The supplied location
+    // must appear in the utterance; the utterance's other bounded spans are
+    // tried after it, so a spoken answer like "it's in London" resolves to
+    // London instead of failing as a whole phrase.
     if (!placeMentioned(input.sourceUtterance, input.location)) {
       return {
-        status: "unavailable",
-        message:
-          "I couldn't match that place to what you said. Name the city with its state or country.",
+        status: "question",
+        slot: "location",
+        reason: "place-not-mentioned",
+        prompt: "I couldn't match that place to what you said. Which city or place?",
+        choices: [],
+        known: { tool: input.kind, day: input.day },
       };
     }
+    const placeCandidates = [
+      ...new Set([input.location, ...extractLocationCandidates(input.sourceUtterance)]),
+    ];
     const client = (yield* HttpClient.HttpClient).pipe(HttpClient.filterStatusOk);
     // A comma-qualified location ("Halol, Gujarat, India") splits directly.
     // A spoken one usually has no commas ("Halol Gujarat India"), so the
     // longest prefix is tried as the place name first and the trailing words
     // become the region qualifiers once the full name fails to geocode.
-    const splits: Array<{ readonly name: string; readonly regions: ReadonlyArray<string> }> = [];
-    const parts = input.location
-      .split(",")
-      .map((part) => part.trim())
-      .filter((part) => part.length > 0);
-    if (parts.length > 1) {
-      splits.push({ name: parts[0]!, regions: parts.slice(1) });
-    } else {
+    const splitsFor = (
+      location: string,
+    ): ReadonlyArray<{
+      readonly name: string;
+      readonly regions: ReadonlyArray<string>;
+    }> => {
+      const parts = location
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part.length > 0);
+      if (parts.length > 1) {
+        return [{ name: parts[0]!, regions: parts.slice(1) }];
+      }
       const words = (parts[0] ?? "").split(/\s+/u).filter((word) => word.length > 0);
+      const splits: Array<{ readonly name: string; readonly regions: ReadonlyArray<string> }> = [];
       for (let count = words.length; count >= 1; count -= 1) {
         splits.push({
           name: words.slice(0, count).join(" "),
           regions: count < words.length ? words.slice(count) : [],
         });
       }
-    }
-    if (splits.length === 0) {
-      return {
-        status: "needs-input",
-        message: "Name a city, optionally followed by its state and country.",
-      };
-    }
+      return splits;
+    };
+    // Bound the total geocoding attempts so a long answer with many spans
+    // cannot fan out into an unbounded number of outbound requests.
+    const MAX_GEOCODE_ATTEMPTS = 12;
+    let attempts = 0;
     let selected: typeof Place.Type | undefined;
     let ambiguousName: string | undefined;
-    for (const split of splits) {
-      const geocoding = new URL("https://geocoding-api.open-meteo.com/v1/search");
-      geocoding.search = new URLSearchParams({
-        name: split.name,
-        count: "10",
-        language: "en",
-        format: "json",
-      }).toString();
-      const placesResponse = yield* client.get(geocoding.href);
-      const places = yield* HttpClientResponse.schemaBodyJson(Places)(placesResponse);
-      const candidates = (places.results ?? []).filter((place) =>
-        split.regions.every((region) =>
-          [place.admin1, place.country, place.country_code].some(
-            (value) => value !== undefined && normalized(value) === normalized(region),
+    let ambiguousChoices: ReadonlyArray<string> = [];
+    for (const place of placeCandidates) {
+      if (selected !== undefined || ambiguousName !== undefined) break;
+      for (const split of splitsFor(place)) {
+        if (attempts >= MAX_GEOCODE_ATTEMPTS) break;
+        attempts += 1;
+        const geocoding = new URL("https://geocoding-api.open-meteo.com/v1/search");
+        geocoding.search = new URLSearchParams({
+          name: split.name,
+          count: "10",
+          language: "en",
+          format: "json",
+        }).toString();
+        const placesResponse = yield* client.get(geocoding.href);
+        const places = yield* HttpClientResponse.schemaBodyJson(Places)(placesResponse);
+        const matches = (places.results ?? []).filter((place) =>
+          split.regions.every((region) =>
+            [place.admin1, place.country, place.country_code].some(
+              (value) => value !== undefined && normalized(value) === normalized(region),
+            ),
           ),
-        ),
-      );
-      if (candidates.length === 0) continue;
-      if (split.regions.length === 0 || candidates.length === 1) {
-        selected = candidates[0];
+        );
+        if (matches.length === 0) continue;
+        if (split.regions.length === 0 || matches.length === 1) {
+          selected = matches[0];
+          break;
+        }
+        ambiguousName = split.name;
+        ambiguousChoices = [...new Set(matches.map(placeLabel))].slice(0, 8);
         break;
       }
-      ambiguousName = split.name;
-      break;
     }
     if (selected === undefined) {
       if (ambiguousName !== undefined) {
         return {
-          status: "needs-input",
-          message: `I found multiple places named ${ambiguousName}. Ask again with the city, state, or country.`,
+          status: "question",
+          slot: "location",
+          reason: "ambiguous-place",
+          prompt: `I found multiple places named ${ambiguousName}. Which one did you mean?`,
+          choices: ambiguousChoices,
+          known: { tool: input.kind, day: input.day, place: ambiguousName },
         };
       }
       return {
-        status: "needs-input",
-        message: `I couldn't find ${input.location}. Try the city, state, and country.`,
+        status: "question",
+        slot: "location",
+        reason: "place-not-found",
+        prompt: `I couldn't find ${input.location}. Say the city, state, and country.`,
+        choices: [],
+        known: { tool: input.kind, day: input.day },
       };
     }
     const label = placeLabel(selected);
     if (input.kind === "time") {
       // This tool reports the current local time only. "Today" asks for the
-      // same clock; a future day cannot be answered, so refuse it instead of
-      // returning the wrong time.
-      if (input.day !== "now" && input.day !== "today")
+      // same clock; a future day cannot be answered, so ask which clock the
+      // user wants instead of returning the wrong one.
+      if (input.day !== "now" && input.day !== "today") {
         return {
-          status: "unavailable",
-          message: "I can only tell you the current local time. Ask again with the place.",
+          status: "question",
+          slot: "day",
+          reason: "day-unavailable",
+          prompt: "I can only tell you the current local time. Say now or today.",
+          choices: ["now", "today"],
+          known: { tool: input.kind, location: label },
         };
+      }
       const now = DateTime.toEpochMillis(yield* DateTime.now);
       const time = yield* Effect.try(() =>
         new Intl.DateTimeFormat("en", {
@@ -184,6 +262,8 @@ export const runCirceQuickLookup = (
         status: "answer",
         message: `${label}: ${time}.`,
         source: "https://open-meteo.com/en/docs/geocoding-api",
+        location: label,
+        day: input.day,
       };
     }
     const url = new URL("https://api.open-meteo.com/v1/forecast");
@@ -202,6 +282,8 @@ export const runCirceQuickLookup = (
         status: "answer",
         source: "https://open-meteo.com/",
         message: `${label}: ${forecast.current.temperature_2m}°C, ${condition(forecast.current.weather_code)}, feels like ${forecast.current.apparent_temperature}°C. Updated ${forecast.current.time.replace("T", " ")} local time.`,
+        location: label,
+        day: input.day,
       };
     const index = input.day === "tomorrow" ? 1 : 0;
     const day = forecast.daily.time[index];
@@ -217,11 +299,33 @@ export const runCirceQuickLookup = (
       status: "answer",
       source: "https://open-meteo.com/",
       message: `${label}, ${input.day} (${day}): ${low} to ${high}°C, with a ${rain}% chance of rain.`,
+      location: label,
+      day: input.day,
     };
   }).pipe(
     Effect.timeout("10 seconds"),
-    Effect.orElseSucceed((): CirceQuickLookupResult => ({
+    Effect.orElseSucceed((): CirceLookupOutcome => ({
       status: "unavailable",
       message: "I couldn't reach the weather and place service. Try the lookup again.",
     })),
+  );
+
+/** The legacy bounded RPC result. Kept until every client reads interaction state. */
+export const runCirceQuickLookup = (
+  rawInput: CirceLookupInput,
+  preset: "full" | "controller" | "headless",
+): Effect.Effect<CirceQuickLookupResult, never, HttpClient.HttpClient> =>
+  runCirceLookup(rawInput, preset).pipe(
+    Effect.map((outcome): CirceQuickLookupResult => {
+      switch (outcome.status) {
+        case "answer":
+          return { status: "answer", message: outcome.message, source: outcome.source };
+        case "question":
+          return outcome.reason === "place-not-mentioned" || outcome.reason === "day-unavailable"
+            ? { status: "unavailable", message: outcome.prompt }
+            : { status: "needs-input", message: outcome.prompt };
+        case "unavailable":
+          return { status: "unavailable", message: outcome.message };
+      }
+    }),
   );

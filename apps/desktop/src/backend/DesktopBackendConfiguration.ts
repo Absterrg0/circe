@@ -1,6 +1,7 @@
 import * as NodeOS from "node:os";
 
 import { parsePersistedServerObservabilitySettings } from "@circe/shared/serverSettings";
+import type { ComputerHostBootstrap } from "@circe/contracts";
 import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as Effect from "effect/Effect";
@@ -16,6 +17,7 @@ import serverPackageJson from "../../../server/package.json" with { type: "json"
 
 import * as DesktopBackendManager from "./DesktopBackendManager.ts";
 import * as DesktopEnvironment from "../app/DesktopEnvironment.ts";
+import * as DesktopComputerHost from "../computer/DesktopComputerHost.ts";
 import * as DesktopServerExposure from "./DesktopServerExposure.ts";
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopWslEnvironment from "../wsl/DesktopWslEnvironment.ts";
@@ -512,6 +514,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
   function* (
     input: SharedBootstrapInput & {
       readonly resourceMonitorPath: Option.Option<string>;
+      readonly computerHostBootstrap: Option.Option<ComputerHostBootstrap>;
     },
   ): Effect.fn.Return<
     DesktopBackendManager.DesktopBackendStartConfig,
@@ -536,6 +539,13 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
       ...Option.match(input.resourceMonitorPath, {
         onNone: () => ({}),
         onSome: (resourceMonitorPath) => ({ resourceMonitorPath }),
+      }),
+      // The local server connects to the desktop-hosted computer runtime as a
+      // guest; a host that failed to listen leaves the capability unavailable
+      // rather than blocking backend startup.
+      ...Option.match(input.computerHostBootstrap, {
+        onNone: () => ({}),
+        onSome: (computerHost) => ({ computerHost }),
       }),
       ...buildObservabilityFragment(input.observabilitySettings),
     };
@@ -816,6 +826,7 @@ const make = Effect.fn("desktop.backendConfiguration.make")(function* () {
   const wslServerTree = yield* DesktopWslServerTree.DesktopWslServerTree;
   const settings = yield* DesktopAppSettings.DesktopAppSettings;
   const crypto = yield* Crypto.Crypto;
+  const computerHost = yield* Effect.serviceOption(DesktopComputerHost.DesktopComputerHost);
   // SynchronizedRef (not a plain Ref) so the read-generate-write is atomic.
   // crypto.randomBytes is a yield point, and resolvePrimary + resolveWsl can
   // resolve concurrently; with a plain Ref both could observe None, generate
@@ -880,9 +891,13 @@ const make = Effect.fn("desktop.backendConfiguration.make")(function* () {
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
     );
+    const computerHostBootstrap = Option.isSome(computerHost)
+      ? yield* computerHost.value.bootstrap.pipe(Effect.option)
+      : Option.none<ComputerHostBootstrap>();
     return yield* resolvePrimaryStartConfig({
       ...shared,
       resourceMonitorPath,
+      computerHostBootstrap,
     }).pipe(
       Effect.provideService(DesktopEnvironment.DesktopEnvironment, environment),
       Effect.provideService(DesktopServerExposure.DesktopServerExposure, serverExposure),

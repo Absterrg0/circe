@@ -236,6 +236,85 @@ describe("composing one CirceOutcome", () => {
     });
   });
 
+  it("grounds an explicit own-browser goal to the real browser, not the preview", () => {
+    const source = "open youtube in my own browser";
+    const outcome = composeCirceOutcome({
+      source,
+      state: {
+        utterance: source,
+        currentProjectKey: null,
+        focusedTaskKey: null,
+        pendingRequest: "none" as const,
+        continueContext: false,
+      },
+      table: { projects: [], tasks: [], providers: [], efforts: [] },
+      boundaries: [],
+      answers: { outcome: choice("preview") },
+      tools: offered(),
+      locationCandidates,
+      websiteCandidates,
+      work: () => workRefusal,
+    });
+    expect(outcome).toMatchObject({
+      kind: "client-action",
+      host: "client",
+      tool: "browse",
+      risk: "destructive",
+      args: { goal: source },
+      speech: "Working in your browser.",
+    });
+  });
+
+  it("grounds an explicit preview goal to the preview, not the real browser", () => {
+    const source = "test the checkout flow in the preview";
+    const outcome = composeCirceOutcome({
+      source,
+      state: {
+        utterance: source,
+        currentProjectKey: null,
+        focusedTaskKey: null,
+        pendingRequest: "none" as const,
+        continueContext: false,
+      },
+      table: { projects: [], tasks: [], providers: [], efforts: [] },
+      boundaries: [],
+      answers: { outcome: choice("browse") },
+      tools: offered(),
+      locationCandidates,
+      websiteCandidates,
+      work: () => workRefusal,
+    });
+    expect(outcome).toMatchObject({
+      kind: "client-action",
+      host: "client",
+      tool: "preview",
+      args: { goal: source },
+      speech: "Working in the preview browser.",
+    });
+  });
+
+  it("keeps the model's surface choice when the named surface is not offered", () => {
+    const source = "open youtube in my own browser";
+    const outcome = composeCirceOutcome({
+      source,
+      state: {
+        utterance: source,
+        currentProjectKey: null,
+        focusedTaskKey: null,
+        pendingRequest: "none" as const,
+        continueContext: false,
+      },
+      table: { projects: [], tasks: [], providers: [], efforts: [] },
+      boundaries: [],
+      answers: { outcome: choice("preview") },
+      tools: offered().filter((tool) => tool.name !== "browse"),
+      locationCandidates,
+      websiteCandidates,
+      work: () => workRefusal,
+    });
+    expect(outcome).toMatchObject({ kind: "client-action", tool: "preview" });
+  });
+
   it("resolves a client tool into a client-action with acceptance speech", () => {
     const outcome = composeCirceOutcome({
       source: "open YouTube",

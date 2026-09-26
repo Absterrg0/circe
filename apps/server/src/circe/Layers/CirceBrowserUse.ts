@@ -5,6 +5,7 @@ import type {
 } from "@circe/contracts";
 import { ThreadId } from "@circe/contracts";
 import type { ComputerUseRunResult, ComputerStepRefusal } from "@circe/core/computerUse";
+import { buildComputerVerificationRequest, computerGoalVerified } from "@circe/core/computerUse";
 import { runBrowserGoal } from "@circe/core/browserUseRuntime";
 import type { DecisionRequest } from "@circe/core/decision";
 import { circeWebsiteUrl } from "@circe/core/website";
@@ -32,10 +33,10 @@ const DECISION_MODEL = "jev-latest";
 const CONTROL_THREAD = ThreadId.make("circe-browser-use");
 const WAIT_MS = 400;
 
-const confirmationMessage = (goal: string): string =>
+export const confirmationMessage = (goal: string): string =>
   `I'll control the browser in this session to ${goal}. Confirm to start.`;
 
-const refusalMessage = (reason: ComputerStepRefusal): string => {
+export const refusalMessage = (reason: ComputerStepRefusal): string => {
   switch (reason) {
     case "confidence-too-low":
       return "I couldn't tell what to do next on that page.";
@@ -46,7 +47,10 @@ const refusalMessage = (reason: ComputerStepRefusal): string => {
   }
 };
 
-const mapResult = (result: ComputerUseRunResult, goal: string): CirceBrowserUseResult => {
+export const mapCirceBrowserMissionResult = (
+  result: ComputerUseRunResult,
+  goal: string,
+): CirceBrowserUseResult => {
   switch (result.status) {
     case "done":
       return { status: "done", message: `Done: ${result.summary}`, steps: result.steps };
@@ -59,7 +63,10 @@ const mapResult = (result: ComputerUseRunResult, goal: string): CirceBrowserUseR
     case "unverified":
       return {
         status: "refused",
-        message: `The model reported ${goal} done, but no action was taken, so I couldn't confirm it.`,
+        message:
+          result.reason === "no-effect"
+            ? `The model reported ${goal} done, but no action was taken, so I couldn't confirm it.`
+            : `I acted, but the page didn't show ${goal} finished, so I won't claim it.`,
       };
     case "cancelled":
       return { status: "cancelled", message: "Stopped.", steps: result.steps };
@@ -131,16 +138,40 @@ export const make = Effect.gen(function* () {
               : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
           ),
         );
+    const verify = (input: {
+      readonly goal: string;
+      readonly surface: Parameters<typeof buildComputerVerificationRequest>[0]["surface"];
+      readonly history: ReadonlyArray<string>;
+      readonly summary: string;
+    }): Effect.Effect<boolean> =>
+      decision
+        .decide(
+          buildComputerVerificationRequest({
+            model: DECISION_MODEL,
+            goal: input.goal,
+            surface: input.surface,
+            history: input.history,
+            summary: input.summary,
+          }),
+        )
+        .pipe(
+          Effect.map(
+            (outcome) =>
+              outcome.status === "answered" && computerGoalVerified(outcome.answers) === true,
+          ),
+          Effect.orElseSucceed(() => false),
+        );
     return yield* runBrowserGoal<PreviewAutomationError | SurfaceDecisionUnavailableError>({
       model: DECISION_MODEL,
       goal: input.goal,
       ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
       ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
       ...(requestId === undefined ? {} : { shouldStop: () => cancellation.isCancelled(requestId) }),
+      verify,
       invoker,
       select,
     }).pipe(
-      Effect.map((result) => mapResult(result, input.goal)),
+      Effect.map((result) => mapCirceBrowserMissionResult(result, input.goal)),
       Effect.catchTag("SurfaceDecisionUnavailableError", (error) =>
         Effect.succeed({ status: "unavailable" as const, message: error.message }),
       ),

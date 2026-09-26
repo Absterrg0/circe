@@ -17,7 +17,7 @@ describe("Circe automation scope", () => {
       const scope = yield* build();
       expect(scope.providerSessionId).toBe("circe-control:session-abc");
       expect(scope.capabilities.has("preview")).toBe(true);
-      expect(scope.capabilities.has("desktop-use")).toBe(true);
+      expect(scope.capabilities.has("computer-use")).toBe(true);
       expect(scope.capabilities.has("orchestration")).toBe(false);
       expect(scope.environmentId).toBe(EnvironmentId.make("node-1"));
       expect(scope.threadId).toBe(ThreadId.make("thread-1"));
