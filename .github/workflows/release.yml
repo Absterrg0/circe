@@ -31,6 +31,12 @@ permissions:
   contents: read
   id-token: none
 
+# Installs fetch circe-core, Circe's private core, when this token can read it
+# (scripts/fetch-circe-core.ts); without it the build ships with the Circe
+# host layer off.
+env:
+  CIRCE_CORE_TOKEN: ${{ secrets.CIRCE_CORE_TOKEN }}
+
 jobs:
   # Picks the commit every later job builds. Nightlies and tag pushes build the
   # triggering commit. Manual stable releases build the commit of the latest

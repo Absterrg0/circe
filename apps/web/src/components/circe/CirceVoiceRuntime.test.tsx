@@ -25,6 +25,7 @@ const state = vi.hoisted(() => ({
   browserUse: vi.fn(),
   computerUse: vi.fn(),
   cancelMission: vi.fn(),
+  hostSay: vi.fn(),
   openWebsite: vi.fn(),
   drain: undefined as (() => Promise<void>) | undefined,
   speechEvents: [] as string[],
@@ -107,6 +108,7 @@ vi.mock("../../state/circeMesh", () => ({
     converse: "converse",
   },
 }));
+vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (
     command:
@@ -120,7 +122,8 @@ vi.mock("../../state/use-atom-command", () => ({
       | "quickLookup"
       | "browserUse"
       | "computerUse"
-      | "cancelMission",
+      | "cancelMission"
+      | "hostSay",
   ) => state[command],
 }));
 vi.mock("../../circeIdentity", () => ({ circeReporterIdentity: () => "interaction" }));
@@ -235,6 +238,12 @@ describe("Circe voice runtime", () => {
     state.browserUse.mockReset();
     state.computerUse.mockReset();
     state.cancelMission.mockReset();
+    // The node's Circe host layer is off unless a test turns it on, so the
+    // Director path these tests cover still runs.
+    state.hostSay.mockReset().mockResolvedValue({
+      _tag: "Success",
+      value: { status: "unavailable", said: "off", started: [] },
+    });
     state.openWebsite.mockReset();
     state.refresh.mockReset().mockResolvedValue({ _tag: "Success", value: catalog });
     state.refreshNode.mockReset().mockResolvedValue({ _tag: "Success", value: catalog });
@@ -270,6 +279,66 @@ describe("Circe voice runtime", () => {
 
   afterEach(() => {
     for (const cleanup of state.cleanups) cleanup();
+  });
+
+  it("hands the message to the node's Circe host layer, with what is on screen, when it is on", async () => {
+    const feedback: CirceCommandFeedback[] = [];
+    const stop = onCirceCommandFeedback((entry) => {
+      feedback.push(entry);
+    });
+    try {
+      await ready();
+      state.hostSay.mockResolvedValue({
+        _tag: "Success",
+        value: { status: "acted", said: 'Stopped "Fix the bug".', started: [] },
+      });
+      transcript("stop it", { captureId: "host", purpose: "command" });
+      await state.drain?.();
+      expect(state.hostSay).toHaveBeenCalledWith({
+        environmentId: "local",
+        input: { utterance: "stop it", focus: { projectId, threadId } },
+      });
+      expect(state.interpret).not.toHaveBeenCalled();
+      expect(state.execute).not.toHaveBeenCalled();
+      expect(feedback.at(-1)).toMatchObject({ kind: "done", text: 'Stopped "Fix the bug".' });
+      expect(started).not.toHaveBeenCalled();
+    } finally {
+      stop();
+    }
+  });
+
+  it("shows the thread the Circe host layer opened, and reports its question as needing input", async () => {
+    const feedback: CirceCommandFeedback[] = [];
+    const stop = onCirceCommandFeedback((entry) => {
+      feedback.push(entry);
+    });
+    try {
+      await ready();
+      const opened = ThreadId.make("opened");
+      state.hostSay.mockResolvedValueOnce({
+        _tag: "Success",
+        value: {
+          status: "acted",
+          said: 'Opened "Parser".',
+          navigate: { threadId: opened },
+          started: [],
+        },
+      });
+      transcript("open the parser one", { captureId: "open", purpose: "command" });
+      await state.drain?.();
+      expect(started).toHaveBeenCalledWith(nodeId, opened);
+
+      state.hostSay.mockResolvedValueOnce({
+        _tag: "Success",
+        value: { status: "asked", said: "Which do you mean?", options: ["a", "b"], started: [] },
+      });
+      transcript("stop", { captureId: "ask", purpose: "command" });
+      await state.drain?.();
+      expect(feedback.at(-1)).toMatchObject({ kind: "needs-input", text: "Which do you mean?" });
+      expect(state.execute).not.toHaveBeenCalled();
+    } finally {
+      stop();
+    }
   });
 
   it("answers a supervisor-proposed weather lookup without creating a task", async () => {

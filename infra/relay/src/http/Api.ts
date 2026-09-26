@@ -5,11 +5,13 @@ import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Encoding from "effect/Encoding";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Record from "effect/Record";
 import * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
+import * as Scope from "effect/Scope";
 import * as Tracer from "effect/Tracer";
 import * as HttpEffect from "effect/unstable/http/HttpEffect";
 import * as HttpMiddleware from "effect/unstable/http/HttpMiddleware";
@@ -55,6 +57,10 @@ import {
   RelayLiveVoiceUsageLimitError,
   RelayTypeSafeNotConfiguredError,
   RelayTypeSafeUpstreamError,
+  RelayVoiceEnvironmentDisabledError,
+  RelayVoiceInvalidRequestError,
+  RelayVoiceNotConfiguredError,
+  RelayVoiceUpstreamError,
   RelayTypeSafeEnvironmentDisabledError,
   RelayTypeSafeUsageLimitError,
   RelayTypeSafeOverloadedError,
@@ -86,6 +92,7 @@ import * as EnvironmentPublishSignatures from "../environments/EnvironmentPublis
 import * as MobileRegistrations from "../agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "../voice/LiveVoiceSessions.ts";
 import * as TypeSafeUpstream from "../decision/TypeSafeUpstream.ts";
+import * as VoiceUpstream from "../voice/VoiceUpstream.ts";
 import * as TypeSafeUsage from "../decision/TypeSafeUsage.ts";
 import { withSpanAttributes } from "../observability.ts";
 import * as RelayDb from "../db.ts";
@@ -244,9 +251,20 @@ export const traceRelayHttpRequestWith = <E, R, LayerError, LayerRequirements>(
   >,
   tracerLayer: Layer.Layer<never, LayerError, LayerRequirements>,
 ) =>
-  traceRelayHttpRequest(httpEffect).pipe(
-    Effect.provide(Layer.merge(tracerLayer, httpHeaderRedactionLayer)),
-  );
+  Effect.gen(function* () {
+    const layer = Layer.merge(tracerLayer, httpHeaderRedactionLayer);
+    // The Worker gives each request a scope it closes in `ctx.waitUntil`,
+    // after the response is sent. Tying the exporter to it sends the
+    // request's spans after the response instead of making every request
+    // wait for the trace upload. Without one (tests), the exporter flushes
+    // when the request ends, as before.
+    const requestScope = yield* Effect.serviceOption(Scope.Scope);
+    if (Option.isNone(requestScope)) {
+      return yield* traceRelayHttpRequest(httpEffect).pipe(Effect.provide(layer));
+    }
+    const context = yield* Layer.buildWithScope(layer, requestScope.value);
+    return yield* traceRelayHttpRequest(httpEffect).pipe(Effect.provideContext(context));
+  });
 
 export const withoutCapturedParentSpan = <A, E, R>(
   effect: Effect.Effect<A, E, R>,
@@ -970,6 +988,7 @@ export const serverApi = HttpApiBuilder.group(
     const liveVoice = yield* LiveVoiceSessions.LiveVoiceSessions;
     const typesafeUpstream = yield* TypeSafeUpstream.TypeSafeUpstream;
     const typesafeUsage = yield* TypeSafeUsage.TypeSafeUsage;
+    const voiceUpstream = yield* VoiceUpstream.VoiceUpstream;
     return handlers
       .handle(
         "publishAgentActivity",
@@ -1316,8 +1335,86 @@ export const serverApi = HttpApiBuilder.group(
               ),
             );
         }, mapRelayCommonApiErrors("not_authorized")),
+      )
+      .handle(
+        "transcribeVoice",
+        Effect.fn("relay.api.server.transcribeVoice")(function* (args) {
+          const { params, payload } = args;
+          const voice = yield* voiceRoute(params.environmentId);
+          const audio = yield* Effect.fromResult(Encoding.decodeBase64(payload.audio)).pipe(
+            Effect.catch(() =>
+              currentTraceId.pipe(
+                Effect.flatMap((traceId) =>
+                  Effect.fail(
+                    new RelayVoiceInvalidRequestError({ code: "voice_invalid_request", traceId }),
+                  ),
+                ),
+              ),
+            ),
+          );
+          // Audio and text stay in memory for this request only.
+          const text = yield* voiceUpstream
+            .transcribe({
+              apiKey: voice.apiKey,
+              model: voice.transcribeModel,
+              audio,
+              mimeType: payload.mimeType,
+              ...(payload.vocabulary === undefined ? {} : { vocabulary: payload.vocabulary }),
+            })
+            .pipe(Effect.catchTag("VoiceUpstreamFailed", () => voiceUpstreamFailed));
+          return { text };
+        }, mapRelayCommonApiErrors("not_authorized")),
+      )
+      .handle(
+        "speakVoice",
+        Effect.fn("relay.api.server.speakVoice")(function* (args) {
+          const { params, payload } = args;
+          const voice = yield* voiceRoute(params.environmentId);
+          const audio = yield* voiceUpstream
+            .speak({
+              apiKey: voice.apiKey,
+              model: voice.speechModel,
+              voice: voice.voice,
+              text: payload.text,
+            })
+            .pipe(Effect.catchTag("VoiceUpstreamFailed", () => voiceUpstreamFailed));
+          return { audio, mimeType: "audio/mpeg" as const };
+        }, mapRelayCommonApiErrors("not_authorized")),
       );
   }),
+);
+
+/**
+ * Circe voice is account-scoped like managed decisions: the caller must be
+ * the linked environment itself, with one owner who has it turned on.
+ */
+const voiceRoute = Effect.fn("relay.api.server.voiceRoute")(function* (
+  environmentId: EnvironmentId,
+) {
+  const principal = yield* RelayEnvironmentPrincipal;
+  if (principal.environmentId !== environmentId) {
+    return yield* new HttpApiError.Unauthorized({});
+  }
+  const traceId = yield* currentTraceId;
+  const links = yield* EnvironmentLinks.EnvironmentLinks;
+  const owners = yield* links.listOwnersForEnvironment({ environmentId });
+  if (owners.length !== 1 || owners[0]?.enabled !== true) {
+    return yield* new RelayVoiceEnvironmentDisabledError({
+      code: "voice_environment_disabled",
+      traceId,
+    });
+  }
+  const voice = (yield* RelayConfiguration.RelayConfiguration).voice;
+  if (voice === undefined || voice.apiKey === null) {
+    return yield* new RelayVoiceNotConfiguredError({ code: "voice_not_configured", traceId });
+  }
+  return { ...voice, apiKey: voice.apiKey };
+});
+
+const voiceUpstreamFailed = Effect.suspend(() => currentTraceId).pipe(
+  Effect.flatMap((traceId) =>
+    Effect.fail(new RelayVoiceUpstreamError({ code: "voice_upstream_failed", traceId })),
+  ),
 );
 
 class ClerkTokenVerificationFailed extends Schema.TaggedError<ClerkTokenVerificationFailed>()(

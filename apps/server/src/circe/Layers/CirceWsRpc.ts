@@ -48,6 +48,7 @@ import * as CirceBrowserUse from "../Services/CirceBrowserUse.ts";
 import * as CirceComputerUse from "../Services/CirceComputerUse.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
 import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
+import { CirceHostRuntime } from "../Services/CirceHostRuntime.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
 import { CirceProjectLexicon } from "../Services/CirceProjectLexicon.ts";
 import { CirceTaskDesk } from "../Services/CirceTaskDesk.ts";
@@ -293,6 +294,10 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeRegisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeUnregisterPushToken]: AuthOrchestrationReadScope,
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeHostSay]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeHostListen]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeHostSpeak]: AuthOrchestrationReadScope,
+  [WS_METHODS.subscribeCirceHostNotices]: AuthOrchestrationReadScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
@@ -317,6 +322,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const pushRegistrations = yield* CircePushRegistrationRepository;
     const authSessions = yield* AuthSessionRepository;
     const presentationFanout = yield* CircePresentationFanout;
+    const circeHost = yield* CirceHostRuntime;
     const warmScope = yield* Effect.scope;
     const warming = yield* Ref.make(false);
     return {
@@ -640,6 +646,22 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 }),
                 { "rpc.aggregate": "circe" },
               ),
+            [WS_METHODS.circeHostSay]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeHostSay, circeHost.say(input), {
+                "rpc.aggregate": "circe.host",
+              }),
+            [WS_METHODS.circeHostListen]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeHostListen, circeHost.listen(input), {
+                "rpc.aggregate": "circe.host",
+              }),
+            [WS_METHODS.circeHostSpeak]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeHostSpeak, circeHost.speak(input), {
+                "rpc.aggregate": "circe.host",
+              }),
+            [WS_METHODS.subscribeCirceHostNotices]: (_input) =>
+              context.observeRpcStream(WS_METHODS.subscribeCirceHostNotices, circeHost.notices, {
+                "rpc.aggregate": "circe.host",
+              }),
             [WS_METHODS.circeRegisterPushToken]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeRegisterPushToken,

@@ -76,6 +76,7 @@ import * as DeviceLimits from "./agentActivity/DeviceLimits.ts";
 import * as MobileRegistrations from "./agentActivity/MobileRegistrations.ts";
 import * as LiveVoiceSessions from "./voice/LiveVoiceSessions.ts";
 import * as LiveVoiceUpstream from "./voice/LiveVoiceUpstream.ts";
+import * as VoiceUpstream from "./voice/VoiceUpstream.ts";
 import * as TypeSafeUpstream from "./decision/TypeSafeUpstream.ts";
 import * as TypeSafeUsage from "./decision/TypeSafeUsage.ts";
 
@@ -188,6 +189,12 @@ export const ApiLive = Api.make(
     const liveVoiceVoice = yield* Config.string("LIVE_VOICE_VOICE").pipe(
       Config.withDefault(CIRCE_LIVE_VOICE_DEFAULT_VOICE),
     );
+    const voiceTranscribeModel = yield* Config.string("CIRCE_VOICE_TRANSCRIBE_MODEL").pipe(
+      Config.withDefault(VoiceUpstream.VOICE_DEFAULT_TRANSCRIBE_MODEL),
+    );
+    const voiceSpeechModel = yield* Config.string("CIRCE_VOICE_SPEECH_MODEL").pipe(
+      Config.withDefault(VoiceUpstream.VOICE_DEFAULT_SPEECH_MODEL),
+    );
     const typesafeApiKey = Option.getOrUndefined(
       Option.filter(
         yield* Config.option(Config.redacted("TYPESAFE_API_KEY")),
@@ -232,6 +239,12 @@ export const ApiLive = Api.make(
           model: liveVoiceModel,
           voice: liveVoiceVoice,
         },
+        voice: {
+          apiKey: liveVoiceApiKey ?? null,
+          transcribeModel: voiceTranscribeModel,
+          speechModel: voiceSpeechModel,
+          voice: liveVoiceVoice,
+        },
         typesafe: {
           apiKey: typesafeApiKey ?? null,
           baseUrl: typesafeBaseUrl,
@@ -254,6 +267,7 @@ export const ApiLive = Api.make(
           LiveVoiceSessions.layer,
           TypeSafeUpstream.layer,
           TypeSafeUsage.layer,
+          VoiceUpstream.layer,
         ),
       ),
       Layer.provideMerge(AgentActivityPublisher.layer),

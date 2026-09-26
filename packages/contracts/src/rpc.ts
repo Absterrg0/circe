@@ -357,6 +357,16 @@ import {
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import { CirceComputerUseInput, CirceComputerUseResult } from "./circeComputerUse.ts";
 import {
+  CirceHostListenInput,
+  CirceHostListenResult,
+  CirceHostNotice,
+  CirceHostNoticeSubscriptionInput,
+  CirceHostSayInput,
+  CirceHostSayResult,
+  CirceHostSpeakInput,
+  CirceHostSpeakResult,
+} from "./circeHost.ts";
+import {
   CirceLiveVoiceCreateInput,
   CirceLiveVoiceReleaseInput,
   CirceLiveVoiceRenewInput,
@@ -383,6 +393,10 @@ export const WS_METHODS = {
   circeRegisterPushToken: "circe.registerPushToken",
   circeUnregisterPushToken: "circe.unregisterPushToken",
   circeQuickLookup: "circe.quickLookup",
+  circeHostSay: "circe.host.say",
+  circeHostListen: "circe.host.listen",
+  circeHostSpeak: "circe.host.speak",
+  subscribeCirceHostNotices: "circe.host.subscribeNotices",
   circeVoiceLiveStart: "circe.voiceLiveStart",
   circeVoiceLiveRelease: "circe.voiceLiveRelease",
   circeVoiceLiveRenew: "circe.voiceLiveRenew",
@@ -682,6 +696,35 @@ const WsCirceQuickLookupRpc = Rpc.make(WS_METHODS.circeQuickLookup, {
   payload: CirceQuickLookupInput,
   success: CirceQuickLookupResult,
   error: EnvironmentAuthorizationError,
+});
+
+/** One message to the Circe host layer, interpreted and carried out on this node. */
+const WsCirceHostSayRpc = Rpc.make(WS_METHODS.circeHostSay, {
+  payload: CirceHostSayInput,
+  success: CirceHostSayResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** One spoken message: transcribed through Circe Mesh, then handled like `circe.host.say`. */
+const WsCirceHostListenRpc = Rpc.make(WS_METHODS.circeHostListen, {
+  payload: CirceHostListenInput,
+  success: CirceHostListenResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** One reply turned into speech through Circe Mesh. */
+const WsCirceHostSpeakRpc = Rpc.make(WS_METHODS.circeHostSpeak, {
+  payload: CirceHostSpeakInput,
+  success: CirceHostSpeakResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** What the Circe host layer says on its own, live only; nothing is replayed on reconnect. */
+const WsSubscribeCirceHostNoticesRpc = Rpc.make(WS_METHODS.subscribeCirceHostNotices, {
+  payload: CirceHostNoticeSubscriptionInput,
+  success: CirceHostNotice,
+  error: EnvironmentAuthorizationError,
+  stream: true,
 });
 
 const WsCirceVoiceLiveReleaseRpc = Rpc.make(WS_METHODS.circeVoiceLiveRelease, {
@@ -1846,6 +1889,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
+  WsCirceHostSayRpc,
+  WsCirceHostListenRpc,
+  WsCirceHostSpeakRpc,
+  WsSubscribeCirceHostNoticesRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -1861,6 +1908,10 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
+  WsCirceHostSayRpc,
+  WsCirceHostListenRpc,
+  WsCirceHostSpeakRpc,
+  WsSubscribeCirceHostNoticesRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2051,6 +2102,10 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceRegisterPushTokenRpc,
   WsCirceUnregisterPushTokenRpc,
   WsCirceQuickLookupRpc,
+  WsCirceHostSayRpc,
+  WsCirceHostListenRpc,
+  WsCirceHostSpeakRpc,
+  WsSubscribeCirceHostNoticesRpc,
   WsCirceVoiceLiveStartRpc,
   WsCirceVoiceLiveReleaseRpc,
   WsCirceVoiceLiveRenewRpc,
@@ -2072,6 +2127,10 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeRegisterPushToken,
   WS_METHODS.circeUnregisterPushToken,
   WS_METHODS.circeQuickLookup,
+  WS_METHODS.circeHostSay,
+  WS_METHODS.circeHostListen,
+  WS_METHODS.circeHostSpeak,
+  WS_METHODS.subscribeCirceHostNotices,
   WS_METHODS.circeVoiceLiveStart,
   WS_METHODS.circeVoiceLiveRelease,
   WS_METHODS.circeVoiceLiveRenew,

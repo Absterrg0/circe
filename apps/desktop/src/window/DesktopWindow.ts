@@ -25,6 +25,7 @@ import {
   DESKTOP_PRELOAD_READY_CHANNEL,
   DESKTOP_RENDERER_READY_CHANNEL,
   CIRCE_LIVE_VOICE_TOGGLE_CHANNEL,
+  CIRCE_VOICE_HOLD_CHANNEL,
   CIRCE_ORB_SELECT_CHANNEL,
   MENU_ACTION_CHANNEL,
   QUIT_SHORTCUT_CHANNEL,
@@ -151,6 +152,8 @@ export class DesktopWindow extends Context.Service<
      * guaranteed in a packaged window; the hotkey must not be dropped there.
      */
     readonly sendLiveVoiceToggle: Effect.Effect<void, DesktopWindowError>;
+    /** Push-to-talk edges for Circe voice: capture while the hotkey is held. */
+    readonly sendVoiceHold: (phase: "press" | "release") => Effect.Effect<void, DesktopWindowError>;
     /**
      * Relays one orb picker selection (orb -> main -> renderer) without
      * revealing the workspace. The renderer validates it against the real
@@ -1359,6 +1362,8 @@ export const make = Effect.gen(function* () {
     sendLiveVoiceToggle: dispatchRendererEvent(CIRCE_LIVE_VOICE_TOGGLE_CHANNEL, undefined, {
       reveal: false,
     }),
+    sendVoiceHold: (phase: "press" | "release") =>
+      dispatchRendererEvent(CIRCE_VOICE_HOLD_CHANNEL, phase, { reveal: false }),
     sendOrbSelection: Effect.fn("desktop.window.sendOrbSelection")(function* (
       selection: DesktopCirceOrbSelection,
     ) {

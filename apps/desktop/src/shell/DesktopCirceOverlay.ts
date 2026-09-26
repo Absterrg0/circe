@@ -33,25 +33,23 @@ const ORB_ACCENT_FAILED = "#d59a9a";
 const DESKTOP_CIRCE_ORB_PROFILES: Readonly<
   Record<DesktopCirceLiveVoiceStatus, { label: string; accent: string; accentSecondary: string }>
 > = {
-  idle: { label: "Circe is idle", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
+  // Push-to-talk messages carry their own caption (listening, thinking, what
+  // Circe said), which the orb shows in place of these labels.
+  idle: { label: "Circe", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
   requesting: {
-    label: "Starting live conversation",
+    label: "Starting conversation",
     accent: ORB_ACCENT,
     accentSecondary: ORB_ACCENT_DEEP,
   },
-  connecting: {
-    label: "Connecting live conversation",
-    accent: ORB_ACCENT,
-    accentSecondary: ORB_ACCENT_DEEP,
-  },
-  live: { label: "Live conversation", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
+  connecting: { label: "Connecting", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
+  live: { label: "Listening", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
   closing: {
-    label: "Ending live conversation",
+    label: "Ending conversation",
     accent: ORB_ACCENT,
     accentSecondary: ORB_ACCENT_DEEP,
   },
   failed: {
-    label: "Live conversation failed",
+    label: "That didn't work",
     accent: ORB_ACCENT_FAILED,
     accentSecondary: ORB_ACCENT_FAILED,
   },
@@ -69,7 +67,10 @@ export const desktopCirceOrbPresentation = (
   const profile = DESKTOP_CIRCE_ORB_PROFILES[state.status];
   const animated =
     state.active &&
-    (state.status === "requesting" || state.status === "connecting" || state.status === "live");
+    (state.status === "requesting" ||
+      state.status === "connecting" ||
+      state.status === "live" ||
+      state.status === "closing");
   return { ...profile, animated };
 };
 
@@ -566,10 +567,15 @@ const orbScript = `<script>
     const workingCount = Array.isArray(catalog.agents)
       ? catalog.agents.filter((agent) => agent.status !== "offline").length
       : 0;
+    const caption = typeof liveState.caption === "string" ? liveState.caption.trim() : "";
     const label =
-      liveState.status === "idle" && workingCount > 0
-        ? workingCount + (workingCount === 1 ? " agent active" : " agents active")
-        : profile.label;
+      caption.length > 0
+        ? caption.length > 160
+          ? caption.slice(0, 159) + "…"
+          : caption
+        : liveState.status === "idle" && workingCount > 0
+          ? workingCount + (workingCount === 1 ? " agent active" : " agents active")
+          : profile.label;
     liveLabel.textContent = label;
     orb.title = label;
     orb.setAttribute(
@@ -856,7 +862,7 @@ main[data-expanded="true"] .picker{opacity:1;transform:none}
 .provider-row:hover:not(:disabled){background:#23231d}.provider-row[data-selected="true"]{background:#23231d;border-color:#4a4a40}.provider-row[data-available="false"],.provider-row:disabled{cursor:default;opacity:.5}.provider-row:focus-visible{outline:2px solid #aaa89f;outline-offset:-2px}.row-text{display:grid;gap:2px;min-width:0}.row-provider{font-size:13px;font-weight:500}.row-model{font-size:11px;color:#aaa89f}.row-state{font-size:10px;color:#c9c7bc}.row-check{width:14px;height:14px;fill:none;stroke:#c9c7bc;stroke-width:1.5}.picker-empty{margin:0;padding:8px 6px;color:#aaa89f;font-size:12px}.picker-error{padding:8px;color:#cf8b80;font-size:11px}.picker-error[hidden]{display:none}.picker-hint{margin:20px 6px 0;color:#8d8c82;font-size:10px}
 .running-section{margin-top:18px;padding-top:18px;border-top:1px solid #34342d}.agent-row{display:flex;align-items:center;gap:8px;padding:9px 6px}.agent-marker{width:5px;height:5px;flex:none;border-radius:50%;background:#91ba79}.agent-row[data-status="offline"] .agent-marker{background:#8d8c82}.agent-row[data-status="waiting"] .agent-marker{background:#c9ad73}.agent-text{min-width:0;flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agent-text small{display:block;color:#aaa89f;font-size:10px;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.agent-status{font-size:10px;color:#aaa89f;text-transform:capitalize}
 @media(prefers-reduced-motion: reduce){.orb-wrap,.picker,.orb{transition:none!important}main[data-expanded="true"] .orb-wrap{transform:none}}
-</style></head><body><main data-orb-root data-live="idle" data-expanded="false"><div class="orb-wrap"><canvas class="orb-canvas" data-orb-canvas aria-hidden="true"></canvas><button class="orb" data-orb aria-expanded="false" aria-label="Circe. Activate to choose providers and running agents."></button></div><section class="picker" aria-label="Circe activity" data-picker hidden><div class="picker-brand">Circe<span>Activity</span></div><p class="live-label" data-live-label></p><p class="picker-label">Default agent</p><div class="picker-list" data-provider-list></div><section class="running-section" data-running-section hidden><p class="running-label">Running agents</p><div class="running-list" data-running-list></div></section><p class="picker-error" data-picker-error hidden></p><p class="picker-hint">Ctrl+Shift+J toggles voice.</p></section></main><script type="x-shader/x-fragment" id="orb-frag">${ORB_FRAGMENT_SHADER}</script>${orbScript}</body></html>`;
+</style></head><body><main data-orb-root data-live="idle" data-expanded="false"><div class="orb-wrap"><canvas class="orb-canvas" data-orb-canvas aria-hidden="true"></canvas><button class="orb" data-orb aria-expanded="false" aria-label="Circe. Activate to choose providers and running agents."></button></div><section class="picker" aria-label="Circe activity" data-picker hidden><div class="picker-brand">Circe<span>Activity</span></div><p class="live-label" data-live-label></p><p class="picker-label">Default agent</p><div class="picker-list" data-provider-list></div><section class="running-section" data-running-section hidden><p class="running-label">Running agents</p><div class="running-list" data-running-list></div></section><p class="picker-error" data-picker-error hidden></p><p class="picker-hint">Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation.</p></section></main><script type="x-shader/x-fragment" id="orb-frag">${ORB_FRAGMENT_SHADER}</script>${orbScript}</body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
 }
 

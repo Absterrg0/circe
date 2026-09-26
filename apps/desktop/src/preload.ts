@@ -170,12 +170,21 @@ export function isCirceOrbSelection(value: unknown): value is DesktopCirceOrbSel
 
 const orbSelectHub = createCirceOrbSelectHub();
 
+// Hold edges are live only: a press nobody is listening for must not start a
+// recording later, so nothing is buffered.
+const voiceHoldListeners = new Set<(phase: "press" | "release") => void>();
+
 ipcRenderer.on(IpcChannels.MENU_ACTION_CHANNEL, (_event, action: unknown) => {
   if (typeof action === "string") menuActionHub.emit(action);
 });
 
 ipcRenderer.on(IpcChannels.CIRCE_LIVE_VOICE_TOGGLE_CHANNEL, () => {
   liveVoiceToggleHub.emit();
+});
+
+ipcRenderer.on(IpcChannels.CIRCE_VOICE_HOLD_CHANNEL, (_event, phase: unknown) => {
+  if (phase !== "press" && phase !== "release") return;
+  for (const listener of voiceHoldListeners) listener(phase);
 });
 
 ipcRenderer.on(IpcChannels.CIRCE_ORB_SELECT_CHANNEL, (_event, selection: unknown) => {
@@ -242,6 +251,10 @@ const desktopBridge = {
       ipcRenderer.send(IpcChannels.CIRCE_LIVE_VOICE_STATE_CHANNEL, state);
     },
     onToggle: (listener) => liveVoiceToggleHub.subscribe(listener),
+    onHold: (listener) => {
+      voiceHoldListeners.add(listener);
+      return () => voiceHoldListeners.delete(listener);
+    },
   },
   circeOrb: {
     // Fire-and-forget catalog push; the overlay renders the latest it got.

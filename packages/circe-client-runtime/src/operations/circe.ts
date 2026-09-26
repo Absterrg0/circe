@@ -6,6 +6,9 @@ import {
   type CirceCancelRequestInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
+  type CirceHostListenInput,
+  type CirceHostSayInput,
+  type CirceHostSpeakInput,
   type CirceInterpretInput,
   type CirceManageProjectAliasInput,
 } from "@circe/contracts";
@@ -18,6 +21,28 @@ export const executeCirceInstruction = Effect.fn("Circe.executeInstruction")(fun
   input: CirceExecuteInput,
 ) {
   return yield* request(WS_METHODS.circeExecute, input);
+});
+
+/**
+ * One message to the node's Circe host layer, which interprets it against the
+ * node's own projects and threads and carries it out there.
+ */
+export const sayToCirceHost = Effect.fn("Circe.hostSay")(function* (input: CirceHostSayInput) {
+  return yield* request(WS_METHODS.circeHostSay, input);
+});
+
+/** One spoken message to the node's Circe host layer, transcribed through Circe Mesh. */
+export const listenToCirceHost = Effect.fn("Circe.hostListen")(function* (
+  input: CirceHostListenInput,
+) {
+  return yield* request(WS_METHODS.circeHostListen, input);
+});
+
+/** One Circe reply as speech, synthesized through Circe Mesh. */
+export const speakWithCirceHost = Effect.fn("Circe.hostSpeak")(function* (
+  input: CirceHostSpeakInput,
+) {
+  return yield* request(WS_METHODS.circeHostSpeak, input);
 });
 
 /**

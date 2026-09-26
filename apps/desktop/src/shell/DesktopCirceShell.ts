@@ -256,6 +256,8 @@ export interface DesktopCirceShellInput {
    */
   readonly overlayProfileDir?: string;
   readonly sendLiveVoiceToggle?: () => void;
+  /** Push-to-talk edges for Circe voice. */
+  readonly sendVoiceHold?: (phase: "press" | "release") => void;
   readonly revealMain: () => void;
   readonly quit: () => void;
   readonly setCloseToTrayEnabled?: (enabled: boolean) => void;
@@ -620,9 +622,8 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
 
   const talk = (): void => {
     if (stopped) return;
-    // The one hotkey owns a full-duplex live conversation toggle. The orb
-    // stays up so the user sees the session start.
-    liveToggleHeld = true;
+    // A tap (tray, or a shortcut without key-up) starts or ends a live
+    // conversation. The orb stays up so the user sees the session start.
     refreshOrbSurface();
     input.sendLiveVoiceToggle?.();
   };
@@ -639,24 +640,27 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
 
   const startTalk = (): void => {
     if (stopped) return;
-    // Hold hardware acts as a tap for live: press toggles, release clears.
+    // Push to talk: Circe records while the hotkey is held. The renderer
+    // reads a release that comes too soon for a message as a tap, which
+    // starts or ends a live conversation.
     liveToggleHeld = true;
     refreshOrbSurface();
-    input.sendLiveVoiceToggle?.();
+    input.sendVoiceHold?.("press");
   };
 
   const releaseTalk = (): void => {
-    if (stopped) return;
-    if (liveToggleHeld) {
-      liveToggleHeld = false;
-    }
+    if (stopped || !liveToggleHeld) return;
+    liveToggleHeld = false;
+    input.sendVoiceHold?.("release");
   };
 
   const refreshTrayMenu = (): void => {
     if (tray === null) return;
     const shortcutLabel = input.platform === "darwin" ? "Command+Shift+J" : "Ctrl+Shift+J";
     const voiceItemLabel = (() => {
-      if (!liveVoiceState.active) return `Start live conversation (${shortcutLabel})`;
+      if (!liveVoiceState.active || liveVoiceState.mode === "message") {
+        return `Start live conversation (${shortcutLabel})`;
+      }
       switch (liveVoiceState.status) {
         case "live":
           return `End live conversation (${shortcutLabel})`;
@@ -671,6 +675,10 @@ export function createDesktopCirceShell(input: DesktopCirceShellInput): DesktopC
         buildTrayMenu([
           { label: "Open Circe", click: open },
           { label: voiceItemLabel, click: talk },
+          // Push to talk needs a key-up edge, so it is offered only with one.
+          ...(removePushToTalk === null
+            ? []
+            : [{ label: `Hold ${shortcutLabel} to talk to Circe`, enabled: false }]),
           { type: "separator" },
           { label: "Quit", click: input.quit },
         ]),
@@ -918,6 +926,9 @@ export const layer = Layer.effect(
         : {}),
       sendLiveVoiceToggle: () => {
         void run(desktopWindow.sendLiveVoiceToggle);
+      },
+      sendVoiceHold: (phase) => {
+        void run(desktopWindow.sendVoiceHold(phase));
       },
       onOrbSelect: (selection: DesktopCirceOrbSelection) => {
         void run(desktopWindow.sendOrbSelection(selection));

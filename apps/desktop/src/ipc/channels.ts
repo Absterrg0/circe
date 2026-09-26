@@ -28,6 +28,7 @@ export const DESKTOP_PRELOAD_READY_CHANNEL = "desktop:preload-ready";
 export const DESKTOP_RENDERER_READY_CHANNEL = "desktop:renderer-ready";
 export const CIRCE_LIVE_VOICE_STATE_CHANNEL = "desktop:circe-live-voice-state";
 export const CIRCE_LIVE_VOICE_TOGGLE_CHANNEL = "desktop:circe-live-voice-toggle";
+export const CIRCE_VOICE_HOLD_CHANNEL = "desktop:circe-voice-hold";
 export const CIRCE_ORB_CATALOG_CHANNEL = "desktop:circe-orb-catalog";
 export const CIRCE_ORB_SELECT_CHANNEL = "desktop:circe-orb-select";
 export const GET_SYSTEM_LOCALE_CHANNEL = "desktop:get-system-locale";

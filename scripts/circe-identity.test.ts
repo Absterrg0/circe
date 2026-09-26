@@ -63,7 +63,7 @@ it("brands the palette, overlay, and portal scope without renaming routes", () =
   assert.include(palette, 'value: "action:circe"');
 
   const overlay = readSource("../apps/desktop/src/shell/DesktopCirceOverlay.ts");
-  assert.include(overlay, "Circe is idle");
+  assert.include(overlay, `idle: { label: "Circe",`);
   assert.include(overlay, "Circe. Activate to choose providers and running agents.");
   assert.notInclude(overlay, "ARIS");
   assert.notInclude(overlay, "Jarvis");

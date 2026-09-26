@@ -87,6 +87,7 @@ import {
   type CirceInteractionSpeech,
 } from "./CirceInteractionSpeech";
 import { getCirceLiveVoiceSink, registerCirceLiveVoiceDelegate } from "./CirceLiveVoice.bridge";
+import { circeEnvironment } from "../../state/circe";
 import { circeMeshEnvironment } from "../../state/circeMesh";
 import { circeMeshCatalogAtom } from "../../state/circeMesh";
 import { usePrimaryEnvironmentId } from "../../state/environments";
@@ -297,6 +298,10 @@ export function CirceVoiceRuntime({
     reportDefect: false,
   });
   const cancelMission = useAtomCommand(circeLiveVoiceEnvironment.cancelMission, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const sayToCirceHost = useAtomCommand(circeEnvironment.hostSay, {
     reportFailure: false,
     reportDefect: false,
   });
@@ -1674,6 +1679,48 @@ export function CirceVoiceRuntime({
       cancelInteractionSpeech();
       const capturedInstruction = voiceSubmission.transcript;
       const inputMode: SubmissionInputMode = voiceSubmission.inputMode ?? "voice";
+      // The node's Circe host layer takes every message first: it reads the
+      // node's projects and threads, carries the message out there, and keeps
+      // its own pending question, so a reply is just the next message. Only a
+      // node with the layer off falls through to the Director path below.
+      if (primaryEnvironmentId !== null && capturedInstruction.trim().length > 0) {
+        const onScreen =
+          routeTarget !== null && routeTarget.environmentId === primaryEnvironmentId
+            ? {
+                projectId: routeTarget.projectId,
+                ...(routeTarget.contextThreadId === undefined
+                  ? {}
+                  : { threadId: routeTarget.contextThreadId }),
+              }
+            : undefined;
+        const hostReply = await sayToCirceHost({
+          environmentId: primaryEnvironmentId,
+          input: {
+            utterance: capturedInstruction.trim().slice(0, 16_000),
+            ...(onScreen === undefined ? {} : { focus: onScreen }),
+          },
+        });
+        if (hostReply._tag === "Success" && hostReply.value.status !== "unavailable") {
+          const reply = hostReply.value;
+          emitFeedback({
+            text: reply.said,
+            kind:
+              reply.status === "asked"
+                ? "needs-input"
+                : reply.status === "failed"
+                  ? "error"
+                  : "done",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            ...(voiceSubmission.requestId === undefined
+              ? {}
+              : { requestId: voiceSubmission.requestId }),
+          });
+          const shown = reply.navigate?.threadId;
+          if (shown !== undefined) await onThreadStarted(primaryEnvironmentId, shown);
+          return;
+        }
+      }
       const pendingVoiceClarification = voiceClarificationRef.current;
       const voiceSnapshot = voiceSubmissionSnapshotsRef.current.get(voiceSubmission.captureId);
       const pendingProjectChoice =
@@ -3291,6 +3338,8 @@ export function CirceVoiceRuntime({
       refreshMesh,
       refreshMeshNode,
       resolveVoiceModelAnswer,
+      routeTarget,
+      sayToCirceHost,
       startSurfaceMission,
       storeServerClarification,
       target,
