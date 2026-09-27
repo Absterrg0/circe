@@ -27,6 +27,7 @@ import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSn
 import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import * as RepositoryIdentityResolver from "../project/RepositoryIdentityResolver.ts";
 import { forkParked } from "../serverActivation.ts";
+import { withResubscribe } from "../streamResubscribe.ts";
 import { OrchestratorV2 } from "./Orchestrator.ts";
 
 class ThreadPullRequestServiceV2 extends Context.Service<
@@ -355,7 +356,14 @@ export const make = Effect.gen(function* () {
   const start: ThreadPullRequestServiceV2["Service"]["start"] = Effect.fn(
     "ThreadPullRequestServiceV2.start",
   )(function* () {
-    yield* forkParked(Stream.runForEach(orchestrator.streamDomainEvents, processEvent));
+    // A resubscribe refreshes every thread first, for what it may have missed.
+    yield* forkParked(
+      withResubscribe(
+        "Thread pull request event stream",
+        Stream.runForEach(orchestrator.streamDomainEvents, processEvent),
+        { onResubscribe: worker.enqueue({ threadId: null, refresh: false }) },
+      ),
+    );
     yield* forkParked(
       Effect.gen(function* () {
         yield* worker.enqueue({ threadId: null, refresh: false, backfill: true });

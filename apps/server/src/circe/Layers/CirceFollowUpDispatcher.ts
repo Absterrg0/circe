@@ -17,6 +17,7 @@ import { latestActiveRun } from "../../orchestration-v2/ThreadManagementService.
 import { ProjectionTurnRepository } from "../../persistence/Services/ProjectionTurns.ts";
 import { ProjectionSnapshotQuery } from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { forkParked } from "../../serverActivation.ts";
+import { withResubscribe } from "../../streamResubscribe.ts";
 import { CirceFollowUpQueue } from "../Services/CirceFollowUpQueue.ts";
 import {
   CirceFollowUpDispatcher,
@@ -250,34 +251,43 @@ export const makeCirceFollowUpDispatcher = Effect.gen(function* () {
         }),
       ),
     );
+    const reconcilePending = Effect.gen(function* () {
+      const pending = yield* queue.listPendingThreadIds().pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Circe queue could not read pending work", {
+            cause: Cause.pretty(cause),
+          }).pipe(Effect.as([])),
+        ),
+      );
+      for (const threadId of pending) yield* reconcileThread(threadId);
+    });
+    // A dead event stream would leave queued follow-ups waiting forever; it
+    // resubscribes, and catches up on every thread with pending work first.
     yield* forkParked(
-      Stream.runForEach(orchestration.streamDomainEvents, (event) => {
-        if (event.type === "provider-session.updated" && event.payload.status === "ready") {
-          return reconcileThread(event.threadId);
-        }
-        if (event.type === "run.updated") {
-          switch (event.payload.status) {
-            case "completed":
-            case "failed":
-            case "cancelled":
-            case "interrupted":
-            case "rolled_back":
-              return reconcileThread(event.threadId);
-            default:
-              return Effect.void;
+      withResubscribe(
+        "Circe follow-up dispatcher",
+        Stream.runForEach(orchestration.streamDomainEvents, (event) => {
+          if (event.type === "provider-session.updated" && event.payload.status === "ready") {
+            return reconcileThread(event.threadId);
           }
-        }
-        return Effect.void;
-      }),
-    );
-    const pending = yield* queue.listPendingThreadIds().pipe(
-      Effect.catchCause((cause) =>
-        Effect.logWarning("Circe queue startup could not read pending work", {
-          cause: Cause.pretty(cause),
-        }).pipe(Effect.as([])),
+          if (event.type === "run.updated") {
+            switch (event.payload.status) {
+              case "completed":
+              case "failed":
+              case "cancelled":
+              case "interrupted":
+              case "rolled_back":
+                return reconcileThread(event.threadId);
+              default:
+                return Effect.void;
+            }
+          }
+          return Effect.void;
+        }),
+        { onResubscribe: reconcilePending },
       ),
     );
-    for (const threadId of pending) yield* reconcileThread(threadId);
+    yield* reconcilePending;
   });
   return { start, reconcileThread, stop, drain } satisfies CirceFollowUpDispatcherShape;
 });

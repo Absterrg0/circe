@@ -16,6 +16,12 @@ if (
     runtimeMain: import.meta.main,
   })
 ) {
+  // The desktop app starts this server by running its Electron binary as
+  // Node. The flag has done its job once this process runs; left in the
+  // environment, every provider CLI, git hook and script the server starts
+  // inherits it, and any Electron app those launch (an editor, a desktop dev
+  // build) starts as plain Node instead. Children that need Node mode set it.
+  delete process.env.ELECTRON_RUN_AS_NODE;
   const command = process.argv[2];
   if (command === "acp-mcp-bridge" || command === "acp-mcp-call") {
     const { runAcpMcpCliFastPath } = await import("./mcp/AcpMcpStdioBridge.ts");
