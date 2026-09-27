@@ -326,6 +326,24 @@ export function bindCirceDeviceTarget(
   return advanced({ ...state, target }, now);
 }
 
+/**
+ * The approval a device goal waits on. Every new or corrected device goal
+ * asks it again: an approval covers the goal it named and nothing else.
+ */
+export function deviceApprovalQuestion(
+  surface: "browser" | "preview" | "computer",
+  goal: string,
+): CirceInteractionQuestion {
+  return {
+    questionId: `device:${surface}:approval`,
+    kind: "approval",
+    slot: "approval",
+    prompt: `I'll control ${surface === "computer" ? "this computer" : "the browser"} to ${goal}. Start?`,
+    known: { surface },
+    choices: [],
+  };
+}
+
 export type LookupSlotResolution =
   | {
       readonly status: "resolved";
@@ -343,15 +361,26 @@ const fold = (value: string): string =>
     .replace(/[^\p{L}\p{N}]+/gu, " ")
     .trim();
 
+/**
+ * The offered choice an answer names: the one it says exactly, else the one
+ * it contains. Of several contained choices the longest wins, since "New
+ * York" contains "York" and not the other way round; a tie is no answer.
+ */
 function matchChoice(choices: ReadonlyArray<string>, utterance: string): string | undefined {
   const haystack = fold(utterance);
   if (haystack.length === 0) return undefined;
-  for (const choice of choices) {
-    const needle = fold(choice);
-    if (needle.length === 0) continue;
-    if (haystack === needle || haystack.includes(needle)) return choice;
-  }
-  return undefined;
+  const folded = choices
+    .map((choice) => ({ choice, needle: fold(choice) }))
+    .filter((entry) => entry.needle.length > 0);
+  const exact = folded.find((entry) => entry.needle === haystack);
+  if (exact !== undefined) return exact.choice;
+  const contained = folded
+    .filter((entry) => ` ${haystack} `.includes(` ${entry.needle} `))
+    .toSorted((left, right) => right.needle.length - left.needle.length);
+  const [first, second] = contained;
+  if (first === undefined) return undefined;
+  if (second !== undefined && second.needle.length === first.needle.length) return undefined;
+  return first.choice;
 }
 
 const DAY_WORDS: ReadonlyArray<{ readonly word: string; readonly day: CirceLookupDay }> = [
@@ -567,13 +596,13 @@ export function decideCirceInteractionInput(
       return { relation, state: next, effect: lookupEffect(goal), problem: null };
     }
     if (state.goal.kind === "device") {
-      const next = advanced({ ...state, pending: null }, input.now);
-      return {
-        relation,
-        state: next,
-        effect: { kind: "start-device", surface: state.goal.surface, goal: input.utterance },
-        problem: null,
-      };
+      // A correction changes what would run; it never approves it.
+      const goal = { ...state.goal, goal: input.utterance };
+      const next = advanced(
+        { ...state, goal, pending: deviceApprovalQuestion(goal.surface, goal.goal) },
+        input.now,
+      );
+      return { relation, state: next, effect: { kind: "none" }, problem: null };
     }
     return {
       relation,

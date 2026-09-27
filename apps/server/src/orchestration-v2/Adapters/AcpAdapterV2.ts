@@ -93,6 +93,7 @@ import {
 import { ACP_SESSION_MODE_OPTION_ID } from "../../provider/acp/AcpSessionConfig.ts";
 import * as AcpSessionRuntime from "../../provider/acp/AcpSessionRuntime.ts";
 import {
+  circeToolAvailability,
   t3AcpPromptWithInstructions,
   type T3AcpInstructionState,
 } from "../../provider/T3OrchestrationInstructions.ts";
@@ -6263,6 +6264,9 @@ export function makeAcpAdapterV2(options: AcpAdapterV2Options): ProviderAdapterV
           const instructionState = {
             interactionMode: turnInput.runtimePolicy.interactionMode,
             hasT3Mcp: acpMcpServers(turnInput.threadId).length > 0,
+            tools: circeToolAvailability(
+              McpProviderSession.readMcpProviderSession(turnInput.threadId),
+            ),
           } satisfies T3AcpInstructionState;
           const previousInstructionState = (yield* Ref.get(promptInstructionStates)).get(sessionId);
           const messageText = providerMessageTextWithAttachmentPaths({

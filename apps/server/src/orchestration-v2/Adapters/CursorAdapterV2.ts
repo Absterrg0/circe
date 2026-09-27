@@ -50,7 +50,10 @@ import {
   rewriteCursorSkillMentions,
 } from "../../provider/Drivers/CursorSkills.ts";
 import { mergeProviderInstanceEnvironment } from "../../provider/ProviderInstanceEnvironment.ts";
-import { t3OrchestrationPromptForFirstRun } from "../../provider/T3OrchestrationInstructions.ts";
+import {
+  circeToolAvailability,
+  t3OrchestrationPromptForFirstRun,
+} from "../../provider/T3OrchestrationInstructions.ts";
 import { buildRuntimeInstructions } from "../../provider/RuntimeInstructions.ts";
 import { IdAllocatorV2, type IdAllocatorV2Shape } from "../IdAllocator.ts";
 import { makeProviderFailure } from "../ProviderFailure.ts";
@@ -2092,6 +2095,9 @@ export function makeCursorAdapterV2(
             }),
             runOrdinal: turnInput.runOrdinal,
             hasT3Mcp: cursorMcpServers(turnInput.threadId) !== undefined,
+            tools: circeToolAvailability(
+              McpProviderSession.readMcpProviderSession(turnInput.threadId),
+            ),
           });
           const images = yield* Effect.forEach(
             turnInput.message.attachments.filter(isProviderNativeImageAttachment),

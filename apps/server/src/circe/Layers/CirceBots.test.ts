@@ -12,6 +12,7 @@ import {
 } from "@circe/contracts";
 import { assert, it } from "@effect/vitest";
 import * as Effect from "effect/Effect";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 import * as TestClock from "effect/testing/TestClock";
@@ -33,6 +34,11 @@ interface FakeGateway {
   sendFails: boolean;
   acceptance: GrokBotAcceptance;
   prompts: Array<{ botId: string; prompt: string; nonce: string }>;
+  /** When set, sendPrompt parks until the test releases it, so a reply can land mid-send. */
+  sendGate?: {
+    readonly entered: PromiseWithResolvers<void>;
+    readonly release: PromiseWithResolvers<void>;
+  };
 }
 
 const fakeGateway = (): FakeGateway => ({
@@ -51,6 +57,10 @@ const gatewayFrom = (fake: FakeGateway): GrokBotGateway => ({
   sendPrompt: async (input) => {
     if (fake.sendFails) throw new Error("socket closed");
     fake.prompts.push(input);
+    if (fake.sendGate !== undefined) {
+      fake.sendGate.entered.resolve();
+      await fake.sendGate.release.promise;
+    }
   },
   acceptance: async () => fake.acceptance,
 });
@@ -255,6 +265,49 @@ it.effect("closes the reply URL when the user stops waiting or the deadline pass
   }),
 );
 
+it.effect("tells an open conversation when its wait runs out, with nothing else happening", () =>
+  Effect.gen(function* () {
+    const fake = fakeGateway();
+    yield* Effect.gen(function* () {
+      const bots = yield* CirceBots;
+      // The conversation is open before the message and stays open.
+      const expired = yield* bots.subscribeConversation(desk).pipe(
+        Stream.filter((conversation) =>
+          conversation.messages.some(
+            (message) => message.role === "user" && message.delivery === "expired",
+          ),
+        ),
+        Stream.runHead,
+        Effect.forkChild,
+      );
+      yield* bots.send({ botId: desk, messageId: messageId("m-quiet"), text: "Anyone there?" });
+      yield* TestClock.adjust(CIRCE_BOT_REPLY_WINDOW_MS + 1);
+      const seen = yield* Fiber.join(expired);
+      assert.strictEqual(seen._tag, "Some");
+    }).pipe(Effect.provide(botsLayer(fake)));
+  }),
+);
+
+it.effect("never takes an older message's late answer as the result of the latest", () =>
+  Effect.gen(function* () {
+    const fake = fakeGateway();
+    yield* Effect.gen(function* () {
+      const bots = yield* CirceBots;
+      yield* bots.send({ botId: desk, messageId: messageId("m-a"), text: "First" });
+      yield* bots.send({ botId: desk, messageId: messageId("m-b"), text: "Second" });
+      const [first] = fake.prompts.map((prompt) => replyToken(prompt.prompt));
+      assert.strictEqual(
+        yield* bots.acceptReply({ token: first!, kind: "answer", text: "About the first." }),
+        "accepted",
+      );
+      yield* bots.stopWaiting({ botId: desk, messageId: messageId("m-b") });
+      const [place] = yield* bots.places();
+      assert.include(place?.lastSent, { text: "Second", delivery: "expired" });
+      assert.isNull(place?.lastReply ?? null);
+    }).pipe(Effect.provide(botsLayer(fake)));
+  }),
+);
+
 it.effect("keeps a stored conversation visible when the gateway stops listing its bot", () =>
   Effect.gen(function* () {
     const fake = fakeGateway();
@@ -276,6 +329,43 @@ it.effect("keeps a stored conversation visible when the gateway stops listing it
       yield* bots.clearConversation(desk);
       const cleared = yield* bots.refresh();
       assert.deepStrictEqual(cleared.bots, []);
+    }).pipe(Effect.provide(botsLayer(fake)));
+  }),
+);
+
+it.effect("keeps an answer that lands before the gateway acknowledges the prompt", () =>
+  Effect.gen(function* () {
+    const fake = fakeGateway();
+    const entered = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    fake.sendGate = { entered, release };
+    yield* Effect.gen(function* () {
+      const bots = yield* CirceBots;
+      // Hold send inside the gateway call so the callback can race the send.
+      const sendFiber = yield* bots
+        .send({ botId: desk, messageId: messageId("m-race"), text: "Race" })
+        .pipe(Effect.forkChild);
+      yield* Effect.promise(() => entered.promise);
+      const prompt = fake.prompts[0];
+      if (prompt === undefined) throw new Error("prompt never reached the gateway");
+      const token = replyToken(prompt.prompt);
+
+      // The bot answers before the gateway acknowledges the prompt.
+      assert.strictEqual(
+        yield* bots.acceptReply({ token, kind: "answer", text: "Early answer." }),
+        "accepted",
+      );
+
+      release.resolve();
+      const sent = yield* Fiber.join(sendFiber);
+
+      // The landed answer must win; send must not reset it to 'waiting'.
+      assert.strictEqual(sent.delivery, "answered");
+      // The retained token still recognizes the identical retry as a duplicate.
+      assert.strictEqual(
+        yield* bots.acceptReply({ token, kind: "answer", text: "Early answer." }),
+        "duplicate",
+      );
     }).pipe(Effect.provide(botsLayer(fake)));
   }),
 );

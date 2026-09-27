@@ -11,6 +11,8 @@ import {
   ComputerService,
   type ComputerMission,
 } from "../../../computer/ComputerService.ts";
+import { CirceComputerAccess } from "../../../circe/Services/CirceComputerAccess.ts";
+import { OrchestratorV2 } from "../../../orchestration-v2/Orchestrator.ts";
 import { McpInvocationContext } from "../../McpInvocationContext.ts";
 import { make } from "./handlers.ts";
 
@@ -47,6 +49,8 @@ const withToolkit = <A, E, R>(
   }).pipe(
     Effect.provide(
       Layer.mergeAll(
+        Layer.mock(CirceComputerAccess)({ controllable: true, holds: () => Effect.succeed(true) }),
+        Layer.mock(OrchestratorV2)({ getThreadShell: () => Effect.succeed(null) }),
         Layer.mock(ComputerService)({
           status: Effect.succeed({
             available: true,
@@ -223,6 +227,11 @@ describe("computer toolkit handlers", () => {
       Effect.provide(
         Layer.mergeAll(
           failing,
+          Layer.mock(CirceComputerAccess)({
+            controllable: true,
+            holds: () => Effect.succeed(true),
+          }),
+          Layer.mock(OrchestratorV2)({ getThreadShell: () => Effect.succeed(null) }),
           Layer.succeed(McpInvocationContext, {
             environmentId: EnvironmentId.make("env-1"),
             threadId: ThreadId.make("thread-1"),

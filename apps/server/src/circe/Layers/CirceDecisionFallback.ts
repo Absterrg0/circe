@@ -92,7 +92,9 @@ export function buildDecisionPrompt(request: DecisionRequest): string {
     }
   }
   lines.push(
-    'Reply with JSON: {"answers":[{"id":"<question id>","choice":"<key>","confidence":0.9}]} or {"id":"<question id>","noul":0.9} for predicates.',
+    // One shape for every answer, as the reply schema reads it: a predicate
+    // outside the list would be discarded with the whole reply.
+    'Reply with JSON only, one entry per question you answer: {"answers":[{"id":"<choice question id>","choice":"<key>","confidence":0.9},{"id":"<predicate question id>","noul":1}]}.',
   );
   return lines.join("\n");
 }

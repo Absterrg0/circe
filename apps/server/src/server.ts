@@ -133,6 +133,7 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
+import { CirceComputerAccessLive } from "./circe/Layers/CirceComputerAccess.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
 import { CirceInteractionLive } from "./circe/Layers/CirceInteraction.ts";
@@ -679,18 +680,6 @@ const makeRoutesLayer = Layer.mergeAll(
               ),
             ),
             Layer.provide(CirceRecoveryPlannerLive),
-            // Browser missions reuse the previewAutomation broker under a
-            // Circe-owned scope, so voice and text control drive the same host a
-            // provider session would.
-            Layer.provideMerge(
-              CirceComputerUseLive.pipe(
-                Layer.provide(CirceRecoveryPlannerLive),
-                Layer.provide(CirceDecisionProviderFirstLive),
-              ),
-            ),
-            // Desktop missions drive this node's own screen through the same
-            // grounded step layer over accessibility elements.
-            Layer.provideMerge(CirceMissionCancellationLive),
           ),
         ),
       ),
@@ -707,6 +696,20 @@ const makeRoutesLayer = Layer.mergeAll(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
+  // The one owner of requests to use this computer: Circe's host layer and
+  // the agents' computer tools both ask here. It exports the desktop
+  // executor and the stop registry so the interaction RPCs share them.
+  Layer.provide(
+    CirceComputerAccessLive.pipe(
+      Layer.provideMerge(
+        CirceComputerUseLive.pipe(
+          Layer.provide(CirceRecoveryPlannerLive),
+          Layer.provide(CirceDecisionProviderFirstLive),
+        ),
+      ),
+      Layer.provideMerge(CirceMissionCancellationLive),
+    ),
+  ),
   Layer.provide(CirceBotsLive),
   Layer.provide(CirceLiveVoice.layer.pipe(Layer.provide(CirceLiveVoiceSessionsLive))),
   Layer.provide(PreviewAutomationBroker.layer),

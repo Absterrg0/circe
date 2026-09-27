@@ -6,10 +6,12 @@ import type { Project, Thread } from "./core.ts";
 /**
  * Grok Bots in circe-core's world. circe-core knows projects (places work
  * can go) and threads (work in a place), so each bot is both: a project the
- * user can send work to, holding the one conversation the bot keeps in Grok.
- * The same `bot:` id names the project and its thread, which keeps a bot's
- * ids apart from orchestration ids, and lets the host route an operation on
- * either one back to the bot.
+ * user can send work to, holding the conversation the bot keeps in Grok.
+ * Each conversation Circe starts gets a new thread id, because circe-core
+ * finds what a start created by the id that appeared: that is how it knows
+ * to watch for the bot's answer, and why undo of a start reaches the host.
+ * The ids stay apart from orchestration ids, and the host routes an
+ * operation on any of them back to the bot.
  *
  * The thread's state follows the latest message: waiting on the bot reads as
  * running, an answer as finished work, and an error reply or a failed send
@@ -28,7 +30,8 @@ export function botProject(place: CirceBotPlace): Project {
   };
 }
 
-export function botThread(place: CirceBotPlace, nowMs: number): Thread {
+/** The bot's current conversation as a thread; `threadId` names the conversation Circe last started. */
+export function botThread(place: CirceBotPlace, nowMs: number, threadId: string): Thread {
   const { lastSent, lastReply } = place;
   const replyIsLatest = lastReply !== null && (lastSent === null || lastReply.at >= lastSent.at);
   const runState: Thread["runState"] =
@@ -60,7 +63,7 @@ export function botThread(place: CirceBotPlace, nowMs: number): Thread {
     .at(-1);
   const latestMs = latestAt === undefined ? Number.NaN : Date.parse(latestAt);
   return {
-    id: circeBotPlaceId(place.bot.botId),
+    id: threadId,
     projectId: circeBotPlaceId(place.bot.botId),
     title: `${place.bot.name} (Grok Bot)`,
     runState,

@@ -154,6 +154,10 @@ A qualified physical target: node, desktop session generation, application, and,
 
 One accepted device effect owned by the target node, persisted before execution with its interaction revision, target, authorized scope, goal, and expected outcome. Its result stays `unknown` until observed. See [circe-interactions.md](./circe-interactions.md).
 
+#### Computer access
+
+The node's single owner of requests to use its computer, from Circe on the user's behalf or from a coding agent's `computer_begin`. At most one request waits for the user's approval and at most one holder uses the computer. circe-core sees it as the "This computer" place. See [desktop-use.md](./desktop-use.md).
+
 #### Browser connector
 
 The Chrome extension plus native messaging host that lets a node observe and act on one visible tab

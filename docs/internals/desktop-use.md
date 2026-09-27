@@ -60,21 +60,44 @@ titles, and paths never appear in events.
 
 ## Mission surface
 
-Two things start a mission, and both are user-initiated: the computer panel in the app, and the
-voice lane. A mission holds the goal, the consent that created it, and the client request id that
-can cancel it. The deterministic step loop runs inside the mission: it grounds the goal to an
-application and window through the driver, reads the window's accessibility elements, selects one
-step at a time, and applies it through the same audited service calls a provider would use.
+`CirceComputerAccess` is the node's one owner of the computer. It holds at most one request waiting
+for approval and at most one holder, matching the single mission slot, and every route goes through
+it: Circe on the user's behalf, the Computer panel, the interaction route's desktop missions, and
+coding agents. Nothing touches the computer before the user approves, and a new goal replaces a
+waiting one with its own approval: a correction never inherits consent. Clients read the owner's
+state through `circe.computerAccess.subscribe` and settle it with typed `decide` and `stop`, so an
+approval never depends on hearing a spoken notice, works on a second device or after a reconnect,
+and works on a node without circe-core.
 
-Providers see a curated `computer_*` tool surface: status, app and window listing, window state
-with element tokens, and click, type, key, scroll, and launch actions. Every action tool refuses
-with `mission-required` until a mission is active, and with `mission-owner-mismatch` when the active
-mission belongs to another origin, so a model can never start, widen, borrow, or renew authority.
+Circe reaches it through circe-core. The node host puts "This computer" in circe-core's world as a
+project, and each request is its own thread. circe-core finds what a start created by the thread id
+that appeared, so a fresh id per request is what makes undo reach the request and makes circe-core
+watch it until it finishes. Only the asker that made a waiting request may replace it (the same
+device session, or the same agent run for the same goal), so a yes is never spent on a question its
+speaker did not hear. A waiting request is a question, not an approval: circe-core settles
+approvals by itself under the user's standing rules, and using the computer always needs the user's
+own answer. The host reads that answer itself. A plain yes or no settles the request only for the
+device session that was asked, which each client names with an `origin` on every host message;
+anything else is a new goal. A typed decision names the exact request the client showed, from any
+device.
 
-Provider-owned missions are not created by any production path yet: explicit user-approved
-delegation through the ordinary provider flow is still to build. Until then, provider computer tools
-refuse and the deterministic client-owned mission is the working path. The node's guidance says so
-instead of telling the model to retry.
+Circe's approved goals run in the deterministic step loop, which grounds the goal to an application
+and window, reads its accessibility elements, and applies one step at a time through the audited
+service calls. The run belongs to the node's scope, not to the request that approved it, and it
+settles on every exit; an interrupted run is `uncertain`, never replayed.
+
+Providers see a curated `computer_*` tool surface. `computer_begin` asks for the computer through
+the same owner, bound to the agent's current run. Approval first checks that run is still the
+thread's running one, then starts a mission owned by that exact provider thread and session; a
+request withdrawn while its mission was being admitted gets that mission ended at once. The action
+tools (app and window listing, window state with element tokens, click, type, key, scroll, launch)
+work only under it. They refuse with `mission-required` without one and `mission-owner-mismatch`
+under someone else's, so a model never starts, widens, borrows, or renews authority. The end of that
+exact run withdraws a waiting request or hands the computer back, as do `computer_end`, a user stop,
+and the native mission ending. Another run in the same thread ending changes nothing. Every tool
+call also checks that the thread's running run is the one granted, so a later run in the same
+provider session never inherits the grant, and a missed run-end event is caught there and after the
+holder watch resubscribes.
 
 The previous server-side actuator (AT-SPI and OS CLI helpers under `apps/server/src/circe/desktopUse`)
 has been removed. The desktop host is the only computer-use path; no server-local helper spawns OS

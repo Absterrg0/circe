@@ -14,6 +14,8 @@ import {
   readWindowState,
   readWindows,
 } from "../../../computer/driverSchemas.ts";
+import { CirceComputerAccess } from "../../../circe/Services/CirceComputerAccess.ts";
+import { OrchestratorV2 } from "../../../orchestration-v2/Orchestrator.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import { ComputerToolkit } from "./tools.ts";
 
@@ -24,6 +26,9 @@ const TOOL_ERROR_SCHEMA = Schema.Struct({
 type ToolError = typeof TOOL_ERROR_SCHEMA.Type;
 
 const toolError = (code: string, message: string): ToolError => ({ code, message });
+
+/** How long one computer_begin call waits on the user; below the providers' tool-call timeouts. */
+const BEGIN_WAIT = "45 seconds";
 
 const missionOwnerFor = (invocation: {
   readonly threadId: string;
@@ -48,6 +53,8 @@ const toActionResult = (result: ComputerHostToolResult) => ({
 
 export const make = Effect.gen(function* () {
   const service = yield* ComputerService;
+  const access = yield* CirceComputerAccess;
+  const orchestrator = yield* OrchestratorV2;
   const requireCapability = () => McpInvocationContext.requireMcpCapability("computer-use");
 
   /**
@@ -70,7 +77,7 @@ export const make = Effect.gen(function* () {
         return yield* Effect.fail(
           toolError(
             "mission-required",
-            "No computer mission is active. Ask the user to start computer use from the Circe app or voice lane, then retry.",
+            "This session holds no computer mission. Call computer_begin with your goal; the user approves it through Circe.",
           ),
         );
       if (
@@ -81,7 +88,23 @@ export const make = Effect.gen(function* () {
         return yield* Effect.fail(
           toolError(
             "mission-owner-mismatch",
-            "This computer mission was authorized for a different origin. It can only be driven by its own operation; ask the user to start a mission for this task.",
+            "The computer is in use under a mission that belongs to someone else. Call computer_begin to ask for it once it is free.",
+          ),
+        );
+      // The mission is this session's, but only for the run that was granted
+      // it: a later run in the same session asks again.
+      const shell = yield* orchestrator
+        .getThreadShell(invocation.threadId)
+        .pipe(Effect.orElseSucceed(() => null));
+      const held = yield* access.holds({
+        providerSessionId: invocation.providerSessionId,
+        runId: shell?.activeRunId ?? null,
+      });
+      if (!held)
+        return yield* Effect.fail(
+          toolError(
+            "mission-required",
+            "This run holds no computer mission. Call computer_begin with your goal; the user approves it through Circe.",
           ),
         );
       return yield* run(mission, service, invocation);
@@ -120,6 +143,61 @@ export const make = Effect.gen(function* () {
               }),
           ...(status.host?.reason === undefined ? {} : { reason: status.host.reason }),
           missionActive: status.activeMission !== undefined,
+        };
+      }),
+
+    computer_begin: (input) =>
+      Effect.gen(function* () {
+        yield* requireCapability();
+        const invocation = yield* McpInvocationContext.McpInvocationContext;
+        const shell = yield* orchestrator
+          .getThreadShell(invocation.threadId)
+          .pipe(Effect.orElseSucceed(() => null));
+        // Access is bound to the run that asks; its end withdraws the request
+        // or hands the computer back.
+        if (shell === null || shell.activeRunId === null) {
+          return yield* Effect.fail(
+            toolError("run-required", "Ask for the computer from inside a running turn."),
+          );
+        }
+        const requester = {
+          kind: "agent" as const,
+          threadId: invocation.threadId,
+          runId: shell.activeRunId,
+          providerSessionId: invocation.providerSessionId,
+          title: shell.title,
+        };
+        const request = yield* access
+          .request({ goal: input.goal, requester })
+          .pipe(Effect.mapError((error) => toolError("computer-unavailable", error.reason)));
+        const grant = yield* access.awaitGrant(requester, request.id, BEGIN_WAIT);
+        switch (grant.status) {
+          case "granted":
+            return {
+              status: "granted" as const,
+              message: "You hold the computer. Call computer_end when you are done.",
+            };
+          case "waiting":
+            return {
+              status: "waiting" as const,
+              message:
+                "The user has not answered yet. Call computer_begin again with the same goal to keep waiting.",
+            };
+          case "declined":
+            return { status: "declined" as const, message: grant.message };
+        }
+      }),
+
+    computer_end: () =>
+      Effect.gen(function* () {
+        yield* requireCapability();
+        const invocation = yield* McpInvocationContext.McpInvocationContext;
+        const held = (yield* access.state).active;
+        yield* access.release(invocation.providerSessionId);
+        return {
+          released:
+            held?.requester.kind === "agent" &&
+            held.requester.providerSessionId === invocation.providerSessionId,
         };
       }),
 

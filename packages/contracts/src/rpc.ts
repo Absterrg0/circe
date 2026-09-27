@@ -370,6 +370,14 @@ import {
 } from "./circe.ts";
 import { CirceBrowserUseInput, CirceBrowserUseResult } from "./circeBrowserUse.ts";
 import {
+  CirceComputerAccessDecideInput,
+  CirceComputerAccessDecideResult,
+  CirceComputerAccessStopInput,
+  CirceComputerAccessStopResult,
+  CirceComputerAccessSubscribeInput,
+  CirceComputerAccessView,
+} from "./circeComputerAccess.ts";
+import {
   CirceComputerStatus,
   CirceComputerStatusInput,
   CirceComputerUseInput,
@@ -377,6 +385,8 @@ import {
 } from "./circeComputerUse.ts";
 import {
   CirceHostListenInput,
+  CirceHostTranscribeInput,
+  CirceHostTranscribeResult,
   CirceHostListenResult,
   CirceHostNotice,
   CirceHostNoticeSubscriptionInput,
@@ -404,6 +414,9 @@ export const WS_METHODS = {
   circeBrowserUse: "circe.browserUse",
   circeComputerUse: "circe.computerUse",
   circeComputerStatus: "circe.computerStatus",
+  subscribeCirceComputerAccess: "circe.computerAccess.subscribe",
+  circeComputerAccessDecide: "circe.computerAccess.decide",
+  circeComputerAccessStop: "circe.computerAccess.stop",
   circeCancelMission: "circe.cancelMission",
   circeGetTaskDesk: "circe.getTaskDesk",
   circeFocusTask: "circe.focusTask",
@@ -415,6 +428,7 @@ export const WS_METHODS = {
   circeQuickLookup: "circe.quickLookup",
   circeHostSay: "circe.host.say",
   circeHostListen: "circe.host.listen",
+  circeHostTranscribe: "circe.host.transcribe",
   circeHostSpeak: "circe.host.speak",
   subscribeCirceHostNotices: "circe.host.subscribeNotices",
   circeInteractionSubmit: "circe.interaction.submit",
@@ -669,6 +683,28 @@ const WsCirceComputerStatusRpc = Rpc.make(WS_METHODS.circeComputerStatus, {
   error: EnvironmentAuthorizationError,
 });
 
+/** Who uses this node's computer and what waits for approval; the current state first. */
+const WsSubscribeCirceComputerAccessRpc = Rpc.make(WS_METHODS.subscribeCirceComputerAccess, {
+  payload: CirceComputerAccessSubscribeInput,
+  success: CirceComputerAccessView,
+  error: EnvironmentAuthorizationError,
+  stream: true,
+});
+
+/** Approve or deny exactly one waiting request to use this node's computer. */
+const WsCirceComputerAccessDecideRpc = Rpc.make(WS_METHODS.circeComputerAccessDecide, {
+  payload: CirceComputerAccessDecideInput,
+  success: CirceComputerAccessDecideResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** Withdraw a waiting request or stop whoever uses this node's computer. */
+const WsCirceComputerAccessStopRpc = Rpc.make(WS_METHODS.circeComputerAccessStop, {
+  payload: CirceComputerAccessStopInput,
+  success: CirceComputerAccessStopResult,
+  error: EnvironmentAuthorizationError,
+});
+
 /** Stop one running node mission by the request id it registered under. */
 const WsCirceCancelMissionRpc = Rpc.make(WS_METHODS.circeCancelMission, {
   payload: CirceCancelMissionInput,
@@ -742,6 +778,13 @@ const WsCirceHostSayRpc = Rpc.make(WS_METHODS.circeHostSay, {
 const WsCirceHostListenRpc = Rpc.make(WS_METHODS.circeHostListen, {
   payload: CirceHostListenInput,
   success: CirceHostListenResult,
+  error: EnvironmentAuthorizationError,
+});
+
+/** Speech to words through Circe Mesh, and nothing else. */
+const WsCirceHostTranscribeRpc = Rpc.make(WS_METHODS.circeHostTranscribe, {
+  payload: CirceHostTranscribeInput,
+  success: CirceHostTranscribeResult,
   error: EnvironmentAuthorizationError,
 });
 
@@ -1963,6 +2006,9 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
   WsCirceComputerStatusRpc,
+  WsSubscribeCirceComputerAccessRpc,
+  WsCirceComputerAccessDecideRpc,
+  WsCirceComputerAccessStopRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -1974,6 +2020,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceHostSayRpc,
   WsCirceHostListenRpc,
+  WsCirceHostTranscribeRpc,
   WsCirceHostSpeakRpc,
   WsSubscribeCirceHostNoticesRpc,
   WsCirceInteractionSubmitRpc,
@@ -2003,6 +2050,7 @@ export const WsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceHostSayRpc,
   WsCirceHostListenRpc,
+  WsCirceHostTranscribeRpc,
   WsCirceHostSpeakRpc,
   WsSubscribeCirceHostNoticesRpc,
   WsCirceVoiceLiveStartRpc,
@@ -2182,6 +2230,9 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceBrowserUseRpc,
   WsCirceComputerUseRpc,
   WsCirceComputerStatusRpc,
+  WsSubscribeCirceComputerAccessRpc,
+  WsCirceComputerAccessDecideRpc,
+  WsCirceComputerAccessStopRpc,
   WsCirceCancelMissionRpc,
   WsCirceGetTaskDeskRpc,
   WsCirceFocusTaskRpc,
@@ -2193,6 +2244,7 @@ export const CirceWsRpcGroup = RpcGroup.make(
   WsCirceQuickLookupRpc,
   WsCirceHostSayRpc,
   WsCirceHostListenRpc,
+  WsCirceHostTranscribeRpc,
   WsCirceHostSpeakRpc,
   WsSubscribeCirceHostNoticesRpc,
   WsCirceInteractionSubmitRpc,
@@ -2219,6 +2271,9 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeBrowserUse,
   WS_METHODS.circeComputerUse,
   WS_METHODS.circeComputerStatus,
+  WS_METHODS.subscribeCirceComputerAccess,
+  WS_METHODS.circeComputerAccessDecide,
+  WS_METHODS.circeComputerAccessStop,
   WS_METHODS.circeCancelMission,
   WS_METHODS.circeGetTaskDesk,
   WS_METHODS.circeFocusTask,
@@ -2230,6 +2285,7 @@ export const T3WsRpcGroup = WsRpcGroup.omit(
   WS_METHODS.circeQuickLookup,
   WS_METHODS.circeHostSay,
   WS_METHODS.circeHostListen,
+  WS_METHODS.circeHostTranscribe,
   WS_METHODS.circeHostSpeak,
   WS_METHODS.subscribeCirceHostNotices,
   WS_METHODS.circeInteractionSubmit,

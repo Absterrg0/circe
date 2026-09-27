@@ -16,7 +16,7 @@ import {
   type CirceInteractionSubmitInput,
   type EnvironmentId,
 } from "@circe/contracts";
-import type { CirceSemanticProposal } from "@circe/contracts";
+import type { CirceBrowserUseResult, CirceSemanticProposal } from "@circe/contracts";
 import type { DecisionRequest } from "@circe/core/decision";
 import {
   askCirceQuestion,
@@ -25,6 +25,7 @@ import {
   circeLookupSourceUtterance,
   createLookupInteraction,
   decideCirceInteractionInput,
+  deviceApprovalQuestion,
   needsRelationDecision,
   readInteractionRelation,
   recordCirceOutcome,
@@ -33,10 +34,14 @@ import {
 import * as DateTime from "effect/DateTime";
 import { FetchHttpClient } from "effect/unstable/http";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
+import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as PubSub from "effect/PubSub";
 import * as Schema from "effect/Schema";
+import * as Scope from "effect/Scope";
+import * as Semaphore from "effect/Semaphore";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 import * as Stream from "effect/Stream";
 
@@ -49,7 +54,7 @@ import { ComputerService } from "../../computer/ComputerService.ts";
 import * as CirceBrowserUse from "../Services/CirceBrowserUse.ts";
 import { CirceBrowserConnector } from "../Services/CirceBrowserConnector.ts";
 import { CirceBrowserConnectorUse } from "../Services/CirceBrowserConnectorUse.ts";
-import * as CirceComputerUse from "../Services/CirceComputerUse.ts";
+import { CirceComputerAccess } from "../Services/CirceComputerAccess.ts";
 import * as CirceController from "../Services/CirceController.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
 import { CirceInteraction } from "../Services/CirceInteraction.ts";
@@ -260,7 +265,9 @@ export const make = (options: CirceInteractionOptions = {}) =>
     const browserUse = yield* CirceBrowserUse.CirceBrowserUse;
     const browserConnector = yield* CirceBrowserConnector;
     const browserConnectorUse = yield* CirceBrowserConnectorUse;
-    const computerUse = yield* CirceComputerUse.CirceComputerUse;
+    // Desktop control goes through the computer's one owner, so this route
+    // and every other one see the same holder, busy state, and stop.
+    const computerAccess = yield* CirceComputerAccess;
     const missionCancellation = yield* CirceMissionCancellation;
     const computerService = yield* ComputerService;
     const decisionOpt = yield* Effect.serviceOption(CirceDecision);
@@ -269,6 +276,12 @@ export const make = (options: CirceInteractionOptions = {}) =>
         Effect.succeed({ status: "decline", reason: "decision-disabled" } as const),
     }));
     const changes = yield* PubSub.unbounded<CirceInteractionState>();
+    // Accepted operations run here, not in the request that accepted them: a
+    // requester that disconnects or is interrupted leaves the operation to
+    // finish and settle, and closing the node settles it as unknown.
+    const operationScope = yield* Effect.acquireRelease(Scope.make(), (scope) =>
+      Scope.close(scope, Exit.void),
+    );
 
     const preset = config.circeNodePreset ?? "full";
 
@@ -549,7 +562,9 @@ export const make = (options: CirceInteractionOptions = {}) =>
         .status()
         .pipe(Effect.orElseSucceed(() => ({ connected: false }) as const));
       const connectorReady = connectorStatus.connected === true;
-      const browserReady = connectorReady || (controlAllowed && backendReady);
+      // A connected extension is a way to reach the browser, not permission
+      // to control it: the preset decides that first.
+      const browserReady = controlAllowed && (connectorReady || backendReady);
       const computerReady = controlAllowed && backendReady;
       const surface = (
         name: CirceDeviceSurfaceReadiness["surface"],
@@ -773,6 +788,47 @@ export const make = (options: CirceInteractionOptions = {}) =>
       return current ?? state;
     });
 
+    /**
+     * Settles an operation whose physical effect is not known. It is never
+     * replayed: the effect may or may not have landed.
+     */
+    const settleUnknown = (input: {
+      readonly operation: CirceOperation;
+      readonly running: CirceInteractionState;
+      readonly requestId: string;
+      readonly detail: string;
+    }) =>
+      Effect.gen(function* () {
+        const now = yield* DateTime.now;
+        yield* saveOperation({
+          operation: {
+            ...input.operation,
+            status: "outcome-unknown",
+            lastResult: "unknown",
+            verification: { checked: false, detail: input.detail },
+            updatedAt: now,
+          },
+          requestId: input.requestId,
+        });
+        yield* saveState({
+          state: recordCirceOutcome(
+            input.running,
+            {
+              status: "outcome-unknown",
+              message:
+                "That operation stopped before it reported back, so its result is unknown. Check the target before asking again.",
+            },
+            now,
+          ),
+          expectedRevision: input.running.revision,
+          makeActive: false,
+        });
+      }).pipe(
+        Effect.catchCause((cause) =>
+          Effect.logWarning("Circe could not settle an interrupted operation", { cause }),
+        ),
+      );
+
     const dispatchDevice = Effect.fn("CirceInteraction.dispatchDevice")(function* (input: {
       readonly state: CirceInteractionState;
       readonly surface: "browser" | "preview" | "computer";
@@ -794,7 +850,8 @@ export const make = (options: CirceInteractionOptions = {}) =>
               .status()
               .pipe(Effect.orElseSucceed(() => ({ connected: false }) as const))
           : null;
-      const useConnector = surface === "browser" && connectorStatus?.connected === true;
+      const useConnector =
+        preset !== "headless" && surface === "browser" && connectorStatus?.connected === true;
       if (surface !== "preview" && !useConnector) {
         const readinessState = yield* readiness();
         const surfaceReadiness = readinessState.surfaces.find(
@@ -850,74 +907,127 @@ export const make = (options: CirceInteractionOptions = {}) =>
         updatedAt: now,
       };
       const running: CirceInteractionState = { ...withTarget, operationId, outcome: null };
+      /** Saves the result the mission reported, and the interaction's outcome with it. */
+      const persistResult = (result: CirceBrowserUseResult) =>
+        Effect.gen(function* () {
+          const mapped = missionStatus(result.status);
+          const settledAt = yield* DateTime.now;
+          const settledOperation: CirceOperation = {
+            ...operation,
+            status: mapped.status,
+            steps: "steps" in result && typeof result.steps === "number" ? result.steps : 0,
+            lastResult: mapped.result,
+            verification: {
+              checked: mapped.status === "completed",
+              detail: result.message.slice(0, 400),
+            },
+            updatedAt: settledAt,
+          };
+          yield* saveOperation({ operation: settledOperation, requestId });
+          const settled = recordCirceOutcome(
+            running,
+            { status: outcomeStatusForMission(mapped.status), message: result.message },
+            settledAt,
+          );
+          const savedSettled = yield* saveState({
+            state: settled,
+            expectedRevision: running.revision,
+            makeActive: false,
+          });
+          // A conflicting write means someone else (a stop, another device)
+          // already moved the interaction. Return that persisted state instead of
+          // the locally computed one, so the reply never reports a state the
+          // database does not hold.
+          const finalState =
+            savedSettled.status === "conflict" ? yield* persistConflictState(settled) : settled;
+          const settledResult: CirceInteractionSubmitResult = {
+            status: "operation",
+            state: finalState,
+            operation: settledOperation,
+          };
+          return settledResult;
+        });
+
+      // A result the mission reported survives a failure to save it: the
+      // exit handler saves it again instead of calling it unknown. Only an
+      // exit before any result is recorded as unknown, and it is never
+      // replayed.
+      let observed: CirceBrowserUseResult | null = null;
+      const execute = Effect.gen(function* () {
+        const missionInput = {
+          goal,
+          confirmed: true as const,
+          requestMetadata: {
+            requestId,
+            ...(submit.origin === undefined ? {} : { origin: submit.origin }),
+          },
+          // The accepted target is the only target: the adapter must not fall
+          // back to an attached connector, profile, or window it discovers
+          // later. A mission without it is refused by the adapter.
+          target,
+        };
+        // Browser means the user's real browser: the connector drives the
+        // signed-in profile, and desktop control is the fallback when no
+        // extension is attached. The preview broker is only ever the preview
+        // surface, which is an explicit different choice.
+        const result =
+          surface === "preview"
+            ? yield* browserUse.run(missionInput)
+            : surface === "browser" && useConnector
+              ? yield* browserConnectorUse.run(missionInput)
+              : yield* computerAccess.run({
+                  goal,
+                  cancelId: requestId,
+                  target,
+                });
+        observed = result;
+        return yield* persistResult(result);
+      }).pipe(
+        Effect.onExit((exit) =>
+          Exit.isSuccess(exit)
+            ? Effect.void
+            : observed !== null
+              ? persistResult(observed).pipe(
+                  Effect.catchCause((cause) =>
+                    Effect.logWarning("Circe could not save an operation's result", { cause }),
+                  ),
+                )
+              : settleUnknown({
+                  operation,
+                  running,
+                  requestId,
+                  detail: "Circe stopped before this operation reported an outcome.",
+                }),
+        ),
+      );
+
       // Acceptance is durable before the first physical action, and it claims
       // the client's request id in the same transaction: a retry during the
       // mission returns this operation instead of accepting a second one.
-      const accepted = yield* acceptOperation({
-        operation,
-        running,
-        expectedRevision,
-        claimRequestId: submit.requestId,
-        missionRequestId: requestId,
-        result: { status: "operation", state: running, operation },
-      });
-      if (accepted.status === "conflict") {
-        return { status: "stale", state: yield* persistConflictState(running) };
-      }
-
-      const missionInput = {
-        goal,
-        confirmed: true as const,
-        requestMetadata: {
-          requestId,
-          ...(submit.origin === undefined ? {} : { origin: submit.origin }),
-        },
-        // The accepted target is the only target: the adapter must not fall
-        // back to an attached connector, profile, or window it discovers
-        // later. A mission without it is refused by the adapter.
-        target,
-      };
-      // Browser means the user's real browser: the connector drives the
-      // signed-in profile, and desktop control is the fallback when no
-      // extension is attached. The preview broker is only ever the preview
-      // surface, which is an explicit different choice.
-      const result =
-        surface === "preview"
-          ? yield* browserUse.run(missionInput)
-          : surface === "browser" && useConnector
-            ? yield* browserConnectorUse.run(missionInput)
-            : yield* computerUse.run(missionInput);
-      const mapped = missionStatus(result.status);
-      const settledAt = yield* DateTime.now;
-      const settledOperation: CirceOperation = {
-        ...operation,
-        status: mapped.status,
-        steps: "steps" in result && typeof result.steps === "number" ? result.steps : 0,
-        lastResult: mapped.result,
-        verification: {
-          checked: mapped.status === "completed",
-          detail: result.message.slice(0, 400),
-        },
-        updatedAt: settledAt,
-      };
-      yield* saveOperation({ operation: settledOperation, requestId });
-      const settled = recordCirceOutcome(
-        running,
-        { status: outcomeStatusForMission(mapped.status), message: result.message },
-        settledAt,
+      // Acceptance and handing the operation to the node happen together, so
+      // an interrupted requester never leaves an accepted operation without
+      // the worker that settles it.
+      return yield* Effect.uninterruptibleMask((restore) =>
+        Effect.gen(function* () {
+          const accepted = yield* acceptOperation({
+            operation,
+            running,
+            expectedRevision,
+            claimRequestId: submit.requestId,
+            missionRequestId: requestId,
+            result: { status: "operation", state: running, operation },
+          });
+          if (accepted.status === "conflict") {
+            const stale: CirceInteractionSubmitResult = {
+              status: "stale",
+              state: yield* persistConflictState(running),
+            };
+            return stale;
+          }
+          const execution = yield* execute.pipe(Effect.forkIn(operationScope));
+          return yield* restore(Fiber.join(execution));
+        }),
       );
-      const savedSettled = yield* saveState({
-        state: settled,
-        expectedRevision: running.revision,
-        makeActive: false,
-      });
-      // A conflicting write means someone else (a stop, another device)
-      // already moved the interaction. Return that persisted state instead of
-      // the locally computed one, so the reply never reports a state the
-      // database does not hold.
-      const finalState =
-        savedSettled.status === "conflict" ? yield* persistConflictState(settled) : settled;
-      return { status: "operation", state: finalState, operation: settledOperation };
     });
 
     const classifyNew = Effect.fn("CirceInteraction.classifyNew")(function* (input: {
@@ -1000,14 +1110,7 @@ export const make = (options: CirceInteractionOptions = {}) =>
             now,
           }),
           pending: direct.requiresApproval
-            ? {
-                questionId: `device:${direct.surface}:approval`,
-                kind: "approval",
-                slot: "approval",
-                prompt: `I'll control ${direct.surface === "computer" ? "this computer" : "the browser"} to ${direct.goal}. Start?`,
-                known: { surface: direct.surface },
-                choices: [],
-              }
+            ? deviceApprovalQuestion(direct.surface, direct.goal)
             : null,
         };
         const saved = yield* saveState({
@@ -1419,7 +1522,25 @@ export const make = (options: CirceInteractionOptions = {}) =>
         }
       }
     });
-    const reconcileOnce = yield* Effect.cached(reconcile());
+    // Reconciliation runs until it succeeds once. A failure is not cached, so
+    // a transient storage error does not refuse every later call, and the
+    // lock keeps a second reconciliation from marking an operation accepted
+    // after the first one as unknown.
+    const reconcileLock = yield* Semaphore.make(1);
+    let reconciled = false;
+    const reconcileOnce = reconcileLock.withPermits(1)(
+      Effect.suspend(() =>
+        reconciled
+          ? Effect.void
+          : reconcile().pipe(
+              Effect.tap(() =>
+                Effect.sync(() => {
+                  reconciled = true;
+                }),
+              ),
+            ),
+      ),
+    );
 
     const read = Effect.fn("CirceInteraction.read")(function* (input: {
       readonly executionNodeId: EnvironmentId;

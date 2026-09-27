@@ -492,6 +492,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       assert.deepEqual(overrides, {
         allowedTools: [CLAUDE_T3_MCP_TOOL_WILDCARD],
         mcpServers: CIRCE_MCP_SERVERS,
+        circeTools: { browser: true, desktop: false },
       });
     });
   });
@@ -508,6 +509,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       assert.deepEqual(overrides, {
         allowedTools: ["Read", "mcp__circe__*"],
         mcpServers: CIRCE_MCP_SERVERS,
+        circeTools: { browser: true, desktop: false },
       });
     });
   });
@@ -524,6 +526,7 @@ describe("ClaudeAdapterV2 MCP query overrides", () => {
       assert.deepEqual(overrides, {
         allowedTools: [...CLAUDE_READ_ONLY_ALLOWED_TOOLS, ...CLAUDE_READ_ONLY_T3_MCP_ALLOWED_TOOLS],
         mcpServers: CIRCE_MCP_SERVERS,
+        circeTools: { browser: true, desktop: false },
       });
       assert.isFalse(overrides.allowedTools?.includes(CLAUDE_T3_MCP_TOOL_WILDCARD));
     });
@@ -650,6 +653,7 @@ describe("ClaudeAdapterV2 native protocol logging", () => {
             },
           },
         },
+        circeTools: { browser: true, desktop: false },
       });
 
       const options = makeClaudeQueryOptions({

@@ -70,6 +70,7 @@ export type EnvironmentSubscriptionRpcTag =
   | typeof WS_METHODS.subscribeCircePresentation
   | typeof WS_METHODS.subscribeCirceHostNotices
   | typeof WS_METHODS.subscribeCirceBots
+  | typeof WS_METHODS.subscribeCirceComputerAccess
   | typeof WS_METHODS.subscribeCirceBotConversation
   | typeof WS_METHODS.terminalAttach;
 

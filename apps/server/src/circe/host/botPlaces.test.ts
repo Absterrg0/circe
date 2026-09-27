@@ -1,4 +1,4 @@
-import { circeBotIdOfPlace, type CirceBotId } from "@circe/contracts";
+import { circeBotConversationId, circeBotIdOfPlace, type CirceBotId } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import type { CirceBotPlace } from "../Services/CirceBots.ts";
@@ -17,7 +17,7 @@ const sent = (
 });
 
 function thread(place: Partial<CirceBotPlace>) {
-  return botThread({ bot, lastSent: null, lastReply: null, ...place }, now);
+  return botThread({ bot, lastSent: null, lastReply: null, ...place }, now, "botchat:0:desk");
 }
 
 describe("Grok Bots as circe-core threads", () => {
@@ -26,6 +26,10 @@ describe("Grok Bots as circe-core threads", () => {
     expect(circeBotIdOfPlace("bot:")).toBeNull();
     expect(circeBotIdOfPlace("thread:1")).toBeNull();
     expect(circeBotIdOfPlace(undefined)).toBeNull();
+    // Conversation threads name their bot, even one whose id has a colon.
+    expect(circeBotIdOfPlace(circeBotConversationId("desk", 3))).toBe("desk");
+    expect(circeBotIdOfPlace(circeBotConversationId("team:desk", 0))).toBe("team:desk");
+    expect(circeBotIdOfPlace("botchat:x:desk")).toBeNull();
   });
 
   it("reads a message waiting on the bot as running work", () => {

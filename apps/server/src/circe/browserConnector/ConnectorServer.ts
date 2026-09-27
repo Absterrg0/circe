@@ -176,6 +176,21 @@ export const makeConnectorServer = (options: ConnectorServerOptions): ConnectorS
     } catch {
       return;
     }
+    // The extension lost its tab (closed, or its debugger detached): the next
+    // mission attaches a tab again instead of trusting this one.
+    if (
+      typeof parsed === "object" &&
+      parsed !== null &&
+      (parsed as { readonly type?: unknown }).type === "tab.detached"
+    ) {
+      const tabId = (parsed as { readonly tabId?: unknown }).tabId;
+      if (typeof tabId === "string" && connection.attachedTabId === tabId) {
+        connection.attachedTabId = null;
+        connection.attachedTabTitle = null;
+        connection.attachedTabUrl = null;
+      }
+      return;
+    }
     const response = decodeResponse(parsed);
     if (Option.isNone(response)) return;
     const pending = connection.pending.get(response.value.id ?? "");
@@ -250,7 +265,11 @@ export const makeConnectorServer = (options: ConnectorServerOptions): ConnectorS
 
     const close = () => {
       if (connection === null) return;
-      connections.delete(connection.instanceId);
+      // A replacement under the same instance id owns the entry now; the
+      // closing socket may only remove itself.
+      if (connections.get(connection.instanceId) === connection) {
+        connections.delete(connection.instanceId);
+      }
       rejectPending(connection, new CirceBrowserConnectorUnavailableError());
     };
     socket.on("close", close);

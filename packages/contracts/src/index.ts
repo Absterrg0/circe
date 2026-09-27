@@ -57,6 +57,7 @@ export * from "./circe.ts";
 export * from "./circeBots.ts";
 export * from "./circeBrowserConnector.ts";
 export * from "./circeBrowserUse.ts";
+export * from "./circeComputerAccess.ts";
 export * from "./circeComputerUse.ts";
 export * from "./circeHost.ts";
 export * from "./circeInteraction.ts";

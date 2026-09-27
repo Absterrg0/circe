@@ -25,28 +25,40 @@ export type CirceBotMessageId = typeof CirceBotMessageId.Type;
 export const CIRCE_BOT_MESSAGE_MAX_CHARS = 16_000;
 
 /**
- * A bot as a place in the Circe host layer's world: one id names both the
- * bot's project and its single conversation thread. Host focus and navigate
- * carry these ids, so clients map them to the bot page instead of a thread.
+ * A bot as a place in the Circe host layer's world. The place id names the
+ * bot's project. Each conversation Circe starts with the bot is its own
+ * thread, so circe-core sees the thread a start created and watches it for
+ * the bot's answer. Host focus and navigate carry these ids, so clients map
+ * them to the bot page instead of a thread.
  */
 const CIRCE_BOT_PLACE_PREFIX = "bot:";
+const CIRCE_BOT_CONVERSATION_PATTERN = /^botchat:\d+:(.+)$/u;
 
 export function circeBotPlaceId(botId: string): string {
   return `${CIRCE_BOT_PLACE_PREFIX}${botId}`;
 }
 
-/** The bot a place id names, or null for any other project or thread id. */
+/** The thread for the `generation`th conversation Circe started with a bot. */
+export function circeBotConversationId(botId: string, generation: number): string {
+  return `botchat:${generation}:${botId}`;
+}
+
+/** The bot a place or conversation id names, or null for any other project or thread id. */
 export function circeBotIdOfPlace(id: string | undefined): CirceBotId | null {
-  if (
-    id === undefined ||
-    !id.startsWith(CIRCE_BOT_PLACE_PREFIX) ||
-    id.length === CIRCE_BOT_PLACE_PREFIX.length
-  ) {
+  if (id === undefined) return null;
+  const conversation = CIRCE_BOT_CONVERSATION_PATTERN.exec(id);
+  if (conversation !== null) return conversation[1] as CirceBotId;
+  if (!id.startsWith(CIRCE_BOT_PLACE_PREFIX) || id.length === CIRCE_BOT_PLACE_PREFIX.length) {
     return null;
   }
   return id.slice(CIRCE_BOT_PLACE_PREFIX.length) as CirceBotId;
 }
-export const CIRCE_BOT_REPLY_MAX_CHARS = 131_072;
+/**
+ * The longest reply Circe stores, in characters. The reply route admits at
+ * most 512 KiB of UTF-8, which is never more characters than this, so every
+ * reply the route accepts is kept whole; a longer one is refused there.
+ */
+export const CIRCE_BOT_REPLY_MAX_CHARS = 524_288;
 
 export const CirceBot = Schema.Struct({
   botId: CirceBotId,

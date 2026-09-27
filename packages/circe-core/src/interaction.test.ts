@@ -232,6 +232,49 @@ describe("lookup answer transition", () => {
     });
     expect(decision.state.pending).toBeNull();
   });
+
+  it("asks again for a corrected device goal instead of starting it", () => {
+    const base = weatherState("Ahmedabad");
+    const state: CirceInteractionState = {
+      ...base,
+      goal: { kind: "device", surface: "computer", goal: "open calculator" },
+      pending: {
+        questionId: "device:computer:approval",
+        kind: "approval",
+        slot: "approval",
+        prompt: "I'll control this computer to open calculator. Start?",
+        known: { surface: "computer" },
+        choices: [],
+      },
+    };
+    const corrected = decideCirceInteractionInput({
+      state,
+      utterance: "actually open the settings instead",
+      now: next,
+    });
+    expect(corrected.effect.kind).toBe("none");
+    expect(corrected.state.goal).toEqual({
+      kind: "device",
+      surface: "computer",
+      goal: "actually open the settings instead",
+    });
+    expect(corrected.state.pending).toMatchObject({
+      kind: "approval",
+      prompt: "I'll control this computer to actually open the settings instead. Start?",
+    });
+
+    // Only the answer to the renewed question starts the corrected goal.
+    const approved = decideCirceInteractionInput({
+      state: corrected.state,
+      utterance: "yes",
+      now: next,
+    });
+    expect(approved.effect).toEqual({
+      kind: "start-device",
+      surface: "computer",
+      goal: "actually open the settings instead",
+    });
+  });
 });
 
 describe("lookup slot resolution", () => {
@@ -329,5 +372,37 @@ describe("interaction revision", () => {
       day: "now",
       location: "London",
     });
+  });
+});
+
+describe("place choice answers", () => {
+  const offered = (choices: ReadonlyArray<string>): CirceInteractionState => ({
+    ...weatherState(),
+    pending: {
+      questionId: "lookup:weather:place",
+      kind: "choice",
+      slot: "location",
+      prompt: "Which of those places did you mean?",
+      known: {},
+      choices: [...choices],
+    },
+  });
+
+  it("takes the exact place over a shorter one it contains", () => {
+    const decision = decideCirceInteractionInput({
+      state: offered(["York", "New York"]),
+      utterance: "New York",
+      now: next,
+    });
+    expect(decision.effect).toMatchObject({ kind: "run-lookup", location: "New York" });
+  });
+
+  it("takes the longest offered place a longer answer names", () => {
+    const decision = decideCirceInteractionInput({
+      state: offered(["York", "New York"]),
+      utterance: "the one in New York please",
+      now: next,
+    });
+    expect(decision.effect).toMatchObject({ kind: "run-lookup", location: "New York" });
   });
 });

@@ -17,6 +17,7 @@ import {
   type CirceBotsState,
 } from "@circe/contracts";
 import * as DateTime from "effect/DateTime";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
@@ -166,17 +167,64 @@ export const make = (options: CirceBotsOptions = {}) =>
       return path === null ? null : makeGateway(path);
     });
 
+    /**
+     * Expires every message past its reply deadline and announces each
+     * affected bot. The reply token stays, so a bot answering late is told
+     * the window closed rather than that the address is unknown.
+     */
     const expireOverdue = () =>
-      Effect.flatMap(
-        nowIso,
-        (at) => sql`
+      Effect.gen(function* () {
+        const at = yield* nowIso;
+        const expired = yield* sql<{ readonly botId: string }>`
           UPDATE circe_bot_messages
-          SET delivery = 'expired', reply_token = NULL,
+          SET delivery = 'expired',
               error = 'No reply arrived before the deadline. The bot may still be working in Grok.'
           WHERE role = 'user' AND delivery IN ('sending', 'waiting')
             AND reply_deadline_at IS NOT NULL AND reply_deadline_at <= ${at}
-        `,
-      );
+          RETURNING bot_id AS botId
+        `;
+        for (const botId of new Set(expired.map((row) => row.botId))) {
+          yield* PubSub.publish(changes, botId as CirceBotId);
+        }
+      });
+
+    /**
+     * Wakes at the nearest reply deadline, so an open conversation stops
+     * showing a wait that already ended. It sleeps until that deadline or
+     * the next change to any conversation, whichever comes first; nothing
+     * polls.
+     */
+    const expiryWatch = Effect.scoped(
+      Effect.gen(function* () {
+        const woken = yield* PubSub.subscribe(changes);
+        for (;;) {
+          const next = yield* sql<{ readonly deadline: string | null }>`
+            SELECT MIN(reply_deadline_at) AS deadline FROM circe_bot_messages
+            WHERE role = 'user' AND delivery IN ('sending', 'waiting')
+              AND reply_deadline_at IS NOT NULL
+          `.pipe(Effect.orElseSucceed(() => []));
+          const deadline = next[0]?.deadline ?? null;
+          const now = DateTime.toEpochMillis(yield* DateTime.now);
+          const waitMs = deadline === null ? null : Date.parse(deadline) - now;
+          if (waitMs === null) {
+            yield* PubSub.take(woken);
+          } else if (waitMs > 0) {
+            yield* Effect.raceFirst(
+              Effect.sleep(Duration.millis(waitMs)),
+              PubSub.take(woken).pipe(Effect.asVoid),
+            );
+          }
+          const expired = yield* expireOverdue().pipe(Effect.result);
+          // A storage failure waits for the next change instead of retrying at once.
+          if (expired._tag === "Failure") {
+            yield* Effect.logWarning("Circe could not expire overdue bot messages", {
+              error: expired.failure,
+            });
+            yield* PubSub.take(woken);
+          }
+        }
+      }),
+    );
 
     const loadRoster = Effect.fn("CirceBots.loadRoster")(function* () {
       if (!runsAgents) return { gateway: { status: "unsupported" }, bots: [] } satisfies Roster;
@@ -295,19 +343,35 @@ export const make = (options: CirceBotsOptions = {}) =>
         Effect.catch(storageError),
       );
 
+    /**
+     * Moves a message forward. Transitions only go forward: the gateway's
+     * acknowledgement settles a message still `sending`, and nothing
+     * overwrites an answer, since a bot can reply before its gateway
+     * acknowledges the prompt.
+     */
     const setDelivery = (
       messageId: string,
       delivery: CirceBotDelivery,
       error: string | null,
       keepToken: boolean,
-    ) =>
-      (keepToken
-        ? sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error}
-              WHERE message_id = ${messageId}`
-        : sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error},
-                reply_token = NULL
-              WHERE message_id = ${messageId}`
-      ).pipe(Effect.catch(storageError));
+      from: "sending" | "unanswered",
+    ) => {
+      const statement =
+        from === "sending"
+          ? keepToken
+            ? sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error}
+                WHERE message_id = ${messageId} AND delivery = 'sending'`
+            : sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error},
+                  reply_token = NULL
+                WHERE message_id = ${messageId} AND delivery = 'sending'`
+          : keepToken
+            ? sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error}
+                WHERE message_id = ${messageId} AND delivery <> 'answered'`
+            : sql`UPDATE circe_bot_messages SET delivery = ${delivery}, error = ${error},
+                  reply_token = NULL
+                WHERE message_id = ${messageId} AND delivery <> 'answered'`;
+      return statement.pipe(Effect.catch(storageError));
+    };
 
     const send = Effect.fn("CirceBots.send")(function* (input: CirceBotSendInput) {
       if (!runsAgents) {
@@ -373,7 +437,7 @@ export const make = (options: CirceBotsOptions = {}) =>
       }).pipe(Effect.result);
 
       if (sent._tag === "Success") {
-        yield* setDelivery(input.messageId, "waiting", null, true);
+        yield* setDelivery(input.messageId, "waiting", null, true, "sending");
       } else {
         // A failed request may still have reached the bot. Ask the gateway
         // before reporting, so a resend never prompts the bot twice.
@@ -381,16 +445,17 @@ export const make = (options: CirceBotsOptions = {}) =>
           gateway.acceptance({ botId: input.botId, nonce: input.messageId }),
         ).pipe(Effect.orElseSucceed(() => "unknown-durability" as const));
         if (acceptance === "accepted" || acceptance === "pending") {
-          yield* setDelivery(input.messageId, "waiting", null, true);
+          yield* setDelivery(input.messageId, "waiting", null, true, "sending");
         } else if (acceptance === "rejected") {
           yield* setDelivery(
             input.messageId,
             "failed",
             "Grok Bot rejected this message. Check the bot's conversation in Grok.",
             false,
+            "sending",
           );
         } else if (acceptance === "not-found") {
-          yield* setDelivery(input.messageId, "failed", sent.failure, false);
+          yield* setDelivery(input.messageId, "failed", sent.failure, false, "sending");
         } else {
           // Unconfirmed: keep the reply URL open so a late answer still lands.
           yield* setDelivery(
@@ -398,6 +463,7 @@ export const make = (options: CirceBotsOptions = {}) =>
             "failed",
             "Circe could not confirm that Grok Bot received this message. Check the bot's conversation before sending it again.",
             true,
+            "sending",
           );
         }
       }
@@ -474,6 +540,7 @@ export const make = (options: CirceBotsOptions = {}) =>
             "expired",
             "Circe stopped waiting. The bot may still be working in Grok.",
             false,
+            "unanswered",
           );
           yield* PubSub.publish(changes, input.botId);
         }
@@ -500,13 +567,22 @@ export const make = (options: CirceBotsOptions = {}) =>
           delivery, error, reply_token AS replyToken, reply_deadline_at AS replyDeadlineAt,
           in_reply_to AS inReplyTo, outcome
         FROM circe_bot_messages
-        WHERE rowid IN (
-          SELECT MAX(rowid) FROM circe_bot_messages GROUP BY bot_id, role
-        )
+        WHERE rowid IN (SELECT MAX(rowid) FROM circe_bot_messages WHERE role = 'user' GROUP BY bot_id)
+          OR (role = 'bot' AND in_reply_to IN (
+            SELECT message_id FROM circe_bot_messages
+            WHERE rowid IN (
+              SELECT MAX(rowid) FROM circe_bot_messages WHERE role = 'user' GROUP BY bot_id
+            )
+          ))
       `.pipe(Effect.catch(storageError));
       return current.bots.map((bot): CirceBotPlace => {
         const sent = rows.find((row) => row.botId === bot.botId && row.role === "user");
-        const reply = rows.find((row) => row.botId === bot.botId && row.role === "bot");
+        // Only the reply to the latest message is its result: an older
+        // message's late answer is not the answer to the one that waits.
+        const reply =
+          sent === undefined
+            ? undefined
+            : rows.find((row) => row.role === "bot" && row.inReplyTo === sent.messageId);
         const user = sent === undefined ? null : toUserMessage(sent);
         return {
           bot,
@@ -552,6 +628,8 @@ export const make = (options: CirceBotsOptions = {}) =>
           );
         }),
       );
+
+    if (runsAgents) yield* Effect.forkScoped(expiryWatch);
 
     return CirceBots.of({
       subscribe,

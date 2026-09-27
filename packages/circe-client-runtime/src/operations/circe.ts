@@ -2,6 +2,8 @@ import {
   WS_METHODS,
   type CirceBrowserUseInput,
   type CirceCancelMissionInput,
+  type CirceComputerAccessDecideInput,
+  type CirceComputerAccessStopInput,
   type CirceComputerUseInput,
   type CirceCancelRequestInput,
   type CirceDeviceReadinessInput,
@@ -10,6 +12,7 @@ import {
   type CirceHostListenInput,
   type CirceHostSayInput,
   type CirceHostSpeakInput,
+  type CirceHostTranscribeInput,
   type CirceInterpretInput,
   type CirceInteractionInterruptInput,
   type CirceInteractionReadInput,
@@ -72,6 +75,13 @@ export const listenToCirceHost = Effect.fn("Circe.hostListen")(function* (
   input: CirceHostListenInput,
 ) {
   return yield* request(WS_METHODS.circeHostListen, input);
+});
+
+/** Speech to words through Circe Mesh, for a message another node will handle. */
+export const transcribeWithCirceHost = Effect.fn("Circe.hostTranscribe")(function* (
+  input: CirceHostTranscribeInput,
+) {
+  return yield* request(WS_METHODS.circeHostTranscribe, input);
 });
 
 /** One Circe reply as speech, synthesized through Circe Mesh. */
@@ -140,6 +150,20 @@ export const cancelCirceMission = Effect.fn("Circe.cancelMission")(function* (
   input: CirceCancelMissionInput,
 ) {
   return yield* request(WS_METHODS.circeCancelMission, input);
+});
+
+/** Approve or deny exactly the request to use the node's computer that the client showed. */
+export const decideCirceComputerAccess = Effect.fn("Circe.computerAccessDecide")(function* (
+  input: CirceComputerAccessDecideInput,
+) {
+  return yield* request(WS_METHODS.circeComputerAccessDecide, input);
+});
+
+/** Withdraw a waiting request, or stop whoever uses the node's computer. */
+export const stopCirceComputerAccess = Effect.fn("Circe.computerAccessStop")(function* (
+  input: CirceComputerAccessStopInput,
+) {
+  return yield* request(WS_METHODS.circeComputerAccessStop, input);
 });
 
 /** Read the authenticated device's Host-owned task focus and bounded history. */

@@ -5,7 +5,11 @@ import type {
 } from "@circe/contracts";
 import { ThreadId } from "@circe/contracts";
 import type { ComputerUseRunResult, ComputerStepRefusal } from "@circe/core/computerUse";
-import { buildComputerVerificationRequest, computerGoalVerified } from "@circe/core/computerUse";
+import {
+  buildComputerVerificationRequest,
+  computerGoalVerified,
+  type ComputerUseVerificationInput,
+} from "@circe/core/computerUse";
 import { runBrowserGoal } from "@circe/core/browserUseRuntime";
 import type { DecisionRequest } from "@circe/core/decision";
 import { circeWebsiteUrl } from "@circe/core/website";
@@ -138,21 +142,12 @@ export const make = Effect.gen(function* () {
               : Effect.fail(new SurfaceDecisionUnavailableError({ reason: outcome.reason })),
           ),
         );
-    const verify = (input: {
-      readonly goal: string;
-      readonly surface: Parameters<typeof buildComputerVerificationRequest>[0]["surface"];
-      readonly history: ReadonlyArray<string>;
-      readonly summary: string;
-    }): Effect.Effect<boolean> =>
+    const verify = (input: ComputerUseVerificationInput): Effect.Effect<boolean> =>
       decision
         .decide(
-          buildComputerVerificationRequest({
-            model: DECISION_MODEL,
-            goal: input.goal,
-            surface: input.surface,
-            history: input.history,
-            summary: input.summary,
-          }),
+          // The same evidence the desktop check gets: whether anything on
+          // the page changed, so a claim of done needs something to show.
+          buildComputerVerificationRequest({ model: DECISION_MODEL, ...input }),
         )
         .pipe(
           Effect.map(

@@ -9,6 +9,7 @@ import { assert, it } from "@effect/vitest";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Fiber from "effect/Fiber";
+import * as Stream from "effect/Stream";
 import * as Layer from "effect/Layer";
 import type * as Scope from "effect/Scope";
 
@@ -21,6 +22,7 @@ import * as CirceController from "../Services/CirceController.ts";
 import { CirceBrowserUse } from "../Services/CirceBrowserUse.ts";
 import { CirceBrowserConnector } from "../Services/CirceBrowserConnector.ts";
 import { CirceBrowserConnectorUse } from "../Services/CirceBrowserConnectorUse.ts";
+import { CirceComputerAccess } from "../Services/CirceComputerAccess.ts";
 import { CirceComputerUse } from "../Services/CirceComputerUse.ts";
 import { CirceInteraction } from "../Services/CirceInteraction.ts";
 import { CirceMissionCancellationLive } from "./CirceMissionCancellation.ts";
@@ -79,6 +81,7 @@ const configLayer = (preset: "full" | "controller" | "headless") =>
 
 interface MissionRecorder {
   readonly connectorConnected?: boolean;
+  readonly preset?: "full" | "controller" | "headless";
   readonly desktopReady?: boolean;
   readonly onConnectorRun?: () => void;
   readonly onComputerRun?: () => void;
@@ -94,6 +97,12 @@ interface MissionRecorder {
   readonly onControllerExecute?: (input: unknown) => void;
 }
 
+const desktopRun = (recorder: MissionRecorder) =>
+  Effect.sync(() => recorder.onComputerRun?.()).pipe(
+    Effect.andThen(recorder.computerRun?.() ?? Effect.void),
+    Effect.as({ status: "done" as const, message: "Done: desktop goal", steps: 3 }),
+  );
+
 const supportLayer = (recorder: MissionRecorder = {}) =>
   Layer.mergeAll(
     CirceMissionCancellationLive,
@@ -104,16 +113,13 @@ const supportLayer = (recorder: MissionRecorder = {}) =>
           Effect.succeed({ status: "done" as const, message: "Done: browser goal", steps: 2 }),
       }),
     ),
-    Layer.succeed(
-      CirceComputerUse,
-      CirceComputerUse.of({
-        run: () =>
-          Effect.sync(() => recorder.onComputerRun?.()).pipe(
-            Effect.andThen(recorder.computerRun?.() ?? Effect.void),
-            Effect.as({ status: "done" as const, message: "Done: desktop goal", steps: 3 }),
-          ),
-      }),
-    ),
+    Layer.succeed(CirceComputerUse, CirceComputerUse.of({ run: () => desktopRun(recorder) })),
+    // The computer's owner as this route sees it: an approved run reaches the
+    // same desktop executor.
+    Layer.mock(CirceComputerAccess)({
+      controllable: true,
+      run: () => desktopRun(recorder),
+    }),
     Layer.succeed(
       CirceBrowserConnector,
       CirceBrowserConnector.of({
@@ -215,7 +221,7 @@ const supportLayer = (recorder: MissionRecorder = {}) =>
         activeMission: undefined,
       }),
     }),
-    configLayer("full"),
+    configLayer(recorder.preset ?? "full"),
   );
 
 const interactionLayer = (options: CirceInteractionOptions = {}, recorder: MissionRecorder = {}) =>
@@ -377,6 +383,39 @@ it.effect("prefers the browser connector over desktop control for a browser miss
       },
       onComputerRun: () => {
         computerRuns += 1;
+      },
+    },
+  );
+});
+
+it.effect("refuses a browser mission on a Headless node even with the extension connected", () => {
+  let connectorRuns = 0;
+  return withMemory(
+    {
+      classify: () =>
+        Effect.succeed({
+          action: "browse" as const,
+          refs: [],
+          model: null,
+          effort: null,
+          answer: null,
+          browserGoal: "open youtube",
+        }),
+    },
+    (layer) =>
+      Effect.gen(function* () {
+        const interaction = yield* CirceInteraction;
+        const readiness = yield* interaction.readiness();
+        assert.isFalse(readiness.surfaces.find((entry) => entry.surface === "browser")?.ready);
+        const result = yield* interaction.submit(submitInput("req-headless", "open youtube"));
+        assert.strictEqual(result.status, "unavailable");
+        assert.strictEqual(connectorRuns, 0);
+      }).pipe(Effect.provide(layer)),
+    {
+      preset: "headless",
+      connectorConnected: true,
+      onConnectorRun: () => {
+        connectorRuns += 1;
       },
     },
   );
@@ -1016,7 +1055,60 @@ it.effect("refuses a submission that names a different node", () =>
   ),
 );
 
-it.effect("marks an operation an interrupted process left accepted as unknown", () =>
+it.effect("keeps an accepted operation running and settles it after its requester goes away", () =>
+  Effect.gen(function* () {
+    const missionStarted = yield* Deferred.make<void>();
+    const finishMission = yield* Deferred.make<void>();
+    yield* withMemory(
+      { classify: () => Effect.succeed(computerProposal) },
+      (layer) =>
+        Effect.gen(function* () {
+          const interaction = yield* CirceInteraction;
+          const asked = yield* interaction.submit(submitInput("settle-1", "click 7"));
+          assert.strictEqual(asked.status, "question");
+          if (asked.status !== "question") return;
+          const settled = yield* interaction
+            .subscribe({ interactionId: asked.state.interactionId })
+            .pipe(
+              Stream.filter((state) => state.outcome !== null),
+              Stream.runHead,
+              Effect.forkChild,
+            );
+          const requester = yield* interaction
+            .submit(
+              submitInput("settle-2", "yes", {
+                interactionId: asked.state.interactionId,
+                expectedRevision: asked.state.revision,
+              }),
+            )
+            .pipe(Effect.forkChild);
+          yield* Deferred.await(missionStarted);
+          // The client that approved it disconnects mid-mission.
+          yield* Fiber.interrupt(requester);
+          yield* Deferred.succeed(finishMission, undefined);
+          const outcome = yield* Fiber.join(settled);
+          assert.strictEqual(
+            outcome._tag === "Some" ? outcome.value.outcome?.status : undefined,
+            "completed",
+          );
+          const read = yield* interaction.read({
+            executionNodeId: nodeId,
+            interactionId: asked.state.interactionId,
+          });
+          assert.strictEqual(read?.outcome?.status, "completed");
+        }).pipe(Effect.provide(layer)),
+      {
+        desktopReady: true,
+        computerRun: () =>
+          Deferred.succeed(missionStarted, undefined).pipe(
+            Effect.andThen(Deferred.await(finishMission)),
+          ),
+      },
+    );
+  }),
+);
+
+it.effect("marks an operation its node stopped mid-mission as unknown", () =>
   Effect.gen(function* () {
     const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "circe-reconcile-"));
     yield* Effect.addFinalizer(() =>
@@ -1058,7 +1150,9 @@ it.effect("marks an operation an interrupted process left accepted as unknown", 
         return yield* interaction.read({ executionNodeId: nodeId });
       }).pipe(Effect.provide(layer)),
     );
+    // Shutdown settles it; a crash that skips shutdown is settled by restart
+    // reconciliation. Either way it is unknown and never replayed.
     assert.strictEqual(recovered?.outcome?.status, "outcome-unknown");
-    assert.match(recovered?.outcome?.message ?? "", /restarted/i);
+    assert.match(recovered?.outcome?.message ?? "", /result is unknown/i);
   }),
 );

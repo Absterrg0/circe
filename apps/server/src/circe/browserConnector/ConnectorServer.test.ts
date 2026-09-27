@@ -32,12 +32,16 @@ const withServer = async <A>(
 interface FakeHost {
   readonly socket: NodeNet.Socket;
   readonly requests: Array<Record<string, unknown>>;
+  /** Resolves when this connection's socket is closed, from either side. */
+  readonly closed: Promise<void>;
   readonly respond: (response: Record<string, unknown>) => void;
   readonly handshake: (
     token: string,
     instanceId?: string,
     profileLabel?: string,
   ) => Promise<boolean>;
+  /** Resolves with the next request the server sends, event-driven, no polling. */
+  readonly nextRequest: () => Promise<Record<string, unknown>>;
   readonly close: () => void;
 }
 
@@ -48,6 +52,10 @@ const connectFakeHost = (socketPath: string): Promise<FakeHost> =>
     let buffer = "";
     const requests: Array<Record<string, unknown>> = [];
     const waiters: Array<(line: string) => void> = [];
+    const requestWaiters: Array<(request: Record<string, unknown>) => void> = [];
+    const closed = new Promise<void>((resolveClosed) => {
+      socket.once("close", () => resolveClosed());
+    });
     socket.on("data", (chunk: string) => {
       buffer += chunk;
       let newline = buffer.indexOf("\n");
@@ -59,7 +67,10 @@ const connectFakeHost = (socketPath: string): Promise<FakeHost> =>
           if (waiter !== undefined) {
             waiter(line);
           } else {
-            requests.push(JSON.parse(line) as Record<string, unknown>);
+            const request = JSON.parse(line) as Record<string, unknown>;
+            const requestWaiter = requestWaiters.shift();
+            if (requestWaiter !== undefined) requestWaiter(request);
+            else requests.push(request);
           }
         }
         newline = buffer.indexOf("\n");
@@ -70,6 +81,7 @@ const connectFakeHost = (socketPath: string): Promise<FakeHost> =>
       resolve({
         socket,
         requests,
+        closed,
         respond: (response) => socket.write(`${JSON.stringify(response)}\n`),
         handshake: (token, instanceId = "instance-one", profileLabel = "Chrome") =>
           new Promise<boolean>((resolveHandshake) => {
@@ -80,6 +92,12 @@ const connectFakeHost = (socketPath: string): Promise<FakeHost> =>
             socket.write(
               `${JSON.stringify({ type: "hello", token, extensionVersion: "0.1.0", instanceId, profileLabel })}\n`,
             );
+          }),
+        nextRequest: () =>
+          new Promise<Record<string, unknown>>((resolveRequest) => {
+            const queued = requests.shift();
+            if (queued !== undefined) resolveRequest(queued);
+            else requestWaiters.push(resolveRequest);
           }),
         close: () => socket.destroy(),
       }),
@@ -173,6 +191,14 @@ describe("browser connector server", () => {
       });
       host.respond({ id: applyRequest.id, type: "action.result", ok: true });
       expect(await applyPromise).toBe(true);
+
+      // The user closes the tab: the node forgets it rather than keep it as the target.
+      host.respond({ type: "tab.detached", tabId: "7", reason: "closed" });
+      const afterPromise = server.listTabs();
+      const afterRequest = await waitForRequest(host);
+      host.respond({ id: afterRequest.id, type: "tab.list.result", tabs: [] });
+      await afterPromise;
+      expect(server.status()).not.toHaveProperty("attachedTabId");
       host.close();
     }));
 
@@ -185,5 +211,45 @@ describe("browser connector server", () => {
       host.close();
       await expect(pending).rejects.toThrow(/connector/i);
       expect(server.status()).toEqual({ connected: false });
+    }));
+
+  it("keeps a replacement connection with the same instance id after the old socket closes", () =>
+    withServer(async ({ socketPath, tokenPath, server }) => {
+      const token = readToken(tokenPath);
+      const first = await connectFakeHost(socketPath);
+      expect(await first.handshake(token, "shared-instance", "Chrome")).toBe(true);
+
+      const second = await connectFakeHost(socketPath);
+      try {
+        expect(await second.handshake(token, "shared-instance", "Chrome")).toBe(true);
+
+        // The server destroys the first connection when the replacement is
+        // admitted. Await that close before inspecting server state; the close
+        // handler runs after the replacement is stored, so a live replacement
+        // must still be advertised here.
+        await first.closed;
+
+        expect(server.status()).toMatchObject({
+          connected: true,
+          instanceId: "shared-instance",
+          profileLabel: "Chrome",
+        });
+
+        const listPromise = server.listTabs();
+        const request = await second.nextRequest();
+        expect(request.type).toBe("tab.list");
+        second.respond({
+          id: request.id,
+          type: "tab.list.result",
+          tabs: [{ tabId: "11", title: "Home", url: "https://example.com", active: true }],
+        });
+        await expect(listPromise).resolves.toEqual([
+          { tabId: "11", title: "Home", url: "https://example.com", active: true },
+        ]);
+      } finally {
+        first.close();
+        second.close();
+        await second.closed;
+      }
     }));
 });

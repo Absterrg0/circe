@@ -9,9 +9,9 @@ import * as McpInvocationContext from "../../McpInvocationContext.ts";
 /**
  * Provider-facing computer tools. The desktop host owns the OS session; this
  * surface is only a window into ComputerService, which enforces the active
- * mission. A model can never start, widen, or renew a mission here: tools
- * refuse with `mission-required` until the user starts one from the app or
- * voice lane, and every call is audited by the service.
+ * mission. A model never grants itself a mission: `computer_begin` asks the
+ * user through Circe, and only the user's approval hands a mission to this
+ * exact provider session. Every call is audited by the service.
  */
 
 const dependencies = [McpInvocationContext.McpInvocationContext, ComputerService];
@@ -91,13 +91,49 @@ export const ComputerToolFailure = Schema.Union([ComputerToolError, McpCapabilit
 
 export const ComputerStatusTool = Tool.make("computer_status", {
   description:
-    "Report whether this node can drive its own desktop and whether a computer mission is active for this session. Call this first; every action tool refuses unless a mission is delegated to this exact session.",
+    "Report whether this node can drive its own desktop and whether a computer mission is active for this session. Every action tool refuses until computer_begin is granted.",
   success: ComputerStatusResult,
   failure: ComputerToolFailure,
   dependencies,
 })
   .annotate(Tool.Title, "Read computer status")
   .annotate(Tool.Readonly, true)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+export const ComputerBeginResult = Schema.Struct({
+  status: Schema.Literals(["granted", "waiting", "declined"]),
+  message: Schema.String,
+});
+export type ComputerBeginResult = typeof ComputerBeginResult.Type;
+
+export const ComputerBeginTool = Tool.make("computer_begin", {
+  description:
+    "Ask the user for this computer. Circe asks them to approve the goal; once they do, this session holds a computer mission and the other computer tools work until computer_end or the end of this run. Returns granted, declined, or waiting; on waiting, call it again with the same goal to keep waiting.",
+  parameters: Schema.Struct({
+    goal: TrimmedNonEmptyString.check(Schema.isMaxLength(1_000)).annotate({
+      description: "What you will do on the computer, in words the user can approve.",
+    }),
+  }),
+  success: ComputerBeginResult,
+  failure: ComputerToolFailure,
+  dependencies,
+})
+  .annotate(Tool.Title, "Ask to use the computer")
+  .annotate(Tool.Readonly, false)
+  .annotate(Tool.Destructive, false)
+  .annotate(Tool.Idempotent, true)
+  .annotate(Tool.OpenWorld, false);
+
+export const ComputerEndTool = Tool.make("computer_end", {
+  description: "Hand the computer back when you are done with it.",
+  success: Schema.Struct({ released: Schema.Boolean }),
+  failure: ComputerToolFailure,
+  dependencies,
+})
+  .annotate(Tool.Title, "Hand the computer back")
+  .annotate(Tool.Readonly, false)
   .annotate(Tool.Destructive, false)
   .annotate(Tool.Idempotent, true)
   .annotate(Tool.OpenWorld, false);
@@ -274,6 +310,8 @@ export const ComputerLaunchAppTool = Tool.make("computer_launch_app", {
 
 export const ComputerToolkit = Toolkit.make(
   ComputerStatusTool,
+  ComputerBeginTool,
+  ComputerEndTool,
   ComputerListAppsTool,
   ComputerListWindowsTool,
   ComputerWindowStateTool,

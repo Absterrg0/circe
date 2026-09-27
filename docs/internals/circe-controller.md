@@ -19,6 +19,14 @@ The client sends the selected `ProjectRef` to the target environment. The authen
 
 The MVP has no central discovery service or repository synchronization. Nodes enter the directory through explicit pairing or an existing T3 connection path, and every node keeps its own workspace and event store. Mobile joins the same mesh: it composes the shared client runtime with its paired-environment registry and sends real multi-node text and voice turns. It does not become an execution node.
 
+## Host layer turns
+
+When circe-core is installed, each client message goes first to the host layer of the node that owns what the user is looking at (`CirceHostRuntime`, `host/nodeHost.ts`). Three constraints are easy to break:
+
+- circe-core adopts its post-turn snapshot as its baseline without comparing it, so anything that changed during a turn would never be announced. While a turn runs, the node host freezes every thread the turn did not touch at its state when the turn began and hides threads that appeared from elsewhere; the turn's own threads read as running. Afterwards it opens the world in two refreshes: first the turn's own work, whose notices go only to the asking device, then everything else, whose notices go to all devices. Pump refreshes take the same turn lock, so a notice is never tagged with the wrong device.
+- circe-core keeps one memory per node, not per device. Every host message carries the device session's `origin`; a spoken yes settles a user's computer request only for the device that asked, and undo refuses to take back a start or queued message another device made, or one it cannot attribute. Undo of a continue or steer arrives as an ordinary `stop` and cannot be told apart from one; that needs per-action identity in circe-core.
+- An agent's request to use the computer reaches every device. A spoken yes to it counts only when the message names that exact request as the one the device was showing (`presentedComputerRequest`), so a request that replaced the one the user heard never gets their consent.
+
 ## Director seam
 
 v1 scope is deliberately narrow: `start`, `continue`/`steer` (the host picks the

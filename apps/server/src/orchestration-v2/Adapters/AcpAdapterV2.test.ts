@@ -653,8 +653,10 @@ describe("AcpAdapterV2", () => {
       assert.notInclude(command.prompt, "<circe_instructions>");
       const firstDefault = yield* runTurn(1, defaultPolicy, "First default request.");
       assert.include(firstDefault.prompt, "Circe interaction mode: Default");
-      assert.include(firstDefault.prompt, "Circe browsers");
-      assert.include(firstDefault.prompt, "Circe desktop");
+      // The session's credential grants neither browser nor computer tools,
+      // so the agent is told about neither; orchestration it always has.
+      assert.notInclude(firstDefault.prompt, "Circe browsers");
+      assert.notInclude(firstDefault.prompt, "Circe desktop");
       assert.include(firstDefault.prompt, "Circe orchestration");
       assert.notInclude(
         firstDefault.methods,

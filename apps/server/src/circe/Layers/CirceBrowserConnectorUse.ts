@@ -61,13 +61,9 @@ export const make = Effect.gen(function* () {
   const verify = (input: ComputerUseVerificationInput): Effect.Effect<boolean> =>
     decision
       .decide(
-        buildComputerVerificationRequest({
-          model: DECISION_MODEL,
-          goal: input.goal,
-          surface: input.surface,
-          history: input.history,
-          summary: input.summary,
-        }),
+        // The same evidence the desktop check gets: whether anything on the
+        // page changed, so a claim of done needs something to show.
+        buildComputerVerificationRequest({ model: DECISION_MODEL, ...input }),
       )
       .pipe(
         Effect.map(
