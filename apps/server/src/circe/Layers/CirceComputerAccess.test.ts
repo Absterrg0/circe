@@ -382,7 +382,7 @@ describe("CirceComputerAccess", () => {
         const released = yield* until((state) => state.active === null);
         assert.include(released.last, { outcome: "released" });
         assert.isUndefined(node.computer.current());
-      }).pipe(Effect.provide(node.layer), Effect.provide(agentContext));
+      }).pipe(Effect.provide(Layer.merge(node.layer, agentContext)));
     }),
   );
 
