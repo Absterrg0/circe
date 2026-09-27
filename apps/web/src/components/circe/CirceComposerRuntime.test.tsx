@@ -51,7 +51,7 @@ const state = vi.hoisted(() => ({
       surfaces: [],
     },
   })),
-  submitInteraction: vi.fn(async () => ({ _tag: "Failure" as const, cause: "not under test" })),
+  submitInteraction: vi.fn(),
   computerStatus: vi.fn(async () => ({
     _tag: "Success" as const,
     value: { available: false },
@@ -141,7 +141,10 @@ vi.mock("../../state/circeMesh", () => ({
     cancelComputerMission: "cancelComputerMission",
   },
 }));
-vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
+vi.mock("../../state/circe", () => ({
+  circeEnvironment: { hostSay: "hostSay" },
+  presentedComputerRequestFor: () => ({}),
+}));
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (
     command:
@@ -291,6 +294,37 @@ describe("Circe composer to runtime boundary", () => {
     consume.mockReset();
     started.mockReset().mockImplementation(() => finished.resolve());
     state.catalog = catalogWith();
+    // The node-owned interaction classifies the words on the server and hands
+    // ordinary work back as a delegated proposal; the classify fake stands in
+    // for the server's one inference.
+    state.submitInteraction
+      .mockReset()
+      .mockImplementation(
+        async (input: { readonly nodeId: string; readonly interactionId?: string }) => {
+          const interpreted = await state.interpret(input);
+          if (interpreted === undefined || interpreted === null || interpreted._tag !== "Success") {
+            return { _tag: "Failure" as const, cause: "not under test" };
+          }
+          return {
+            _tag: "Success" as const,
+            value: {
+              status: "delegated" as const,
+              state: {
+                interactionId: input.interactionId ?? "interaction-test",
+                ownerNodeId: input.nodeId,
+                revision: 1,
+                goal: { kind: "coding" as const },
+                pending: null,
+                target: null,
+                operationId: null,
+                outcome: null,
+                updatedAt: "2026-09-20T12:00:00.000Z",
+              },
+              proposal: interpreted.value,
+            },
+          };
+        },
+      );
     state.refresh.mockReset().mockResolvedValue({ _tag: "Success", value: state.catalog });
     state.refreshNode.mockReset().mockResolvedValue({ _tag: "Success", value: state.catalog });
     state.desk

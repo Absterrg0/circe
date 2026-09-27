@@ -4,7 +4,6 @@ import {
   circeBotPlaceId,
   ProjectId,
   ThreadId,
-  type CirceHostFocus,
   type EnvironmentId,
 } from "@circe/contracts";
 import { useRouterState } from "@tanstack/react-router";
@@ -12,19 +11,19 @@ import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { isElectron } from "../../env";
-import { type CirceCommandTarget, onOpenCirce } from "../../circeBus";
+import { type CirceCommandTarget, type CirceHostRoute, onOpenCirce } from "../../circeBus";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useThreadShell } from "../../state/entities";
 import type { AppRouter } from "../../router";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../../threadRoutes";
 import {
-  isCirceShortcut,
   isCirceLocalVoiceRoute,
+  isCirceShortcut,
   resolveCirceDesktopMenuAction,
   shouldHandleCirceShortcutInRenderer,
 } from "./CirceManager.logic";
 import { CirceDesktopOrbReporter } from "./CirceDesktopOrbReporter";
-import { CirceHostNoticeReporter } from "./CirceHostNoticeReporter";
+import { CirceHostNoticeReporters } from "./CirceHostNoticeReporter";
 import { CirceLiveVoiceRuntime } from "./CirceLiveVoiceRuntime";
 import { CirceVoiceCapture } from "./CirceVoiceCapture";
 import { getCirceLiveVoiceUiState, setCirceLiveVoiceActive } from "./CirceLiveVoice.bridge";
@@ -145,24 +144,26 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
           }
         : null;
   const [botEnvironmentId, botId] = routeBot === null ? [null, null] : routeBot.split("\u0000");
-  // What the host layer is told is on screen. Bot pages count only on this
-  // node, like threads, because the host layer reads this node's world.
-  const hostFocus: CirceHostFocus | undefined =
-    botId !== null &&
-    botId !== undefined &&
-    isCirceLocalVoiceRoute(primaryEnvironmentId, botEnvironmentId as EnvironmentId)
+  // What is on screen, on whichever node owns it: that node's host is the
+  // one that can act on it. A bot's conversation thread changes as Circe
+  // starts new ones, so its place is what stays on screen.
+  const hostRoute: CirceHostRoute | undefined =
+    botId !== null && botId !== undefined && botEnvironmentId !== null
       ? {
-          projectId: ProjectId.make(circeBotPlaceId(botId)),
-          threadId: ThreadId.make(circeBotPlaceId(botId)),
+          environmentId: botEnvironmentId as EnvironmentId,
+          focus: { projectId: ProjectId.make(circeBotPlaceId(botId)) },
         }
-      : routeCommandTarget === null
-        ? undefined
-        : {
-            projectId: routeCommandTarget.projectId,
-            ...(routeCommandTarget.contextThreadId === undefined
-              ? {}
-              : { threadId: routeCommandTarget.contextThreadId }),
-          };
+      : activeThread !== null
+        ? {
+            environmentId: activeThread.environmentId,
+            focus: { projectId: activeThread.projectId, threadId: activeThread.id },
+          }
+        : activeDraftThread !== null
+          ? {
+              environmentId: activeDraftThread.environmentId,
+              focus: { projectId: activeDraftThread.projectId },
+            }
+          : undefined;
   const handleThreadStarted = useCallback(
     async (environmentId: EnvironmentId, threadId: ThreadId) => {
       const startedBot = circeBotIdOfPlace(threadId);
@@ -192,12 +193,12 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
         <CirceVoiceCapture
           environmentId={primaryEnvironmentId}
           routeTarget={routeCommandTarget}
-          hostFocus={hostFocus}
+          hostRoute={hostRoute}
           onThreadStarted={handleThreadStarted}
         />
       ) : null}
       {primaryEnvironmentId !== null ? (
-        <CirceHostNoticeReporter environmentId={primaryEnvironmentId} />
+        <CirceHostNoticeReporters primaryEnvironmentId={primaryEnvironmentId} />
       ) : null}
       {isElectron && primaryEnvironmentId !== null ? (
         <CirceDesktopOrbReporter environmentId={primaryEnvironmentId} />
@@ -206,7 +207,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
         <Suspense fallback={null}>
           <CirceVoiceRuntime
             routeTarget={routeCommandTarget}
-            hostFocus={hostFocus}
+            hostRoute={hostRoute}
             onTargetConsumed={() => undefined}
             onThreadStarted={handleThreadStarted}
           />

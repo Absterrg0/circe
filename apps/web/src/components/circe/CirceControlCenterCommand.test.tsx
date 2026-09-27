@@ -140,7 +140,10 @@ vi.mock("../../state/circeMesh", () => ({
     cancelComputerMission: "cancelComputerMission",
   },
 }));
-vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
+vi.mock("../../state/circe", () => ({
+  circeEnvironment: { hostSay: "hostSay" },
+  presentedComputerRequestFor: () => ({}),
+}));
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (
     command:

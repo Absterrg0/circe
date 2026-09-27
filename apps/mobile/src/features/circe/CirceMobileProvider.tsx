@@ -13,15 +13,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type {
-  EnvironmentId,
-  CirceDeviceReadiness,
-  CirceInteractionId,
-  CircePresentationEvent,
-  CirceTaskDeskView,
-  CirceTaskRef,
-  ModelSelection,
-  ThreadId,
+import {
+  circeBotIdOfPlace,
+  type EnvironmentId,
+  type CirceDeviceReadiness,
+  type CirceInteractionId,
+  type CircePresentationEvent,
+  type CirceTaskDeskView,
+  type CirceTaskRef,
+  type ModelSelection,
+  type ThreadId,
 } from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
 import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
@@ -53,7 +54,7 @@ import { mobileClientActionCapabilities, mobileClientActionExecutors } from "./m
 
 import { uuidv4 } from "../../lib/uuid";
 import { NO_DEVICES_COPY } from "./circeAvailability";
-import { circeEnvironment } from "../../state/circe";
+import { circeEnvironment, circeHostOrigin, presentedComputerRequestFor } from "../../state/circe";
 import { circeMeshCatalogAtom, circeMeshEnvironment } from "../../state/circeMesh";
 import { lookupThread } from "../../state/threads";
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
@@ -172,6 +173,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportDefect: false,
   });
   const computerUse = useMobileAtomCommand(circeEnvironment.computerUse, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const sayToCirceHost = useMobileAtomCommand(circeEnvironment.hostSay, {
     reportFailure: false,
     reportDefect: false,
   });
@@ -307,6 +312,8 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   // The interpret call currently awaiting its proposal, before any execution
   // node is chosen. Explicit correction cancel targets this on the semantic
   // node; new additional input queues behind instead of cancelling it.
+  /** True while a message is with a node's Circe host, which offers no pre-accept cancel. */
+  const hostTurnRef = useRef(false);
   const activeInterpretRef = useRef<{
     readonly requestId: string;
     readonly nodeId: EnvironmentId;
@@ -743,6 +750,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   const cancelInflightRequest = useCallback(async (): Promise<
     "cancelled" | "already-accepted" | "unknown" | "failed" | "idle"
   > => {
+    if (hostTurnRef.current) {
+      setMessage("Circe is already carrying that out. Say stop to stop it.");
+      return "already-accepted";
+    }
     const activeInterpret = activeInterpretRef.current;
     if (activeInterpret !== null) {
       const interpretOutcome = await cancelRequestCommand({
@@ -1547,6 +1558,86 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           taskDeskNodeIdRef.current,
           semanticNode.nodeId,
         ])?.nodeId ?? liveSemanticNode.nodeId;
+      // The node's Circe host layer takes the message first, as on desktop:
+      // circe-core reads that node's projects, threads, bots and computer,
+      // and keeps its own pending question, so a reply is the next message.
+      // The message goes to the node that owns what the user is working on,
+      // never to whichever node happens to answer lookups: that node's host
+      // would not see the project and could start the work in the wrong place.
+      const hostNodeId =
+        focusContext?.projectRef?.nodeId ?? ambientRef?.nodeId ?? interactionNodeId;
+      const hostFocus =
+        focusContext?.projectRef !== undefined && focusContext.projectRef.nodeId === hostNodeId
+          ? {
+              projectId: focusContext.projectRef.projectId,
+              ...(focusContext.threadId === undefined ? {} : { threadId: focusContext.threadId }),
+            }
+          : ambientRef?.nodeId === hostNodeId
+            ? { projectId: ambientRef.projectId }
+            : undefined;
+      // A host turn has no pre-accept cancel: while it runs, cancel says so
+      // instead of reporting a cancellation that did not happen.
+      if (activeInterpretRef.current?.requestId === turnRequestId) {
+        activeInterpretRef.current = null;
+      }
+      hostTurnRef.current = true;
+      const hostReply = await sayToCirceHost({
+        environmentId: hostNodeId,
+        input: {
+          utterance: sourceUtterance.slice(0, 16_000),
+          ...(hostFocus === undefined ? {} : { focus: hostFocus }),
+          ...presentedComputerRequestFor(hostNodeId),
+        },
+      })
+        .catch(() => null)
+        .finally(() => {
+          hostTurnRef.current = false;
+        });
+      // Only a node that says its host layer is off falls through. A lost
+      // reply may still have been carried out, so it is never retried
+      // through the interaction path.
+      if (hostReply === null || hostReply._tag !== "Success") {
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        setMessage(
+          "I couldn't hear back from that node, so it may or may not have acted. Check before asking again.",
+        );
+        return;
+      }
+      if (hostReply.value.status !== "unavailable") {
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        setMessage(hostReply.value.said);
+        const shown = hostReply.value.navigate;
+        // A bot is not a project on this phone; its reply is the message above.
+        if (shown?.projectId !== undefined && circeBotIdOfPlace(shown.projectId) === null) {
+          const projectRef = { nodeId: hostNodeId, projectId: shown.projectId };
+          const task =
+            shown.threadId === undefined
+              ? null
+              : {
+                  threadId: shown.threadId,
+                  taskRef: { executionNodeId: hostNodeId, threadId: shown.threadId },
+                  projectRef,
+                };
+          adoptExplicitFocus({ projectRef, task });
+          if (task !== null) {
+            void focusTaskCommand({
+              nodeId: hostNodeId,
+              task: { threadId: task.threadId, taskRef: task.taskRef },
+            }).then((focused) => {
+              if (focused._tag === "Success" && taskDeskNodeIdRef.current === hostNodeId) {
+                setDesk(focused.value);
+                setDeskNodeId(hostNodeId);
+              }
+            });
+          }
+        }
+        return;
+      }
+      activeInterpretRef.current = {
+        requestId: turnRequestId,
+        nodeId: semanticNode.nodeId,
+        originInteractionId: interpretOrigin,
+      };
       const interactionResult = await submitInteraction({
         nodeId: interactionNodeId,
         utterance: sourceUtterance.slice(0, 16_000),
@@ -2032,6 +2123,9 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
       removeActiveTurn,
       replaceActiveTurn,
       savePreferences,
+      sayToCirceHost,
+      adoptExplicitFocus,
+      focusTaskCommand,
       selectedProject,
       selectedProjectKey,
     ],
@@ -2152,6 +2246,11 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           onPresentation={onPresentation}
         />
       ))}
+      {(catalog?.nodes ?? [])
+        .filter((node) => node.reachability === "online")
+        .map((node) => (
+          <CirceHostNoticeListener key={node.nodeId} nodeId={node.nodeId} onNotice={setMessage} />
+        ))}
     </CirceControllerContext.Provider>
   );
 }
@@ -2160,6 +2259,32 @@ export function useCirceController(): CirceControllerValue {
   const value = useContext(CirceControllerContext);
   if (value === null) throw new Error("useCirceController requires CirceMobileProvider.");
   return value;
+}
+
+/**
+ * What one node's Circe host says on its own, such as a coding agent asking
+ * for the computer or work it was watching finishing, lands in the reply
+ * lane, which a live conversation also speaks.
+ */
+function CirceHostNoticeListener(props: {
+  readonly nodeId: EnvironmentId;
+  readonly onNotice: (text: string) => void;
+}) {
+  const result = useAtomValue(
+    circeEnvironment.hostNotices({
+      environmentId: props.nodeId,
+      input: { origin: circeHostOrigin },
+    }),
+  );
+  const lastNoticeId = useRef<string | null>(null);
+  const onNoticeRef = useRef(props.onNotice);
+  onNoticeRef.current = props.onNotice;
+  useEffect(() => {
+    if (!AsyncResult.isSuccess(result) || lastNoticeId.current === result.value.id) return;
+    lastNoticeId.current = result.value.id;
+    onNoticeRef.current(result.value.text);
+  }, [result]);
+  return null;
 }
 
 function CircePresentationListener(props: {

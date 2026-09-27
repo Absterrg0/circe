@@ -43,11 +43,10 @@ import {
 import { circeClarificationAnswerHasCommandRemainder } from "@circe/core/clarification";
 import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
 import { looksLikeBoundedCommand } from "@circe/core/decisionRequest";
-import { squashAtomCommandFailure } from "@circe/client/state/runtime";
+import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 import type {
   EnvironmentId,
   CirceDeviceReadiness,
-  CirceHostFocus,
   CirceExpectedReply,
   CirceInteractionId,
   CirceNeedsInput,
@@ -62,7 +61,7 @@ import type {
 } from "@circe/contracts";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import type { CirceCommandTarget } from "../../circeBus";
+import type { CirceHostRoute, CirceCommandTarget } from "../../circeBus";
 import {
   onInterruptCirceInteractionSpeech,
   onCirceSpeechTerminal,
@@ -94,7 +93,7 @@ import {
   registerCirceLiveVoiceDelegate,
   registerCirceLiveVoicePendingReply,
 } from "./CirceLiveVoice.bridge";
-import { circeEnvironment } from "../../state/circe";
+import { circeEnvironment, presentedComputerRequestFor } from "../../state/circe";
 import { circeMeshEnvironment } from "../../state/circeMesh";
 import { circeMeshCatalogAtom } from "../../state/circeMesh";
 import { usePrimaryEnvironmentId } from "../../state/environments";
@@ -117,7 +116,7 @@ import {
 interface CirceVoiceRuntimeProps {
   readonly routeTarget: CirceCommandTarget | null;
   /** What the host layer is told is on screen, including bot pages. */
-  readonly hostFocus?: CirceHostFocus | undefined;
+  readonly hostRoute?: CirceHostRoute | undefined;
   readonly onTargetConsumed: () => void;
   readonly onThreadStarted: (
     environmentId: EnvironmentId,
@@ -222,6 +221,9 @@ function retainedReplyPin(
   };
 }
 
+/** How long desk reads wait for a burst of catalog updates to settle. */
+const DESK_READ_COALESCE_MS = 150;
+
 interface CirceVoiceTarget {
   readonly projectRef: CirceProjectRef;
   readonly projectTitle?: string;
@@ -269,7 +271,7 @@ function expectedReplyForTarget(
 
 export function CirceVoiceRuntime({
   routeTarget,
-  hostFocus,
+  hostRoute,
   onTargetConsumed,
   onThreadStarted,
   onPendingChange,
@@ -593,6 +595,11 @@ export function CirceVoiceRuntime({
       }
     : null;
   currentTargetRef.current = target;
+  // The target and route are rebuilt each render; their content is what
+  // changes, so effects that publish from them key on it and stay quiet
+  // between real changes.
+  const targetKey = target === null ? null : JSON.stringify(target);
+  const hasRouteTarget = routeTarget !== null;
   useEffect(() => {
     setTaskDesks([]);
 
@@ -624,36 +631,73 @@ export function CirceVoiceRuntime({
     catalogError === null &&
     catalog.nodes.some((node) => circeMeshNodeReadiness(node).status === "ready");
   voiceSubmissionReadyRef.current = catalogReady;
+  // A mesh refresh passes through several intermediate catalogs; reading
+  // every node's desk for each one multiplied desk RPCs. The first catalog
+  // of a burst reads at once, later ones in the burst collapse into one read
+  // of the catalog it settles on, and task changes still refresh the desks.
+  const lastDeskReadAtRef = useRef(0);
   useEffect(() => {
     if (catalog === null) return;
     let active = true;
     const connectedNodes = catalog.nodes.filter((node) => node.reachability === "online");
 
-    void Promise.all(
-      connectedNodes.map(async (node) => {
-        const result = await getTaskDesk({ nodeId: node.nodeId });
-        return result._tag === "Success"
-          ? {
-              nodeId: node.nodeId,
-              nodeLabel: node.label,
-              focusedThreadId: result.value.focusedTask?.threadId ?? null,
-              tasks: result.value.recentTasks,
-            }
-          : null;
-      }),
-    ).then((desks) => {
-      if (!active) return;
-      setTaskDesks(desks.filter((desk): desk is CirceDeskNodeView => desk !== null));
-    });
+    const readDesks = () => {
+      lastDeskReadAtRef.current = Date.now();
+      void Promise.all(
+        connectedNodes.map(async (node) => {
+          const result = await getTaskDesk({ nodeId: node.nodeId });
+          return result._tag === "Success"
+            ? {
+                nodeId: node.nodeId,
+                nodeLabel: node.label,
+                focusedThreadId: result.value.focusedTask?.threadId ?? null,
+                tasks: result.value.recentTasks,
+              }
+            : null;
+        }),
+      ).then((desks) => {
+        if (!active) return;
+        setTaskDesks(desks.filter((desk): desk is CirceDeskNodeView => desk !== null));
+      });
+    };
+    const sinceLastRead = Date.now() - lastDeskReadAtRef.current;
+    const read =
+      sinceLastRead >= DESK_READ_COALESCE_MS
+        ? (readDesks(), undefined)
+        : setTimeout(readDesks, DESK_READ_COALESCE_MS - sinceLastRead);
     return () => {
       active = false;
+      if (read !== undefined) clearTimeout(read);
     };
   }, [catalog, getTaskDesk]);
+
+  // A task open from another node is on screen: this machine's work is not
+  // what the user is looking at, so it is never picked as the default, and
+  // a default picked before is dropped. An explicit selection stays.
+  const remoteOnScreen =
+    hostRoute !== undefined &&
+    primaryEnvironmentId !== null &&
+    hostRoute.environmentId !== primaryEnvironmentId;
+  const defaultedTargetRef = useRef<string | null>(null);
+  const selectionKey =
+    selectedTask !== null
+      ? `task:${selectedTask.threadId}`
+      : selectedProjectRef !== null
+        ? `project:${selectedProjectRef.nodeId}:${selectedProjectRef.projectId}`
+        : null;
+  useEffect(() => {
+    if (!remoteOnScreen || selectionKey === null) return;
+    if (selectionKey !== defaultedTargetRef.current) return;
+    defaultedTargetRef.current = null;
+    setSelectedTask(null);
+    setSelectedProjectRef(null);
+  }, [remoteOnScreen, selectionKey]);
 
   useEffect(() => {
     if (
       catalog === null ||
       routeTarget !== null ||
+      remoteOnScreen ||
       selectedProjectRef !== null ||
       selectedTask !== null ||
       userClearedTargetRef.current
@@ -667,6 +711,7 @@ export function CirceVoiceRuntime({
       taskDesks,
     });
     if (voiceTarget?.kind === "task") {
+      defaultedTargetRef.current = `task:${voiceTarget.task.threadId}`;
       setSelectedTask(
         toSelectedTask({
           projectRef: voiceTarget.task.projectRef,
@@ -679,15 +724,25 @@ export function CirceVoiceRuntime({
         }),
       );
     } else if (voiceTarget?.kind === "project") {
+      defaultedTargetRef.current = `project:${voiceTarget.projectRef.nodeId}:${voiceTarget.projectRef.projectId}`;
       setSelectedProjectRef(voiceTarget.projectRef);
     }
-  }, [catalog, primaryEnvironmentId, routeTarget, selectedProjectRef, selectedTask, taskDesks]);
+  }, [
+    catalog,
+    primaryEnvironmentId,
+    remoteOnScreen,
+    routeTarget,
+    selectedProjectRef,
+    selectedTask,
+    taskDesks,
+  ]);
 
   // Explicit selection is inspectable and resettable through the command bus.
   // A disconnected selection stays put and reports unavailable; it never
   // picks another project or task on its own.
   useEffect(() => {
     const node =
+      // oxlint-disable-next-line react/exhaustive-effect-dependencies -- `target` is read through its content key, so a rebuilt object with the same content never publishes again.
       target === null
         ? undefined
         : catalog?.nodes.find((candidate) => candidate.nodeId === target.projectRef.nodeId);
@@ -697,7 +752,7 @@ export function CirceVoiceRuntime({
         : node === undefined
           ? // Keep a route-driven local target visible while its catalog read
             // is still in flight; submit revalidates the node before executing.
-            catalog === null && routeTarget !== null
+            catalog === null && hasRouteTarget
           : circeMeshNodeReadiness(node).status === "ready";
     const recentTasks = taskDesks
       .flatMap((desk) => desk.tasks)
@@ -753,7 +808,7 @@ export function CirceVoiceRuntime({
             available,
           },
     );
-  }, [catalog, routeTarget, target, taskDesks]);
+  }, [catalog, hasRouteTarget, targetKey, taskDesks]);
 
   useEffect(() => {
     // Recompute instead of publishing a raw flag: this effect reruns on
@@ -1666,24 +1721,47 @@ export function CirceVoiceRuntime({
       // its own pending question, so a reply is just the next message. Only a
       // node with the layer off falls through to the Director path below.
       if (primaryEnvironmentId !== null && capturedInstruction.trim().length > 0) {
+        // The message goes to the node that owns what is on screen: that
+        // node's host sees the project, task or bot, and work stays on its
+        // own node. With nothing shown it goes to this machine's node.
+        // Without a thread on screen, the project or task the control center
+        // shows is the destination, so what the user sees is where it goes.
+        const shown = currentTargetRef.current;
+        const hostNodeId =
+          hostRoute?.environmentId ?? shown?.projectRef.nodeId ?? primaryEnvironmentId;
         const onScreen =
-          hostFocus ??
-          (routeTarget !== null && routeTarget.environmentId === primaryEnvironmentId
-            ? {
-                projectId: routeTarget.projectId,
-                ...(routeTarget.contextThreadId === undefined
-                  ? {}
-                  : { threadId: routeTarget.contextThreadId }),
-              }
-            : undefined);
+          hostRoute?.focus ??
+          (shown === null
+            ? undefined
+            : {
+                projectId: shown.projectRef.projectId,
+                ...(shown.contextThreadId === undefined ? {} : { threadId: shown.contextThreadId }),
+              });
         const hostReply = await sayToCirceHost({
-          environmentId: primaryEnvironmentId,
+          environmentId: hostNodeId,
           input: {
             utterance: capturedInstruction.trim().slice(0, 16_000),
             ...(onScreen === undefined ? {} : { focus: onScreen }),
+            ...presentedComputerRequestFor(hostNodeId),
           },
         });
-        if (hostReply._tag === "Success" && hostReply.value.status !== "unavailable") {
+        // Only a node that says its host layer is off falls through. A lost
+        // reply may still have been carried out, so it is never retried
+        // through the other path.
+        if (hostReply._tag !== "Success") {
+          if (isAtomCommandInterrupted(hostReply)) return;
+          emitFeedback({
+            text: "I couldn't hear back from this node, so it may or may not have acted. Check before asking again.",
+            kind: "error",
+            inputMode,
+            captureId: voiceSubmission.captureId,
+            ...(voiceSubmission.requestId === undefined
+              ? {}
+              : { requestId: voiceSubmission.requestId }),
+          });
+          return;
+        }
+        if (hostReply.value.status !== "unavailable") {
           const reply = hostReply.value;
           emitFeedback({
             text: reply.said,
@@ -1700,7 +1778,7 @@ export function CirceVoiceRuntime({
               : { requestId: voiceSubmission.requestId }),
           });
           const shown = reply.navigate?.threadId;
-          if (shown !== undefined) await onThreadStarted(primaryEnvironmentId, shown);
+          if (shown !== undefined) await onThreadStarted(hostNodeId, shown);
           return;
         }
       }
@@ -3316,7 +3394,7 @@ export function CirceVoiceRuntime({
       executeInstruction,
       interpretInstruction,
       getTaskDesk,
-      hostFocus,
+      hostRoute,
       onTargetConsumed,
       onThreadStarted,
       primaryEnvironmentId,

@@ -17,6 +17,17 @@ export interface CirceCommandTarget {
   readonly taskRef?: CirceTaskRef;
 }
 
+/**
+ * Where a message to a Circe host goes: the node that owns what is on screen,
+ * with that screen as focus. Unlike a command target this is never limited
+ * to this machine's node, because only the owning node's host can see its
+ * projects, threads and bots.
+ */
+export interface CirceHostRoute {
+  readonly environmentId: EnvironmentId;
+  readonly focus?: { readonly projectId?: ProjectId; readonly threadId?: ThreadId };
+}
+
 export type CirceComposerInputMode = "text" | "voice";
 
 export interface CirceComposerCommand {

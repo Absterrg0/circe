@@ -5,7 +5,8 @@ import { useEffect, useRef, useState } from "react";
 
 import { publishCirceCommandFeedback } from "../../circeBus";
 import { areCirceVoiceReportsEnabled, onCircePreferencesChanged } from "../../circePreferences";
-import { circeEnvironment } from "../../state/circe";
+import { circeEnvironment, circeHostOrigin, setPresentedComputerRequest } from "../../state/circe";
+import { circeMeshCatalogAtom } from "../../state/circeMesh";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { useEnvironmentSessionState } from "../../state/session";
 import {
@@ -31,8 +32,48 @@ export function CirceHostNoticeReporter({
   return <MountedNoticeReporter environmentId={environmentId} />;
 }
 
+/**
+ * Notices from every node this app can reach, not only its own: a coding
+ * agent on another node asking for that node's computer must be heard here.
+ * Reading the catalog here keeps catalog updates from re-rendering the host.
+ */
+export function CirceHostNoticeReporters({
+  primaryEnvironmentId,
+}: {
+  readonly primaryEnvironmentId: EnvironmentId;
+}) {
+  const catalog = useAtomValue(circeMeshCatalogAtom);
+  const nodeIds = new Set<EnvironmentId>([primaryEnvironmentId]);
+  for (const node of catalog?.nodes ?? []) {
+    if (node.reachability === "online") nodeIds.add(node.nodeId);
+  }
+  return (
+    <>
+      {[...nodeIds].map((nodeId) => (
+        <CirceHostNoticeReporter key={nodeId} environmentId={nodeId} />
+      ))}
+      {[...nodeIds].map((nodeId) => (
+        <ComputerRequestPresence key={`computer:${nodeId}`} environmentId={nodeId} />
+      ))}
+    </>
+  );
+}
+
+/** Keeps the request to use this node's computer that this device shows, for spoken answers. */
+function ComputerRequestPresence({ environmentId }: { readonly environmentId: EnvironmentId }) {
+  const result = useAtomValue(circeEnvironment.computerAccess({ environmentId, input: {} }));
+  const shown = AsyncResult.isSuccess(result) ? (result.value.pending?.id ?? null) : null;
+  useEffect(() => {
+    setPresentedComputerRequest(environmentId, shown);
+    return () => setPresentedComputerRequest(environmentId, null);
+  }, [environmentId, shown]);
+  return null;
+}
+
 function MountedNoticeReporter({ environmentId }: { readonly environmentId: EnvironmentId }) {
-  const result = useAtomValue(circeEnvironment.hostNotices({ environmentId, input: {} }));
+  const result = useAtomValue(
+    circeEnvironment.hostNotices({ environmentId, input: { origin: circeHostOrigin } }),
+  );
   const seen = useRef(new Set<string>());
   const speakWithNode = useAtomCommand(circeEnvironment.hostSpeak, {
     reportFailure: false,

@@ -18,6 +18,7 @@ const state = vi.hoisted(() => ({
   refreshNode: vi.fn(),
   interpret: vi.fn(),
   submitInteraction: vi.fn(),
+  hostSay: vi.fn(),
   readInteraction: vi.fn(),
   interruptInteraction: vi.fn(),
   deviceReadiness: vi.fn(),
@@ -69,7 +70,10 @@ vi.mock("../../state/preferences", () => ({
   mobilePreferencesAtom: "preferences",
   updateMobilePreferencesAtom: "save",
 }));
-vi.mock("../../state/circe", () => ({ circeEnvironment: { lookup: "quickLookup" } }));
+vi.mock("../../state/circe", () => ({
+  circeEnvironment: { lookup: "quickLookup", hostSay: "hostSay" },
+  presentedComputerRequestFor: () => ({}),
+}));
 vi.mock("../../state/threads", () => ({ lookupThread: "lookup" }));
 vi.mock("../../state/circeMesh", () => ({
   circeMeshCatalogAtom: "catalog",
@@ -100,6 +104,7 @@ vi.mock("../../state/use-atom-command", () => ({
       | "interpret"
       | "converse"
       | "submitInteraction"
+      | "hostSay"
       | "readInteraction"
       | "interruptInteraction"
       | "deviceReadiness"
@@ -179,6 +184,15 @@ async function startTask() {
 beforeEach(() => {
   hooks.reset();
   vi.clearAllMocks();
+  // A node without the Circe host layer, so turns reach the interaction path.
+  state.hostSay.mockResolvedValue({
+    _tag: "Success",
+    value: {
+      status: "unavailable",
+      said: "The Circe host layer is off on this node.",
+      started: [],
+    },
+  });
   state.execute.mockReset();
   state.catalog = {
     nodes: [{ nodeId, label: "Node A", reachability: "online" }],
@@ -447,6 +461,34 @@ describe("mobile provider answer transport lifecycle", () => {
 });
 
 describe("mobile provider request lifecycle", () => {
+  it("never runs a message through the interaction path when the host's reply is lost", async () => {
+    state.hostSay.mockResolvedValueOnce({ _tag: "Failure", cause: new Error("socket closed") });
+    await instruction("open the browser");
+    expect(state.submitInteraction).not.toHaveBeenCalled();
+    expect(render().message).toContain("may or may not have acted");
+  });
+
+  it("hands the turn to the node's Circe host first, as desktop does", async () => {
+    state.hostSay.mockResolvedValueOnce({
+      _tag: "Success",
+      value: {
+        status: "asked",
+        said: 'Use this computer for "open the browser"? Say yes to start.',
+        options: ["Yes", "No"],
+        started: [],
+      },
+    });
+    await instruction("open the browser");
+    expect(state.hostSay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        environmentId: nodeId,
+        input: expect.objectContaining({ utterance: "open the browser" }),
+      }),
+    );
+    expect(state.submitInteraction).not.toHaveBeenCalled();
+    expect(render().message).toBe('Use this computer for "open the browser"? Say yes to start.');
+  });
+
   it("reports a started acknowledgement as text", async () => {
     state.execute.mockResolvedValueOnce({
       _tag: "Success",

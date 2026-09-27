@@ -120,7 +120,10 @@ vi.mock("../../state/circeMesh", () => ({
     deviceReadiness: "deviceReadiness",
   },
 }));
-vi.mock("../../state/circe", () => ({ circeEnvironment: { hostSay: "hostSay" } }));
+vi.mock("../../state/circe", () => ({
+  circeEnvironment: { hostSay: "hostSay" },
+  presentedComputerRequestFor: () => ({}),
+}));
 vi.mock("../../state/use-atom-command", () => ({
   useAtomCommand: (
     command:
@@ -203,6 +206,11 @@ describe("Circe voice runtime", () => {
           environmentId: routeNodeId,
           projectId,
           ...(routeThreadId === undefined ? {} : { contextThreadId: routeThreadId }),
+        },
+        // What the manager reports on screen, on the node that owns it.
+        hostRoute: {
+          environmentId: routeNodeId,
+          focus: { projectId, ...(routeThreadId === undefined ? {} : { threadId: routeThreadId }) },
         },
         onTargetConsumed: consume,
         onThreadStarted: started,
@@ -480,6 +488,22 @@ describe("Circe voice runtime", () => {
     } finally {
       stop();
     }
+  });
+
+  it("hands the message to the host of the node that owns what is on screen", async () => {
+    // A thread open from another node: only that node's host can see it.
+    routeNodeId = EnvironmentId.make("remote");
+    await ready();
+    state.hostSay.mockResolvedValue({
+      _tag: "Success",
+      value: { status: "acted", said: "Sent it.", started: [] },
+    });
+    transcript("continue with it", { captureId: "remote-host", purpose: "command" });
+    await state.drain?.();
+    expect(state.hostSay).toHaveBeenCalledWith({
+      environmentId: "remote",
+      input: { utterance: "continue with it", focus: { projectId, threadId } },
+    });
   });
 
   it("shows the thread the Circe host layer opened, and reports its question as needing input", async () => {
