@@ -22,6 +22,9 @@ const THEME_STORAGE_KEY = "circe:theme";
 // A custom theme that omits chrome falls back to the runtime default, so the
 // boot copy of that default stays derived from the real palette.
 const DEFAULT_DARK_CHROME = getDefaultThemeColors("dark").chrome;
+// With no theme applied, the splash paints the stock chrome that index.css
+// uses (`--app-chrome-background`), so the first frame matches the app.
+const STOCK_LIGHT_CHROME = "#f4efea";
 
 const bootScript = (() => {
   const match = indexHtml.match(/<script>([\s\S]*?)<\/script>/);
@@ -493,8 +496,8 @@ describe("index.html boot script", () => {
 
     expect(boot.themeId).toBeUndefined();
     expect(boot.themeSelected).toBeUndefined();
-    expect(boot.backgroundColor).toBe("#ffffff");
-    expect(boot.metaContent).toBe("#ffffff");
+    expect(boot.backgroundColor).toBe(STOCK_LIGHT_CHROME);
+    expect(boot.metaContent).toBe(STOCK_LIGHT_CHROME);
   });
 
   it("leaves unknown preferences unthemed so the runtime default applies", () => {
