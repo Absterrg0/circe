@@ -58,8 +58,7 @@ import * as TerminalManager from "./terminal/Manager.ts";
 import * as McpHttpServer from "./mcp/McpHttpServer.ts";
 import * as McpSessionRegistry from "./mcp/McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
-import * as DesktopCommands from "./circe/desktopUse/DesktopCommands.ts";
-import * as DesktopUse from "./circe/desktopUse/DesktopUse.ts";
+import * as ComputerService from "./computer/ComputerService.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { deviceHubProxyRouteLayer } from "./device/DeviceHubProxy.ts";
 import * as PreviewManager from "./preview/Manager.ts";
@@ -134,11 +133,22 @@ import * as ResourceTelemetry from "./resourceTelemetry/ResourceTelemetry.ts";
 import * as UsageService from "./usage/UsageService.ts";
 import { circeDesktopRendererOrigins } from "./circe/desktopOrigins.ts";
 import { CirceBrowserUseLive } from "./circe/Layers/CirceBrowserUse.ts";
+import { CirceComputerAccessLive } from "./circe/Layers/CirceComputerAccess.ts";
 import { CirceComputerUseLive } from "./circe/Layers/CirceComputerUse.ts";
 import { CirceControllerLive } from "./circe/Layers/CirceController.ts";
+import { CirceInteractionLive } from "./circe/Layers/CirceInteraction.ts";
+import { CirceBrowserConnectorLive } from "./circe/Layers/CirceBrowserConnector.ts";
+import { CirceBrowserConnectorUseLive } from "./circe/Layers/CirceBrowserConnectorUse.ts";
+import { CirceRecoveryPlannerLive } from "./circe/Layers/CirceRecoveryPlanner.ts";
+import {
+  CirceDecisionFallbackLive,
+  CirceDecisionProviderFirstLive,
+} from "./circe/Layers/CirceDecisionFallback.ts";
 import { CirceDecisionLive } from "./circe/Layers/CirceDecision.ts";
 import { CirceHostRuntimeLive } from "./circe/Layers/CirceHostRuntime.ts";
 import { CirceMissionCancellationLive } from "./circe/Layers/CirceMissionCancellation.ts";
+import { CirceBotsLive } from "./circe/Layers/CirceBots.ts";
+import { circeBotReplyRouteLayer } from "./circe/bots/botReplyRoute.ts";
 import { CirceNodeToolsLive } from "./circe/Layers/CirceNodeTools.ts";
 import {
   CirceWsRpcHandlerExtensionLive,
@@ -641,6 +651,9 @@ const makeRoutesLayer = Layer.mergeAll(
     otlpTracesProxyRouteLayer,
     assetRouteLayer,
     attachmentUploadRouteLayer,
+    // A Grok Bot hands its answer back here; the WebSocket bot RPCs read the
+    // same service instance, so a reply reaches every open conversation.
+    circeBotReplyRouteLayer,
     deviceHubProxyRouteLayer,
     staticAndDevRouteLayer,
     makeWebsocketRpcRouteLayer(
@@ -650,14 +663,25 @@ const makeRoutesLayer = Layer.mergeAll(
         Layer.provide(CircePresentationFanoutLive),
         // The Circe host layer: messages interpreted and carried out on this node.
         Layer.provide(CirceHostRuntimeLive),
-        // Browser missions reuse the previewAutomation broker under a
-        // Circe-owned scope, so voice and text control drive the same host a
-        // provider session would.
-        Layer.provide(CirceBrowserUseLive),
-        // Desktop missions drive this node's own screen through the same
-        // grounded step layer over accessibility elements.
-        Layer.provide(CirceComputerUseLive.pipe(Layer.provide(DesktopCommands.layer))),
-        Layer.provide(CirceMissionCancellationLive),
+        // The interaction owner shares the same browser, computer, and
+        // cancellation services the direct RPCs use, so there is one mission
+        // registry and one stop authority.
+        Layer.provide(
+          CirceInteractionLive.pipe(
+            Layer.provideMerge(CirceBrowserUseLive.pipe(Layer.provide(CirceDecisionFallbackLive))),
+            // The connector owns the node-local socket the Chrome extension's
+            // native host dials; one shared instance backs both the readiness
+            // probe and the browser missions that prefer it when attached.
+            Layer.provideMerge(
+              CirceBrowserConnectorUseLive.pipe(
+                Layer.provideMerge(CirceBrowserConnectorLive),
+                Layer.provide(CirceRecoveryPlannerLive),
+                Layer.provide(CirceDecisionFallbackLive),
+              ),
+            ),
+            Layer.provide(CirceRecoveryPlannerLive),
+          ),
+        ),
       ),
       RpcAuthorization.layer(circeRpcScopeExtension),
     ),
@@ -672,9 +696,27 @@ const makeRoutesLayer = Layer.mergeAll(
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(PullRequestServiceLive),
+  // The one owner of requests to use this computer: Circe's host layer and
+  // the agents' computer tools both ask here. It exports the desktop
+  // executor and the stop registry so the interaction RPCs share them.
+  Layer.provide(
+    CirceComputerAccessLive.pipe(
+      Layer.provideMerge(
+        CirceComputerUseLive.pipe(
+          Layer.provide(CirceRecoveryPlannerLive),
+          Layer.provide(CirceDecisionProviderFirstLive),
+        ),
+      ),
+      Layer.provideMerge(CirceMissionCancellationLive),
+    ),
+  ),
+  Layer.provide(CirceBotsLive),
   Layer.provide(CirceLiveVoice.layer.pipe(Layer.provide(CirceLiveVoiceSessionsLive))),
   Layer.provide(PreviewAutomationBroker.layer),
-  Layer.provide(DesktopUse.layer),
+  // The node's computer-use policy: one active mission, tool admission, and
+  // audit. The desktop host owns the Cua runtime; this service connects to it
+  // when the app passed a host endpoint in the bootstrap envelope.
+  Layer.provide(ComputerService.layer),
   Layer.provide(ServerSelfUpdate.layer.pipe(Layer.provide(DesktopAppUpdateLayerLive))),
   Layer.provide(commandReadinessLayer),
   Layer.provide(makeBrowserApiCorsLayer(circeDesktopRendererOrigins)),

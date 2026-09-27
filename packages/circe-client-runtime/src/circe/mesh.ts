@@ -3,12 +3,24 @@ import {
   EnvironmentId,
   EnvironmentAuthorizationError,
   isProviderAvailable,
+  type CirceCancelMissionInput,
+  type CirceCancelMissionResult,
   type CirceCancelRequestInput,
   type CirceCancelRequestResult,
+  type CirceComputerStatus,
+  type CirceComputerUseInput,
+  type CirceComputerUseResult,
   type CirceExecuteInput,
   type CirceExecutionResult,
   type CirceInterpretInput,
   type CirceInterpretResult,
+  type CirceInteractionId,
+  type CirceInteractionInterruptInput,
+  type CirceInteractionInterruptResult,
+  type CirceInteractionReadResult,
+  type CirceInteractionSubmitInput,
+  type CirceInteractionSubmitResult,
+  type CirceDeviceReadiness,
   type CirceManageProjectAliasResult,
   type CirceNodeCapabilities,
   type CirceProjectRef,
@@ -38,10 +50,17 @@ import {
 import {
   executeCirceInstruction,
   interpretCirceInstruction,
+  cancelCirceMission,
   cancelCirceRequest,
+  getCirceComputerStatus,
+  getCirceDeviceReadiness,
   getCirceProjectVocabulary,
   getCirceTaskDesk,
+  interruptCirceInteraction,
   manageCirceProjectAlias,
+  readCirceInteraction,
+  submitCirceInteraction,
+  useCirceComputer,
   focusCirceTask,
 } from "../operations/circe.ts";
 import {
@@ -189,6 +208,15 @@ type InterpretError = CirceMeshOperationError<
   ReturnType<typeof import("../operations/circe.ts").interpretCirceInstruction>
 >;
 type TaskDeskError = CirceMeshOperationError<ReturnType<typeof getCirceTaskDesk>>;
+type InteractionSubmitError = CirceMeshOperationError<ReturnType<typeof submitCirceInteraction>>;
+type InteractionReadError = CirceMeshOperationError<ReturnType<typeof readCirceInteraction>>;
+type InteractionInterruptError = CirceMeshOperationError<
+  ReturnType<typeof interruptCirceInteraction>
+>;
+type DeviceReadinessError = CirceMeshOperationError<ReturnType<typeof getCirceDeviceReadiness>>;
+type ComputerStatusError = CirceMeshOperationError<ReturnType<typeof getCirceComputerStatus>>;
+type ComputerMissionError = CirceMeshOperationError<ReturnType<typeof useCirceComputer>>;
+type CancelMissionError = CirceMeshOperationError<ReturnType<typeof cancelCirceMission>>;
 type FocusTaskError = CirceMeshOperationError<ReturnType<typeof focusCirceTask>>;
 type AliasError = CirceMeshOperationError<ReturnType<typeof manageCirceProjectAlias>>;
 type NodeError = EnvironmentNotRegisteredError | CirceMeshNodeUnavailableError;
@@ -243,6 +271,41 @@ export interface CirceMeshService {
   readonly getTaskDesk: (
     nodeId: EnvironmentId,
   ) => Effect.Effect<CirceTaskDeskView, NodeError | TaskDeskError>;
+  /**
+   * Submit one utterance to the node-owned interaction. The node resolves the
+   * relation to its active goal, owns any pending question, and returns state
+   * or a grounded proposal for ordinary work.
+   */
+  readonly submitInteraction: (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceInteractionSubmitInput;
+  }) => Effect.Effect<CirceInteractionSubmitResult, NodeError | InteractionSubmitError>;
+  readonly readInteraction: (input: {
+    readonly nodeId: EnvironmentId;
+    readonly interactionId?: CirceInteractionId | undefined;
+  }) => Effect.Effect<CirceInteractionReadResult, NodeError | InteractionReadError>;
+  readonly interruptInteraction: (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceInteractionInterruptInput;
+  }) => Effect.Effect<CirceInteractionInterruptResult, NodeError | InteractionInterruptError>;
+  /** Observed desktop readiness; clients act only on ready surfaces. */
+  readonly deviceReadiness: (
+    nodeId: EnvironmentId,
+  ) => Effect.Effect<CirceDeviceReadiness, NodeError | DeviceReadinessError>;
+  /** Live desktop-host status and the node's active computer mission. */
+  readonly computerStatus: (
+    nodeId: EnvironmentId,
+  ) => Effect.Effect<CirceComputerStatus, NodeError | ComputerStatusError>;
+  /** Run one bounded computer mission on an explicit node. */
+  readonly computerUse: (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceComputerUseInput;
+  }) => Effect.Effect<CirceComputerUseResult, NodeError | ComputerMissionError>;
+  /** Stop one running mission by the request id it registered under. */
+  readonly cancelMission: (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceCancelMissionInput;
+  }) => Effect.Effect<CirceCancelMissionResult, NodeError | CancelMissionError>;
   readonly focusTask: (
     input: CirceMeshFocusTaskInput,
   ) => Effect.Effect<CirceFocusTaskResult, NodeError | FocusTaskError>;
@@ -398,6 +461,35 @@ export function selectCirceQuickLookupNode(
     if (preferred !== undefined) return preferred;
   }
   return capable[0];
+}
+
+/**
+ * Pick the node that can actually drive a device surface right now. A node is
+ * eligible when it is online, not Headless, and its observed readiness says
+ * the requested surface is ready. Preset capability alone is not enough: a
+ * running server with no active session or no granted permission must not be
+ * chosen. Returns undefined when no node reports a ready surface.
+ */
+export function selectCirceDeviceTargetNode(input: {
+  readonly catalog: CirceMeshCatalog;
+  readonly surface: "browser" | "preview" | "computer";
+  readonly readiness: ReadonlyMap<EnvironmentId, CirceDeviceReadiness>;
+  readonly preferredNodeIds?: ReadonlyArray<EnvironmentId | null | undefined>;
+}): { readonly node: CirceMeshNode; readonly readiness: CirceDeviceReadiness } | undefined {
+  const eligible = input.catalog.nodes.flatMap((node) => {
+    if (!circeMeshNodeSupportsQuickLookup(node)) return [];
+    const readiness = input.readiness.get(node.nodeId);
+    if (readiness === undefined || readiness.controlAllowed !== true) return [];
+    const surface = readiness.surfaces.find((entry) => entry.surface === input.surface);
+    if (surface?.ready !== true) return [];
+    return [{ node, readiness }];
+  });
+  for (const nodeId of input.preferredNodeIds ?? []) {
+    if (nodeId === null || nodeId === undefined) continue;
+    const preferred = eligible.find((entry) => entry.node.nodeId === nodeId);
+    if (preferred !== undefined) return preferred;
+  }
+  return eligible[0];
 }
 
 export interface CirceMeshInterpretEvidenceOptions {
@@ -854,6 +946,61 @@ export const make = Effect.gen(function* () {
     return yield* registry.run(input.nodeId, focusCirceTask(input.task));
   });
 
+  const submitInteraction = Effect.fn("CirceMesh.submitInteraction")(function* (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceInteractionSubmitInput;
+  }) {
+    yield* connectedNode(input.nodeId);
+    return yield* registry.run(input.nodeId, submitCirceInteraction(input.input));
+  });
+
+  const readInteraction = Effect.fn("CirceMesh.readInteraction")(function* (input: {
+    readonly nodeId: EnvironmentId;
+    readonly interactionId?: CirceInteractionId | undefined;
+  }) {
+    yield* connectedNode(input.nodeId);
+    return yield* registry.run(
+      input.nodeId,
+      readCirceInteraction(
+        input.interactionId === undefined ? {} : { interactionId: input.interactionId },
+      ),
+    );
+  });
+
+  const interruptInteraction = Effect.fn("CirceMesh.interruptInteraction")(function* (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceInteractionInterruptInput;
+  }) {
+    yield* connectedNode(input.nodeId);
+    return yield* registry.run(input.nodeId, interruptCirceInteraction(input.input));
+  });
+
+  const deviceReadiness = Effect.fn("CirceMesh.deviceReadiness")(function* (nodeId: EnvironmentId) {
+    yield* connectedNode(nodeId);
+    return yield* registry.run(nodeId, getCirceDeviceReadiness({}));
+  });
+
+  const computerStatus = Effect.fn("CirceMesh.computerStatus")(function* (nodeId: EnvironmentId) {
+    yield* connectedNode(nodeId);
+    return yield* registry.run(nodeId, getCirceComputerStatus());
+  });
+
+  const computerUse = Effect.fn("CirceMesh.computerUse")(function* (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceComputerUseInput;
+  }) {
+    yield* connectedNode(input.nodeId);
+    return yield* registry.run(input.nodeId, useCirceComputer(input.input));
+  });
+
+  const cancelMission = Effect.fn("CirceMesh.cancelMission")(function* (input: {
+    readonly nodeId: EnvironmentId;
+    readonly input: CirceCancelMissionInput;
+  }) {
+    yield* connectedNode(input.nodeId);
+    return yield* registry.run(input.nodeId, cancelCirceMission(input.input));
+  });
+
   const cancelRequest = Effect.fn("CirceMesh.cancelRequest")(function* (
     nodeId: EnvironmentId,
     input: CirceCancelRequestInput,
@@ -926,6 +1073,9 @@ export const make = Effect.gen(function* () {
     ),
     refresh,
     refreshNode,
+    computerStatus,
+    computerUse,
+    cancelMission,
     resolveProject: (query) =>
       SubscriptionRef.get(catalogRef).pipe(
         Effect.map((catalog) => resolveCirceMeshProject(catalog, query)),
@@ -934,6 +1084,10 @@ export const make = Effect.gen(function* () {
     execute,
     converse,
     getTaskDesk,
+    submitInteraction,
+    readInteraction,
+    interruptInteraction,
+    deviceReadiness,
     focusTask,
     cancelRequest,
     manageProjectAlias: manageAlias,

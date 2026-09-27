@@ -93,6 +93,9 @@ import Migration0066 from "./Migrations/066_CirceLiveVoiceSessions.ts";
 import Migration0067 from "./Migrations/051_ProjectionThreadMessageContext.ts";
 import Migration0068 from "./Migrations/052_ProjectionThreadTitleState.ts";
 import Migration0069 from "./Migrations/053_OrchestrationV2.ts";
+import Migration0070 from "./Migrations/070_CirceInteractions.ts";
+import Migration0071 from "./Migrations/071_CirceInteractionRequestOperations.ts";
+import Migration0072 from "./Migrations/072_CirceBots.ts";
 
 /**
  * Migration loader with all migrations defined inline.
@@ -174,6 +177,9 @@ export const migrationEntries = [
   [67, "ProjectionThreadMessageContext", Migration0067],
   [68, "ProjectionThreadTitleState", Migration0068],
   [69, "OrchestrationV2", Migration0069],
+  [70, "CirceInteractions", Migration0070],
+  [71, "CirceInteractionRequestOperations", Migration0071],
+  [72, "CirceBots", Migration0072],
 ] as const;
 
 export const migrationManifest = migrationEntries.map(([id, name]) => [id, name] as const);

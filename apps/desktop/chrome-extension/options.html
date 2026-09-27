@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Circe Browser Connector</title>
+    <style>
+      body {
+        font:
+          14px system-ui,
+          sans-serif;
+        margin: 24px;
+        max-width: 420px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+      input {
+        width: 100%;
+        padding: 6px 8px;
+        margin-bottom: 12px;
+      }
+      button {
+        padding: 6px 12px;
+      }
+      #status {
+        margin-top: 16px;
+        color: #444;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>Circe browser connector</h1>
+    <p>
+      Circe can control one visible tab in this Chrome profile. Name the profile so you can pick the
+      right one from any device.
+    </p>
+    <label for="profile">Profile label</label>
+    <input id="profile" type="text" placeholder="Chrome" />
+    <button id="save" type="button">Save</button>
+    <div id="status">Checking connection...</div>
+    <script src="options.js" type="module"></script>
+  </body>
+</html>

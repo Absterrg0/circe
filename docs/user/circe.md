@@ -4,11 +4,12 @@ Circe lets you direct coding agents with text or voice and hear their real resul
 
 ## Open Circe
 
-- Choose the Circe mark in the workspace sidebar to open **Circe Control Center**.
+- Choose **Ask Circe** at the top of the sidebar, or the Circe mark at its foot, to open **Circe Control Center**.
 - Open the command palette and choose **Open Circe** to reach the same control center.
 - In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation without opening the control center.
 
-The control center shows every paired node in one environment view. Select a device to inspect its
+The **Machines** map in the control center draws every paired node around Circe. Solid lines lead to
+online machines and dashed lines to offline ones. Select a machine to inspect its
 role, reachability, capabilities, projects, and provider readiness. Device connection management,
 provider configuration, setup, and report-speaking preferences are available from that page. Each project and provider stays attached to the device
 that owns it; the control center does not merge credentials or workspaces between nodes.
@@ -29,7 +30,7 @@ and disconnected agents have explicit labels in the panel. Agent entries include
 their provider and device, and the list scrolls when necessary. Selecting a
 provider changes the default for new tasks. The panel has no chat composer.
 
-The command center's task desk has **Recent tasks** and **Running agents** views.
+The **Work** board under the command box has **Recent tasks** and **Running agents** views.
 Both follow task updates across connected devices. Open a task to inspect it.
 The device sidebar contains providers, projects, and expandable node settings.
 The command center follows the app's light or dark appearance and stacks its
@@ -60,6 +61,16 @@ Without a device name, Circe routes by project. Name the project and the work ru
 that owns it. If two devices have a project with the same name, Circe asks which one, listing each
 project with its device.
 
+## Sidebar
+
+The sidebar has three groups, and each one collapses from its heading:
+
+- **Bots** lists the Grok Bots on your machines. See [Grok Bots](./grok-bots.md).
+- **Chats** holds conversations that are not about a codebase. The **+** starts one, with no project to pick.
+- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. The folder button on its heading shows one project at a time; it never hides chats.
+
+The **+** next to search starts a chat, starts an agent thread, or adds a project. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
+
 ## One Circe product per node
 
 The Windows unified installer presents one Circe application, launcher, and uninstall entry. The
@@ -73,12 +84,13 @@ Circe application. The selected node role changes its capabilities, not its prod
 
 ## Command composer in Control Center
 
-The control center has a composer beneath the **Task desk**. Text is
-always usable there. Pick an explicit project target such as **Rivvl — Laptop**,
-optionally pick one of its recent tasks, type the instruction, and choose **Send**.
-The current target line stays visible, for example
-**Rivvl — Laptop · Review task** or **Choose where to work**. Choose **Clear**
-to reset it. A disconnected selection stays put and reads
+The command box sits at the top of the control center, under Circe's status.
+Text is always usable there. Optionally pick a project from the project chip,
+which reads **Anywhere** until you choose one, and optionally one of its recent
+tasks. Type the instruction and choose **Send**, or press Ctrl+Enter
+(Command+Enter on macOS). The line under the box names the current target, for
+example **Working in Rivvl — Laptop · Review task**. Choose the **×** beside the
+chips to reset it. A disconnected selection stays put and reads
 **(unavailable)**; it never moves to another node on its own.
 
 One feedback lane shows every submission. Text entries stay visible and never
@@ -195,7 +207,7 @@ Without either path, Circe declines and falls back to the ordinary provider prop
 
 ### Conversations
 
-Ask a general question — what's the weather today, what changed in a release, a follow-up on something just discussed — and Circe runs it as a conversation in the current project. Conversations are ordinary T3 threads: the provider answers with its tools, the exchange stays in the sidebar marked with a chat icon and a `Conversation:` title, and completed answers are spoken through the same report lane as task results. With no project in scope, Circe answers directly without creating a thread.
+Ask a general question, such as today's weather, what changed in a release, or a follow-up on something just discussed, and Circe answers it as a chat. Chats never belong to a project. They run on the machine that answered them and show up under **Chats** in the sidebar. The agent answers with its own tools, and completed answers are spoken the same way task results are.
 
 ### Live conversation
 

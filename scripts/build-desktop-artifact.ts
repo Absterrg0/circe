@@ -20,6 +20,7 @@ import { resolveSpawnCommand } from "@circe/shared/shell";
 import rootPackageJson from "../package.json" with { type: "json" };
 import desktopPackageJson from "../apps/desktop/package.json" with { type: "json" };
 import gnomeCaptureBundle from "../apps/desktop/gnome-extension/bundle.json" with { type: "json" };
+import browserConnectorBundle from "../apps/desktop/chrome-extension/bundle.json" with { type: "json" };
 import serverPackageJson from "../apps/server/package.json" with { type: "json" };
 
 import { applyWebBrandAssets } from "./apply-web-brand-assets.ts";
@@ -1050,6 +1051,8 @@ export const DESKTOP_FILE_EXCLUSIONS = [
   "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
   "!apps/desktop/gnome-extension",
   "!apps/desktop/gnome-extension/**/*",
+  "!apps/desktop/chrome-extension",
+  "!apps/desktop/chrome-extension/**/*",
   // Production stack traces do not depend on source maps, and the packaged
   // source maps duplicate tens of megabytes of server and renderer payload.
   "!**/*.map",
@@ -1238,6 +1241,22 @@ export const LINUX_CAPTURE_EXTRA_RESOURCES = [
 ] as const;
 export const LINUX_BROWSER_SECRET_EXTRA_RESOURCES = [
   { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
+] as const;
+/**
+ * The Chrome extension and its native messaging host ship on every desktop
+ * platform: the extension directory is copied for the in-app install flow and
+ * the host entry sits next to the other packaged helpers.
+ */
+export const BROWSER_CONNECTOR_EXTRA_RESOURCES = [
+  {
+    from: "apps/desktop/chrome-extension",
+    to: "chrome-extension",
+    filter: browserConnectorBundle.files,
+  },
+  {
+    from: "apps/desktop/dist-electron/browserConnector/browser-connector-host.cjs",
+    to: "browser-connector-host.cjs",
+  },
 ] as const;
 
 export interface MacPasskeySigningConfiguration {
@@ -2850,6 +2869,7 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       : {}),
     extraResources: [
       ...DESKTOP_EXTRA_RESOURCES,
+      ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(includeFxResources ? [DESKTOP_FX_EXTRA_RESOURCE] : []),
@@ -4031,6 +4051,17 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   yield* Effect.log("[desktop-artifact] Staging release app...");
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
   yield* fs.copy(distDirs.desktopResources, stageResourcesDir);
+  // electron-builder resolves extraResources inside the stage, so every
+  // extension it ships is staged here first; an unstaged one is silently
+  // missing from the installed app.
+  const chromeExtensionDir = path.join(stageAppDir, "apps/desktop/chrome-extension");
+  yield* fs.makeDirectory(chromeExtensionDir, { recursive: true });
+  for (const file of browserConnectorBundle.files) {
+    yield* fs.copyFile(
+      path.join(repoRoot, "apps/desktop/chrome-extension", file),
+      path.join(chromeExtensionDir, file),
+    );
+  }
   if (options.platform === "linux") {
     const extensionDir = path.join(stageAppDir, "apps/desktop/gnome-extension");
     yield* fs.makeDirectory(extensionDir, { recursive: true });

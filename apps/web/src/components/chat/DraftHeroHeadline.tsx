@@ -1,6 +1,10 @@
 import type { DraftId } from "~/composerDraftStore";
 import { useComposerDraftStore } from "~/composerDraftStore";
-import { resolveEnvironmentMachineKind, type ScopedProjectRef } from "@circe/contracts";
+import {
+  isChatWorkspace,
+  resolveEnvironmentMachineKind,
+  type ScopedProjectRef,
+} from "@circe/contracts";
 import { scopedProjectKey, scopeProjectRef } from "@circe/client/environment";
 import { FolderPlusIcon } from "lucide-react";
 import { useCallback, useMemo } from "react";
@@ -14,7 +18,7 @@ import {
   buildSidebarProjectSnapshots,
   projectGroupsSpanEnvironments,
 } from "~/sidebarProjectGrouping";
-import { useProjects, useThreadShells } from "~/state/entities";
+import { useProjects, useThreadShells, useUserProjects } from "~/state/entities";
 import { useEnvironments, usePrimaryEnvironmentId } from "~/state/environments";
 import { ProjectEnvironmentBadge } from "../ProjectEnvironmentBadge";
 import { ProjectFavicon } from "../ProjectFavicon";
@@ -42,7 +46,9 @@ export function DraftHeroHeadline({
   activeProjectRef,
   activeProjectTitle,
 }: DraftHeroHeadlineProps) {
-  const projects = useProjects();
+  const allProjects = useProjects();
+  // The picker offers codebases; a chat space is never a project to choose.
+  const projects = useUserProjects();
   const threads = useThreadShells();
   const { environments } = useEnvironments();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
@@ -127,7 +133,16 @@ export function DraftHeroHeadline({
         ) ?? null);
   const activeProjectKey = activeProjectGroup?.projectKey ?? "";
   const activeProjectDisplayName = activeProjectGroup?.displayName ?? activeProjectTitle;
-  const hasResolvedProject = activeProjectTitle !== null;
+  const activeWorkspace =
+    activeProjectRef === null
+      ? undefined
+      : allProjects.find(
+          (project) =>
+            project.environmentId === activeProjectRef.environmentId &&
+            project.id === activeProjectRef.projectId,
+        );
+  const isChatDraft = activeWorkspace !== undefined && isChatWorkspace(activeWorkspace);
+  const hasResolvedProject = activeProjectTitle !== null && !isChatDraft;
   const canChooseProject = projectPickerEntries.length > 0;
   const shouldShowProjectMenu = canChooseProject;
 
@@ -232,6 +247,21 @@ export function DraftHeroHeadline({
       {activeProjectTitle ?? "Add a project"}
     </button>
   );
+
+  if (isChatDraft) {
+    return (
+      <div className="mx-auto flex w-full max-w-5xl flex-col items-center gap-2 text-center">
+        <h1 className="font-normal text-2xl text-foreground tracking-tight sm:text-3xl">
+          What can I help with?
+        </h1>
+        {canChooseProject ? (
+          <p className="text-sm text-muted-foreground">
+            Working on code? Run an agent in {projectSelector}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   return (
     <h1 className="mx-auto w-full max-w-5xl text-center font-normal text-2xl text-foreground tracking-tight sm:text-3xl">

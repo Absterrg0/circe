@@ -179,7 +179,6 @@ import * as ServerSettings from "./serverSettings.ts";
 import * as TerminalManager from "./terminal/Manager.ts";
 import { withTerminalOutputWindow } from "./terminal/OutputProtocol.ts";
 import * as PreviewAutomationBroker from "./mcp/PreviewAutomationBroker.ts";
-import * as DesktopUse from "./circe/desktopUse/DesktopUse.ts";
 import * as DeviceService from "./device/DeviceService.ts";
 import { remoteSshDeviceHosts } from "./device/localSshDeviceHost.ts";
 import * as PreviewManager from "./preview/Manager.ts";
@@ -638,7 +637,6 @@ const makeWsRpcLayer = (
   clientOrigin: OrchestrationClientOrigin,
   clientAnalyticsProps: Readonly<Record<string, unknown>>,
   previewAutomationBroker: PreviewAutomationBroker.PreviewAutomationBroker["Service"],
-  desktopUse: DesktopUse.DesktopUse["Service"],
 ) =>
   ServerWsRpcGroup.toLayer(
     Effect.gen(function* () {
@@ -2950,7 +2948,8 @@ const makeWsRpcLayer = (
                   new ProjectMutationError({
                     commandId: mutation.commandId,
                     message:
-                      cause._tag === "ProjectNotEmptyError"
+                      cause._tag === "ProjectNotEmptyError" ||
+                      cause._tag === "ProjectChatSpaceError"
                         ? cause.message
                         : "Failed to mutate project.",
                     cause,
@@ -3329,32 +3328,6 @@ const makeWsRpcLayer = (
             previewAutomationBroker.focusHost(input),
             { "rpc.aggregate": "preview-automation" },
           ),
-        [WS_METHODS.desktopUseGetStatus]: (_input) =>
-          observeRpcEffect(WS_METHODS.desktopUseGetStatus, desktopUse.getStatus(), {
-            "rpc.aggregate": "desktop-use",
-          }),
-        [WS_METHODS.desktopUseCapture]: (input) =>
-          observeRpcEffect(WS_METHODS.desktopUseCapture, desktopUse.capture(input), {
-            "rpc.aggregate": "desktop-use",
-          }),
-        [WS_METHODS.desktopUseInput]: (input) =>
-          observeRpcEffect(WS_METHODS.desktopUseInput, desktopUse.input(input), {
-            "rpc.aggregate": "desktop-use",
-          }),
-        [WS_METHODS.desktopUseListWindows]: (_input) =>
-          observeRpcEffect(
-            WS_METHODS.desktopUseListWindows,
-            desktopUse.listWindows().pipe(Effect.map((windows) => ({ windows }))),
-            { "rpc.aggregate": "desktop-use" },
-          ),
-        [WS_METHODS.desktopUseSubscribeFrames]: (input) =>
-          observeRpcStream(
-            WS_METHODS.desktopUseSubscribeFrames,
-            desktopUse.subscribeFrames(input),
-            {
-              "rpc.aggregate": "desktop-use",
-            },
-          ),
         [WS_METHODS.subscribePreviewEvents]: (_input) =>
           observeRpcStream(WS_METHODS.subscribePreviewEvents, previewManager.events, {
             "rpc.aggregate": "preview",
@@ -3617,7 +3590,6 @@ export const makeWebsocketRpcRouteLayer = <ExtensionRequirements>(
   Layer.unwrap(
     Effect.gen(function* () {
       const previewAutomationBroker = yield* PreviewAutomationBroker.PreviewAutomationBroker;
-      const desktopUse = yield* DesktopUse.DesktopUse;
       const serverSelfUpdate = yield* ServerSelfUpdate.ServerSelfUpdate;
       const pullRequests = yield* PullRequestService.PullRequestService;
       const sql = yield* SqlClient.SqlClient;
@@ -3672,7 +3644,6 @@ export const makeWebsocketRpcRouteLayer = <ExtensionRequirements>(
                 clientOrigin,
                 clientAnalyticsProps,
                 previewAutomationBroker,
-                desktopUse,
               ).pipe(
                 Layer.provide(Layer.succeed(WsRpcHandlerExtension, rpcHandlerExtension)),
                 Layer.provide(Layer.succeed(RpcAuthorizationResolver, rpcAuthorization)),

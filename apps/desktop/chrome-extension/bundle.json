@@ -1,0 +1,11 @@
+{
+  "hostName": "com.circe.browser_connector",
+  "extensionId": "emjghohcfopghcdlbopgeifkkpfpaphk",
+  "files": [
+    "manifest.json",
+    "service-worker.js",
+    "debugger-session.js",
+    "options.html",
+    "options.js"
+  ]
+}

@@ -14,6 +14,7 @@ import { ServerConfig } from "../config.ts";
 import { ProjectServiceLayerLive } from "../orchestration-v2/runtimeLayer.ts";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
+import { circeChatSpaceRoot } from "../circe/chatSpace.ts";
 import * as ProjectEnrichmentService from "./ProjectEnrichmentService.ts";
 import * as ProjectFaviconResolver from "./ProjectFaviconResolver.ts";
 import * as ProjectService from "./ProjectService.ts";
@@ -54,8 +55,8 @@ const makeTestLayer = (
     Layer.provideMerge(workspacePathsLayer),
     Layer.provideMerge(projectMetadataLayer),
     Layer.provideMerge(SqlitePersistenceMemory),
-    Layer.provide(ServerConfig.layerTest(process.cwd(), { prefix: "project-service-test-" })),
-    Layer.provide(NodeServices.layer),
+    Layer.provideMerge(ServerConfig.layerTest(process.cwd(), { prefix: "project-service-test-" })),
+    Layer.provideMerge(NodeServices.layer),
   );
 
 const TestLayer = makeTestLayer(metadataLayer);
@@ -434,3 +435,63 @@ it.effect("invalidates workspace-derived metadata when a project moves", () =>
     }).pipe(Effect.provide(makeTestLayer(versionedMetadataLayer)));
   }),
 );
+
+it.layer(TestLayer)("ProjectService chat space", (it) => {
+  it.effect("keeps the chat space typed and refuses to rename, move, or delete it", () =>
+    Effect.gen(function* () {
+      const service = yield* ProjectService.ProjectService;
+      const chatRoot = yield* circeChatSpaceRoot;
+      const projectId = ProjectId.make("project:chat-space");
+      const created = yield* service.create({
+        commandId: CommandId.make("command:chat-space:create"),
+        projectId,
+        title: "Conversations",
+        workspaceRoot: chatRoot,
+        createWorkspaceRootIfMissing: true,
+      });
+      assert.equal(created.kind, "chats");
+
+      const renamed = yield* service
+        .update({
+          commandId: CommandId.make("command:chat-space:rename"),
+          projectId,
+          title: "Mine now",
+        })
+        .pipe(Effect.flip);
+      assert.equal(renamed._tag, "ProjectChatSpaceError");
+      const moved = yield* service
+        .update({
+          commandId: CommandId.make("command:chat-space:move"),
+          projectId,
+          workspaceRoot: "/elsewhere",
+        })
+        .pipe(Effect.flip);
+      assert.equal(moved._tag, "ProjectChatSpaceError");
+      const deleted = yield* service
+        .delete({ commandId: CommandId.make("command:chat-space:delete"), projectId })
+        .pipe(Effect.flip);
+      assert.equal(deleted._tag, "ProjectChatSpaceError");
+
+      // Choosing the model that answers chats is still allowed.
+      const modelSelection = {
+        instanceId: ProviderInstanceId.make("codex"),
+        model: "gpt-5.1-codex",
+      } as const;
+      const updated = yield* service.update({
+        commandId: CommandId.make("command:chat-space:model"),
+        projectId,
+        defaultModelSelection: modelSelection,
+      });
+      assert.deepStrictEqual(updated.defaultModelSelection, modelSelection);
+      assert.equal(updated.title, "Conversations");
+
+      const other = yield* service.create({
+        commandId: CommandId.make("command:ordinary:create"),
+        projectId: ProjectId.make("project:ordinary"),
+        title: "Ordinary",
+        workspaceRoot: "/work/ordinary",
+      });
+      assert.equal(other.kind, "project");
+    }),
+  );
+});

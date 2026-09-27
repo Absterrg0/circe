@@ -6,6 +6,7 @@ import {
   type ProjectUpdatePayload,
   type ProjectSnapshot,
 } from "@circe/contracts";
+import { circeChatSpaceRoot, workspaceKindOf } from "../circe/chatSpace.ts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -76,6 +77,19 @@ export class ProjectNotEmptyError extends Schema.TaggedError<ProjectNotEmptyErro
   }
 }
 
+/**
+ * The node's chat space is Circe's, not the user's: renaming it, moving it,
+ * or deleting it would strand every chat. Its default model can still change.
+ */
+export class ProjectChatSpaceError extends Schema.TaggedError<ProjectChatSpaceError>()(
+  "ProjectChatSpaceError",
+  { projectId: ProjectId },
+) {
+  override get message(): string {
+    return "Circe manages the chat space, so it can't be renamed, moved, or deleted.";
+  }
+}
+
 export class ProjectOperationError extends Schema.TaggedError<ProjectOperationError>()(
   "ProjectOperationError",
   {
@@ -98,6 +112,7 @@ export class ProjectOperationError extends Schema.TaggedError<ProjectOperationEr
 }
 
 export type ProjectServiceError =
+  | ProjectChatSpaceError
   | ProjectNotFoundError
   | ProjectConflictError
   | ProjectNotEmptyError
@@ -137,12 +152,14 @@ export const make = Effect.gen(function* () {
   const idAllocator = yield* IdAllocatorV2;
   const legacyImporter = yield* LegacyV1ThreadImporter;
   const threadCommands = yield* ThreadCommandExecutor;
+  const chatSpaceRoot = yield* circeChatSpaceRoot;
 
   const toProject = (
     row: ProjectionProjects.ProjectionProject,
     enrichment: ProjectEnrichment | null,
   ): Project => ({
     id: row.projectId,
+    kind: workspaceKindOf(row.workspaceRoot, chatSpaceRoot),
     title: row.title,
     workspaceRoot: row.workspaceRoot,
     repositoryIdentity: enrichment?.repositoryIdentity ?? null,
@@ -322,6 +339,14 @@ export const make = Effect.gen(function* () {
       if (Option.isNone(existing) || existing.value.deletedAt !== null) {
         return yield* new ProjectNotFoundError({ projectId: input.projectId });
       }
+      if (
+        workspaceKindOf(existing.value.workspaceRoot, chatSpaceRoot) === "chats" &&
+        ((input.title !== undefined && input.title !== existing.value.title) ||
+          (input.workspaceRoot !== undefined &&
+            input.workspaceRoot !== existing.value.workspaceRoot))
+      ) {
+        return yield* new ProjectChatSpaceError({ projectId: input.projectId });
+      }
       const workspaceRoot =
         input.workspaceRoot === undefined
           ? existing.value.workspaceRoot
@@ -384,6 +409,9 @@ export const make = Effect.gen(function* () {
         );
       if (Option.isNone(existing) || existing.value.deletedAt !== null) {
         return yield* new ProjectNotFoundError({ projectId });
+      }
+      if (workspaceKindOf(existing.value.workspaceRoot, chatSpaceRoot) === "chats") {
+        return yield* new ProjectChatSpaceError({ projectId });
       }
 
       const snapshot = yield* threadProjections

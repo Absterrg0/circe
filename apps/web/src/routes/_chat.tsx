@@ -7,7 +7,7 @@ import { ThreadRouteView } from "../components/ThreadRouteView";
 import { resolveThreadRouteTarget } from "../threadRoutes";
 import { useClientSettings, useLegacySidebarEnabled } from "../hooks/useSettings";
 import { openCommandPalette } from "../commandPaletteBus";
-import { useProjects } from "../state/entities";
+import { useUserProjects } from "../state/entities";
 import { usePrimaryEnvironmentId } from "../state/environments";
 import { selectProjectGroupingSettings } from "../logicalProject";
 import { buildSidebarProjectSnapshots } from "../sidebarProjectGrouping";
@@ -32,7 +32,8 @@ function ChatRouteGlobalShortcuts() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const legacySidebarEnabled = useLegacySidebarEnabled();
   const projectGroupingSettings = useClientSettings(selectProjectGroupingSettings);
-  const projects = useProjects();
+  // Only codebases need a "which project" choice; chats have their own action.
+  const projects = useUserProjects();
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const projectGroupCount = useMemo(
     () =>

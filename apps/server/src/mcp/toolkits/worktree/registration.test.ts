@@ -25,7 +25,8 @@ import { VcsStatusBroadcaster } from "../../../vcs/VcsStatusBroadcaster.ts";
 import * as McpHttpServer from "../../McpHttpServer.ts";
 import * as McpSessionRegistry from "../../McpSessionRegistry.ts";
 import * as PreviewAutomationBroker from "../../PreviewAutomationBroker.ts";
-import { DesktopUse } from "../../../circe/desktopUse/DesktopUse.ts";
+import { CirceComputerAccess } from "../../../circe/Services/CirceComputerAccess.ts";
+import { ComputerService } from "../../../computer/ComputerService.ts";
 
 const StubServicesLive = Layer.mergeAll(
   Layer.mock(OrchestratorV2)({}),
@@ -41,7 +42,8 @@ const StubServicesLive = Layer.mergeAll(
   Layer.mock(GitWorkflowService.GitWorkflowService)({}),
   Layer.mock(ProjectSetupScriptRunner.ProjectSetupScriptRunner)({}),
   Layer.mock(VcsStatusBroadcaster)({}),
-  Layer.mock(DesktopUse)({}),
+  Layer.mock(ComputerService)({}),
+  Layer.mock(CirceComputerAccess)({ controllable: true }),
 );
 
 const ToolsListPayload = Schema.fromJsonString(

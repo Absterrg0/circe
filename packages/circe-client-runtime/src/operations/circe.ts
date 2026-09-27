@@ -2,19 +2,58 @@ import {
   WS_METHODS,
   type CirceBrowserUseInput,
   type CirceCancelMissionInput,
+  type CirceComputerAccessDecideInput,
+  type CirceComputerAccessStopInput,
   type CirceComputerUseInput,
   type CirceCancelRequestInput,
+  type CirceDeviceReadinessInput,
   type CirceExecuteInput,
   type CirceFocusTaskInput,
   type CirceHostListenInput,
   type CirceHostSayInput,
   type CirceHostSpeakInput,
+  type CirceHostTranscribeInput,
   type CirceInterpretInput,
+  type CirceInteractionInterruptInput,
+  type CirceInteractionReadInput,
+  type CirceInteractionSubmitInput,
   type CirceManageProjectAliasInput,
 } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 
 import { request } from "@circe/client/rpc";
+
+/**
+ * Submit one utterance to the node-owned interaction. The server resolves the
+ * relation to the active goal, asks or answers the pending question, and
+ * returns either state to render or a grounded proposal for ordinary work.
+ */
+export const submitCirceInteraction = Effect.fn("Circe.interactionSubmit")(function* (
+  input: CirceInteractionSubmitInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionSubmit, input);
+});
+
+/** Read the active interaction, or one exact interaction, from its owner node. */
+export const readCirceInteraction = Effect.fn("Circe.interactionRead")(function* (
+  input: CirceInteractionReadInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionRead, input);
+});
+
+/** Stop the interaction's operation or pending question on its owner node. */
+export const interruptCirceInteraction = Effect.fn("Circe.interactionInterrupt")(function* (
+  input: CirceInteractionInterruptInput,
+) {
+  return yield* request(WS_METHODS.circeInteractionInterrupt, input);
+});
+
+/** Observed desktop readiness for this node; clients act only on ready surfaces. */
+export const getCirceDeviceReadiness = Effect.fn("Circe.deviceReadiness")(function* (
+  input: CirceDeviceReadinessInput,
+) {
+  return yield* request(WS_METHODS.circeDeviceReadiness, input);
+});
 
 /** Send one text or transcribed voice instruction to the T3 Circe manager. */
 export const executeCirceInstruction = Effect.fn("Circe.executeInstruction")(function* (
@@ -36,6 +75,13 @@ export const listenToCirceHost = Effect.fn("Circe.hostListen")(function* (
   input: CirceHostListenInput,
 ) {
   return yield* request(WS_METHODS.circeHostListen, input);
+});
+
+/** Speech to words through Circe Mesh, for a message another node will handle. */
+export const transcribeWithCirceHost = Effect.fn("Circe.hostTranscribe")(function* (
+  input: CirceHostTranscribeInput,
+) {
+  return yield* request(WS_METHODS.circeHostTranscribe, input);
 });
 
 /** One Circe reply as speech, synthesized through Circe Mesh. */
@@ -90,6 +136,11 @@ export const useCirceComputer = Effect.fn("Circe.computerUse")(function* (
   return yield* request(WS_METHODS.circeComputerUse, input);
 });
 
+/** Read the node's desktop-host availability and active computer mission. */
+export const getCirceComputerStatus = Effect.fn("Circe.computerStatus")(function* () {
+  return yield* request(WS_METHODS.circeComputerStatus, {});
+});
+
 /**
  * Stop one running mission on its node by the request id it registered under.
  * `cancelled` is true when a live mission held the id and will halt at its next
@@ -99,6 +150,20 @@ export const cancelCirceMission = Effect.fn("Circe.cancelMission")(function* (
   input: CirceCancelMissionInput,
 ) {
   return yield* request(WS_METHODS.circeCancelMission, input);
+});
+
+/** Approve or deny exactly the request to use the node's computer that the client showed. */
+export const decideCirceComputerAccess = Effect.fn("Circe.computerAccessDecide")(function* (
+  input: CirceComputerAccessDecideInput,
+) {
+  return yield* request(WS_METHODS.circeComputerAccessDecide, input);
+});
+
+/** Withdraw a waiting request, or stop whoever uses the node's computer. */
+export const stopCirceComputerAccess = Effect.fn("Circe.computerAccessStop")(function* (
+  input: CirceComputerAccessStopInput,
+) {
+  return yield* request(WS_METHODS.circeComputerAccessStop, input);
 });
 
 /** Read the authenticated device's Host-owned task focus and bounded history. */

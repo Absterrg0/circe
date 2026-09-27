@@ -3,7 +3,7 @@ import { threadPullRequestSearchTerms } from "@circe/shared/threadPullRequests";
 import * as React from "react";
 import { defaultAnimateLayoutChanges, type AnimateLayoutChanges } from "@dnd-kit/sortable";
 import { isAtomCommandInterrupted, type AtomCommandResult } from "@circe/client/state/runtime";
-import { CIRCE_CONVERSATIONS_PROJECT_TITLE } from "@circe/contracts";
+import { isChatWorkspace, type WorkspaceKind } from "@circe/contracts";
 import type { ContextMenuItem } from "@circe/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@circe/contracts/settings";
 import type { AsyncResult } from "effect/unstable/reactivity";
@@ -501,6 +501,35 @@ export function filterSidebarV2VisibleThreads<
       (scopedProjectKeys === null ||
         scopedProjectKeys.has(`${thread.environmentId}:${thread.projectId}`)),
   );
+}
+
+/**
+ * Split sidebar threads into chats and agent work. A chat runs in its node's
+ * chat space and is never inside a project, so project scope narrows only the
+ * agent side. A thread whose workspace is not loaded yet counts as agent work.
+ */
+export function partitionSidebarChats<
+  T extends { readonly environmentId: string; readonly projectId: string },
+>(input: {
+  readonly threads: readonly T[];
+  readonly workspaceByKey: ReadonlyMap<
+    string,
+    { readonly title: string; readonly kind?: WorkspaceKind | undefined }
+  >;
+  readonly scopedProjectKeys: ReadonlySet<string> | null;
+}): { readonly chats: T[]; readonly agents: T[] } {
+  const chats: T[] = [];
+  const agents: T[] = [];
+  for (const thread of input.threads) {
+    const key = `${thread.environmentId}:${thread.projectId}`;
+    const workspace = input.workspaceByKey.get(key);
+    if (workspace !== undefined && isChatWorkspace(workspace)) {
+      chats.push(thread);
+    } else if (input.scopedProjectKeys === null || input.scopedProjectKeys.has(key)) {
+      agents.push(thread);
+    }
+  }
+  return { chats, agents };
 }
 
 export function getSidebarForkParentThreadId(
@@ -1239,15 +1268,13 @@ export function sortProjectsForSidebar<
 }
 
 /**
- * Keep the Circe Conversations project above coding projects in the sidebar,
- * regardless of activity, so general-question threads stay grouped and first.
+ * Keep a node's chat space above coding projects wherever a list still holds
+ * it, regardless of activity, so chats stay grouped and first.
  */
-function pinCirceConversationsProjectFirst<T extends { readonly title: string }>(
-  projects: readonly T[],
-): T[] {
-  const index = projects.findIndex(
-    (project) => project.title === CIRCE_CONVERSATIONS_PROJECT_TITLE,
-  );
+function pinCirceConversationsProjectFirst<
+  T extends { readonly title: string; readonly kind?: WorkspaceKind | undefined },
+>(projects: readonly T[]): T[] {
+  const index = projects.findIndex((project) => isChatWorkspace(project));
   if (index <= 0) return [...projects];
   const ordered = [...projects];
   const [conversations] = ordered.splice(index, 1);

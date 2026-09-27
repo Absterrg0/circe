@@ -13,13 +13,16 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import type {
-  EnvironmentId,
-  CircePresentationEvent,
-  CirceTaskDeskView,
-  CirceTaskRef,
-  ModelSelection,
-  ThreadId,
+import {
+  circeBotIdOfPlace,
+  type EnvironmentId,
+  type CirceDeviceReadiness,
+  type CirceInteractionId,
+  type CircePresentationEvent,
+  type CirceTaskDeskView,
+  type CirceTaskRef,
+  type ModelSelection,
+  type ThreadId,
 } from "@circe/contracts";
 import { isCirceClarificationDiscard } from "@circe/core/clarification";
 import { isExplicitSpokenApprovalAnswer } from "@circe/core/confirmation";
@@ -32,6 +35,7 @@ import {
 } from "@circe/core/modelChoice";
 import {
   buildCirceInterpretInput,
+  selectCirceDeviceTargetNode,
   selectCirceQuickLookupNode,
   selectCirceSemanticNode,
   type CirceMeshCatalog,
@@ -50,7 +54,7 @@ import { mobileClientActionCapabilities, mobileClientActionExecutors } from "./m
 
 import { uuidv4 } from "../../lib/uuid";
 import { NO_DEVICES_COPY } from "./circeAvailability";
-import { circeEnvironment } from "../../state/circe";
+import { circeEnvironment, circeHostOrigin, presentedComputerRequestFor } from "../../state/circe";
 import { circeMeshCatalogAtom, circeMeshEnvironment } from "../../state/circeMesh";
 import { lookupThread } from "../../state/threads";
 import { mobilePreferencesAtom, updateMobilePreferencesAtom } from "../../state/preferences";
@@ -172,6 +176,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportFailure: false,
     reportDefect: false,
   });
+  const sayToCirceHost = useMobileAtomCommand(circeEnvironment.hostSay, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   const preferencesResult = useAtomValue(mobilePreferencesAtom);
   const savePreferences = useAtomSet(updateMobilePreferencesAtom);
   const refreshMesh = useMobileAtomCommand(circeMeshEnvironment.refresh, {
@@ -183,6 +191,14 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
     reportDefect: false,
   });
   const execute = useMobileAtomCommand(circeMeshEnvironment.execute, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const submitInteraction = useMobileAtomCommand(circeMeshEnvironment.submitInteraction, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const deviceReadiness = useMobileAtomCommand(circeMeshEnvironment.deviceReadiness, {
     reportFailure: false,
     reportDefect: false,
   });
@@ -296,10 +312,19 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   // The interpret call currently awaiting its proposal, before any execution
   // node is chosen. Explicit correction cancel targets this on the semantic
   // node; new additional input queues behind instead of cancelling it.
+  /** True while a message is with a node's Circe host, which offers no pre-accept cancel. */
+  const hostTurnRef = useRef(false);
   const activeInterpretRef = useRef<{
     readonly requestId: string;
     readonly nodeId: EnvironmentId;
     readonly originInteractionId: string;
+  } | null>(null);
+  // The node-owned interaction this phone is following. The server owns the
+  // pending question and its revision; this ref only carries the identity
+  // needed to resume it from any device.
+  const voiceInteractionRef = useRef<{
+    readonly interactionId: CirceInteractionId;
+    readonly revision: number;
   } | null>(null);
   // Additional inputs arriving while one turn submits queue behind it by
   // default. Only an explicit cancel (button or typed cancel) plus a new
@@ -725,6 +750,10 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   const cancelInflightRequest = useCallback(async (): Promise<
     "cancelled" | "already-accepted" | "unknown" | "failed" | "idle"
   > => {
+    if (hostTurnRef.current) {
+      setMessage("Circe is already carrying that out. Say stop to stop it.");
+      return "already-accepted";
+    }
     const activeInterpret = activeInterpretRef.current;
     if (activeInterpret !== null) {
       const interpretOutcome = await cancelRequestCommand({
@@ -1517,59 +1546,176 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         nodeId: semanticNode.nodeId,
         originInteractionId: interpretOrigin,
       };
-      let interpreted: Awaited<ReturnType<typeof interpret>> | null = null;
-      try {
-        interpreted = await interpret({ nodeId: semanticNode.nodeId, interpret: evidence }).catch(
-          () => null,
-        );
-      } finally {
-        if (activeInterpretRef.current?.requestId === turnRequestId) {
-          activeInterpretRef.current = null;
-        }
+      // One submission path: the node-owned interaction resolves the relation
+      // to its active goal, owns any pending question, and either returns
+      // checked state or a grounded proposal for ordinary work.
+      const interactionRef = voiceInteractionRef.current;
+      // The conversation lives on a node that can actually run bounded
+      // assistant actions: a headless execution node owns projects but no
+      // lookups or desktop surface.
+      const interactionNodeId =
+        selectCirceQuickLookupNode(evidenceCatalog, [
+          taskDeskNodeIdRef.current,
+          semanticNode.nodeId,
+        ])?.nodeId ?? liveSemanticNode.nodeId;
+      // The node's Circe host layer takes the message first, as on desktop:
+      // circe-core reads that node's projects, threads, bots and computer,
+      // and keeps its own pending question, so a reply is the next message.
+      // The message goes to the node that owns what the user is working on,
+      // never to whichever node happens to answer lookups: that node's host
+      // would not see the project and could start the work in the wrong place.
+      const hostNodeId =
+        focusContext?.projectRef?.nodeId ?? ambientRef?.nodeId ?? interactionNodeId;
+      const hostFocus =
+        focusContext?.projectRef !== undefined && focusContext.projectRef.nodeId === hostNodeId
+          ? {
+              projectId: focusContext.projectRef.projectId,
+              ...(focusContext.threadId === undefined ? {} : { threadId: focusContext.threadId }),
+            }
+          : ambientRef?.nodeId === hostNodeId
+            ? { projectId: ambientRef.projectId }
+            : undefined;
+      // A host turn has no pre-accept cancel: while it runs, cancel says so
+      // instead of reporting a cancellation that did not happen.
+      if (activeInterpretRef.current?.requestId === turnRequestId) {
+        activeInterpretRef.current = null;
       }
-      if (interpreted === null || interpreted._tag !== "Success") {
+      hostTurnRef.current = true;
+      const hostReply = await sayToCirceHost({
+        environmentId: hostNodeId,
+        input: {
+          utterance: sourceUtterance.slice(0, 16_000),
+          ...(hostFocus === undefined ? {} : { focus: hostFocus }),
+          ...presentedComputerRequestFor(hostNodeId),
+        },
+      })
+        .catch(() => null)
+        .finally(() => {
+          hostTurnRef.current = false;
+        });
+      // Only a node that says its host layer is off falls through. A lost
+      // reply may still have been carried out, so it is never retried
+      // through the interaction path.
+      if (hostReply === null || hostReply._tag !== "Success") {
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        setMessage(
+          "I couldn't hear back from that node, so it may or may not have acted. Check before asking again.",
+        );
+        return;
+      }
+      if (hostReply.value.status !== "unavailable") {
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        setMessage(hostReply.value.said);
+        const shown = hostReply.value.navigate;
+        // A bot is not a project on this phone; its reply is the message above.
+        if (shown?.projectId !== undefined && circeBotIdOfPlace(shown.projectId) === null) {
+          const projectRef = { nodeId: hostNodeId, projectId: shown.projectId };
+          const task =
+            shown.threadId === undefined
+              ? null
+              : {
+                  threadId: shown.threadId,
+                  taskRef: { executionNodeId: hostNodeId, threadId: shown.threadId },
+                  projectRef,
+                };
+          adoptExplicitFocus({ projectRef, task });
+          if (task !== null) {
+            void focusTaskCommand({
+              nodeId: hostNodeId,
+              task: { threadId: task.threadId, taskRef: task.taskRef },
+            }).then((focused) => {
+              if (focused._tag === "Success" && taskDeskNodeIdRef.current === hostNodeId) {
+                setDesk(focused.value);
+                setDeskNodeId(hostNodeId);
+              }
+            });
+          }
+        }
+        return;
+      }
+      activeInterpretRef.current = {
+        requestId: turnRequestId,
+        nodeId: semanticNode.nodeId,
+        originInteractionId: interpretOrigin,
+      };
+      const interactionResult = await submitInteraction({
+        nodeId: interactionNodeId,
+        utterance: sourceUtterance.slice(0, 16_000),
+        requestId: turnRequestId,
+        origin: { originInteractionId: interpretOrigin },
+        sourceUtterance: sourceUtterance.slice(0, 16_000),
+        ...(interactionRef === null
+          ? {}
+          : {
+              interactionId: interactionRef.interactionId,
+              expectedRevision: interactionRef.revision,
+            }),
+        evidence: {
+          projects: evidence.projects,
+          tasks: evidence.tasks,
+          providers: evidence.providers,
+          ...(evidence.nodes === undefined ? {} : { nodes: evidence.nodes }),
+          ...(evidence.currentProjectTitle === undefined
+            ? {}
+            : { currentProjectTitle: evidence.currentProjectTitle }),
+          ...(evidence.focusedTask === undefined ? {} : { focusedTask: evidence.focusedTask }),
+          ...(evidence.continueContext === undefined
+            ? {}
+            : { continueContext: evidence.continueContext }),
+          ...(evidence.clientTools === undefined ? {} : { clientTools: evidence.clientTools }),
+          ...(evidence.clientToolCandidates === undefined
+            ? {}
+            : { clientToolCandidates: evidence.clientToolCandidates }),
+        },
+      }).catch(() => null);
+      if (activeInterpretRef.current?.requestId === turnRequestId) {
+        activeInterpretRef.current = null;
+      }
+      const interactionValue =
+        interactionResult !== null && interactionResult._tag === "Success"
+          ? interactionResult.value
+          : null;
+      if (interactionValue === null) {
         setMessage("Circe couldn't interpret that request safely. Try again.");
         return;
       }
-      const executionProposal = interpreted.value;
-      // A lookup or website launch is a bounded assistant action with no
-      // project, task, provider, or thread. The model proposed it; a node runs
-      // the lookup and this phone opens the site.
-      if (
-        executionProposal.action === "lookup" &&
-        executionProposal.lookup !== undefined &&
-        executionProposal.lookup !== null
-      ) {
-        // A lookup needs a Full or Controller node. Prefer the selected desk
-        // or semantic node only when it advertises that capability, otherwise
-        // pick another capable online node instead of the first connected one.
-        const lookupNode =
-          selectCirceQuickLookupNode(evidenceCatalog, [
-            taskDeskNodeIdRef.current,
-            semanticNode.nodeId,
-          ]) ?? liveSemanticNode;
-        const lookupNodeId = lookupNode.nodeId;
-        const lookup = executionProposal.lookup;
-        // Hold the submission slot across the await so a concurrent capture
-        // queues behind this action instead of racing a second interpret.
-        submittingRef.current = true;
-        setSubmitting(true);
-        try {
-          const lookupResult = await quickLookup({
-            environmentId: lookupNodeId,
-            input: { ...lookup, sourceUtterance: sourceUtterance.slice(0, 16_000) },
-          }).catch(() => null);
-          const value =
-            lookupResult !== null && lookupResult._tag === "Success" ? lookupResult.value : null;
-          setPreparedOriginInteractionId(nextOriginInteractionId());
-          setMessage(value?.message ?? "I couldn't complete that lookup. Try again in a moment.");
-        } finally {
-          submittingRef.current = false;
-          setSubmitting(false);
-          drainQueuedInput();
+      if (interactionValue.status !== "delegated") {
+        voiceInteractionRef.current =
+          interactionValue.status === "answered" || interactionValue.status === "cancelled"
+            ? null
+            : {
+                interactionId: interactionValue.state.interactionId,
+                revision: interactionValue.state.revision,
+              };
+        setPreparedOriginInteractionId(nextOriginInteractionId());
+        if (interactionValue.status === "question") {
+          setMessage(interactionValue.state.pending?.prompt ?? "Which one did you mean?");
+          return;
         }
+        if (interactionValue.status === "answered") {
+          setMessage(interactionValue.message);
+          return;
+        }
+        if (interactionValue.status === "operation") {
+          setMessage(interactionValue.state.outcome?.message ?? "The operation finished.");
+          return;
+        }
+        if (interactionValue.status === "stale") {
+          setMessage("That was already answered on another device.");
+          return;
+        }
+        if (interactionValue.status === "cancelled") {
+          setMessage("Stopped.");
+          return;
+        }
+        setMessage(interactionValue.message);
         return;
       }
+      voiceInteractionRef.current = {
+        interactionId: interactionValue.state.interactionId,
+        revision: interactionValue.state.revision,
+      };
+      const executionProposal = interactionValue.proposal;
       if (
         executionProposal.action === "open-website" &&
         typeof executionProposal.website === "string"
@@ -1611,14 +1757,31 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
             ? { surface: "computer" as const, goal: executionProposal.computerGoal }
             : null;
       if (surfaceGoal !== null) {
-        // Prefer a node that advertises the surface capability, the same way a
-        // lookup picks its node, so a headless semantic node never receives a
-        // mission it can only refuse.
+        // Prefer a node whose observed readiness says the surface is usable.
+        // Preset capability alone is not proof; the node re-checks before it
+        // acts, and a missing surface never silently moves to another node.
+        const readiness = new Map<EnvironmentId, CirceDeviceReadiness>();
+        for (const candidate of [taskDeskNodeIdRef.current, semanticNode.nodeId]) {
+          if (candidate === null || candidate === undefined || readiness.has(candidate)) {
+            continue;
+          }
+          const result = await deviceReadiness({ nodeId: candidate }).catch(() => null);
+          if (result !== null && result._tag === "Success") {
+            readiness.set(candidate, result.value);
+          }
+        }
         const nodeId =
+          selectCirceDeviceTargetNode({
+            catalog: evidenceCatalog,
+            surface: surfaceGoal.surface,
+            readiness,
+            preferredNodeIds: [taskDeskNodeIdRef.current, semanticNode.nodeId],
+          })?.node.nodeId ??
           selectCirceQuickLookupNode(evidenceCatalog, [
             taskDeskNodeIdRef.current,
             semanticNode.nodeId,
-          ])?.nodeId ?? liveSemanticNode.nodeId;
+          ])?.nodeId ??
+          liveSemanticNode.nodeId;
         if (!surfaceConfirmedRef.current) {
           pendingSurfaceRef.current = { ...surfaceGoal, nodeId };
           setPreparedOriginInteractionId(nextOriginInteractionId());
@@ -1960,6 +2123,9 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
       removeActiveTurn,
       replaceActiveTurn,
       savePreferences,
+      sayToCirceHost,
+      adoptExplicitFocus,
+      focusTaskCommand,
       selectedProject,
       selectedProjectKey,
     ],
@@ -2080,6 +2246,11 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
           onPresentation={onPresentation}
         />
       ))}
+      {(catalog?.nodes ?? [])
+        .filter((node) => node.reachability === "online")
+        .map((node) => (
+          <CirceHostNoticeListener key={node.nodeId} nodeId={node.nodeId} onNotice={setMessage} />
+        ))}
     </CirceControllerContext.Provider>
   );
 }
@@ -2088,6 +2259,32 @@ export function useCirceController(): CirceControllerValue {
   const value = useContext(CirceControllerContext);
   if (value === null) throw new Error("useCirceController requires CirceMobileProvider.");
   return value;
+}
+
+/**
+ * What one node's Circe host says on its own, such as a coding agent asking
+ * for the computer or work it was watching finishing, lands in the reply
+ * lane, which a live conversation also speaks.
+ */
+function CirceHostNoticeListener(props: {
+  readonly nodeId: EnvironmentId;
+  readonly onNotice: (text: string) => void;
+}) {
+  const result = useAtomValue(
+    circeEnvironment.hostNotices({
+      environmentId: props.nodeId,
+      input: { origin: circeHostOrigin },
+    }),
+  );
+  const lastNoticeId = useRef<string | null>(null);
+  const onNoticeRef = useRef(props.onNotice);
+  onNoticeRef.current = props.onNotice;
+  useEffect(() => {
+    if (!AsyncResult.isSuccess(result) || lastNoticeId.current === result.value.id) return;
+    lastNoticeId.current = result.value.id;
+    onNoticeRef.current(result.value.text);
+  }, [result]);
+  return null;
 }
 
 function CircePresentationListener(props: {

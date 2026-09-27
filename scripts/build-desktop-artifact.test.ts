@@ -27,6 +27,7 @@ import {
   createBuildConfig,
   DESKTOP_ELECTRON_LANGUAGES,
   DESKTOP_FILE_EXCLUSIONS,
+  BROWSER_CONNECTOR_EXTRA_RESOURCES,
   DESKTOP_EXTRA_RESOURCES,
   LINUX_CAPTURE_EXTRA_RESOURCES,
   LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
@@ -635,6 +636,8 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       "!apps/desktop/prod-resources/wsl-runtime.tar.gz.sha256",
       "!apps/desktop/gnome-extension",
       "!apps/desktop/gnome-extension/**/*",
+      "!apps/desktop/chrome-extension",
+      "!apps/desktop/chrome-extension/**/*",
       "!**/*.map",
     ]);
     assert.equal(WINDOWS_SERVER_RESOURCE_SOURCE_DIR, "apps/desktop/prod-resources/windows-server");
@@ -727,9 +730,14 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(win.asarUnpack, [WINDOWS_NATIVE_ASAR_UNPACK_GLOB]);
       assert.deepStrictEqual(winWithoutWslPrebuild.asar, win.asar);
       assert.deepStrictEqual(winWithoutWslPrebuild.asarUnpack, win.asarUnpack);
-      assert.deepStrictEqual(mac.extraResources, DESKTOP_EXTRA_RESOURCES);
+      // The Chrome extension and its native host ship on every platform.
+      assert.deepStrictEqual(mac.extraResources, [
+        ...DESKTOP_EXTRA_RESOURCES,
+        ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
+      ]);
       assert.deepStrictEqual(linux.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
+        ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
         ...LINUX_CAPTURE_EXTRA_RESOURCES,
         { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
       ]);
@@ -768,6 +776,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           from: "apps/desktop/resources/circe-official-release.json",
           to: "circe-official-release.json",
         },
+        ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
         ...WSL_RUNTIME_EXTRA_RESOURCES,
       ]);
@@ -775,6 +784,7 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       // so listing it here would fail the build on a missing source file.
       assert.deepStrictEqual(winWithoutWslPrebuild.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
+        ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
       ]);
       assert.deepStrictEqual(win.nsis, { differentialPackage: true });

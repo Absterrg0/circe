@@ -6,7 +6,7 @@ import * as FileSystem from "effect/FileSystem";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 
-import * as ServerConfig from "../config.ts";
+import { circeChatSpaceRoot } from "./chatSpace.ts";
 import * as OrchestrationEngine from "../orchestration/Services/OrchestrationEngine.ts";
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 
@@ -31,11 +31,7 @@ export const CIRCE_CONVERSATIONS_AGENTS_MD = [
   "",
 ].join("\n");
 
-const conversationsRoot = Effect.gen(function* () {
-  const config = yield* ServerConfig.ServerConfig;
-  const path = yield* Path.Path;
-  return path.join(config.baseDir, "conversations");
-});
+const conversationsRoot = circeChatSpaceRoot;
 
 /** The Conversations project id, or null before startup has created it. */
 export const resolveCirceConversationsProjectId = conversationsRoot.pipe(

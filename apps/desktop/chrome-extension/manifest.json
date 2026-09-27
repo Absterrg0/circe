@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "Circe Browser Connector",
+  "version": "0.1.0",
+  "description": "Lets Circe control one visible tab in your own signed-in Chrome profile.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAq8EAhF0dGGh2mXUDoi/DzYxWUaaATWKE6c6+tD9QJGgsMO6btrLgTzMW+GjCrRN5vmx1Yb1YcylMi7Yy1nIBQ9yopQPH1GJynsjssutzSSBhqUHaycLtBQ6odmAAL50Xnja2woR4xozrK2K77iAtqYL4s1fLRDMWlB+6X3Lfi/lxR2ljNLfbV9nVCHghocZBzq7UnB6ycVv7is5FLDGjlaMi/rh/ThfdL6wRtOiLUFyW2BINQoOwJmCuz6NhCJyfTzH3WRuGICS23R7IjbuTmGjPndMYkx3sl6IWOTJ36KAH75WUxENRlTgRrdmgSksuDQ5314cYzaX55fkyAnVfBQIDAQAB",
+  "permissions": ["alarms", "debugger", "nativeMessaging", "storage", "tabs"],
+  "background": {
+    "service_worker": "service-worker.js",
+    "type": "module"
+  },
+  "options_page": "options.html",
+  "minimum_chrome_version": "116"
+}

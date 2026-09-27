@@ -1,23 +1,29 @@
 import { scopeThreadRef } from "@circe/client/environment";
-import type { EnvironmentId, ThreadId } from "@circe/contracts";
+import {
+  circeBotIdOfPlace,
+  circeBotPlaceId,
+  ProjectId,
+  ThreadId,
+  type EnvironmentId,
+} from "@circe/contracts";
 import { useRouterState } from "@tanstack/react-router";
 import { lazy, Suspense, useCallback, useEffect, useState } from "react";
 
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { isElectron } from "../../env";
-import { type CirceCommandTarget, onOpenCirce } from "../../circeBus";
+import { type CirceCommandTarget, type CirceHostRoute, onOpenCirce } from "../../circeBus";
 import { usePrimaryEnvironmentId } from "../../state/environments";
 import { useThreadShell } from "../../state/entities";
 import type { AppRouter } from "../../router";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../../threadRoutes";
 import {
-  isCirceShortcut,
   isCirceLocalVoiceRoute,
+  isCirceShortcut,
   resolveCirceDesktopMenuAction,
   shouldHandleCirceShortcutInRenderer,
 } from "./CirceManager.logic";
 import { CirceDesktopOrbReporter } from "./CirceDesktopOrbReporter";
-import { CirceHostNoticeReporter } from "./CirceHostNoticeReporter";
+import { CirceHostNoticeReporters } from "./CirceHostNoticeReporter";
 import { CirceLiveVoiceRuntime } from "./CirceLiveVoiceRuntime";
 import { CirceVoiceCapture } from "./CirceVoiceCapture";
 import { getCirceLiveVoiceUiState, setCirceLiveVoiceActive } from "./CirceLiveVoice.bridge";
@@ -35,6 +41,18 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
       resolveThreadRouteTarget(state.matches[state.matches.length - 1]?.params ?? {}),
   });
   const routeThreadRef = routeTarget?.kind === "server" ? routeTarget.threadRef : null;
+  // A bot page is a place in the host layer's world, not a thread route.
+  const routeBot = useRouterState({
+    router,
+    select: (state) => {
+      const params = state.matches[state.matches.length - 1]?.params as
+        | { readonly environmentId?: string; readonly botId?: string }
+        | undefined;
+      return params?.botId === undefined || params.environmentId === undefined
+        ? null
+        : `${params.environmentId}\u0000${params.botId}`;
+    },
+  });
   const activeThread = useThreadShell(routeThreadRef);
   const activeDraftThread = useComposerDraftStore((store) => {
     if (!routeTarget) return null;
@@ -125,8 +143,37 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
             projectId: activeDraftThread.projectId,
           }
         : null;
+  const [botEnvironmentId, botId] = routeBot === null ? [null, null] : routeBot.split("\u0000");
+  // What is on screen, on whichever node owns it: that node's host is the
+  // one that can act on it. A bot's conversation thread changes as Circe
+  // starts new ones, so its place is what stays on screen.
+  const hostRoute: CirceHostRoute | undefined =
+    botId !== null && botId !== undefined && botEnvironmentId !== null
+      ? {
+          environmentId: botEnvironmentId as EnvironmentId,
+          focus: { projectId: ProjectId.make(circeBotPlaceId(botId)) },
+        }
+      : activeThread !== null
+        ? {
+            environmentId: activeThread.environmentId,
+            focus: { projectId: activeThread.projectId, threadId: activeThread.id },
+          }
+        : activeDraftThread !== null
+          ? {
+              environmentId: activeDraftThread.environmentId,
+              focus: { projectId: activeDraftThread.projectId },
+            }
+          : undefined;
   const handleThreadStarted = useCallback(
     async (environmentId: EnvironmentId, threadId: ThreadId) => {
+      const startedBot = circeBotIdOfPlace(threadId);
+      if (startedBot !== null) {
+        await router.navigate({
+          to: "/bots/$environmentId/$botId",
+          params: { environmentId, botId: startedBot },
+        });
+        return;
+      }
       await router.navigate({
         to: "/$environmentId/$threadId",
         params: buildThreadRouteParams(scopeThreadRef(environmentId, threadId)),
@@ -146,11 +193,12 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
         <CirceVoiceCapture
           environmentId={primaryEnvironmentId}
           routeTarget={routeCommandTarget}
+          hostRoute={hostRoute}
           onThreadStarted={handleThreadStarted}
         />
       ) : null}
       {primaryEnvironmentId !== null ? (
-        <CirceHostNoticeReporter environmentId={primaryEnvironmentId} />
+        <CirceHostNoticeReporters primaryEnvironmentId={primaryEnvironmentId} />
       ) : null}
       {isElectron && primaryEnvironmentId !== null ? (
         <CirceDesktopOrbReporter environmentId={primaryEnvironmentId} />
@@ -159,6 +207,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
         <Suspense fallback={null}>
           <CirceVoiceRuntime
             routeTarget={routeCommandTarget}
+            hostRoute={hostRoute}
             onTargetConsumed={() => undefined}
             onThreadStarted={handleThreadStarted}
           />

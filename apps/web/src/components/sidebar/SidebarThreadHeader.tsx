@@ -1,20 +1,19 @@
 /**
- * The sidebar header: one row holding search, project scope and new thread.
- *
- * Search owns the row's text and spans it. Project scope collapses to an icon
- * that sits with new-project and new-thread as a segmented group at the end.
- * The scope icon swaps to the project favicon while a project is selected,
- * so the header still names the scope after the row that showed it is gone.
- *
- * The scope picker itself is passed in: its combobox state lives with the rest
- * of the sidebar's scope logic. `searchFieldRef` lands on the search field so
- * the picker's popup can anchor to that width rather than to its 28px trigger.
+ * The sidebar header: search across everything, and one New menu for the
+ * three kinds of work (a chat, an agent thread in a project, a new project).
+ * Project scope lives with the Agents group it filters, not up here.
  */
-import { FolderPlusIcon, SearchIcon, SquarePenIcon, XIcon } from "lucide-react";
+import {
+  FolderPlusIcon,
+  MessageCircleIcon,
+  PlusIcon,
+  SearchIcon,
+  SquarePenIcon,
+  XIcon,
+} from "lucide-react";
 import {
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
-  type MouseEvent as ReactMouseEvent,
   type ReactNode,
   type RefObject,
 } from "react";
@@ -22,24 +21,19 @@ import {
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { SidebarMenuButton } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export interface SidebarThreadHeaderProps {
   /** Lands on the search field so a popup can anchor to its width. */
   searchFieldRef?: RefObject<HTMLDivElement | null>;
-  /** Without projects there is nothing to scope, so those controls stay out. */
-  hasProjects: boolean;
-  /** The project scope combobox, rendered as the first icon of the group. */
-  projectScope: ReactNode;
-  onNewProject: () => void;
-  /** Receives the click so Shift+click can skip the project picker. */
-  onNewThread: (event: ReactMouseEvent) => void;
-  newThreadDisabled: boolean;
-  newThreadShortcutLabel: string | null | undefined;
-  newThreadInProjectShortcutLabel: string | null | undefined;
-  /** Shift+click only matters once there is more than one project to pick. */
-  showNewThreadInProjectHint: boolean;
+  /** Null when no node offers a chat space yet. */
+  onNewChat: (() => void) | null;
+  onNewAgentThread: () => void;
+  newAgentThreadDisabled: boolean;
+  newAgentThreadShortcutLabel: string | null | undefined;
+  onAddProject: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
@@ -52,14 +46,11 @@ export interface SidebarThreadHeaderProps {
 
 export function SidebarThreadHeader({
   searchFieldRef,
-  hasProjects,
-  projectScope,
-  onNewProject,
-  onNewThread,
-  newThreadDisabled,
-  newThreadShortcutLabel,
-  newThreadInProjectShortcutLabel,
-  showNewThreadInProjectHint,
+  onNewChat,
+  onNewAgentThread,
+  newAgentThreadDisabled,
+  newAgentThreadShortcutLabel,
+  onAddProject,
   searchInputRef,
   searchQuery,
   onSearchQueryChange,
@@ -74,9 +65,6 @@ export function SidebarThreadHeader({
   // list; pointing aria-activedescendant at a removed option strands the
   // screen reader on nothing.
   const activeResultExists = resultsVisible && activeSearchResultIndex < searchResultCount;
-  const newThreadLabel = newThreadShortcutLabel
-    ? `New thread (${newThreadShortcutLabel})`
-    : "New thread";
 
   return (
     <div className="flex items-center gap-1">
@@ -122,39 +110,30 @@ export function SidebarThreadHeader({
           </Button>
         ) : null}
       </div>
-      {/* Unfilled like the search field beside it: the buttons carry their own
-          hover states, and a background well reads far louder on themed
-          palettes than on the base light and dark ones. */}
-      <div className="flex shrink-0 items-center">
-        {hasProjects ? (
-          <>
-            {projectScope}
-            <SidebarHeaderIconButton label="New project" onClick={onNewProject}>
-              <FolderPlusIcon />
-            </SidebarHeaderIconButton>
-          </>
-        ) : null}
-        <SidebarHeaderIconButton
-          label="New thread"
-          tooltip={
-            showNewThreadInProjectHint ? (
-              <span className="flex flex-col gap-0.5">
-                <span>{newThreadLabel}</span>
-                <span className="text-muted-foreground">
-                  New thread in current project: Shift+click
-                  {newThreadInProjectShortcutLabel ? ` (${newThreadInProjectShortcutLabel})` : ""}
-                </span>
-              </span>
-            ) : (
-              newThreadLabel
-            )
-          }
-          disabled={newThreadDisabled}
-          onClick={onNewThread}
-        >
-          <SquarePenIcon />
-        </SidebarHeaderIconButton>
-      </div>
+      <Menu>
+        <MenuTrigger render={<SidebarHeaderIconButton label="New" />}>
+          <PlusIcon />
+        </MenuTrigger>
+        <MenuPopup align="end" className="min-w-52">
+          {onNewChat !== null ? (
+            <MenuItem onClick={onNewChat}>
+              <MessageCircleIcon />
+              New chat
+            </MenuItem>
+          ) : null}
+          <MenuItem disabled={newAgentThreadDisabled} onClick={onNewAgentThread}>
+            <SquarePenIcon />
+            <span className="flex-1">New agent thread</span>
+            {newAgentThreadShortcutLabel ? (
+              <span className="text-xs text-muted-foreground">{newAgentThreadShortcutLabel}</span>
+            ) : null}
+          </MenuItem>
+          <MenuItem onClick={onAddProject}>
+            <FolderPlusIcon />
+            Add project
+          </MenuItem>
+        </MenuPopup>
+      </Menu>
     </div>
   );
 }

@@ -66,26 +66,6 @@ export const CIRCE_LIVE_VOICE_FOLLOW_UP =
 /** Word budget for a follow-up; a long sentence states its own request. */
 export const CIRCE_LIVE_VOICE_FOLLOW_UP_MAX_WORDS = 12;
 
-/**
- * Deterministic quick actions: weather and local time in a named place. These
- * are backend tools with a fixed, cheap implementation, so they must never
- * depend on the speech model deciding to delegate.
- *
- * A realtime speech model is not a reliable dispatcher: prompted not to refuse,
- * it still improvises "I can't check live weather", and the delegation carries
- * no intent for the client to recover. Recognizing the request from the
- * transcript and delegating it directly is the difference between "normal
- * things work" and "it randomly says it can't".
- *
- * Deliberately narrow: only weather/time phrasings, so ordinary conversation is
- * never force-delegated and answered twice.
- */
-export function isCirceLiveVoiceQuickAction(text: string): boolean {
-  return /\b(?:weather|forecast|temperature|how (?:hot|cold)|will it (?:rain|snow)|is it (?:raining|snowing)|local time|what time is it|time in)\b/iu.test(
-    text,
-  );
-}
-
 export interface CirceLiveVoiceTranscriptFragment {
   readonly text: string;
   readonly startMs: number | null;
@@ -234,12 +214,26 @@ export function applyCirceLiveVoiceTranscript(
     case "session.input_transcript.delta": {
       if (event.delta.length === 0) return state;
       const fragment = { text: event.delta, startMs: event.startMs, endMs: event.endMs };
+      // The same audio item can be re-transcribed as a correction. A delta
+      // that repeats the current fragment's start_ms replaces it; appending
+      // would submit both the partial and its correction.
+      const applyRevision = (
+        fragments: CirceLiveVoiceTranscriptState["userFragments"],
+      ): CirceLiveVoiceTranscriptState["userFragments"] => {
+        const last = fragments[fragments.length - 1];
+        if (last !== undefined && event.startMs !== null && last.startMs === event.startMs) {
+          return [...fragments.slice(0, -1), fragment];
+        }
+        return [...fragments, fragment];
+      };
+      const userFragments = boundFragments(applyRevision(state.userFragments));
+      const pendingUserFragments = boundFragments(applyRevision(state.pendingUserFragments));
       return {
         ...state,
-        userText: boundTail(state.userText + event.delta),
-        pendingUserText: boundTail(state.pendingUserText + event.delta),
-        userFragments: boundFragments([...state.userFragments, fragment]),
-        pendingUserFragments: boundFragments([...state.pendingUserFragments, fragment]),
+        userText: boundTail(userFragments.map((entry) => entry.text).join("")),
+        pendingUserText: boundTail(pendingUserFragments.map((entry) => entry.text).join("")),
+        userFragments,
+        pendingUserFragments,
       };
     }
     case "session.output_transcript.delta": {
@@ -378,11 +372,20 @@ function timedUtteranceGroups(
  * of a bare city. A delegation that arrives before its transcript delta is
  * held by the caller and retried, so this function only reports what it sees.
  *
+ * `ownedReply` is the deterministic path: the host already holds the typed
+ * question this speech answers, so the answer is delegated alone and the host
+ * resumes the exact request. The silence, question-mark, and short-answer
+ * heuristics are skipped because the pending state, not the transcript shape,
+ * decides what the reply is.
+ *
  * Without usable timing, the last sentence is taken when the run contains
  * sentence punctuation. Empty pending speech means no new request: the caller
  * skips instead of replaying the session transcript.
  */
-export function takeCirceLiveVoiceDelegateUtterance(state: CirceLiveVoiceTranscriptState): {
+export function takeCirceLiveVoiceDelegateUtterance(
+  state: CirceLiveVoiceTranscriptState,
+  options?: { readonly ownedReply?: boolean },
+): {
   readonly utterance: string;
   readonly state: CirceLiveVoiceTranscriptState;
 } {
@@ -406,6 +409,9 @@ export function takeCirceLiveVoiceDelegateUtterance(state: CirceLiveVoiceTranscr
   const candidate = groups[groups.length - 1];
   if (candidate === undefined || candidate.text.length === 0) {
     return { utterance: "", state: cleared };
+  }
+  if (options?.ownedReply === true) {
+    return { utterance: candidate.text, state: { ...cleared, lastDelegatedText: candidate.text } };
   }
 
   const words = candidate.text.split(/\s+/u).filter((word) => word.length > 0);

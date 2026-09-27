@@ -16,10 +16,12 @@ import * as Context from "effect/Context";
 import * as Crypto from "effect/Crypto";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
+import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
 import * as Layer from "effect/Layer";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
 import * as Queue from "effect/Queue";
 import * as Ref from "effect/Ref";
@@ -348,6 +350,43 @@ const maybeOpenBrowser = (target: string) =>
     );
   });
 
+/**
+ * Startup signals that prove the server layer graph is up: a healthy bind and
+ * a healthy park both report within milliseconds. When a server layer dies
+ * during construction, the fiber that would signal one of these is gone, so an
+ * unbounded wait turns the defect into a silent hang: the process serves
+ * nothing and prints nothing. The bound converts that into a startup failure
+ * the monitor can report and abort.
+ */
+const SERVER_LAYER_READY_TIMEOUT = Duration.seconds(60);
+
+export const awaitServerLayerSignal = (
+  signal: Effect.Effect<void>,
+  label: string,
+  timeout: Duration.Input = SERVER_LAYER_READY_TIMEOUT,
+): Effect.Effect<void> =>
+  signal.pipe(
+    Effect.timeoutOption(timeout),
+    Effect.flatMap(
+      Option.match({
+        onNone: () =>
+          Effect.die(
+            new Error(
+              `The server layer graph never reported ${label}. A layer failed during construction; inspect the server log for the defect.`,
+            ),
+          ),
+        onSome: () => Effect.void,
+      }),
+    ),
+  );
+
+/** Compatibility wrapper for the listener signal. */
+export const awaitHttpListener = (
+  listening: Deferred.Deferred<void>,
+  timeout: Duration.Input = SERVER_LAYER_READY_TIMEOUT,
+): Effect.Effect<void> =>
+  awaitServerLayerSignal(Deferred.await(listening), "the HTTP listener", timeout);
+
 const runStartupPhase = <A, E, R>(phase: string, effect: Effect.Effect<A, E, R>) =>
   effect.pipe(
     Effect.annotateSpans({ "startup.phase": phase }),
@@ -616,10 +655,10 @@ const make = (options?: StartupOptions) =>
       );
 
       yield* Effect.logDebug("startup phase: waiting for http listener");
-      yield* runStartupPhase("http.wait", Deferred.await(httpListening));
+      yield* runStartupPhase("http.wait", awaitHttpListener(httpListening));
       yield* runStartupPhase(
         "auxiliary-roots.parked",
-        options?.awaitAuxiliaryParked ?? Effect.void,
+        awaitServerLayerSignal(options?.awaitAuxiliaryParked ?? Effect.void, "its parked roots"),
       );
 
       const updateOutcome = yield* launcher.prepareTrial;

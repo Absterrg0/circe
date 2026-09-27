@@ -60,18 +60,43 @@ const testLayer = (input: {
   readonly cancellation?: Layer.Layer<CirceMissionCancellation>;
 }) => {
   let index = 0;
+  let snapshots = 0;
+  // A click that left the page identical cannot back a completion claim, so
+  // later snapshots show a moved page.
+  const currentSnapshot = (): PreviewAutomationSnapshot => {
+    snapshots += 1;
+    if (snapshots === 1) return snapshot;
+    return {
+      ...snapshot,
+      title: "Compose",
+      interactiveElements: snapshot.interactiveElements.map((element, position) =>
+        position === 0 ? { ...element, name: `Compose ${snapshots}` } : element,
+      ),
+    };
+  };
   const invoke = <A>(request: { readonly operation: string }): Effect.Effect<A> => {
     input.operations.push(request.operation);
-    return Effect.succeed((request.operation === "snapshot" ? snapshot : undefined) as A);
+    return Effect.succeed((request.operation === "snapshot" ? currentSnapshot() : undefined) as A);
   };
   return Layer.effect(CirceBrowserUse, make).pipe(
     Layer.provide(Layer.mock(PreviewAutomationBroker)({ invoke })),
     Layer.provide(
       Layer.mock(CirceDecision)({
-        decide: () => {
-          const choice = input.decisions[Math.min(index, input.decisions.length - 1)] ?? "done";
+        decide: (request: { readonly questions: Record<string, unknown> }) => {
+          // The goal-specific verification question is asked after a done;
+          // answer it true so the mission's completion is confirmed.
+          if ("goal_reached" in request.questions) {
+            return Effect.succeed({
+              status: "answered" as const,
+              model: "jev-latest",
+              answers: {
+                goal_reached: { type: "noul" as const, noul: 0.95 },
+              },
+            });
+          }
+          const action = input.decisions[Math.min(index, input.decisions.length - 1)] ?? "done";
           index += 1;
-          return Effect.succeed(choose(choice));
+          return Effect.succeed(choose(action));
         },
       }),
     ),

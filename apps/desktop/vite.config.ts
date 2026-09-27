@@ -67,6 +67,24 @@ export default defineConfig({
       ...(shouldLaunchElectronAfterPack ? { onSuccess: "node scripts/dev-electron.mjs" } : {}),
     },
     {
+      // Chrome starts the native host as its own process from the installed
+      // resources, where no sibling chunk exists: it must be one file.
+      format: "cjs",
+      outDir: "dist-electron/browserConnector",
+      dts: false,
+      sourcemap: true,
+      outExtensions: () => ({ js: ".cjs" }),
+      define: publicConfigDefine,
+      outputOptions: { codeSplitting: false },
+      entry: ["src/browserConnector/browser-connector-host.ts"],
+      clean: false,
+      deps: {
+        alwaysBundle: (id) => !id.startsWith("node:") && !isMainProcessExternal(id),
+        neverBundle: isMainProcessExternal,
+        onlyBundle: false,
+      },
+    },
+    {
       format: "cjs",
       outDir: "dist-electron",
       dts: false,

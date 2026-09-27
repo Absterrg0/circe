@@ -63,11 +63,11 @@ function SidebarBrand() {
   return (
     <Link
       aria-label="Go to threads"
-      className="relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-7 w-fit min-w-0 shrink-0 items-center gap-2 overflow-hidden rounded-[var(--control-radius)] text-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
+      className="relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-8 w-fit min-w-0 shrink-0 items-center gap-2.5 overflow-hidden rounded-[var(--control-radius)] pe-1.5 text-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
       to="/"
     >
-      <img alt="" className="size-4 shrink-0 rounded-[2px]" src={CIRCE_MARK_SRC} />
-      <span className="truncate font-mono text-[11px] font-bold uppercase tracking-[0.12em] text-foreground">
+      <img alt="" className="size-5 shrink-0" src={CIRCE_MARK_SRC} />
+      <span className="truncate text-[15px] font-semibold tracking-[-0.015em] text-foreground">
         Circe
       </span>
     </Link>

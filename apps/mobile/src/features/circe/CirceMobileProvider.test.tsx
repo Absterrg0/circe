@@ -17,6 +17,15 @@ const state = vi.hoisted(() => ({
   refresh: vi.fn(),
   refreshNode: vi.fn(),
   interpret: vi.fn(),
+  submitInteraction: vi.fn(),
+  hostSay: vi.fn(),
+  readInteraction: vi.fn(),
+  interruptInteraction: vi.fn(),
+  deviceReadiness: vi.fn(),
+  pendingLookup: null as {
+    readonly tool: "weather" | "time";
+    readonly day: "now" | "today" | "tomorrow";
+  } | null,
   focus: vi.fn(),
   lookup: vi.fn(),
   converse: vi.fn(),
@@ -61,7 +70,10 @@ vi.mock("../../state/preferences", () => ({
   mobilePreferencesAtom: "preferences",
   updateMobilePreferencesAtom: "save",
 }));
-vi.mock("../../state/circe", () => ({ circeEnvironment: { lookup: "quickLookup" } }));
+vi.mock("../../state/circe", () => ({
+  circeEnvironment: { lookup: "quickLookup", hostSay: "hostSay" },
+  presentedComputerRequestFor: () => ({}),
+}));
 vi.mock("../../state/threads", () => ({ lookupThread: "lookup" }));
 vi.mock("../../state/circeMesh", () => ({
   circeMeshCatalogAtom: "catalog",
@@ -74,6 +86,10 @@ vi.mock("../../state/circeMesh", () => ({
     getTaskDesk: "desk",
     focusTask: "focus",
     cancelRequest: "cancelRequest",
+    submitInteraction: "submitInteraction",
+    readInteraction: "readInteraction",
+    interruptInteraction: "interruptInteraction",
+    deviceReadiness: "deviceReadiness",
   },
 }));
 vi.mock("../../state/use-remote-environment-registry", () => ({
@@ -87,6 +103,11 @@ vi.mock("../../state/use-atom-command", () => ({
       | "execute"
       | "interpret"
       | "converse"
+      | "submitInteraction"
+      | "hostSay"
+      | "readInteraction"
+      | "interruptInteraction"
+      | "deviceReadiness"
       | "desk"
       | "focus"
       | "lookup"
@@ -163,6 +184,15 @@ async function startTask() {
 beforeEach(() => {
   hooks.reset();
   vi.clearAllMocks();
+  // A node without the Circe host layer, so turns reach the interaction path.
+  state.hostSay.mockResolvedValue({
+    _tag: "Success",
+    value: {
+      status: "unavailable",
+      said: "The Circe host layer is off on this node.",
+      started: [],
+    },
+  });
   state.execute.mockReset();
   state.catalog = {
     nodes: [{ nodeId, label: "Node A", reachability: "online" }],
@@ -190,6 +220,159 @@ beforeEach(() => {
     _tag: "Success",
     value: { action: "start", refs: [], model: null, effort: null, answer: null },
   });
+  state.pendingLookup = null;
+  state.deviceReadiness.mockReset().mockResolvedValue({ _tag: "Failure", cause: "not under test" });
+  // The interaction submit wraps the interpret lane and owns lookups: run the
+  // proposed lookup, ask for a missing place, and bind the answer to it.
+  state.submitInteraction
+    .mockReset()
+    .mockImplementation(
+      async (input: {
+        readonly nodeId: string;
+        readonly utterance: string;
+        readonly interactionId?: string;
+        readonly expectedRevision?: number;
+      }) => {
+        const baseState = (goal: unknown) => ({
+          interactionId: input.interactionId ?? "interaction-test",
+          ownerNodeId: input.nodeId,
+          revision: (input.expectedRevision ?? 0) + 1,
+          goal,
+          pending: null,
+          target: null,
+          operationId: null,
+          outcome: null,
+          updatedAt: "2026-09-20T12:00:00.000Z",
+        });
+        const runLookup = async (
+          tool: "weather" | "time",
+          day: "now" | "today" | "tomorrow",
+          location: string,
+        ) => {
+          const result = await state.quickLookup({
+            environmentId: input.nodeId,
+            input: { kind: tool, location, day, sourceUtterance: input.utterance },
+          });
+          return result?._tag === "Success" ? result.value : null;
+        };
+        if (input.interactionId !== undefined && state.pendingLookup !== null) {
+          const pending = state.pendingLookup;
+          const location = input.utterance.trim();
+          const goal = { kind: "lookup", tool: pending.tool, day: pending.day, location };
+          const value = await runLookup(pending.tool, pending.day, location);
+          if (value?.status === "answer") {
+            state.pendingLookup = null;
+            state.deviceReadiness
+              .mockReset()
+              .mockResolvedValue({ _tag: "Failure", cause: "not under test" });
+            return {
+              _tag: "Success" as const,
+              value: {
+                status: "answered" as const,
+                state: baseState(goal),
+                message: value.message,
+                source: value.source,
+              },
+            };
+          }
+          return {
+            _tag: "Success" as const,
+            value: {
+              status: "question" as const,
+              state: {
+                ...baseState(goal),
+                pending: {
+                  questionId: "lookup:test",
+                  kind: "argument" as const,
+                  slot: "location",
+                  prompt: value?.message ?? "Which place should I check?",
+                  known: {},
+                  choices: [],
+                },
+              },
+            },
+          };
+        }
+        const interpreted = await state.interpret(input);
+        if (interpreted === null || interpreted._tag !== "Success") {
+          return { _tag: "Failure" as const, cause: "not under test" };
+        }
+        const proposal = interpreted.value;
+        const lookup = proposal.action === "lookup" ? proposal.lookup : null;
+        if (lookup !== null && lookup !== undefined) {
+          const location =
+            typeof lookup.location === "string" && lookup.location.length > 0
+              ? lookup.location
+              : null;
+          const goal = {
+            kind: "lookup" as const,
+            tool: lookup.kind,
+            day: lookup.day,
+            ...(location === null ? {} : { location }),
+          };
+          if (location === null) {
+            state.pendingLookup = { tool: lookup.kind, day: lookup.day };
+            return {
+              _tag: "Success" as const,
+              value: {
+                status: "question" as const,
+                state: {
+                  ...baseState(goal),
+                  pending: {
+                    questionId: "lookup:test",
+                    kind: "argument" as const,
+                    slot: "location",
+                    prompt: "Which place should I check for weather?",
+                    known: {},
+                    choices: [],
+                  },
+                },
+              },
+            };
+          }
+          const value = await runLookup(lookup.kind, lookup.day, location);
+          if (value?.status === "answer") {
+            return {
+              _tag: "Success" as const,
+              value: {
+                status: "answered" as const,
+                state: baseState(goal),
+                message: value.message,
+                source: value.source,
+              },
+            };
+          }
+          if (value?.status === "needs-input") {
+            state.pendingLookup = { tool: lookup.kind, day: lookup.day };
+            return {
+              _tag: "Success" as const,
+              value: {
+                status: "question" as const,
+                state: {
+                  ...baseState(goal),
+                  pending: {
+                    questionId: "lookup:test",
+                    kind: "argument" as const,
+                    slot: "location",
+                    prompt: value.message,
+                    known: {},
+                    choices: [],
+                  },
+                },
+              },
+            };
+          }
+        }
+        return {
+          _tag: "Success" as const,
+          value: {
+            status: "delegated" as const,
+            state: baseState({ kind: "coding" as const }),
+            proposal,
+          },
+        };
+      },
+    );
   state.refreshNode.mockReset();
   state.refreshNode.mockImplementation(async () => ({
     _tag: "Success",
@@ -278,6 +461,34 @@ describe("mobile provider answer transport lifecycle", () => {
 });
 
 describe("mobile provider request lifecycle", () => {
+  it("never runs a message through the interaction path when the host's reply is lost", async () => {
+    state.hostSay.mockResolvedValueOnce({ _tag: "Failure", cause: new Error("socket closed") });
+    await instruction("open the browser");
+    expect(state.submitInteraction).not.toHaveBeenCalled();
+    expect(render().message).toContain("may or may not have acted");
+  });
+
+  it("hands the turn to the node's Circe host first, as desktop does", async () => {
+    state.hostSay.mockResolvedValueOnce({
+      _tag: "Success",
+      value: {
+        status: "asked",
+        said: 'Use this computer for "open the browser"? Say yes to start.',
+        options: ["Yes", "No"],
+        started: [],
+      },
+    });
+    await instruction("open the browser");
+    expect(state.hostSay).toHaveBeenCalledWith(
+      expect.objectContaining({
+        environmentId: nodeId,
+        input: expect.objectContaining({ utterance: "open the browser" }),
+      }),
+    );
+    expect(state.submitInteraction).not.toHaveBeenCalled();
+    expect(render().message).toBe('Use this computer for "open the browser"? Say yes to start.');
+  });
+
   it("reports a started acknowledgement as text", async () => {
     state.execute.mockResolvedValueOnce({
       _tag: "Success",
@@ -740,7 +951,7 @@ describe("mobile provider request lifecycle", () => {
     expect(state.execute.mock.calls[0]?.[0]).toMatchObject({
       projectRef: { nodeId, projectId },
     });
-    expect(state.interpret.mock.calls[0]?.[0].interpret.requestMetadata).toMatchObject({
+    expect(state.submitInteraction.mock.calls[0]?.[0]).toMatchObject({
       requestId: expect.any(String),
     });
   });
@@ -780,10 +991,11 @@ describe("mobile provider request lifecycle", () => {
     });
     const controller = render();
     await controller.runInstruction(controller.createTextTurn(), "What is new today?");
-    expect(state.interpret).toHaveBeenCalledTimes(1);
-    expect(state.interpret.mock.calls[0]?.[0].interpret.requestMetadata).toMatchObject({
+    expect(state.submitInteraction).toHaveBeenCalledTimes(1);
+    expect(state.submitInteraction.mock.calls[0]?.[0]).toMatchObject({
       requestId: expect.any(String),
     });
+    expect(state.interpret).toHaveBeenCalledTimes(1);
     expect(state.converse).toHaveBeenCalledTimes(1);
     expect(state.converse.mock.calls[0]?.[0].requestMetadata).toMatchObject({
       requestId: expect.any(String),

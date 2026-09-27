@@ -21,7 +21,7 @@ export const CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS = `
 
 You are running inside Circe. Browser surfaces belong to the user.
 
-- The user's own signed-in browser is the default for their everyday web goals. When the server exposes \`desktop_*\` tools, carry out those goals with \`desktop_run_goal\`: the grounded loop opens the named site in the real browser and steps the real machine. Never rebuild the user's signed-in state through a shell CLI or a provider API.
+- The user's own signed-in browser is the default for their everyday web goals. When the server exposes \`computer_*\` tools and this session holds the computer, open the named site with \`computer_launch_app\` (pass its URL in \`urls\`) and drive the real window. Never rebuild the user's signed-in state through a shell CLI or a provider API.
 - The \`preview_*\` tools operate the shared in-app preview browser. Use them for development and testing: localhost, dev servers, the project's preview, page inspection, screenshots, and recordings. When the server exposes \`preview_*\` tools, prefer them for that work.
 
 For preview work, first call \`preview_status\`. If no automation-capable preview is attached, call \`preview_open\` before concluding that it is unavailable. Then use \`preview_navigate\`, \`preview_snapshot\`, and the focused interaction tools. Prefer snapshot-provided locators over coordinates.
@@ -35,9 +35,9 @@ export const CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS = `
 
 ## Circe desktop
 
-When the \`circe\` server exposes \`desktop_*\` tools, they drive this node's real desktop, including the user's real browser. Call \`desktop_status\` once: \`supports.accessibility\` means grounded element actions and text entry run over AT-SPI, \`supports.pointer\` and \`supports.keyboard\` mean injected input is available, and \`supports.capture\` means screenshots. Call \`desktop_state\` to see what is on screen: it reads the accessibility tree and never touches the display. Never call \`desktop_screenshot\` for element work; on GNOME Wayland it flashes the user's screen. Reserve it for canvas or GL surfaces where no element tree exists.
+When the \`circe\` server exposes \`computer_*\` tools, they drive this node's real desktop. Call \`computer_status\` first: it reports whether this node hosts a desktop driver. Before acting, call \`computer_begin\` with the goal in words the user can approve; Circe asks the user, and only their approval hands this session the computer. On \`waiting\`, call it again with the same goal. On \`declined\`, continue without the desktop and do not ask again for the same goal. Call \`computer_end\` when you are done; the end of your run hands the computer back too.
 
-Use \`desktop_run_goal\` for a bounded goal on the real machine. It selects among grounded accessibility elements and performs each action, and it opens a named site in the user's own browser when the goal names one. Pass \`typeText\` when the goal needs text the loop cannot select off the screen. Prefer these tools over any CLI, API, or headless browser that would bypass the user's signed-in session; do not substitute a shell command for an interactive goal while an accessibility or input path is available.
+Find the target with \`computer_list_apps\` and \`computer_list_windows\`, then read \`computer_window_state\` for the grounded element tree. Element tokens are snapshot-scoped: re-observe after any action and prefer a token over raw coordinates. Clicks, typing, keys, and scrolling run in the background and never raise the window. Prefer these tools over any CLI, API, or headless browser that would bypass the user's signed-in session; do not substitute a shell command for an interactive goal while a grounded path is available.
 `;
 
 const CIRCE_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS = `## Circe interaction mode: Default
@@ -48,9 +48,43 @@ const CIRCE_CODE_ACP_PLAN_MODE_INSTRUCTIONS = `## Circe interaction mode: Plan
 
 Investigate with read-only actions and do not edit files or otherwise execute the implementation. Resolve discoverable facts before asking questions. When the requirements are decision complete, return a concrete implementation plan and do not start implementing it. Treat this mode as active until Circe supplies a different interaction-mode instruction.`;
 
+/**
+ * Which Circe tools a provider session actually has, read from its MCP
+ * credential. Every adapter builds its guidance from this, so no provider is
+ * told about tools it lacks or left without guidance for tools it has.
+ */
+export interface CirceToolAvailability {
+  readonly browser: boolean;
+  readonly desktop: boolean;
+}
+
+export const NO_CIRCE_TOOLS: CirceToolAvailability = { browser: false, desktop: false };
+
+export function circeToolAvailability(
+  session:
+    | { readonly browserToolsAvailable: boolean; readonly capabilities?: ReadonlySet<string> }
+    | undefined,
+): CirceToolAvailability {
+  if (session === undefined) return NO_CIRCE_TOOLS;
+  return {
+    browser: session.browserToolsAvailable,
+    desktop: session.capabilities?.has("computer-use") === true,
+  };
+}
+
+/** The guidance for a session with the Circe MCP server and these tools. */
+export function circeToolInstructions(tools: CirceToolAvailability): string {
+  return [
+    ...(tools.browser ? [CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS.trim()] : []),
+    ...(tools.desktop ? [CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS.trim()] : []),
+    CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
+  ].join("\n\n");
+}
+
 export interface T3AcpInstructionState {
   readonly interactionMode: ProviderInteractionMode;
   readonly hasT3Mcp: boolean;
+  readonly tools: CirceToolAvailability;
 }
 
 /**
@@ -66,7 +100,9 @@ export function t3AcpPromptWithInstructions(input: {
   if (input.prompt.trimStart().startsWith("/")) return input.prompt;
   if (
     input.previousState?.interactionMode === input.state.interactionMode &&
-    input.previousState.hasT3Mcp === input.state.hasT3Mcp
+    input.previousState.hasT3Mcp === input.state.hasT3Mcp &&
+    input.previousState.tools.browser === input.state.tools.browser &&
+    input.previousState.tools.desktop === input.state.tools.desktop
   ) {
     return input.prompt;
   }
@@ -74,13 +110,7 @@ export function t3AcpPromptWithInstructions(input: {
     input.state.interactionMode === "plan"
       ? CIRCE_CODE_ACP_PLAN_MODE_INSTRUCTIONS
       : CIRCE_CODE_ACP_DEFAULT_MODE_INSTRUCTIONS,
-    ...(input.state.hasT3Mcp
-      ? [
-          CIRCE_CODE_BROWSER_TOOL_INSTRUCTIONS.trim(),
-          CIRCE_CODE_DESKTOP_TOOL_INSTRUCTIONS.trim(),
-          CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim(),
-        ]
-      : []),
+    ...(input.state.hasT3Mcp ? [circeToolInstructions(input.state.tools)] : []),
   ];
   return `<circe_instructions>\n${instructions.join("\n\n")}\n</circe_instructions>\n\n<user_request>\n${input.prompt}\n</user_request>`;
 }
@@ -90,20 +120,24 @@ export function t3AcpPromptWithInstructions(input: {
  * context in the first prompt. Keep the wrapper explicit so it cannot be
  * mistaken for text authored by the user.
  */
-function prependT3OrchestrationInstructions(prompt: string): string {
-  return `<circe_orchestration_instructions>${CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS.trim()}</circe_orchestration_instructions>\n\n<user_request>\n${prompt}\n</user_request>`;
+function prependT3OrchestrationInstructions(prompt: string, tools: CirceToolAvailability): string {
+  return `<circe_orchestration_instructions>${circeToolInstructions(tools)}</circe_orchestration_instructions>\n\n<user_request>\n${prompt}\n</user_request>`;
 }
 
 export function t3OrchestrationPromptForFirstRun(input: {
   readonly prompt: string;
   readonly runOrdinal: number;
   readonly hasT3Mcp: boolean;
+  readonly tools?: CirceToolAvailability;
 }): string {
   return input.runOrdinal === 1 && input.hasT3Mcp
-    ? prependT3OrchestrationInstructions(input.prompt)
+    ? prependT3OrchestrationInstructions(input.prompt, input.tools ?? NO_CIRCE_TOOLS)
     : input.prompt;
 }
 
-export function t3OrchestrationSystemPrompt(hasT3Mcp: boolean): string | undefined {
-  return hasT3Mcp ? CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS : undefined;
+export function t3OrchestrationSystemPrompt(
+  hasT3Mcp: boolean,
+  tools: CirceToolAvailability = NO_CIRCE_TOOLS,
+): string | undefined {
+  return hasT3Mcp ? circeToolInstructions(tools) : undefined;
 }

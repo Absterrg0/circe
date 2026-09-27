@@ -36,6 +36,7 @@ import { SymbolView } from "../../components/AppSymbol";
 import type { AppSymbolName } from "../../components/AppSymbol";
 import { CirceOrb } from "../../components/circe-orb/CirceOrb";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
+import { CirceComputerRequests } from "./CirceComputerRequests";
 import { CirceTabBar } from "./CirceTabBar";
 import { ListeningChrome } from "./ListeningChrome";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
@@ -610,6 +611,8 @@ export function CirceRouteScreen() {
                   </Text>
                 </View>
               ) : null}
+
+              <CirceComputerRequests catalog={controller.catalog} />
 
               <View className="flex-row gap-2 pt-4">
                 {QUICK_ACTIONS.map((action) => (

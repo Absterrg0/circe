@@ -61,7 +61,11 @@ export function CirceLiveAgents({
         <div className="circe-agents-empty">
           <ActivityIcon className="size-5" aria-hidden="true" />
           <p>{view === "active" ? "No agents running" : "Your work starts here"}</p>
-          <span>Choose a project and give Circe an instruction.</span>
+          <span>
+            {view === "active"
+              ? "Agents Circe starts on any of your machines show up here while they work."
+              : "Tell Circe what you want done, and the task appears here."}
+          </span>
         </div>
       ) : (
         <ul className="circe-agent-grid">
@@ -94,15 +98,15 @@ export function CirceLiveAgents({
                     {agent.projectTitle} / {agent.providerLabel} / {agent.nodeLabel}
                   </span>
                 </span>
-                {agent.status !== "ready" && (
-                  <span className="circe-agent-state">
-                    {agent.status === "running"
-                      ? "Working"
-                      : agent.status === "waiting"
-                        ? "Needs you"
-                        : agent.status}
-                  </span>
-                )}
+                <span className="circe-agent-state" data-state={agent.status}>
+                  {agent.status === "running"
+                    ? "Working"
+                    : agent.status === "waiting"
+                      ? "Needs you"
+                      : agent.status === "offline"
+                        ? "Offline"
+                        : "Ready"}
+                </span>
                 <ChevronRightIcon className="size-3.5 shrink-0" />
               </button>
             </li>

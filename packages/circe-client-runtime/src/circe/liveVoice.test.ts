@@ -10,7 +10,6 @@ import {
   circeLiveVoiceAppendCommand,
   circeLiveVoiceAppendText,
   circeLiveVoiceCaption,
-  isCirceLiveVoiceQuickAction,
   parseCirceLiveVoiceServerEvent,
   takeCirceLiveVoiceDelegateUtterance,
 } from "./liveVoice.ts";
@@ -39,6 +38,26 @@ describe("Circe live voice session reduction", () => {
     expect(state.userText).toBe("fix the login bug");
     expect(state.assistantText).toBe("Okay.");
     expect(state.pendingUserText).toBe("fix the login bug");
+  });
+
+  it("replaces a revised transcript of the same audio item", () => {
+    let state = createCirceLiveVoiceTranscript();
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.input_transcript.delta",
+      delta: "open you",
+      startMs: 100,
+      endMs: 500,
+    });
+    // The backend re-sends the same audio item with a corrected transcript.
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.input_transcript.delta",
+      delta: "open youtube",
+      startMs: 100,
+      endMs: 900,
+    });
+    expect(state.userText).toBe("open youtube");
+    expect(state.pendingUserText).toBe("open youtube");
+    expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe("open youtube");
   });
 
   it("uses only speech since the previous delegation for the next one", () => {
@@ -162,6 +181,36 @@ describe("Circe live voice session reduction", () => {
     // both so the backend can answer the actual question.
     expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe(
       "what's the weather today gujarat",
+    );
+  });
+
+  it("delegates a reply alone when the host owns the pending question", () => {
+    let state = createCirceLiveVoiceTranscript();
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.input_transcript.delta",
+      delta: "what's the weather today",
+      startMs: 0,
+      endMs: 1500,
+    });
+    const first = takeCirceLiveVoiceDelegateUtterance(state);
+    expect(first.utterance).toBe("what's the weather today");
+    state = applyCirceLiveVoiceTranscript(first.state, {
+      type: "session.output_transcript.delta",
+      delta: "Which place should I check for weather?",
+      startMs: 2000,
+      endMs: 3000,
+    });
+    state = applyCirceLiveVoiceTranscript(state, {
+      type: "session.input_transcript.delta",
+      delta: "uh, I'm from Ahmedabad, India",
+      startMs: 4000,
+      endMs: 6000,
+    });
+    // The host resumes the exact lookup with this answer, so the consumed
+    // request is never grafted back on, whatever the answer's length. No
+    // silence, question-mark, or short-answer heuristic decides this.
+    expect(takeCirceLiveVoiceDelegateUtterance(state, { ownedReply: true }).utterance).toBe(
+      "uh, I'm from Ahmedabad, India",
     );
   });
 
@@ -316,16 +365,6 @@ describe("Circe live voice session reduction", () => {
     });
     // "stop" is its own request, not a correction of the previous one.
     expect(takeCirceLiveVoiceDelegateUtterance(state).utterance).toBe("stop");
-  });
-
-  it("recognizes the deterministic quick actions that must not depend on the model", () => {
-    expect(isCirceLiveVoiceQuickAction("what's the weather in Ahmedabad")).toBe(true);
-    expect(isCirceLiveVoiceQuickAction("will it rain tomorrow")).toBe(true);
-    expect(isCirceLiveVoiceQuickAction("what time is it in Tokyo")).toBe(true);
-    expect(isCirceLiveVoiceQuickAction("how hot is it outside")).toBe(true);
-    // Ordinary conversation must never be force-delegated and answered twice.
-    expect(isCirceLiveVoiceQuickAction("how are you doing today")).toBe(false);
-    expect(isCirceLiveVoiceQuickAction("start the auth task")).toBe(false);
   });
 
   it("parses only the events the app acts on", () => {

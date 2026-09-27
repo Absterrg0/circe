@@ -155,7 +155,8 @@ export const make = Effect.gen(function* () {
     );
   });
 
-  const flush: AnalyticsService["Service"]["flush"] = Effect.gen(function* () {
+  /** Sends everything buffered; a failed batch goes back to the front of the buffer. */
+  const sendBuffered = Effect.gen(function* () {
     while (true) {
       const batch = yield* Ref.modify(bufferRef, (current) => {
         if (current.length === 0) {
@@ -178,7 +179,26 @@ export const make = Effect.gen(function* () {
         ),
       );
     }
-  }).pipe(Effect.catch((cause) => Effect.logError("Failed to flush telemetry", { cause })));
+  });
+
+  // Consecutive failed sends. An unreachable endpoint is retried on a capped
+  // backoff and logged at the start of a streak and then at every doubling,
+  // so a network outage does not become a request and an error every second.
+  let failures = 0;
+  const flush: AnalyticsService["Service"]["flush"] = sendBuffered.pipe(
+    Effect.tap(() =>
+      Effect.sync(() => {
+        failures = 0;
+      }),
+    ),
+    Effect.catch((cause) => {
+      failures += 1;
+      return (failures & (failures - 1)) === 0
+        ? Effect.logError("Failed to flush telemetry", { cause, consecutiveFailures: failures })
+        : Effect.void;
+    }),
+  );
+  const nextFlushDelayMs = () => Math.min(1_000 * 2 ** Math.min(failures, 9), 300_000);
 
   const record: AnalyticsService["Service"]["record"] = Effect.fn("AnalyticsService.record")(
     function* (event, properties) {
@@ -194,9 +214,10 @@ export const make = Effect.gen(function* () {
     },
   );
 
-  yield* Effect.forever(Effect.sleep(1000).pipe(Effect.flatMap(() => flush)), {
-    disableYield: true,
-  }).pipe(Effect.forkScoped);
+  yield* Effect.forever(
+    Effect.suspend(() => Effect.sleep(nextFlushDelayMs())).pipe(Effect.flatMap(() => flush)),
+    { disableYield: true },
+  ).pipe(Effect.forkScoped);
 
   yield* Effect.addFinalizer(() => flush);
 

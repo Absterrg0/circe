@@ -1,6 +1,7 @@
 import * as Stream from "effect/Stream";
 import {
   EnvironmentId,
+  type CirceDeviceReadiness,
   EnvironmentAuthorizationError,
   CirceExecutionError,
   circeNodeCapabilitiesForPreset,
@@ -47,6 +48,7 @@ import {
   circeMeshCatalogCoverage,
   circeMeshNodeReadiness,
   make as makeCirceMesh,
+  selectCirceDeviceTargetNode,
   selectCirceQuickLookupNode,
   selectCirceSemanticNode,
 } from "./mesh.ts";
@@ -913,6 +915,73 @@ describe("Circe mesh", () => {
       }),
     ).toBeUndefined();
     expect(selectCirceQuickLookupNode({ nodes: [], projects: [], providers: [] })).toBeUndefined();
+  });
+
+  it("selects a device target only from observed surface readiness", () => {
+    const node = (
+      nodeId: EnvironmentId,
+      reachability: "online" | "offline",
+      preset: "full" | "controller" | "headless",
+    ) => ({
+      nodeId,
+      label: nodeId,
+      reachability,
+      capabilities: circeNodeCapabilitiesForPreset(preset),
+    });
+    const catalog = {
+      nodes: [
+        node(NODE_DESKTOP, "online", "headless"),
+        node(NODE_LAPTOP, "online", "full"),
+        node(EnvironmentId.make("node-third"), "online", "full"),
+      ],
+      projects: [],
+      providers: [],
+    };
+    const readiness = (nodeId: EnvironmentId, ready: boolean): CirceDeviceReadiness => ({
+      nodeId,
+      preset: "full",
+      controlAllowed: true,
+      adapterSupported: true,
+      sessionActive: ready,
+      permissionGranted: ready,
+      surfaces: [{ surface: "browser", ready, profiles: [], applications: [] }],
+    });
+    const ready = new Map([
+      [NODE_LAPTOP, readiness(NODE_LAPTOP, true)],
+      [EnvironmentId.make("node-third"), readiness(EnvironmentId.make("node-third"), true)],
+    ]);
+    // The headless node is never eligible even when its readiness says ready.
+    const chosen = selectCirceDeviceTargetNode({
+      catalog,
+      surface: "browser",
+      readiness: new Map([...ready, [NODE_DESKTOP, readiness(NODE_DESKTOP, true)]]),
+    });
+    expect(chosen?.node.nodeId).toBe(NODE_LAPTOP);
+    // A preferred node wins only when its observed surface is ready.
+    expect(
+      selectCirceDeviceTargetNode({
+        catalog,
+        surface: "browser",
+        readiness: ready,
+        preferredNodeIds: [EnvironmentId.make("node-third"), NODE_LAPTOP],
+      })?.node.nodeId,
+    ).toBe(EnvironmentId.make("node-third"));
+    expect(
+      selectCirceDeviceTargetNode({
+        catalog,
+        surface: "browser",
+        readiness: new Map([[NODE_LAPTOP, readiness(NODE_LAPTOP, false)]]),
+      }),
+    ).toBeUndefined();
+    expect(
+      selectCirceDeviceTargetNode({
+        catalog,
+        surface: "browser",
+        readiness: new Map([
+          [NODE_LAPTOP, { ...readiness(NODE_LAPTOP, true), controlAllowed: false }],
+        ]),
+      }),
+    ).toBeUndefined();
   });
 
   it("builds bounded untrusted interpret evidence with names only", () => {

@@ -1,4 +1,9 @@
-import type { CirceCancelRequestInput } from "@circe/contracts";
+import type {
+  CirceCancelRequestInput,
+  CirceInteractionId,
+  CirceInteractionInterruptInput,
+  CirceInteractionSubmitInput,
+} from "@circe/contracts";
 import { CirceMesh, type CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
 import type {
   CirceMeshConverseInput,
@@ -67,6 +72,32 @@ export const circeMeshEnvironment = {
     label: "mobile:circe-mesh:get-task-desk",
     execute: ({ nodeId }: { readonly nodeId: EnvironmentId }) =>
       runWithMesh((mesh) => mesh.getTaskDesk(nodeId)),
+  }),
+  submitInteraction: createRuntimeCommand(connectionAtomRuntime, {
+    label: "mobile:circe-mesh:submit-interaction",
+    execute: (input: CirceInteractionSubmitInput & { readonly nodeId: EnvironmentId }) => {
+      const { nodeId, ...submit } = input;
+      return runWithMesh((mesh) => mesh.submitInteraction({ nodeId, input: submit }));
+    },
+  }),
+  readInteraction: createRuntimeCommand(connectionAtomRuntime, {
+    label: "mobile:circe-mesh:read-interaction",
+    execute: (input: {
+      readonly nodeId: EnvironmentId;
+      readonly interactionId?: CirceInteractionId | undefined;
+    }) => runWithMesh((mesh) => mesh.readInteraction(input)),
+  }),
+  interruptInteraction: createRuntimeCommand(connectionAtomRuntime, {
+    label: "mobile:circe-mesh:interrupt-interaction",
+    execute: (input: {
+      readonly nodeId: EnvironmentId;
+      readonly input: CirceInteractionInterruptInput;
+    }) => runWithMesh((mesh) => mesh.interruptInteraction(input)),
+  }),
+  deviceReadiness: createRuntimeCommand(connectionAtomRuntime, {
+    label: "mobile:circe-mesh:device-readiness",
+    execute: ({ nodeId }: { readonly nodeId: EnvironmentId }) =>
+      runWithMesh((mesh) => mesh.deviceReadiness(nodeId)),
   }),
   focusTask: createRuntimeCommand(connectionAtomRuntime, {
     label: "mobile:circe-mesh:focus-task",

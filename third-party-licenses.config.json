@@ -511,6 +511,79 @@
         "licenseId": "MIT",
         "copyrights": ["Copyright (c) 2025 opencode"]
       }
+    },
+    {
+      "name": "@trycua/cua-driver",
+      "version": "0.28.2",
+      "license": "MIT",
+      "sourceUrl": "https://github.com/trycua/cua",
+      "generatedNotice": {
+        "licenseId": "MIT"
+      }
+    },
+    {
+      "name": "@trycua/cua-driver-linux-x64-gnu",
+      "version": "0.28.2",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/trycua/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
+      "name": "@trycua/cua-driver-win32-x64-msvc",
+      "version": "0.28.2",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/trycua/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
+      "name": "@ubjs/core",
+      "version": "0.31.0-3",
+      "license": "MPL-2.0",
+      "sourceUrl": "https://github.com/jhugman/uniffi-bindgen-react-native",
+      "generatedNotice": {
+        "licenseId": "MPL-2.0"
+      }
+    },
+    {
+      "name": "@ubjs/node",
+      "version": "0.31.0-3",
+      "license": "MPL-2.0",
+      "sourceUrl": "https://github.com/jhugman/uniffi-bindgen-react-native",
+      "generatedNotice": {
+        "licenseId": "MPL-2.0"
+      }
+    },
+    {
+      "name": "@ubjs/node-linux-x64-gnu",
+      "version": "0.31.0-3",
+      "license": "MPL-2.0",
+      "sourceUrl": "https://github.com/jhugman/uniffi-bindgen-react-native",
+      "generatedNotice": {
+        "licenseId": "MPL-2.0"
+      }
+    },
+    {
+      "name": "@ubjs/node-win32-x64-msvc",
+      "version": "0.31.0-3",
+      "license": "MPL-2.0",
+      "sourceUrl": "https://github.com/jhugman/uniffi-bindgen-react-native",
+      "generatedNotice": {
+        "licenseId": "MPL-2.0"
+      }
     }
   ]
 }

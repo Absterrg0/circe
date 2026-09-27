@@ -64,7 +64,10 @@ import {
   summarizeNativeProtocolPayload,
 } from "../../provider/NativeProtocolLogging.ts";
 import { mergeProviderInstanceEnvironment } from "../../provider/ProviderInstanceEnvironment.ts";
-import { t3OrchestrationSystemPrompt } from "../../provider/T3OrchestrationInstructions.ts";
+import {
+  circeToolAvailability,
+  t3OrchestrationSystemPrompt,
+} from "../../provider/T3OrchestrationInstructions.ts";
 import { buildRuntimeInstructions } from "../../provider/RuntimeInstructions.ts";
 import {
   OpenCodeRuntime,
@@ -1013,7 +1016,10 @@ export function makeOpenCodeAdapterV2(options: OpenCodeAdapterV2Options): Provid
 
         const mcpSession = McpProviderSession.readMcpProviderSession(input.threadId);
         const hasT3Mcp = mcpSession !== undefined && !connection.external;
-        const orchestrationSystemPrompt = t3OrchestrationSystemPrompt(hasT3Mcp);
+        const orchestrationSystemPrompt = t3OrchestrationSystemPrompt(
+          hasT3Mcp,
+          circeToolAvailability(mcpSession),
+        );
         if (hasT3Mcp) {
           yield* runOpenCodeSdk("mcp.add", () =>
             client.mcp.add({

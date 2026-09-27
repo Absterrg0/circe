@@ -55,6 +55,7 @@ export {
   decodeCirceSemanticProposal,
   CirceSemanticProposal,
   CirceSemanticProposalAction,
+  type CirceSemanticClarification,
   validateSemanticProposal,
   type CirceSemanticStep,
   type SemanticEvidenceCatalogs,

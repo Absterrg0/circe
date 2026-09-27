@@ -49,6 +49,7 @@ import * as Schema from "effect/Schema";
 import * as Stream from "effect/Stream";
 
 import { ProjectionProjectRepository } from "../persistence/Services/ProjectionProjects.ts";
+import { withResubscribe } from "../streamResubscribe.ts";
 import {
   isCheckpointRestoreIsolated,
   SHARED_WORKSPACE_RESTORE_MESSAGE,
@@ -8004,8 +8005,17 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
   // Historical terminal events are already represented by the projections
   // below. Replaying the full event table on every server start delays live
   // queue promotion in proportion to the lifetime size of the database.
-  const terminalEventsAfterSequence = yield* eventSink.latestSequence().pipe(Effect.orDie);
-  yield* eventSink.stream({ afterSequence: terminalEventsAfterSequence }).pipe(
+  // A failed subscription resumes after the last event it saw, so a queued
+  // run whose predecessor ended meanwhile is still promoted.
+  let terminalEventsAfterSequence = yield* eventSink.latestSequence().pipe(Effect.orDie);
+  const terminalRuns = Stream.suspend(() =>
+    eventSink.stream({ afterSequence: terminalEventsAfterSequence }),
+  ).pipe(
+    Stream.tap((stored) =>
+      Effect.sync(() => {
+        terminalEventsAfterSequence = stored.sequence;
+      }),
+    ),
     Stream.filter(
       (stored) =>
         stored.event.type === "run.updated" &&
@@ -8017,8 +8027,8 @@ const makeOrchestrator = Effect.fn("orchestrationV2.Orchestrator.layer")(functio
           stored.event.payload.status === "rolled_back"),
     ),
     Stream.runForEach(handleTerminalRun),
-    Effect.forkDetach,
   );
+  yield* withResubscribe("Queued-run terminal listener", terminalRuns).pipe(Effect.forkDetach);
 
   // The high-water subscription deliberately skips history, so recover the
   // two terminal side effects from current projections instead: one queued

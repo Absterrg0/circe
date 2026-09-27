@@ -9,7 +9,12 @@ import {
   type EnvironmentThreadStatus,
   type ThreadHistoryMeta,
 } from "@circe/client/state/threads";
-import type { ScopedProjectRef, ScopedThreadRef, ServerConfig } from "@circe/contracts";
+import {
+  isChatWorkspace,
+  type ScopedProjectRef,
+  type ScopedThreadRef,
+  type ServerConfig,
+} from "@circe/contracts";
 import type { EnvironmentId, OrchestrationV2ProjectedTurnItem } from "@circe/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import { appAtomRegistry } from "../rpc/atomRegistry";
@@ -76,6 +81,28 @@ export function useEnvironmentThreadRefs(
 
 export function useProjects(): ReadonlyArray<EnvironmentProject> {
   return useAtomValue(environmentProjects.projectsAtom);
+}
+
+/**
+ * The user's codebases: every workspace except each node's chat space. Lists
+ * and pickers use this; lookups by id keep using `useProjects`, because chat
+ * threads still name the chat space as their workspace.
+ */
+const userProjectsAtom = Atom.make((get) =>
+  get(environmentProjects.projectsAtom).filter((project) => !isChatWorkspace(project)),
+).pipe(Atom.withLabel("web-projects:user"));
+
+export function useUserProjects(): ReadonlyArray<EnvironmentProject> {
+  return useAtomValue(userProjectsAtom);
+}
+
+/** Each node's chat space, where new chats start. */
+const chatSpacesAtom = Atom.make((get) =>
+  get(environmentProjects.projectsAtom).filter((project) => isChatWorkspace(project)),
+).pipe(Atom.withLabel("web-projects:chat-spaces"));
+
+export function useChatSpaces(): ReadonlyArray<EnvironmentProject> {
+  return useAtomValue(chatSpacesAtom);
 }
 
 export function useServerConfigs(): ReadonlyMap<EnvironmentId, ServerConfig> {

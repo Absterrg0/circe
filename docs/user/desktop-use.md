@@ -1,26 +1,39 @@
 # Desktop use
 
-Desktop use lets Circe see and control the desktop of the machine a node runs on. The agent can take
-a screenshot, move the pointer, click, drag, scroll, type, press keys, list windows, and focus a
-window. Because a node only ever controls its own display, this works for a real device in your mesh
+Desktop use lets Circe see and control the desktop of the machine a node runs on: open apps and
+websites, click, type, press keys, and scroll in your own signed-in apps and browser. Because a node only ever controls its own display, this works for a real device in your mesh
 rather than a cloud virtual machine.
 
-## Using it with the agent
+## Asking Circe
 
-On Full nodes, agent sessions get the `t3-code` desktop tools when the node advertises desktop support.
-Ask in plain language and the agent picks the actions:
+Tell Circe what to do on the computer: "open the browser", "open the calculator and add 12 and 30",
+"open YouTube and search for lo-fi". Circe repeats the goal and asks before it touches anything:
 
-- "Take a screenshot of the desktop."
-- "Open the Settings app and turn off notifications."
-- "Click the Save button in the window that is open, then type the project name."
+> Use this computer for "open the browser"? Say yes to start.
 
-The tools are `desktop_status`, `desktop_screenshot`, `desktop_move`, `desktop_click`,
-`desktop_drag`, `desktop_scroll`, `desktop_type`, `desktop_key`, `desktop_windows`, and
-`desktop_focus_window`. `desktop_status` reports the platform, backend, displays, and which action
-classes work.
+Say yes to start it, or no to drop it. If you correct yourself before answering ("actually, open the
+settings"), Circe asks again for the corrected goal; your earlier yes never carries over. Say "stop"
+at any time to stop it. Circe tells you when it finishes, fails, or stops partway. A step that may or
+may not have landed is reported as uncertain rather than done, so check the screen before asking
+again.
 
-Give the agent a screenshot first when you want it to hit a target accurately. It sees pointer
-position when the platform exposes it.
+A spoken yes counts only on the device Circe asked. While one request waits, another device can't
+swap in a different one: answer or cancel the waiting request first, by voice where it was asked or
+on the Computer card from any device.
+
+Every waiting request also shows on the node's Computer card, on desktop and on your phone's Circe
+screen, with Approve and Deny. Use those to answer from any device, or when you missed the spoken
+question. While something runs, the same card has Stop.
+
+One thing uses the computer at a time. If it is busy, Circe says what it is doing; stop that first.
+
+## Letting a coding agent use it
+
+A coding agent on a node with desktop support can ask for the computer, for example to check a page
+it just changed. The request reaches you the same way: Circe says which agent wants the computer and
+for what, and you approve or decline it by voice or on the Computer card. Once approved, that agent
+alone can drive the computer until it hands it back, its run ends, or you say stop. If the agent's
+run ends before you answer, the request goes away on its own.
 
 ## Controlling a remote node
 
@@ -47,11 +60,13 @@ key positions. Wayland window discovery and focus are currently unsupported.
 
 macOS: capture and input use system tools. Grant Screen Recording and Accessibility to the app
 or terminal hosting the node when macOS requests them. Window discovery and shortcuts can also
-request Automation access to System Events. Restart the node after changing permissions.
+request Automation access to System Events. Restart the node after changing permissions. Circe
+reads app controls through System Events; autonomous native control on macOS is still validated
+per app.
 
 Windows: capture and input use built-in PowerShell. Run the node in the signed-in graphical
-session. Windows can refuse input to elevated applications and secure desktops; desktop use
-does not bypass those restrictions.
+session. Circe reads app controls through UI Automation. Windows can refuse input to elevated
+applications and secure desktops; desktop use does not bypass those restrictions.
 
 ## Action limits
 
@@ -64,9 +79,7 @@ selected display are refused. Text, scrolling, drag duration and pending request
 
 ## Troubleshooting
 
-- "Desktop use is unavailable": no capture tool was found, or the node has no graphical session.
-  `desktop_status` gives the reason.
+- "Desktop use is unavailable": the Circe desktop app is not running on the node, or the node has no
+  graphical session. Circe says the reason when you ask it to use the computer.
 - Wayland capture is unavailable: check the compositor-specific helpers above. Circe does not use
   XWayland screenshots as a fallback for native Wayland windows.
-- The agent clicks the wrong place: ask for a screenshot first, then target by the coordinates it
-  reports.

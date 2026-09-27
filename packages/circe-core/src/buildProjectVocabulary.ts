@@ -37,6 +37,7 @@ export function buildProjectVocabulary(input: {
     const aliases = aliasesByProject.get(project.id) ?? [];
     return {
       projectId: project.id,
+      ...(project.kind === undefined ? {} : { kind: project.kind }),
       title: project.title,
       workspaceRoot: project.workspaceRoot,
       repositoryNames: [

@@ -7,6 +7,7 @@ import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Ref from "effect/Ref";
 import * as Schema from "effect/Schema";
+import * as Stream from "effect/Stream";
 import * as RpcGroup from "effect/unstable/rpc/RpcGroup";
 
 import {
@@ -34,6 +35,7 @@ import {
 } from "@circe/contracts";
 
 import * as ServerConfig from "../../config.ts";
+import { ComputerService } from "../../computer/ComputerService.ts";
 import * as ProjectionSnapshotQuery from "../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import * as ServerEnvironment from "../../environment/ServerEnvironment.ts";
 import { AuthSessionRepository } from "../../persistence/AuthSessions.ts";
@@ -46,7 +48,10 @@ import { circeRequestAcceptanceKey } from "@circe/core/requestIdentity";
 import * as CirceController from "../Services/CirceController.ts";
 import * as CirceBrowserUse from "../Services/CirceBrowserUse.ts";
 import * as CirceComputerUse from "../Services/CirceComputerUse.ts";
+import * as CirceInteraction from "../Services/CirceInteraction.ts";
 import * as CirceLiveVoice from "../Services/CirceLiveVoice.ts";
+import { CirceBots } from "../Services/CirceBots.ts";
+import { CirceComputerAccess } from "../Services/CirceComputerAccess.ts";
 import { CirceMissionCancellation } from "../Services/CirceMissionCancellation.ts";
 import { CirceHostRuntime } from "../Services/CirceHostRuntime.ts";
 import { CircePresentationFanout } from "../Services/CircePresentationFanout.ts";
@@ -285,6 +290,10 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeCancelRequest]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeBrowserUse]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeComputerUse]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeComputerStatus]: AuthOrchestrationReadScope,
+  [WS_METHODS.subscribeCirceComputerAccess]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeComputerAccessDecide]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeComputerAccessStop]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeCancelMission]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeGetTaskDesk]: AuthOrchestrationReadScope,
   [WS_METHODS.circeFocusTask]: AuthOrchestrationOperateScope,
@@ -296,11 +305,23 @@ export const circeRpcScopeExtension = {
   [WS_METHODS.circeQuickLookup]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeHostSay]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeHostListen]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeHostTranscribe]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeHostSpeak]: AuthOrchestrationReadScope,
   [WS_METHODS.subscribeCirceHostNotices]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeInteractionSubmit]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeInteractionRead]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeInteractionInterrupt]: AuthOrchestrationOperateScope,
+  [WS_METHODS.subscribeCirceInteraction]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeDeviceReadiness]: AuthOrchestrationReadScope,
   [WS_METHODS.circeVoiceLiveStart]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRelease]: AuthOrchestrationOperateScope,
   [WS_METHODS.circeVoiceLiveRenew]: AuthOrchestrationOperateScope,
+  [WS_METHODS.subscribeCirceBots]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeBotsRefresh]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeBotSend]: AuthOrchestrationOperateScope,
+  [WS_METHODS.subscribeCirceBotConversation]: AuthOrchestrationReadScope,
+  [WS_METHODS.circeBotStopWaiting]: AuthOrchestrationOperateScope,
+  [WS_METHODS.circeBotClearConversation]: AuthOrchestrationOperateScope,
 } as const satisfies Readonly<
   Record<RpcGroup.Rpcs<typeof CirceWsRpcGroup>["_tag"], AuthEnvironmentScope>
 >;
@@ -315,6 +336,9 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const circe = yield* CirceController.CirceController;
     const browserUse = yield* CirceBrowserUse.CirceBrowserUse;
     const computerUse = yield* CirceComputerUse.CirceComputerUse;
+    const computerService = yield* ComputerService;
+    const computerAccess = yield* CirceComputerAccess;
+    const interaction = yield* CirceInteraction.CirceInteraction;
     const missionCancellation = yield* CirceMissionCancellation;
     const liveVoice = yield* CirceLiveVoice.CirceLiveVoice;
     const taskDesk = yield* CirceTaskDesk;
@@ -323,6 +347,7 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
     const authSessions = yield* AuthSessionRepository;
     const presentationFanout = yield* CircePresentationFanout;
     const circeHost = yield* CirceHostRuntime;
+    const bots = yield* CirceBots;
     const warmScope = yield* Effect.scope;
     const warming = yield* Ref.make(false);
     return {
@@ -441,6 +466,8 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
               ),
             // Desktop missions drive this node's own screen, so a Headless
             // node refuses for the same reason it refuses a browser mission.
+            // A confirmed start is the user's approval where they asked; it
+            // runs through the computer's one owner like every other use.
             [WS_METHODS.circeComputerUse]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeComputerUse,
@@ -449,7 +476,80 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                       status: "unavailable" as const,
                       message: "This node has no desktop surface.",
                     })
-                  : computerUse.run(input),
+                  : input.confirmed !== true
+                    ? computerUse.run(input)
+                    : computerAccess.run({
+                        goal: input.goal,
+                        ...(input.requestMetadata?.requestId === undefined
+                          ? {}
+                          : { cancelId: input.requestMetadata.requestId }),
+                        ...(input.target === undefined ? {} : { target: input.target }),
+                        ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
+                        ...(input.maxSteps === undefined ? {} : { maxSteps: input.maxSteps }),
+                      }),
+                { "rpc.aggregate": "circe.computer" },
+              ),
+            [WS_METHODS.subscribeCirceComputerAccess]: (_input) =>
+              context.observeRpcStream(
+                WS_METHODS.subscribeCirceComputerAccess,
+                computerAccess.view,
+                {
+                  "rpc.aggregate": "circe.computer",
+                },
+              ),
+            [WS_METHODS.circeComputerAccessDecide]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeComputerAccessDecide,
+                computerAccess.decide(input.requestId, input.decision, { kind: "explicit" }).pipe(
+                  Effect.as({
+                    status: "settled" as const,
+                    message: input.decision === "approve" ? "Approved." : "Declined.",
+                  }),
+                  Effect.catchTag("CirceComputerAccessError", (error) =>
+                    Effect.succeed({
+                      status: error.reason.includes("no longer waiting")
+                        ? ("stale" as const)
+                        : ("failed" as const),
+                      message: error.reason,
+                    }),
+                  ),
+                ),
+                { "rpc.aggregate": "circe.computer" },
+              ),
+            [WS_METHODS.circeComputerAccessStop]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeComputerAccessStop,
+                computerAccess.stop(input.requestId).pipe(Effect.map((stopped) => ({ stopped }))),
+                { "rpc.aggregate": "circe.computer" },
+              ),
+            // The live status of the desktop host and any active mission. The
+            // client renders the start affordance from this, never from the
+            // presence of a tool catalog.
+            [WS_METHODS.circeComputerStatus]: (_input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeComputerStatus,
+                computerService.status.pipe(
+                  Effect.map((status) => ({
+                    available: status.available,
+                    ...(status.host?.platform === undefined
+                      ? {}
+                      : { platform: status.host.platform }),
+                    ...(status.host?.runtime === undefined ? {} : { runtime: status.host.runtime }),
+                    ...(status.host?.reason === undefined ? {} : { reason: status.host.reason }),
+                    ...(status.activeMission === undefined
+                      ? {}
+                      : {
+                          activeMission: {
+                            id: status.activeMission.id,
+                            goal: status.activeMission.goal,
+                            startedAtMs: status.activeMission.startedAtMs,
+                            ...(status.activeMission.requestId === undefined
+                              ? {}
+                              : { requestId: status.activeMission.requestId }),
+                          },
+                        }),
+                  })),
+                ),
                 { "rpc.aggregate": "circe.computer" },
               ),
             // A stop reaches a running browser or desktop mission on this node.
@@ -457,9 +557,16 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
             [WS_METHODS.circeCancelMission]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeCancelMission,
-                missionCancellation
-                  .requestStop(input.requestId)
-                  .pipe(Effect.map((cancelled) => ({ cancelled }))),
+                // The computer's owner knows its own runs by their stop id;
+                // any other mission is stopped through the shared registry.
+                computerAccess.stop(input.requestId).pipe(
+                  Effect.flatMap((stopped) =>
+                    stopped
+                      ? Effect.succeed(true)
+                      : missionCancellation.requestStop(input.requestId),
+                  ),
+                  Effect.map((cancelled) => ({ cancelled })),
+                ),
                 { "rpc.aggregate": "circe.mission" },
               ),
             [WS_METHODS.circeQuickLookup]: (input) =>
@@ -471,6 +578,42 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                 ),
                 { "rpc.aggregate": "circe.quick" },
               ),
+            // The node-owned interaction is the single conversation owner for
+            // assistant-directed input: answers resume the exact question that
+            // was asked, and device work runs as a durable operation.
+            [WS_METHODS.circeInteractionSubmit]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeInteractionSubmit,
+                interaction.submit({ ...input, executionNodeId, sessionId: context.sessionId }),
+                { "rpc.aggregate": "circe.interaction" },
+              ),
+            [WS_METHODS.circeInteractionRead]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeInteractionRead,
+                interaction.read({
+                  executionNodeId,
+                  ...(input.interactionId === undefined
+                    ? {}
+                    : { interactionId: input.interactionId }),
+                }),
+                { "rpc.aggregate": "circe.interaction" },
+              ),
+            [WS_METHODS.circeInteractionInterrupt]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeInteractionInterrupt,
+                interaction.interrupt({ ...input, executionNodeId }),
+                { "rpc.aggregate": "circe.interaction" },
+              ),
+            [WS_METHODS.subscribeCirceInteraction]: (input) =>
+              context.observeRpcStream(
+                WS_METHODS.subscribeCirceInteraction,
+                interaction.subscribe(input),
+                { "rpc.aggregate": "circe.interaction" },
+              ),
+            [WS_METHODS.circeDeviceReadiness]: (_input) =>
+              context.observeRpcEffect(WS_METHODS.circeDeviceReadiness, interaction.readiness(), {
+                "rpc.aggregate": "circe.interaction",
+              }),
             // Release is intentionally not gated on presetOffersVoice like start
             // is: it is a cleanup path, and a session minted before a preset
             // change (or by a stale client) must still be closable. Release is
@@ -523,6 +666,34 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
                   .renewSession(input)
                   .pipe(Effect.mapError(toCirceVoiceLiveStartClientError)),
                 { "rpc.aggregate": "circe.voice" },
+              ),
+            [WS_METHODS.subscribeCirceBots]: (_input) =>
+              context.observeRpcStream(WS_METHODS.subscribeCirceBots, bots.subscribe(), {
+                "rpc.aggregate": "circe.bots",
+              }),
+            [WS_METHODS.circeBotsRefresh]: (_input) =>
+              context.observeRpcEffect(WS_METHODS.circeBotsRefresh, bots.refresh(), {
+                "rpc.aggregate": "circe.bots",
+              }),
+            [WS_METHODS.circeBotSend]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeBotSend, bots.send(input), {
+                "rpc.aggregate": "circe.bots",
+              }),
+            [WS_METHODS.subscribeCirceBotConversation]: (input) =>
+              context.observeRpcStream(
+                WS_METHODS.subscribeCirceBotConversation,
+                bots.subscribeConversation(input.botId),
+                { "rpc.aggregate": "circe.bots" },
+              ),
+            [WS_METHODS.circeBotStopWaiting]: (input) =>
+              context.observeRpcEffect(WS_METHODS.circeBotStopWaiting, bots.stopWaiting(input), {
+                "rpc.aggregate": "circe.bots",
+              }),
+            [WS_METHODS.circeBotClearConversation]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeBotClearConversation,
+                bots.clearConversation(input.botId),
+                { "rpc.aggregate": "circe.bots" },
               ),
             [WS_METHODS.circeGetTaskDesk]: (_input) =>
               context.observeRpcEffect(
@@ -650,6 +821,14 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
               context.observeRpcEffect(WS_METHODS.circeHostSay, circeHost.say(input), {
                 "rpc.aggregate": "circe.host",
               }),
+            [WS_METHODS.circeHostTranscribe]: (input) =>
+              context.observeRpcEffect(
+                WS_METHODS.circeHostTranscribe,
+                circeHost.transcribe(input),
+                {
+                  "rpc.aggregate": "circe.host",
+                },
+              ),
             [WS_METHODS.circeHostListen]: (input) =>
               context.observeRpcEffect(WS_METHODS.circeHostListen, circeHost.listen(input), {
                 "rpc.aggregate": "circe.host",
@@ -658,10 +837,22 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
               context.observeRpcEffect(WS_METHODS.circeHostSpeak, circeHost.speak(input), {
                 "rpc.aggregate": "circe.host",
               }),
-            [WS_METHODS.subscribeCirceHostNotices]: (_input) =>
-              context.observeRpcStream(WS_METHODS.subscribeCirceHostNotices, circeHost.notices, {
-                "rpc.aggregate": "circe.host",
-              }),
+            // A notice about one device's turn reaches that device only.
+            [WS_METHODS.subscribeCirceHostNotices]: (input) =>
+              context.observeRpcStream(
+                WS_METHODS.subscribeCirceHostNotices,
+                circeHost.notices.pipe(
+                  Stream.filter(
+                    (notice) =>
+                      notice.origin === undefined ||
+                      input.origin === undefined ||
+                      notice.origin === input.origin,
+                  ),
+                ),
+                {
+                  "rpc.aggregate": "circe.host",
+                },
+              ),
             [WS_METHODS.circeRegisterPushToken]: (input) =>
               context.observeRpcEffect(
                 WS_METHODS.circeRegisterPushToken,

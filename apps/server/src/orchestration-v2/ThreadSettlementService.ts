@@ -21,6 +21,7 @@ import * as GitManager from "../git/GitManager.ts";
 import * as PullRequestService from "../pullRequest/PullRequestService.ts";
 import * as ServerSettings from "../serverSettings.ts";
 import { forkParked } from "../serverActivation.ts";
+import { withResubscribe } from "../streamResubscribe.ts";
 import * as ProjectionSnapshotQuery from "../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { OrchestratorV2 } from "./Orchestrator.ts";
 import { ProjectionStoreV2, type ProjectionSettlementCandidate } from "./ProjectionStore.ts";
@@ -500,12 +501,11 @@ export const make = Effect.gen(function* () {
       }),
     );
     yield* forkParked(Stream.runForEach(mergedPullRequests, (event) => runSweep(event)));
+    // The periodic sweep settles anything missed while the stream was down.
     yield* forkParked(
-      Stream.runForEach(events, processEvent).pipe(
-        Effect.catchCause((cause) =>
-          Effect.logWarning("Thread settlement event stream failed", { cause }),
-        ),
-      ),
+      withResubscribe("Thread settlement event stream", Stream.runForEach(events, processEvent), {
+        onResubscribe: worker.enqueue(undefined),
+      }),
     );
   });
 

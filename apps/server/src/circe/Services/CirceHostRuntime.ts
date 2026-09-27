@@ -6,6 +6,8 @@ import type {
   CirceHostSayResult,
   CirceHostSpeakInput,
   CirceHostSpeakResult,
+  CirceHostTranscribeInput,
+  CirceHostTranscribeResult,
 } from "@circe/contracts";
 import * as Context from "effect/Context";
 import type * as Effect from "effect/Effect";
@@ -21,6 +23,10 @@ export interface CirceHostRuntimeShape {
   readonly say: (input: CirceHostSayInput) => Effect.Effect<CirceHostSayResult>;
   /** A spoken message: transcribed through Circe Mesh, then handled like `say`. */
   readonly listen: (input: CirceHostListenInput) => Effect.Effect<CirceHostListenResult>;
+  /** Speech to words only, for a message another node will handle. */
+  readonly transcribe: (
+    input: CirceHostTranscribeInput,
+  ) => Effect.Effect<CirceHostTranscribeResult>;
   /** A reply as speech; empty audio when the node cannot speak. */
   readonly speak: (input: CirceHostSpeakInput) => Effect.Effect<CirceHostSpeakResult>;
   readonly notices: Stream.Stream<CirceHostNotice>;

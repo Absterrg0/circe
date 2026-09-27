@@ -2,6 +2,7 @@ import type { CirceCommand, CirceCommandInterpretation } from "./command.ts";
 import type { CirceClarification, CirceOutcome, CirceRefusalReason } from "./controlOutcome.ts";
 import {
   availableCirceTools,
+  findCirceTool,
   type CirceTool,
   type CirceToolArguments,
   type CirceToolParameter,
@@ -309,7 +310,31 @@ function toolArgumentClarification(
   };
 }
 
-function composeToolOutcome(input: ComposeCirceOutcomeInput, tool: CirceTool): CirceOutcome {
+/**
+ * The user's own words name the surface. A classifier that picked the other
+ * browser is corrected here: "in my own browser" never opens the shared
+ * preview, and an explicit preview request never drives the user's real
+ * browser. Both tools must be offered, so a client that cannot run the named
+ * surface keeps the model's choice instead of gaining an action it cannot do.
+ */
+const CIRCE_OWN_BROWSER_SURFACE =
+  /\b(?:my|our)\s+(?:own\s+)?(?:real\s+)?browser\b|\breal browser\b|\bmy (?:chrome|chromium|firefox|brave|edge|vivaldi|opera|zen|librewolf)\b/iu;
+const CIRCE_PREVIEW_SURFACE =
+  /\b(?:preview|in-app|shared browser|dev server|localhost|127\.0\.0\.1)\b/iu;
+
+function groundSurfaceTool(tool: CirceTool, input: ComposeCirceOutcomeInput): CirceTool {
+  if (tool.name !== "browse" && tool.name !== "preview") return tool;
+  const wantsOwnBrowser = CIRCE_OWN_BROWSER_SURFACE.test(input.source);
+  const wantsPreview = CIRCE_PREVIEW_SURFACE.test(input.source);
+  if (wantsOwnBrowser === wantsPreview) return tool;
+  const wanted = wantsOwnBrowser ? "browse" : "preview";
+  if (tool.name === wanted) return tool;
+  if (!input.tools.some((candidate) => candidate.name === wanted)) return tool;
+  return findCirceTool(wanted) ?? tool;
+}
+
+function composeToolOutcome(input: ComposeCirceOutcomeInput, selected: CirceTool): CirceOutcome {
+  const tool = groundSurfaceTool(selected, input);
   const entries: Array<readonly [string, string | boolean]> = [];
   for (const parameter of tool.parameters) {
     const id = `tool_${tool.name}_${parameter.name}`;

@@ -197,7 +197,14 @@ describe("terminatePosixOwnedProcessTree", () => {
       // Undefined PATH uses Node's default search path (/usr/bin:/bin), not cwd alone
       // (bareGrok lives only in cwd / PATH=scratch).
       expect(resolveLinuxCgroupTargetCommand("grok", scratch, { PATH: undefined })).toBeUndefined();
-      expect(resolveLinuxCgroupTargetCommand("node", scratch, { PATH: undefined })).toBeDefined();
+      // The default search path finds a system node where there is one, and
+      // nothing where node lives only in a version manager.
+      const systemNode = ["/usr/bin/node", "/bin/node"].find((candidate) =>
+        NodeFS.existsSync(candidate),
+      );
+      expect(resolveLinuxCgroupTargetCommand("node", scratch, { PATH: undefined })).toBe(
+        systemNode,
+      );
       expect(resolveLinuxCgroupTargetCommand("grok", scratch, { PATH: "relative-bin" })).toBe(
         NodePath.join(relativeBin, "grok"),
       );

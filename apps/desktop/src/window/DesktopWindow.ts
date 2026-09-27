@@ -56,8 +56,9 @@ function syncMacosWindowButtons(window: Electron.BrowserWindow): void {
 }
 
 const TITLEBAR_COLOR = "#01000000"; // #00000000 does not work correctly on Linux
-const TITLEBAR_LIGHT_SYMBOL_COLOR = "#1f2937";
-const TITLEBAR_DARK_SYMBOL_COLOR = "#f8fafc";
+// Circe text colors, so native window controls sit in the app palette.
+const TITLEBAR_LIGHT_SYMBOL_COLOR = "#14171b";
+const TITLEBAR_DARK_SYMBOL_COLOR = "#f6f2ef";
 const MAIN_WINDOW_BOUNDS_PERSIST_DEBOUNCE_MS = 500;
 const DEVELOPMENT_LOAD_RETRY_DELAYS_MS = [100, 250, 500, 1_000, 2_000] as const;
 // Renderer crash (usually V8 OOM on long sessions) recovery: reload after a
@@ -190,8 +191,9 @@ function getIconOption(
   });
 }
 
+/** The renderer's first paint is the Circe chrome color, so match it to avoid a flash. */
 function getInitialWindowBackgroundColor(shouldUseDarkColors: boolean): string {
-  return shouldUseDarkColors ? "#0a0a0a" : "#ffffff";
+  return shouldUseDarkColors ? "#0b1119" : "#f4efea";
 }
 
 function boundStartupProbeText(value: string): string {

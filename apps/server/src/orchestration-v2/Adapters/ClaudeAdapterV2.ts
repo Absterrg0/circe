@@ -101,7 +101,12 @@ import {
 } from "../../provider/Layers/claudeUsageLimits.ts";
 import type { ServerProviderShape } from "../../provider/Services/ServerProvider.ts";
 import { mergeProviderInstanceEnvironment } from "../../provider/ProviderInstanceEnvironment.ts";
-import { CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS } from "../../provider/T3OrchestrationInstructions.ts";
+import {
+  circeToolAvailability,
+  circeToolInstructions,
+  NO_CIRCE_TOOLS,
+  type CirceToolAvailability,
+} from "../../provider/T3OrchestrationInstructions.ts";
 import { buildRuntimeInstructions } from "../../provider/RuntimeInstructions.ts";
 import * as McpProviderSession from "../../mcp/McpProviderSession.ts";
 import { IdAllocatorV2, type IdAllocatorV2Shape } from "../IdAllocator.ts";
@@ -726,6 +731,8 @@ export function makeClaudeQueryOptions(input: {
   readonly sdkSettings?: string | ClaudeSdkSettings;
   readonly environment?: NodeJS.ProcessEnv;
   readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
+  /** The Circe tools the MCP session carries; its guidance follows them. */
+  readonly circeTools?: CirceToolAvailability;
   readonly tools?: ClaudeAgentSdkQueryTools;
   readonly allowedTools?: ReadonlyArray<string>;
   readonly disallowedTools?: ReadonlyArray<string>;
@@ -799,7 +806,9 @@ export function makeClaudeQueryOptions(input: {
       preset: "claude_code" as const,
       append:
         buildRuntimeInstructions({ harness: "Claude Code" }) +
-        (input.mcpServers === undefined ? "" : CIRCE_CODE_ORCHESTRATION_INSTRUCTIONS),
+        (input.mcpServers === undefined
+          ? ""
+          : circeToolInstructions(input.circeTools ?? NO_CIRCE_TOOLS)),
     },
     ...(Object.keys(extraArgs).length === 0 ? {} : { extraArgs }),
   };
@@ -849,6 +858,7 @@ export function claudeMcpQueryOverrides(input: {
 }): {
   readonly allowedTools?: ReadonlyArray<string>;
   readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
+  readonly circeTools?: CirceToolAvailability;
 } {
   const session = McpProviderSession.readMcpProviderSession(input.threadId);
   if (session === undefined) {
@@ -859,6 +869,7 @@ export function claudeMcpQueryOverrides(input: {
     : [CLAUDE_T3_MCP_TOOL_WILDCARD];
   return {
     allowedTools: Array.from(new Set([...(input.allowedTools ?? []), ...mcpAllowedTools])),
+    circeTools: circeToolAvailability(session),
     mcpServers: {
       circe: {
         type: "http",

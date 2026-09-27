@@ -1,9 +1,14 @@
-import type { CirceCommandTarget } from "../../circeBus";
+import type { CirceHostRoute, CirceCommandTarget } from "../../circeBus";
 import type { DesktopCirceLiveVoiceState, EnvironmentId, ThreadId } from "@circe/contracts";
 import { useEffect, useRef } from "react";
 
-import { publishCirceCommandFeedback } from "../../circeBus";
-import { circeEnvironment } from "../../state/circe";
+import {
+  getCirceTargetSnapshot,
+  publishCirceCommandFeedback,
+  submitCirceComposerCommand,
+} from "../../circeBus";
+import { randomUUID } from "../../lib/utils";
+import { circeEnvironment, presentedComputerRequestFor } from "../../state/circe";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { playCirceSpeech, stopCirceSpeech } from "./circeSpeechPlayer";
 import { getCirceLiveVoiceUiState, setCirceLiveVoiceActive } from "./CirceLiveVoice.bridge";
@@ -49,10 +54,13 @@ function toBase64(blob: Blob): Promise<string> {
 export function CirceVoiceCapture({
   environmentId,
   routeTarget,
+  hostRoute,
   onThreadStarted,
 }: {
   readonly environmentId: EnvironmentId;
   readonly routeTarget: CirceCommandTarget | null;
+  /** What the host layer is told is on screen, including bot pages. */
+  readonly hostRoute?: CirceHostRoute | undefined;
   readonly onThreadStarted: (
     environmentId: EnvironmentId,
     threadId: ThreadId,
@@ -66,10 +74,36 @@ export function CirceVoiceCapture({
     reportFailure: false,
     reportDefect: false,
   });
+  const transcribe = useAtomCommand(circeEnvironment.hostTranscribe, {
+    reportFailure: false,
+    reportDefect: false,
+  });
+  const hostSay = useAtomCommand(circeEnvironment.hostSay, {
+    reportFailure: false,
+    reportDefect: false,
+  });
   // The hotkey handlers are installed once; they read the latest props here.
-  const latest = useRef({ environmentId, routeTarget, onThreadStarted, listen, speak });
+  const latest = useRef({
+    environmentId,
+    routeTarget,
+    hostRoute,
+    onThreadStarted,
+    listen,
+    speak,
+    transcribe,
+    hostSay,
+  });
   useEffect(() => {
-    latest.current = { environmentId, routeTarget, onThreadStarted, listen, speak };
+    latest.current = {
+      environmentId,
+      routeTarget,
+      hostRoute,
+      onThreadStarted,
+      listen,
+      speak,
+      transcribe,
+      hostSay,
+    };
   });
 
   useEffect(() => {
@@ -208,33 +242,93 @@ export function CirceVoiceCapture({
       const thisTurn = turn;
       report({ active: true, status: "connecting", caption: "Thinking…" });
       const {
-        environmentId: node,
-        routeTarget: target,
+        environmentId: primary,
+        hostRoute: onScreen,
         onThreadStarted: show,
         listen: send,
         speak: say,
+        transcribe: toWords,
+        hostSay: sendWords,
       } = latest.current;
+      // The node that owns what is on screen handles it; with nothing on
+      // screen, this machine's node. Speech stays on this machine's node,
+      // which has the voice credentials: another node gets the words.
+      // Without a thread on screen, what the control center shows.
+      const shown = onScreen === undefined ? getCirceTargetSnapshot() : null;
+      const node = onScreen?.environmentId ?? shown?.projectRef?.nodeId ?? primary;
       const focus =
-        target !== null && target.environmentId === node
-          ? {
-              projectId: target.projectId,
-              ...(target.contextThreadId === undefined ? {} : { threadId: target.contextThreadId }),
-            }
-          : undefined;
-      const result = await send({
-        environmentId: node,
-        input: {
-          audio: await toBase64(audio),
-          mimeType: "audio/webm",
-          ...(focus === undefined ? {} : { focus }),
-        },
-      });
+        onScreen?.focus ??
+        (shown?.projectRef == null
+          ? undefined
+          : {
+              projectId: shown.projectRef.projectId,
+              ...(shown.contextThreadId === undefined ? {} : { threadId: shown.contextThreadId }),
+            });
+      const encoded = await toBase64(audio);
+      const reply = await (async () => {
+        if (node === primary) {
+          const result = await send({
+            environmentId: node,
+            input: {
+              audio: encoded,
+              mimeType: "audio/webm",
+              ...(focus === undefined ? {} : { focus }),
+              ...presentedComputerRequestFor(node),
+            },
+          });
+          return result._tag === "Success" ? result.value : null;
+        }
+        const words = await toWords({
+          environmentId: primary,
+          input: { audio: encoded, mimeType: "audio/webm" },
+        });
+        if (words._tag !== "Success") return null;
+        if (words.value.status === "failed") {
+          return { status: "failed" as const, said: words.value.message, started: [], heard: "" };
+        }
+        const heard = words.value.heard.trim();
+        if (heard.length === 0) {
+          return {
+            status: "failed" as const,
+            said: "I didn't catch that.",
+            started: [],
+            heard: "",
+          };
+        }
+        const answered = await sendWords({
+          environmentId: node,
+          input: {
+            utterance: heard.slice(0, 16_000),
+            ...(focus === undefined ? {} : { focus }),
+            ...presentedComputerRequestFor(node),
+          },
+        });
+        return answered._tag === "Success" ? { ...answered.value, heard } : null;
+      })();
       if (thisTurn !== turn) return;
-      if (result._tag !== "Success") {
-        settle("I couldn't reach Circe on this machine.", true);
+      if (reply === null) {
+        settle(
+          "I couldn't hear back, so it may or may not have acted. Check before asking again.",
+          true,
+        );
         return;
       }
-      const reply = result.value;
+      // A node without the host layer only transcribed the words; the voice
+      // runtime carries them out through its own path.
+      if (reply.status === "unavailable") {
+        if (reply.heard.length === 0) {
+          settle("I didn't catch that.", true);
+          return;
+        }
+        submitCirceComposerCommand({
+          text: reply.heard,
+          inputMode: "voice",
+          captureId: randomUUID(),
+          sourceTranscript: reply.heard,
+        });
+        settle(reply.heard);
+        return;
+      }
       if (reply.heard.length > 0)
         publishCirceCommandFeedback({ inputMode: "voice", kind: "working", text: reply.heard });
       publishCirceCommandFeedback({
@@ -246,7 +340,7 @@ export function CirceVoiceCapture({
       if (reply.navigate?.threadId !== undefined) void show(node, reply.navigate.threadId);
       report({ active: true, status: "closing", caption: reply.said });
       const spoken = await say({
-        environmentId: node,
+        environmentId: primary,
         input: { text: reply.said.slice(0, 4_000) },
       });
       if (thisTurn !== turn) return;

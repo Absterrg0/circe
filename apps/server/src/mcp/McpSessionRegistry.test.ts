@@ -59,7 +59,7 @@ it.effect("stores only a token hash, resolves the bearer token, and revokes by t
     const resolved = yield* registry.resolve(token);
     expect(resolved?.threadId).toBe(threadId);
     expect(resolved?.capabilities).toEqual(
-      new Set(["desktop-use", "orchestration", "preview", "pull-requests", "worktree"]),
+      new Set(["computer-use", "orchestration", "preview", "pull-requests", "worktree"]),
     );
 
     yield* registry.revokeThread(threadId);
@@ -93,20 +93,20 @@ it.effect("always grants pull-requests and gates browser and device access indep
         .pipe(Effect.map((scope) => [...(scope?.capabilities ?? [])].sort()));
 
     expect(yield* capabilitiesOf(withPreview)).toEqual([
-      "desktop-use",
+      "computer-use",
       "orchestration",
       "preview",
       "pull-requests",
       "worktree",
     ]);
     expect(yield* capabilitiesOf(withoutPreview)).toEqual([
-      "desktop-use",
+      "computer-use",
       "orchestration",
       "pull-requests",
       "worktree",
     ]);
     expect(yield* capabilitiesOf(withDevice)).toEqual([
-      "desktop-use",
+      "computer-use",
       "device",
       "orchestration",
       "pull-requests",
@@ -209,6 +209,6 @@ it.effect("does not grant desktop tools when the node does not advertise them", 
     const scope = yield* registry.resolve(
       issued.config.authorizationHeader.replace(/^Bearer\s+/, ""),
     );
-    expect(scope?.capabilities.has("desktop-use")).toBe(false);
+    expect(scope?.capabilities.has("computer-use")).toBe(false);
   }),
 );

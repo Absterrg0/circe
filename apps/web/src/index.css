@@ -85,11 +85,11 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --app-scrollbar-thumb: rgb(217 217 217);
   --app-scrollbar-thumb-hover: rgb(191 191 191);
   /*
-   * Circe geometry. Square panels and controls with crisp 1px rules.
+   * Circe geometry. Soft 8px controls and 1px warm rules.
    * Keep these values semantic so sidebar, palette, tooltip, and toolbar
    * controls cannot quietly drift apart.
    */
-  --control-radius: 0.1875rem;
+  --control-radius: 0.5rem;
   --sidebar-content-inset: 0.5rem;
   --sidebar-control-gap: 0.5rem;
   --sidebar-icon-color: color-mix(
@@ -142,7 +142,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
    the variables and Settings -> Appearance can override them at runtime. The
    default stacks are mirrored in `appearanceFonts.ts`. */
 @theme {
-  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --font-sans:
+    "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono:
     ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
 }
@@ -1174,162 +1175,145 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   animation-duration: 0s !important;
 }
 
+/* Circe's own palette, used whenever no named theme is selected. The values
+   come from assets/circe/tokens.css: warm ivory with a copper accent in
+   light, midnight blue-charcoal in dark. Solid fills use a deepened copper in
+   light mode because white text on the brand copper reads at 3.3:1; the
+   brand copper itself is kept for rings, indicators, and the orb. */
 :root {
   color-scheme: light;
-  --radius: 0.25rem;
-  --background: #faf7f1;
-  --app-chrome-background: var(--background);
-  --toolbar-background: var(--app-chrome-background);
+  --radius: 0.625rem;
+  --circe-copper: #c97857;
+  --circe-peach: #e8ae93;
+  --circe-rose: #c9a79b;
+  --circe-deep-brown: #4a2d2a;
+  --circe-gradient: linear-gradient(135deg, #4a2d2a 0%, #9b6658 38%, #c97857 68%, #e8ae93 100%);
+  --circe-glow: rgb(201 120 87 / 26%);
+  --ease-circe: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --background: #faf7f3;
+  --app-chrome-background: #f4efea;
+  --toolbar-background: var(--background);
   --toolbar-foreground: var(--foreground);
   --toolbar-border: var(--border);
   --toolbar-control: var(--popover);
   --toolbar-control-foreground: var(--foreground);
   --toolbar-control-hover: var(--accent);
-  --surface-raised: #fffdf8;
-  --foreground: #1d1a15;
-  --card: #fffdf8;
-  --card-foreground: #1d1a15;
-  --popover: #fffdf8;
-  --popover-foreground: #1d1a15;
-  --primary: #96600a;
-  --primary-foreground: #fffdf6;
-  --secondary: #f1ebe0;
-  --secondary-foreground: #1d1a15;
-  --muted: #f1ebe0;
-  --muted-foreground: #6f665a;
-  --placeholder: var(--muted-foreground);
+  --surface-raised: #fffdfc;
+  --foreground: #14171b;
+  --card: #fffdfc;
+  --card-foreground: #14171b;
+  --popover: #fffdfc;
+  --popover-foreground: #14171b;
+  --primary: #a9573a;
+  --primary-foreground: #fffaf6;
+  --secondary: #f5f0ec;
+  --secondary-foreground: #14171b;
+  --muted: #f5f0ec;
+  --muted-foreground: #64686f;
+  --placeholder: #7d8289;
   --secondary-label: var(--muted-foreground);
-  --icon-muted: var(--muted-foreground);
-  --message-surface: var(--accent);
-  --message-foreground: var(--foreground);
+  --icon-muted: #767b82;
+  --message-surface: #f3e6de;
+  --message-foreground: #2a1f1b;
   --message-action: var(--primary);
   --message-action-foreground: var(--primary-foreground);
-  --message-action-hover: color-mix(in srgb, var(--primary) 88%, var(--background));
-  --accent: #eae2d1;
-  --accent-foreground: #1d1a15;
-  --error: var(--color-red-600);
-  --error-foreground: var(--color-red-700);
+  --message-action-hover: #974b30;
+  --accent: #eee7e2;
+  --accent-foreground: #14171b;
+  --error: #d9515d;
+  --error-foreground: #b3323f;
   --tool-error-icon: var(--error);
   --error-surface: color-mix(in srgb, var(--error) 8%, transparent);
   --destructive: var(--error);
-  --border: #e0d7c3;
-  --input: #cfc4ab;
-  --ring: var(--primary);
+  --border: #e3ddd8;
+  --input: #cfc6c0;
+  --ring: var(--circe-copper);
   --destructive-foreground: var(--error-foreground);
-  --info: var(--color-blue-600);
-  --info-foreground: var(--color-blue-700);
-  --success: var(--color-emerald-600);
-  --success-foreground: var(--color-emerald-700);
-  --warning: var(--color-amber-600);
-  --warning-foreground: #8a5b06;
-  --warning-surface: color-mix(in srgb, var(--warning) 10%, transparent);
+  --info: #667c96;
+  --info-foreground: #4d6179;
+  --success: #49a878;
+  --success-foreground: #2f7d55;
+  --warning: #d89545;
+  --warning-foreground: #95601c;
+  --warning-surface: color-mix(in srgb, var(--warning) 12%, transparent);
   --update: var(--primary);
   --update-foreground: var(--primary);
-  --update-surface: color-mix(in srgb, var(--update) 12%, transparent);
-  /* Keep every sidebar primitive on the same warm surface hierarchy, including
-     portaled mobile sheets and settings navigation outside the app sidebar. */
-  --sidebar: #f2ecdf;
+  --update-surface: color-mix(in srgb, var(--circe-copper) 14%, transparent);
+  --sidebar: #f4efea;
   --sidebar-foreground: var(--foreground);
-  --sidebar-muted-foreground: var(--muted-foreground);
-  --sidebar-control-surface: #e8dfcc;
-  --sidebar-row-hover: #e9e1cf;
-  --sidebar-row-active: #fffdf8;
-  --sidebar-row-selected: #fffdf8;
-  --sidebar-border: var(--border);
+  --sidebar-muted-foreground: #5f646b;
+  --sidebar-control-surface: #ebe4de;
+  --sidebar-row-hover: #ece5df;
+  --sidebar-row-active: #fffdfc;
+  --sidebar-row-selected: #fffdfc;
+  --sidebar-border: #e6dfd9;
   --sidebar-stage-fade: var(--sidebar);
-  --code-background: #f4eee1;
+  --code-background: #f3eee9;
   --code-foreground: var(--foreground);
-  --terminal-background: var(--background);
+  --terminal-background: #fbf9f6;
   --terminal-foreground: var(--foreground);
-  --terminal-cursor: #7a5b0a;
-  --terminal-selection-background: rgb(150 96 10 / 22%);
+  --terminal-cursor: var(--circe-copper);
+  --terminal-selection-background: rgb(201 120 87 / 22%);
 
   @variant dark {
     color-scheme: dark;
-    /* Keep controls and floating surfaces close to the neutral-black canvas.
-       Borders and hover states provide separation without milky gray fills. */
-    --background: var(--color-neutral-950);
-    --surface-raised: color-mix(in srgb, var(--background) 97%, var(--color-white));
-    --foreground: var(--color-neutral-100);
-    --card: color-mix(in srgb, var(--background) 97%, var(--color-white));
-    --card-foreground: var(--color-neutral-100);
-    --popover: color-mix(in srgb, var(--background) 97%, var(--color-white));
-    --popover-foreground: var(--color-neutral-100);
-    --primary: oklch(0.571 0.21 264);
-    --secondary: --alpha(var(--color-white) / 3%);
-    --secondary-foreground: var(--color-neutral-100);
-    --muted: --alpha(var(--color-white) / 3%);
-    --muted-foreground: color-mix(in srgb, var(--color-neutral-500) 90%, var(--color-white));
-    --accent: --alpha(var(--color-white) / 4%);
-    --accent-foreground: var(--color-neutral-100);
-    --error: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
-    --error-foreground: var(--color-red-400);
-    --tool-error-icon: #fca5a5;
-    --error-surface: color-mix(in srgb, var(--error) 16%, transparent);
-    --border: --alpha(var(--color-white) / 10%);
-    --input: --alpha(var(--color-white) / 14%);
-    --info-foreground: var(--color-blue-300);
-    --success-foreground: var(--color-emerald-300);
-    --warning-foreground: #d9a93f;
-    --warning-surface: color-mix(in srgb, var(--warning) 16%, transparent);
-    --update-foreground: var(--primary);
-    --update-surface: color-mix(in srgb, var(--update) 18%, transparent);
-    --sidebar: #101214;
-    --sidebar-control-surface: #1d2024;
-    --sidebar-row-hover: #1e2126;
-    --sidebar-row-active: #262b31;
-    --sidebar-row-selected: #23272c;
-    --sidebar-stage-fade: var(--card);
-    --terminal-cursor: #d9a93f;
-    --terminal-selection-background: rgb(201 154 46 / 28%);
+    --circe-glow: rgb(224 138 102 / 30%);
+    --background: #0f1620;
+    --app-chrome-background: #0b1119;
+    --surface-raised: #151b22;
+    --foreground: #f6f2ef;
+    --card: #151b22;
+    --card-foreground: #f6f2ef;
+    --popover: #171e26;
+    --popover-foreground: #f6f2ef;
+    --primary: #e08a66;
+    --primary-foreground: #1a0f0a;
+    --secondary: #1b222b;
+    --secondary-foreground: #f6f2ef;
+    --muted: #1b222b;
+    --muted-foreground: #a9b0b8;
+    --placeholder: #868c95;
+    --icon-muted: #8f96a0;
+    --message-surface: #2a211f;
+    --message-foreground: #f6ece6;
+    --message-action-hover: #ed9877;
+    --accent: #1f2731;
+    --accent-foreground: #f6f2ef;
+    --error: #ef6873;
+    --error-foreground: #f59aa2;
+    --tool-error-icon: #f59aa2;
+    --error-surface: color-mix(in srgb, var(--error) 14%, transparent);
+    --border: #262e38;
+    --input: #3b4551;
+    --ring: #e08a66;
+    --info: #8fa4bd;
+    --info-foreground: #aebfd3;
+    --success: #67c996;
+    --success-foreground: #8ad8ae;
+    --warning: #e7aa5a;
+    --warning-foreground: #efc182;
+    --warning-surface: color-mix(in srgb, var(--warning) 14%, transparent);
+    --update-surface: color-mix(in srgb, #e08a66 16%, transparent);
+    --sidebar: #0b1119;
+    --sidebar-muted-foreground: #9aa2ab;
+    --sidebar-control-surface: #161d26;
+    --sidebar-row-hover: #141b24;
+    --sidebar-row-active: #1a222c;
+    --sidebar-row-selected: #18202a;
+    --sidebar-border: #1c232d;
+    --sidebar-stage-fade: var(--sidebar);
+    --code-background: #121922;
+    --terminal-background: #0c121a;
+    --terminal-cursor: #e08a66;
+    --terminal-selection-background: rgb(224 138 102 / 26%);
   }
 }
 
-/* Keep both sidebar implementations (default and legacy) on the same warm
-   graphite hierarchy: warm paper navigation in light, graphite in dark, with
-   white/graphite selected surfaces. */
+/* The sidebar reads the root palette; this block only restates the roles a
+   portaled sheet or the legacy navigation looks up on the sidebar itself. */
 [data-app-sidebar] {
-  --background: #faf7f1;
-  --foreground: #1d1a15;
-  --card: #fffdf8;
-  --card-foreground: #1d1a15;
-  --accent: #eae2d1;
-  --accent-foreground: #1d1a15;
-  --muted: #f1ebe0;
-  --muted-foreground: #6f665a;
-  --border: #e0d7c3;
-  --input: #cfc4ab;
-  --sidebar: #f2ecdf;
-  --sidebar-foreground: #1d1a15;
-  --sidebar-muted-foreground: #6f665a;
-  --sidebar-control-surface: #e8dfcc;
-  --sidebar-row-hover: #e9e1cf;
-  --sidebar-row-active: #fffdf8;
-  --sidebar-row-selected: #fffdf8;
-  --sidebar-border: #e0d7c3;
+  --sidebar-foreground: var(--foreground);
   --sidebar-stage-fade: var(--sidebar);
-
-  @variant dark {
-    --background: #101214;
-    --foreground: #e9e6df;
-    --card: #101214;
-    --card-foreground: var(--foreground);
-    --accent: #1e2126;
-    --accent-foreground: #e9e6df;
-    --muted: #1d2024;
-    --muted-foreground: #a39b8d;
-    --border: rgb(255 255 255 / 10%);
-    --input: rgb(255 255 255 / 16%);
-    --sidebar: var(--card);
-    --sidebar-foreground: var(--foreground);
-    --sidebar-muted-foreground: var(--muted-foreground);
-    --sidebar-control-surface: var(--muted);
-    --sidebar-row-hover: color-mix(in srgb, var(--contrast-foreground) 8%, transparent);
-    --sidebar-row-active: color-mix(in srgb, var(--contrast-foreground) 11%, transparent);
-    --sidebar-row-selected: color-mix(in srgb, var(--contrast-foreground) 7%, transparent);
-    --sidebar-border: var(--border);
-    --sidebar-stage-fade: var(--card);
-  }
 }
 
 /* Theme files are expressed in app color roles and mapped to the existing

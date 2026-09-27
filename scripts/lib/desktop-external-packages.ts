@@ -18,6 +18,9 @@ export const DESKTOP_RUNTIME_EXTERNAL_PREFIXES = [
   "@clerk/electron-passkeys",
   "ffi-rs",
   "@yuuang/",
+  // Loads a native UniFFI addon and shared library from its own package
+  // directory at runtime; inlining the JS would strand the .node loader.
+  "@trycua/",
   // Reads its own bundle from disk by resolving `playwright-core/package.json`
   // at runtime and ships the browser driver alongside; there is nothing to
   // gain from inlining a 10 MB file the code re-reads as text.
