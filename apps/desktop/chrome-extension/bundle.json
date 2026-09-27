@@ -5,7 +5,6 @@
     "manifest.json",
     "service-worker.js",
     "debugger-session.js",
-    "page-snapshot.js",
     "options.html",
     "options.js"
   ]

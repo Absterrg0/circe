@@ -173,14 +173,8 @@ export class CuaRuntime {
       return;
     }
     try {
-      await driver.shutdown();
-    } catch {
-      // The runtime is going away either way; destruction below is the last
-      // reference release and must not be skipped by a shutdown failure.
+      await releaseDriver(driver);
     } finally {
-      if ("uniffiDestroy" in driver && typeof driver.uniffiDestroy === "function") {
-        driver.uniffiDestroy();
-      }
       this.runState = "stopped";
     }
   }
@@ -188,10 +182,17 @@ export class CuaRuntime {
   private async ensureStarted(): Promise<CuaDriverLike> {
     if (this.driver && this.driver.isAvailable()) return this.driver;
     if (this.starting) return this.starting;
+    // One startup at a time, published before anything awaits: concurrent
+    // callers share it. A driver that stopped being available still holds
+    // its native session, so the startup releases it first and only one
+    // driver ever lives.
+    const stale = this.driver;
+    this.driver = undefined;
     this.runState = "starting";
     this.failureReason = undefined;
     const start = (async () => {
       try {
+        if (stale) await releaseDriver(stale);
         const module = (await this.load()) as CuaDriverModule;
         const driver = module.CuaDriver.create(undefined);
         this.driver = driver;
@@ -224,5 +225,19 @@ export class CuaRuntime {
     if (this.driver?.isAvailable() === true) return;
     this.runState = "failed";
     this.failureReason = message;
+  }
+}
+
+/** Shuts a driver down and releases its native handle, even when shutdown fails. */
+async function releaseDriver(driver: CuaDriverLike): Promise<void> {
+  try {
+    await driver.shutdown();
+  } catch {
+    // Destruction below is the last reference release and must not be
+    // skipped by a shutdown failure.
+  } finally {
+    if ("uniffiDestroy" in driver && typeof driver.uniffiDestroy === "function") {
+      driver.uniffiDestroy();
+    }
   }
 }

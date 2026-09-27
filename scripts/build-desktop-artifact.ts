@@ -4051,6 +4051,17 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   yield* Effect.log("[desktop-artifact] Staging release app...");
   yield* fs.copy(distDirs.desktopDist, path.join(stageAppDir, "apps/desktop/dist-electron"));
   yield* fs.copy(distDirs.desktopResources, stageResourcesDir);
+  // electron-builder resolves extraResources inside the stage, so every
+  // extension it ships is staged here first; an unstaged one is silently
+  // missing from the installed app.
+  const chromeExtensionDir = path.join(stageAppDir, "apps/desktop/chrome-extension");
+  yield* fs.makeDirectory(chromeExtensionDir, { recursive: true });
+  for (const file of browserConnectorBundle.files) {
+    yield* fs.copyFile(
+      path.join(repoRoot, "apps/desktop/chrome-extension", file),
+      path.join(chromeExtensionDir, file),
+    );
+  }
   if (options.platform === "linux") {
     const extensionDir = path.join(stageAppDir, "apps/desktop/gnome-extension");
     yield* fs.makeDirectory(extensionDir, { recursive: true });

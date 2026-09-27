@@ -510,6 +510,9 @@ const orbScript = `<script>
   let liveState = { enabled: false, active: false, status: "idle" };
   let catalog = { providers: [], selected: null, pendingSelection: null, error: null };
   let expanded = false;
+  // When the orb became idle; it stops drawing once its colors have settled.
+  let idleSince = 0;
+  const IDLE_SETTLE_MS = 2000;
   let collapseTimer = 0;
 
   const reduceMotion =
@@ -591,9 +594,20 @@ const orbScript = `<script>
   const frame = (now) => {
     if (!running || gl === null) return;
     rafId = requestAnimationFrame(frame);
-    // Full motion while a session runs or the panel is open; the idle orb
-    // drifts at half rate so a resident overlay stays cheap.
-    const budget = isActiveStatus() || expanded ? 0 : 1000 / 30;
+    // Full motion while a session runs or the panel is open. Once idle, the
+    // orb finishes easing into its idle look and then stops drawing, so a
+    // resident overlay costs nothing; the next state change starts it again.
+    const idle = !isActiveStatus() && !expanded;
+    if (!idle) {
+      idleSince = 0;
+    } else if (idleSince === 0) {
+      idleSince = now;
+    } else if (now - idleSince > IDLE_SETTLE_MS) {
+      drawFrame(now);
+      setRunning(false);
+      return;
+    }
+    const budget = idle ? 1000 / 30 : 0;
     if (now - lastDrawAt < budget) return;
     lastDrawAt = now;
     drawFrame(now);
@@ -607,6 +621,7 @@ const orbScript = `<script>
     if (desired) {
       lastTickAt = 0;
       lastDrawAt = 0;
+      idleSince = 0;
       rafId = requestAnimationFrame(frame);
     } else if (rafId !== 0) {
       cancelAnimationFrame(rafId);

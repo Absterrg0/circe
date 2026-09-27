@@ -13,8 +13,9 @@ import {
 
 /**
  * Boot-time owner of the Chrome native messaging registration. It points
- * Chrome at the host script shipped with this desktop build and logs what it
- * wrote; a machine without Chrome simply has no registration to write.
+ * Chrome at a launcher for the host script shipped with this desktop build,
+ * rewritten on every boot so it follows the app's current executable, and
+ * logs what it wrote; a machine without Chrome has no registration to write.
  */
 export interface DesktopBrowserConnectorShape {
   readonly register: () => Effect.Effect<NativeHostRegistrationResult>;
@@ -36,6 +37,7 @@ export const make = Effect.gen(function* () {
       try {
         return await registerBrowserConnectorNativeHost({
           hostScriptPath,
+          runtimePath: environment.executablePath,
           homeDir: environment.homeDirectory,
           platform: environment.platform,
           registryManifestDir: environment.stateDir,

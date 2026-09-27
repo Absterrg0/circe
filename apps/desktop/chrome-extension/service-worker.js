@@ -189,11 +189,18 @@ chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === RECONNECT_ALARM) void connect();
 });
 
-chrome.debugger.onDetach.addListener((source) => {
-  if (source.tabId === attachedTabId) attachedTabId = null;
+// Losing the attached tab is told to the node, so it never keeps acting on,
+// or reporting, a tab this extension no longer controls.
+const forgetAttachedTab = (tabId, reason) => {
+  if (tabId !== attachedTabId) return;
+  attachedTabId = null;
+  if (port !== null) port.postMessage({ type: "tab.detached", tabId: String(tabId), reason });
+};
+chrome.debugger.onDetach.addListener((source, reason) => {
+  forgetAttachedTab(source.tabId, reason === "target_closed" ? "closed" : "detached");
 });
 chrome.tabs.onRemoved.addListener((tabId) => {
-  if (tabId === attachedTabId) attachedTabId = null;
+  forgetAttachedTab(tabId, "closed");
 });
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {

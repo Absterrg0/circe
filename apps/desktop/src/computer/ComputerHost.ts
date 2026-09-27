@@ -289,13 +289,19 @@ export class ComputerHost {
     const runtimeFailed = this.runtime.state === "failed";
     const runtimeReady = this.runtime.state === "ready";
     const permissions = runtimeReady ? await this.probePermissions() : undefined;
-    const permissionDenied =
+    // A permission the driver reports as denied removes what it gates: input
+    // needs the platform's input route (AT-SPI, X11, or macOS Accessibility),
+    // and capture needs screen recording. Unknown fields grant nothing new.
+    const denied = (keys: ReadonlyArray<string>) =>
       permissions !== undefined &&
-      ((permissions as { atspi?: boolean }).atspi === false ||
-        (permissions as { x11?: boolean }).x11 === false);
+      typeof permissions === "object" &&
+      permissions !== null &&
+      keys.some((key) => (permissions as Record<string, unknown>)[key] === false);
+    const permissionDenied = denied(["atspi", "x11", "accessibility"]);
+    const captureDenied = denied(["screen_recording", "screenRecording"]);
     const capabilities: ComputerHostCapabilities = {
       observe: graphical && !runtimeFailed,
-      capture: graphical && !runtimeFailed,
+      capture: graphical && !runtimeFailed && !captureDenied,
       pointer: graphical && !runtimeFailed && !permissionDenied,
       keyboard: graphical && !runtimeFailed && !permissionDenied,
       windows: graphical && !runtimeFailed,
@@ -307,8 +313,10 @@ export class ComputerHost {
       : runtimeFailed
         ? (this.runtime.reason ?? "the Cua runtime failed to start")
         : permissionDenied
-          ? "the driver reports no usable desktop input route"
-          : undefined;
+          ? "the driver reports no usable desktop input route; grant Circe Accessibility (macOS) or check the accessibility bus (Linux)"
+          : captureDenied
+            ? "screen recording is not granted to Circe"
+            : undefined;
     return {
       available: graphical && !runtimeFailed,
       platform: this.platform,
