@@ -785,8 +785,8 @@ describe("Circe command center palette entry", () => {
             kind: "action",
             value: "action:circe",
             searchTerms: [...ARIS_COMMAND_CENTER_SEARCH_TERMS],
-            title: "Open Circe",
-            description: "Open the Circe command center",
+            title: "Open overview",
+            description: "What needs you, what is running, and your machines",
             icon: null,
             run: async () => undefined,
           },
@@ -805,9 +805,9 @@ describe("Circe command center palette entry", () => {
     }).flatMap((group) => group.items.map((item) => item.value));
   }
 
-  it("finds the visible Open Circe entry by its own title words", () => {
-    expect(matches("circe")).toEqual(["action:circe"]);
-    expect(matches("Circe")).toEqual(["action:circe"]);
+  it("finds the visible Open overview entry by its own title words", () => {
+    expect(matches("overview")).toEqual(["action:circe"]);
+    expect(matches("Overview")).toEqual(["action:circe"]);
     expect(matches("open")).toEqual(["action:circe"]);
   });
 
@@ -819,7 +819,7 @@ describe("Circe command center palette entry", () => {
 
   it("keeps the title words inside the shared search terms", () => {
     expect([...ARIS_COMMAND_CENTER_SEARCH_TERMS]).toEqual(
-      expect.arrayContaining(["circe", "open", "command", "center"]),
+      expect.arrayContaining(["circe", "open", "overview", "command", "center"]),
     );
   });
 });

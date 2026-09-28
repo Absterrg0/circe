@@ -1840,8 +1840,8 @@ function OpenCommandPaletteDialog(props: {
     kind: "action",
     value: "action:circe",
     searchTerms: [...ARIS_COMMAND_CENTER_SEARCH_TERMS],
-    title: "Open Circe",
-    description: "Open the Circe command center",
+    title: "Open overview",
+    description: "What needs you, what is running, and your machines",
     icon: <AudioLinesIcon className={ITEM_ICON_CLASS} />,
     run: async () => openCirce(),
   });

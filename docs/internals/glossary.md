@@ -86,6 +86,22 @@ The one user-facing Circe product installed on a device. It owns one launcher, u
 
 The one workspace each node keeps for chats: conversations that are not about a codebase. Every thread runs in a workspace, so chats run here, but clients never present it as a project and the node refuses to rename, move, or delete it. Marked `kind: "chats"` on the wire. See [Chat is not a project](./circe-decisions.md#chat-is-not-a-project).
 
+#### Rail
+
+The desktop's leftmost column: the mark (the overview), destinations, one tile per paired machine, and search, voice and settings. It is always Void, in every theme, so the mark and the orb sit on black. Below `md` it is absent and the sidebar sheet carries the destinations. See [Circe design system](./circe-design-system.md).
+
+#### Machine scope
+
+The rail's per-machine filter on the task list, persisted with the sidebar's other scopes. It narrows what the list shows and never changes where work runs; the sidebar header always names the scope. A scope whose machine leaves the catalog falls back to all machines.
+
+#### Overview
+
+The rail-only page at `/circe` (formerly the control center): the attention headline, the command box, Needs you, Activity, and the machine list with the selected machine's details.
+
+#### Status vocabulary
+
+The fixed task words, used verbatim in badges, sections and speech: Running, Queued, Needs you, Completed, Failed, Offline, Settled. Each pairs a glyph with a signal color, so color is never the only cue.
+
 #### Grok Bot
 
 A named bot from the Grok Bot app, reached through the loopback gateway on the node that runs it. A bot is node-owned like a project: clients address it as (node, bot id), and a disconnected node reports its bots offline instead of routing elsewhere. See [Circe bots](./circe-bots.md).

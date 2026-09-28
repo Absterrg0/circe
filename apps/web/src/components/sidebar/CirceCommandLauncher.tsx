@@ -46,7 +46,7 @@ export function CirceCommandLauncher() {
       type="button"
       className="circe-launcher"
       data-active={active ? "true" : "false"}
-      aria-label="Open the Circe command center"
+      aria-label="Open the Circe overview"
       onClick={() => {
         if (isMobile) setOpenMobile(false);
         void navigate({ to: "/circe" });

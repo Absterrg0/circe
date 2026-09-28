@@ -107,9 +107,10 @@ The AUR packaging is maintained in this repository under [`packaging/aur`](./pac
 
 ## Design
 
-Circe follows the [Circe design system](./docs/internals/circe-design-system.md):
-quiet by default, warm paper and copper materials, editorial serif for identity,
-signal over spectacle.
+Circe follows the [Circe design system](./assets/circe/design-system.md): warm
+near-black with copper as the one accent, and nothing glows unless it is running,
+waiting on you, or listening. How the apps implement it is in
+[docs/internals/circe-design-system.md](./docs/internals/circe-design-system.md).
 
 ## Some notes
 

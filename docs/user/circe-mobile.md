@@ -4,7 +4,7 @@ The Circe mobile app opens directly into Circe. It can browse paired nodes and p
 
 Pair the phone with each Circe environment through the existing T3 connection flow. Tailnet connections use the same authenticated RPC channel as the rest of the mobile app.
 
-Use **Assistant** to direct work and **Tasks** to browse the workspace. Tap **Working in** to select a project and its computer. Current work stays above the collapsed recent-work list.
+The tab bar has **Home**, **Tasks** and **Library**. **Home** greets you with what needs you and what is running, for example **Two tasks need you. forge is running two more.**, followed by counts of running work, work completed today and machines online. Under the command box, **Needs you** shows each waiting task with its project and machine and a **Review** or **Answer…** button that opens it, and **Running** lists work in progress. A gold count on **Tasks** is the number of tasks waiting on you. **Library** opens archived threads.
 
 After pairing, open the app and:
 

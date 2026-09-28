@@ -2724,9 +2724,9 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
       <details
         className={cn(
           "group rounded-md border",
-          presentation.tone === "warning" && "border-amber-500/25 bg-amber-500/5",
+          presentation.tone === "warning" && "border-attention/25 bg-attention-soft",
           presentation.tone === "danger" && "border-destructive/25 bg-destructive/5",
-          presentation.tone === "success" && "border-emerald-500/20 bg-emerald-500/5",
+          presentation.tone === "success" && "border-success/20 bg-success-soft",
         )}
         data-v2-item-type={item.type}
         data-v2-item-visibility={visibility}
@@ -2736,9 +2736,9 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
           <Icon
             className={cn(
               "size-3.5 shrink-0",
-              presentation.tone === "warning" && "text-amber-600 dark:text-amber-400",
+              presentation.tone === "warning" && "text-attention",
               presentation.tone === "danger" && "text-destructive",
-              presentation.tone === "success" && "text-emerald-600 dark:text-emerald-400",
+              presentation.tone === "success" && "text-success",
             )}
           />
           <span className="shrink-0 font-medium text-foreground/90">{presentation.label}</span>
@@ -2802,9 +2802,9 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
     <section
       className={cn(
         "rounded-lg border px-3 py-2",
-        presentation.tone === "warning" && "border-amber-500/25 bg-amber-500/5",
+        presentation.tone === "warning" && "border-attention/25 bg-attention-soft",
         presentation.tone === "danger" && "border-destructive/25 bg-destructive/5",
-        presentation.tone === "success" && "border-emerald-500/20 bg-emerald-500/5",
+        presentation.tone === "success" && "border-success/20 bg-success-soft",
         presentation.tone === "muted" && "border-border/60 bg-card/30",
       )}
       data-v2-item-type={item.type}
@@ -2814,9 +2814,9 @@ function V2EventTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "event"
         <Icon
           className={cn(
             "mt-0.5 size-3.5 shrink-0",
-            presentation.tone === "warning" && "text-amber-600 dark:text-amber-400",
+            presentation.tone === "warning" && "text-attention",
             presentation.tone === "danger" && "text-destructive",
-            presentation.tone === "success" && "text-emerald-600 dark:text-emerald-400",
+            presentation.tone === "success" && "text-success",
             presentation.tone === "muted" && "text-muted-foreground",
           )}
         />

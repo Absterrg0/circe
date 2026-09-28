@@ -28,6 +28,7 @@ export const ADDON_ICON_CLASS = "size-4";
 export const ARIS_COMMAND_CENTER_SEARCH_TERMS: readonly string[] = [
   "circe",
   "open",
+  "overview",
   "command",
   "center",
   "control",

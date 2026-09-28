@@ -243,7 +243,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
         <>
           <SidebarUtilityItem
             icon={<img alt="" className="size-4 rounded-sm" src={CIRCE_MARK_SRC} />}
-            label="Circe Control Center"
+            label="Overview"
             onClick={handleCirceClick}
           />
           <SidebarUtilityItem
