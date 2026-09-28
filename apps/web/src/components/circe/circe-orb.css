@@ -1,0 +1,196 @@
+/* Dark glass. The body absorbs light, the shell image carries it, the bloom is
+   the light it casts on the page. Motion rotates or scales layers; nothing
+   repaints, and every loop stops under reduced motion. */
+.ci-orb {
+  --orb: 44px;
+  position: relative;
+  display: inline-block;
+  width: var(--orb);
+  height: var(--orb);
+  flex-shrink: 0;
+  isolation: isolate;
+}
+.ci-orb__atmosphere {
+  position: absolute;
+  inset: -60%;
+  border-radius: 9999px;
+  z-index: -2;
+  pointer-events: none;
+  background: radial-gradient(
+    circle at 50% 46%,
+    color-mix(in srgb, var(--orb-peach) 7%, transparent) 22%,
+    color-mix(in srgb, var(--orb-peach) 3.5%, transparent) 42%,
+    transparent 66%
+  );
+}
+.ci-orb__bloom {
+  position: absolute;
+  inset: -26%;
+  border-radius: 9999px;
+  z-index: -1;
+  pointer-events: none;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--orb-copper) 26%, transparent) 48%,
+    color-mix(in srgb, var(--orb-copper) 10%, transparent) 60%,
+    color-mix(in srgb, var(--orb-copper) 3%, transparent) 68%,
+    transparent 74%
+  );
+  transition:
+    opacity 320ms var(--ease-circe),
+    transform 320ms var(--ease-circe);
+}
+.ci-orb__body {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background:
+    radial-gradient(
+      circle at 24% 72%,
+      color-mix(in srgb, var(--orb-copper) 16%, transparent),
+      transparent 46%
+    ),
+    radial-gradient(
+      circle at 30% 26%,
+      color-mix(in srgb, var(--orb-copper) 10%, transparent),
+      transparent 42%
+    ),
+    radial-gradient(circle at 48% 44%, #161210 0%, #100e0d 50%, #140f0c 78%, #24130d 100%);
+}
+.ci-orb__threads {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  mix-blend-mode: screen;
+}
+.ci-orb__drift {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+}
+.ci-orb__shell {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+.ci-orb__halo {
+  position: absolute;
+  inset: -12%;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  opacity: 0;
+  pointer-events: none;
+}
+.ci-orb--small .ci-orb__atmosphere {
+  display: none;
+}
+.ci-orb--small .ci-orb__bloom {
+  inset: -34%;
+}
+
+.ci-orb[data-state="idle"] .ci-orb__bloom {
+  opacity: 0.8;
+}
+.ci-orb[data-state="attention"] .ci-orb__halo {
+  opacity: 1;
+  border-color: var(--attention);
+  box-shadow: var(--glow-attention);
+}
+.ci-orb[data-state="error"] .ci-orb__shell {
+  filter: saturate(0.2) brightness(0.8);
+}
+.ci-orb[data-state="error"] .ci-orb__bloom {
+  opacity: 0;
+}
+.ci-orb[data-state="error"] .ci-orb__halo {
+  opacity: 1;
+  border-color: var(--danger);
+}
+.ci-orb[data-state="offline"] {
+  filter: grayscale(1);
+  opacity: 0.5;
+}
+.ci-orb[data-state="offline"] .ci-orb__bloom,
+.ci-orb[data-state="offline"] .ci-orb__atmosphere {
+  opacity: 0;
+}
+.ci-orb[data-state="listening"] .ci-orb__halo {
+  border-color: color-mix(in srgb, var(--orb-peach) 45%, transparent);
+  opacity: 0.6;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .ci-orb[data-state="listening"] .ci-orb__shell {
+    animation: ci-orb-spin 16s linear infinite;
+  }
+  .ci-orb[data-state="listening"] .ci-orb__drift {
+    animation: ci-orb-drift 7s ease-in-out infinite alternate;
+  }
+  .ci-orb[data-state="listening"] .ci-orb__bloom {
+    animation: ci-orb-swell 2.6s ease-in-out infinite alternate;
+  }
+  .ci-orb[data-state="listening"] .ci-orb__halo {
+    animation: ci-orb-halo 2.6s steps(14) infinite;
+  }
+  .ci-orb[data-state="working"] .ci-orb__shell {
+    animation: ci-orb-spin 5s linear infinite;
+  }
+  .ci-orb[data-state="working"] .ci-orb__drift {
+    animation: ci-orb-drift 3s ease-in-out infinite alternate;
+  }
+  .ci-orb[data-state="speaking"] .ci-orb__body,
+  .ci-orb[data-state="speaking"] .ci-orb__shell {
+    animation: ci-orb-speak 0.9s ease-in-out infinite alternate;
+  }
+  .ci-orb[data-state="speaking"] .ci-orb__bloom {
+    animation: ci-orb-swell 0.9s ease-in-out infinite alternate;
+  }
+}
+
+@keyframes ci-orb-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ci-orb-swell {
+  from {
+    opacity: 0.75;
+    transform: scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1.06);
+  }
+}
+@keyframes ci-orb-drift {
+  from {
+    transform: translateX(-4px) rotate(-3deg);
+  }
+  to {
+    transform: translateX(4px) rotate(3deg);
+  }
+}
+@keyframes ci-orb-speak {
+  from {
+    transform: scale(0.985);
+  }
+  to {
+    transform: scale(1.025);
+  }
+}
+@keyframes ci-orb-halo {
+  0% {
+    opacity: 0.7;
+    transform: scale(0.96);
+  }
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(1.22);
+  }
+}

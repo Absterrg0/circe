@@ -26,7 +26,7 @@ import { CirceDesktopOrbReporter } from "./CirceDesktopOrbReporter";
 import { CirceHostNoticeReporters } from "./CirceHostNoticeReporter";
 import { CirceLiveVoiceRuntime } from "./CirceLiveVoiceRuntime";
 import { CirceVoiceCapture } from "./CirceVoiceCapture";
-import { getCirceLiveVoiceUiState, setCirceLiveVoiceActive } from "./CirceLiveVoice.bridge";
+import { toggleCirceLiveVoiceFromUser } from "./CirceLiveVoice.bridge";
 import { CirceVoiceReporter } from "./CirceVoiceReporter";
 
 const CirceVoiceRuntime = lazy(async () => {
@@ -116,7 +116,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
           void router.navigate({ to: "/circe" });
           break;
         case "live-voice-toggle":
-          setCirceLiveVoiceActive(!getCirceLiveVoiceUiState().active);
+          toggleCirceLiveVoiceFromUser();
           break;
         case null:
           break;

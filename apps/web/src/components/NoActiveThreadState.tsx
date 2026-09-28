@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 
 import { isElectron } from "../env";
-import { CirceOrb } from "./circe/CirceOrb";
+import { CIRCE_MARK_SRC } from "./circe/CirceBrand";
 import { Button } from "./ui/button";
 import { Empty, EmptyDescription, EmptyHeader, EmptyTitle } from "./ui/empty";
 import { SidebarInset } from "./ui/sidebar";
@@ -17,9 +17,9 @@ export function NoActiveThreadState() {
 
         <Empty className="flex-1">
           <div className="flex w-full max-w-md flex-col items-center px-8 py-12 text-center">
-            <CirceOrb size="xl" />
-            <EmptyHeader className="mt-7 max-w-none">
-              <EmptyTitle className="text-xl font-semibold tracking-tight text-foreground">
+            <img alt="" className="size-12 rounded-xl" src={CIRCE_MARK_SRC} />
+            <EmptyHeader className="mt-6 max-w-none">
+              <EmptyTitle className="font-display text-xl font-semibold tracking-[-0.015em] text-foreground">
                 Pick up where you left off
               </EmptyTitle>
               <EmptyDescription className="mt-2 text-sm leading-relaxed text-muted-foreground">
@@ -27,8 +27,8 @@ export function NoActiveThreadState() {
                 it finds the right machine.
               </EmptyDescription>
             </EmptyHeader>
-            <Button className="mt-6 rounded-full px-5" render={<Link to="/circe" />}>
-              Open command center
+            <Button className="mt-6" render={<Link to="/circe" />}>
+              Open overview
             </Button>
           </div>
         </Empty>

@@ -1,10 +1,23 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  ChartNoAxesColumnIcon,
+  ChevronDownIcon,
+  LayersIcon,
+  SettingsIcon,
+} from "lucide-react";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useCanGoBack, useLocation, useNavigate } from "@tanstack/react-router";
 
 import { cn } from "../../lib/utils";
-import { usePullRequestsSupported } from "../../state/environments";
+import {
+  useEnvironmentConnectionSummaries,
+  useEnvironmentMachines,
+  usePullRequestsSupported,
+} from "../../state/environments";
+import { useUiStateStore } from "../../uiStateStore";
+import { EnvironmentMachineIcon } from "../EnvironmentMachineIcon";
+import { Menu, MenuPopup, MenuRadioGroup, MenuRadioItem, MenuTrigger } from "../ui/menu";
 import {
   resolveEnvironmentIdentificationPillLabel,
   useEnvironmentStageLabel,
@@ -28,8 +41,13 @@ import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
 export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   isElectron,
+  title = "Tasks",
+  showMachineScope = false,
 }: {
   isElectron: boolean;
+  /** Desktop title for what the rail points at; the brand lives on the rail there. */
+  title?: string;
+  showMachineScope?: boolean;
 }) {
   const stageLabel = useEnvironmentStageLabel();
   // The workbench header stays flat: environment stage shows as a quiet pill
@@ -39,12 +57,16 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   return (
     <SidebarHeader
       className={cn(
-        "@container/sidebar-header relative h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center border-b border-sidebar-border px-3 py-0 md:px-0",
+        "@container/sidebar-header relative h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center gap-1 px-3 py-0 max-md:border-b max-md:border-sidebar-border md:ps-4 md:pe-2",
         isElectron && "drag-region",
       )}
     >
       <SidebarTrigger className="relative z-10 md:hidden" />
       <SidebarBrand />
+      <span className="relative z-10 hidden font-display text-base font-semibold tracking-[-0.02em] text-sidebar-foreground md:inline">
+        {title}
+      </span>
+      {showMachineScope ? <SidebarMachineScope /> : null}
       {pillLabel ? (
         <Badge
           className="relative z-10 ml-1 hidden px-1.5 text-muted-foreground @[15rem]/sidebar-header:inline-flex"
@@ -59,15 +81,67 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
   );
 });
 
+/**
+ * The machine scope the rail tiles set, as a chip that names it. Scoping hides
+ * other machines' tasks, so the header always says which machine is showing.
+ */
+function SidebarMachineScope() {
+  const environments = useEnvironmentConnectionSummaries();
+  const machineById = useEnvironmentMachines();
+  const scope = useUiStateStore((store) => store.sidebarMachineScope);
+  const setScope = useUiStateStore((store) => store.setSidebarMachineScope);
+  const enabled = environments.filter((env) => env.isEnabled);
+  if (enabled.length < 2 && scope === null) return null;
+  const scoped = enabled.find((env) => env.environmentId === scope) ?? null;
+  return (
+    <Menu>
+      <MenuTrigger
+        className="relative z-10 ml-1 hidden h-7 cursor-pointer items-center gap-1.5 rounded-md px-2 text-[12.5px] font-medium text-sidebar-muted-foreground outline-none transition-colors hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:ring-2 focus-visible:ring-ring md:inline-flex"
+        aria-label="Machine scope"
+      >
+        {scoped ? scoped.environmentLabel : "All machines"}
+        <ChevronDownIcon className="size-3 opacity-60" />
+      </MenuTrigger>
+      <MenuPopup align="start" className="w-56">
+        <MenuRadioGroup
+          value={scope ?? "all"}
+          onValueChange={(value) => setScope(value === "all" ? null : String(value))}
+        >
+          <MenuRadioItem value="all">
+            <span className="flex items-center gap-2">
+              <LayersIcon className="size-3.5 opacity-70" />
+              All machines
+            </span>
+          </MenuRadioItem>
+          {enabled.map((env) => (
+            <MenuRadioItem key={env.environmentId} value={env.environmentId}>
+              <span className="flex min-w-0 items-center gap-2">
+                <EnvironmentMachineIcon
+                  kind={machineById.get(env.environmentId) ?? "server"}
+                  className="size-3.5 opacity-70"
+                />
+                <span className="min-w-0 truncate">{env.environmentLabel}</span>
+                {env.connectionState !== "connected" ? (
+                  <span className="text-xs text-muted-foreground">offline</span>
+                ) : null}
+              </span>
+            </MenuRadioItem>
+          ))}
+        </MenuRadioGroup>
+      </MenuPopup>
+    </Menu>
+  );
+}
+
 function SidebarBrand() {
   return (
     <Link
       aria-label="Go to threads"
-      className="relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-8 w-fit min-w-0 shrink-0 items-center gap-2.5 overflow-hidden rounded-[var(--control-radius)] pe-1.5 text-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
+      className="relative z-10 flex h-8 w-fit min-w-0 shrink-0 items-center gap-2.5 overflow-hidden rounded-[var(--control-radius)] pe-1.5 text-foreground outline-hidden ring-ring focus-visible:ring-2 md:hidden"
       to="/"
     >
       <img alt="" className="size-5 shrink-0" src={CIRCE_MARK_SRC} />
-      <span className="truncate text-[15px] font-semibold tracking-[-0.015em] text-foreground">
+      <span className="truncate font-display text-[15px] font-semibold tracking-[-0.015em] text-foreground">
         Circe
       </span>
     </Link>
@@ -201,7 +275,12 @@ export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
     <SidebarFooter className="px-[var(--sidebar-content-inset)] py-1">
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      <div className="md:hidden">
+        <SidebarUtilityMenu />
+      </div>
+      <div className="hidden empty:hidden md:block">
+        <SidebarUpdatePill />
+      </div>
     </SidebarFooter>
   );
 });

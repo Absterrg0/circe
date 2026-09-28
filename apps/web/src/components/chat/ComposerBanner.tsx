@@ -29,8 +29,9 @@ const variantColors: Record<ComposerBannerVariant, string> = {
     "[--chat-composer-attached-outline:color-mix(in_srgb,var(--error)_32%,transparent)] [--chat-composer-attached-tint:color-mix(in_srgb,var(--error)_8%,transparent)]",
   info: neutralOutline,
   success: neutralOutline,
+  // Needs you: the attention gold, the one thing on screen allowed to glow.
   warning:
-    "[--chat-composer-attached-outline:color-mix(in_srgb,var(--warning)_28%,transparent)] [--chat-composer-attached-tint:color-mix(in_srgb,var(--warning)_8%,transparent)]",
+    "[--chat-composer-attached-outline:color-mix(in_srgb,var(--warning)_42%,transparent)] [--chat-composer-attached-tint:color-mix(in_srgb,var(--warning)_7%,transparent)] after:pointer-events-none after:absolute after:inset-0 after:-z-2 after:rounded-t-[16px] after:shadow-(--glow-attention)",
 };
 
 /** Shared glass and attachment seam, also used by the command menu without banner row padding. */

@@ -1,0 +1,270 @@
+/* The desktop shell: a Void rail, the inset sidebar on the chrome ground, and
+   the canvas as an inset panel. Below md the rail is gone and the sidebar is
+   the mobile sheet, so every rule here is gated on the rail being mounted. */
+
+:root {
+  --rail-width: 64px;
+  --canvas-gap: 8px;
+}
+
+.ci-rail {
+  position: relative;
+  z-index: 20;
+  width: var(--rail-width);
+  height: 100dvh;
+  flex-shrink: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 0 14px;
+  background: var(--rail);
+  color: var(--rail-ink-muted);
+  border-right: 1px solid rgb(255 255 255 / 5%);
+  /* The rail stays Void in Daylight: re-scope the tokens it paints with. */
+  --raised: #1b1917;
+  --line: #26231f;
+  --ink: var(--rail-ink);
+  --ink-faint: var(--rail-ink-muted);
+}
+@media (min-width: 768px) {
+  .ci-rail {
+    display: flex;
+  }
+}
+.ci-rail[data-macos="true"] {
+  padding-top: calc(var(--workspace-topbar-height) + 4px);
+}
+.ci-rail[data-drag="true"] {
+  -webkit-app-region: drag;
+}
+.ci-rail[data-drag="true"] > * {
+  -webkit-app-region: no-drag;
+}
+
+.ci-rail__mark {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  outline: none;
+}
+.ci-rail__mark img {
+  position: relative;
+  width: 30px;
+  height: 30px;
+  display: block;
+}
+.ci-rail__mark::before {
+  content: "";
+  position: absolute;
+  inset: -6px;
+  border-radius: 9999px;
+  background: radial-gradient(
+    circle,
+    color-mix(in srgb, var(--orb-copper) 26%, transparent),
+    transparent 66%
+  );
+  opacity: 0;
+  transition: opacity 200ms var(--ease-circe);
+}
+.ci-rail__mark:hover::before,
+.ci-rail__mark[data-active="true"]::before {
+  opacity: 1;
+}
+.ci-rail__mark:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--rail),
+    0 0 0 4px var(--primary);
+}
+
+.ci-rail__group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.ci-rail__btn {
+  appearance: none;
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--rail-ink-muted);
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 120ms var(--ease-circe),
+    color 120ms var(--ease-circe);
+}
+.ci-rail__btn svg {
+  width: 19px;
+  height: 19px;
+  stroke-width: 1.5;
+}
+.ci-rail__btn:hover {
+  background: var(--rail-hover);
+  color: var(--rail-ink);
+}
+.ci-rail__btn:focus-visible,
+.ci-rail__node:focus-visible {
+  box-shadow:
+    0 0 0 2px var(--rail),
+    0 0 0 4px var(--primary);
+}
+.ci-rail__btn[data-active="true"] {
+  background: var(--rail-active);
+  color: var(--rail-ink);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
+}
+.ci-rail__btn[data-active="true"]::before {
+  content: "";
+  position: absolute;
+  left: -10px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 9999px;
+  background: var(--primary);
+  box-shadow: 0 0 8px var(--primary);
+}
+.ci-rail__badge {
+  position: absolute;
+  top: 3px;
+  right: 2px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: var(--attention);
+  color: var(--on-attention);
+  font: 700 10px/16px var(--font-sans);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  box-shadow:
+    0 0 0 2px var(--rail),
+    0 0 12px color-mix(in srgb, var(--attention) 55%, transparent);
+}
+.ci-rail__rule {
+  width: 24px;
+  height: 1px;
+  margin: 8px 0;
+  background: rgb(255 255 255 / 9%);
+}
+.ci-rail__nodes {
+  gap: 8px;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  padding: 3px 0;
+}
+.ci-rail__node {
+  appearance: none;
+  position: relative;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 10px;
+  border: 1px solid rgb(255 255 255 / 8%);
+  background: #1b1917;
+  font: 600 12px/1 var(--font-display);
+  letter-spacing: -0.01em;
+  color: var(--rail-ink);
+  cursor: pointer;
+  outline: none;
+  text-transform: lowercase;
+  transition:
+    box-shadow 160ms var(--ease-circe),
+    border-color 120ms var(--ease-circe);
+}
+.ci-rail__node:hover {
+  border-color: rgb(255 255 255 / 18%);
+}
+.ci-rail__node[data-scoped="true"] {
+  background: var(--rail-active);
+  border-color: rgb(255 255 255 / 26%);
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 10%);
+}
+.ci-rail__node[data-offline="true"] {
+  color: var(--rail-ink-muted);
+}
+.ci-rail__node svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.5;
+}
+.ci-rail__node .ci-presence {
+  position: absolute;
+  right: -3px;
+  bottom: -3px;
+  --presence-ring: var(--rail);
+}
+.ci-rail__node--all {
+  color: var(--rail-ink-muted);
+}
+.ci-rail__node--add {
+  background: transparent;
+  border-style: dashed;
+  border-color: rgb(255 255 255 / 16%);
+  color: var(--rail-ink-muted);
+}
+.ci-rail__spacer {
+  flex: 1;
+}
+.ci-rail__mic[data-listening="true"] {
+  background: var(--voice-soft);
+  color: var(--voice);
+  box-shadow: var(--glow-voice);
+}
+
+/* ------------------------------------------------ inset canvas and sidebar */
+@media (min-width: 768px) {
+  [data-shell-rail="true"] {
+    /* The rail replaces the floating sidebar toggle and sits under the
+       traffic lights, so canvas headers need no left clearance. */
+    --workspace-titlebar-content-left: 1rem !important;
+  }
+  [data-shell-rail="true"] [data-slot="sidebar-container"] {
+    left: var(--rail-width);
+    border-right: 0;
+  }
+  [data-shell-rail="true"]
+    [data-slot="sidebar"][data-collapsible="offcanvas"]
+    [data-slot="sidebar-container"] {
+    left: calc(var(--rail-width) - var(--sidebar-width));
+  }
+  [data-shell-rail="true"] [data-sidebar-control] {
+    display: none;
+  }
+  [data-shell-rail="true"] [data-slot="sidebar-inset"] {
+    height: calc(100dvh - 2 * var(--canvas-gap)) !important;
+    min-height: 0 !important;
+    margin: var(--canvas-gap) var(--canvas-gap) var(--canvas-gap) 0;
+    border: 1px solid var(--line);
+    border-radius: var(--radius-xl);
+    box-shadow: var(--elevation-sm);
+    overflow: hidden;
+  }
+  [data-shell-rail="true"][data-sidebar-state="collapsed"] [data-slot="sidebar-inset"] {
+    margin-left: var(--canvas-gap);
+  }
+  /* The overview runs rail only; the task list stays mounted underneath. */
+  [data-shell-rail="true"][data-overview="true"] [data-slot="sidebar"] {
+    display: none;
+  }
+  [data-shell-rail="true"][data-overview="true"] [data-slot="sidebar-inset"] {
+    margin-left: var(--canvas-gap);
+  }
+}

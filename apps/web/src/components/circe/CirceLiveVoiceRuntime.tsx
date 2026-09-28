@@ -14,7 +14,6 @@ import { getCirceTargetSnapshot } from "../../circeBus";
 import { toastManager } from "../ui/toast";
 import {
   consumeCirceLiveVoiceActivationReason,
-  getCirceLiveVoiceEnabled,
   getCirceLiveVoiceSink,
   getCirceLiveVoiceUiState,
   hasCirceLiveVoicePendingReply,
@@ -25,6 +24,7 @@ import {
   submitCirceLiveVoiceDelegation,
   subscribeCirceLiveVoice,
   takeCirceLiveVoiceAnnouncements,
+  toggleCirceLiveVoiceFromUser,
 } from "./CirceLiveVoice.bridge";
 import { buildCirceLiveVoiceContext, createCirceLiveVoiceController } from "./CirceLiveVoice.logic";
 
@@ -226,25 +226,7 @@ export function CirceLiveVoiceRuntime() {
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   // The desktop hotkey arrives on its own channel so it is never held behind
   // the generic menu-action readiness handshake.
-  useEffect(
-    () =>
-      window.desktopBridge?.circeLiveVoice?.onToggle(() => {
-        if (!getCirceLiveVoiceEnabled() && !getCirceLiveVoiceUiState().active) {
-          // The shortcut works; the session cannot start without a key. Say so
-          // instead of leaving the press with no visible effect.
-          toastManager.add({
-            type: "warning",
-            title: "Live voice is not configured",
-            description:
-              "Link this node to Circe Mesh or add an OpenAI live voice key in its agent settings, then try again.",
-            timeout: 12_000,
-          });
-          return;
-        }
-        setCirceLiveVoiceActive(!getCirceLiveVoiceUiState().active);
-      }),
-    [],
-  );
+  useEffect(() => window.desktopBridge?.circeLiveVoice?.onToggle(toggleCirceLiveVoiceFromUser), []);
   if (primaryEnvironmentId === null) return null;
   return <CirceLiveVoiceEnvironmentRuntime environmentId={primaryEnvironmentId} />;
 }

@@ -55,40 +55,44 @@ export const ComposerPendingApprovalPanel = memo(function ComposerPendingApprova
       : description.spoken;
 
   return (
-    <div
-      aria-label={fallbackLabel}
-      className={cn(
-        "min-w-0 rounded-[var(--radius)] border border-warning/25 bg-warning/5 p-3 text-left",
-        className,
-      )}
-      role="group"
-    >
-      <div className="flex min-w-0 items-center gap-2">
-        <span className="text-xs font-semibold text-foreground">Permission needed</span>
-        <span className="rounded-full bg-warning/10 px-2 py-0.5 text-[10px] font-medium text-warning">
+    <div aria-label={fallbackLabel} className={cn("min-w-0 text-left", className)} role="group">
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+        <span className="font-display text-[11px] font-medium uppercase tracking-[0.2em] text-attention">
+          Needs you
+        </span>
+        <span className="min-w-0 text-[13px] leading-[18px] text-ink-muted">{decisionSummary}</span>
+        <span className="rounded-sm bg-attention-soft px-1.5 py-0.5 text-[10.5px] font-medium text-attention">
           {riskLabel}
         </span>
         {pendingCount > 1 ? (
-          <span className="ml-auto shrink-0 text-[10px] font-medium text-muted-foreground tabular-nums">
+          <span className="ml-auto shrink-0 font-mono text-[11px] text-ink-faint tabular-nums">
             1 of {pendingCount}
           </span>
         ) : null}
       </div>
-      <p className="mt-1.5 text-sm leading-relaxed text-foreground/85">{decisionSummary}</p>
       {approval.appName ? (
-        <span className="mt-2 block max-w-32 shrink truncate text-[11px] font-medium text-foreground">
+        <span className="mt-2 block max-w-40 shrink truncate text-xs font-medium text-foreground">
           {approval.appName}
         </span>
       ) : null}
+      {/* A person cannot approve what they cannot read: the full request,
+          wrapped, never truncated. Very long requests scroll inside the well. */}
       <code
         aria-label={detailAriaLabel}
-        className="mt-2 block max-h-20 min-w-0 w-full overflow-auto rounded-[var(--control-radius)] border border-border bg-card px-2.5 py-2 whitespace-pre font-mono text-[11px] text-foreground/85 [scrollbar-width:thin] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70 [&::-webkit-scrollbar]:h-1.5"
+        className="mt-2.5 flex max-h-64 min-w-0 w-full gap-2.5 overflow-auto rounded-md border border-line bg-well px-3 py-2.5 whitespace-pre-wrap [overflow-wrap:anywhere] font-mono text-[12.5px] leading-5 text-foreground [scrollbar-width:thin] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70"
         data-approval-detail="complete"
         tabIndex={0}
       >
-        {approval.responseCapability === "not_resumable"
-          ? "Provider process is gone — interrupt or restart the run to respond."
-          : approval.detail || fallbackLabel}
+        {approval.requestKind === "command" && approval.responseCapability !== "not_resumable" ? (
+          <span aria-hidden className="select-none text-ink-faint">
+            $
+          </span>
+        ) : null}
+        <span className="min-w-0">
+          {approval.responseCapability === "not_resumable"
+            ? "Provider process is gone — interrupt or restart the run to respond."
+            : approval.detail || fallbackLabel}
+        </span>
       </code>
     </div>
   );

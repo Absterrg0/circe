@@ -104,3 +104,8 @@ export function usePullRequestsSupported() {
 export function useEnvironmentMachines() {
   return useAtomValue(environmentSummaries.machineByIdAtom);
 }
+
+/** Label, enablement and connection phase per catalog node; stable across config refreshes. */
+export function useEnvironmentConnectionSummaries() {
+  return useAtomValue(environmentSummaries.environmentsAtom);
+}

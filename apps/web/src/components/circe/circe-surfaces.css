@@ -6,128 +6,20 @@
  * under reduced motion.
  */
 
-/* ---------- Orb ---------- */
-
-.circe-orb {
-  --orb-size: 44px;
-  position: relative;
-  display: inline-block;
-  flex-shrink: 0;
-  width: var(--orb-size);
-  height: var(--orb-size);
-  border-radius: 999px;
-  background: radial-gradient(
-    circle at 34% 28%,
-    #f7dccb 0%,
-    #e8ae93 16%,
-    #c97857 44%,
-    #8a4f3d 74%,
-    #4a2d2a 100%
-  );
-  box-shadow:
-    inset 0 calc(var(--orb-size) * -0.14) calc(var(--orb-size) * 0.3) rgb(58 32 28 / 45%),
-    inset 0 calc(var(--orb-size) * 0.08) calc(var(--orb-size) * 0.2) rgb(255 238 226 / 35%),
-    0 calc(var(--orb-size) * 0.22) calc(var(--orb-size) * 0.7) calc(var(--orb-size) * -0.3)
-      var(--circe-glow);
-  isolation: isolate;
-}
-
-.circe-orb[data-size="sm"] {
-  --orb-size: 18px;
-}
-.circe-orb[data-size="md"] {
-  --orb-size: 28px;
-}
-.circe-orb[data-size="xl"] {
-  --orb-size: 88px;
-}
-
-/* Soft specular band, the "leaf" highlight from the mark. */
-.circe-orb::before {
-  content: "";
-  position: absolute;
-  inset: 12% 22% 46% 16%;
-  border-radius: 999px;
-  background: linear-gradient(160deg, rgb(255 246 238 / 70%), rgb(255 246 238 / 0%));
-  filter: blur(calc(var(--orb-size) * 0.03));
-  transform: rotate(-24deg);
-}
-
-/* State ring. Hidden at rest; listening pulses it, attention and error hold it. */
-.circe-orb::after {
-  content: "";
-  position: absolute;
-  inset: calc(var(--orb-size) * -0.14);
-  border-radius: 999px;
-  border: 1.5px solid var(--circe-copper);
-  opacity: 0;
-  z-index: -1;
-}
-
-.circe-orb[data-state="attention"]::after {
-  border-color: var(--warning);
-  opacity: 0.7;
-}
-.circe-orb[data-state="error"]::after {
-  border-color: var(--error);
-  opacity: 0.7;
-}
-
-@media (prefers-reduced-motion: no-preference) {
-  .circe-orb[data-state="listening"]::after {
-    animation: circe-orb-listen 2.4s infinite;
-  }
-  .circe-orb[data-state="working"] {
-    animation: circe-orb-breathe 3.2s infinite;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .circe-orb[data-state="listening"]::after,
-  .circe-orb[data-state="working"]::after {
-    opacity: 0.6;
-  }
-}
-
-/* Stepped keyframes: a handful of discrete frames per cycle, not one per vsync. */
-@keyframes circe-orb-listen {
-  0% {
-    opacity: 0.75;
-    transform: scale(0.94);
-    animation-timing-function: steps(12);
-  }
-  70%,
-  100% {
-    opacity: 0;
-    transform: scale(1.3);
-  }
-}
-
-@keyframes circe-orb-breathe {
-  0%,
-  100% {
-    filter: brightness(1);
-    animation-timing-function: steps(10);
-  }
-  50% {
-    filter: brightness(1.12) saturate(1.08);
-    animation-timing-function: steps(10);
-  }
-}
-
 /* ---------- Sidebar sections ---------- */
 
 .circe-sidebar-section {
   display: flex;
-  height: 30px;
+  height: 28px;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding: 0 6px 0 10px;
-  margin-top: 10px;
-  color: var(--sidebar-muted-foreground);
-  font-size: 10.5px;
-  font-weight: 600;
-  letter-spacing: 0.09em;
+  margin-top: 14px;
+  color: var(--ink-faint);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
   text-transform: uppercase;
   list-style: none;
 }
@@ -155,9 +47,9 @@
   outline-offset: 1px;
 }
 .circe-sidebar-section__count {
-  font-weight: 500;
+  font: 600 11px/1 var(--font-mono);
   letter-spacing: 0;
-  opacity: 0.7;
+  color: var(--ink-faint);
 }
 .circe-sidebar-section__chevron {
   width: 12px;
@@ -234,7 +126,7 @@
 }
 .circe-launcher:hover,
 .circe-launcher[data-active="true"] {
-  border-color: color-mix(in srgb, var(--circe-copper) 45%, var(--sidebar-border));
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--sidebar-border));
   color: var(--sidebar-foreground);
 }
 .circe-launcher:focus-visible {
@@ -299,19 +191,7 @@
 }
 .circe-bot-row[data-active="true"] {
   background: var(--sidebar-row-selected);
-  box-shadow:
-    inset 0 0 0 1px var(--sidebar-border),
-    0 1px 2px rgb(24 20 18 / 5%);
-}
-.circe-bot-row[data-active="true"]::before {
-  content: "";
-  position: absolute;
-  left: -1px;
-  top: 10px;
-  bottom: 10px;
-  width: 2px;
-  border-radius: 2px;
-  background: var(--circe-copper);
+  box-shadow: var(--elevation-sm);
 }
 .circe-bot-row[data-offline="true"] {
   opacity: 0.55;
@@ -347,7 +227,7 @@
   gap: 4px;
   padding: 1px 6px;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--circe-copper) 14%, transparent);
+  background: color-mix(in srgb, var(--primary) 14%, transparent);
   color: var(--primary);
   font-size: 10.5px;
   font-weight: 600;
@@ -462,7 +342,7 @@
   width: 5px;
   height: 5px;
   border-radius: 999px;
-  background: var(--circe-copper);
+  background: var(--primary);
   opacity: 0.35;
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -503,7 +383,7 @@
   box-shadow: 0 12px 36px -16px rgb(0 0 0 / 60%);
 }
 .circe-bot-composer:focus-within {
-  border-color: color-mix(in srgb, var(--circe-copper) 55%, var(--border));
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
 }
 .circe-bot-composer textarea {
   min-height: 24px;

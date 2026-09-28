@@ -5,6 +5,7 @@ import {
 } from "@circe/contracts";
 import { memo } from "react";
 import { TriangleAlertIcon } from "lucide-react";
+import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
@@ -25,7 +26,7 @@ const DEFAULT_APPROVAL_OPTIONS = [
   { decision: "accept", label: "Allow once" },
 ] satisfies ReadonlyArray<ProviderApprovalOption>;
 
-const APPROVAL_ACTION_CLASS_NAME = "font-normal";
+const APPROVAL_ACTION_CLASS_NAME = "font-medium";
 
 export const ComposerPendingApprovalActions = memo(function ComposerPendingApprovalActions({
   requestId,
@@ -40,23 +41,26 @@ export const ComposerPendingApprovalActions = memo(function ComposerPendingAppro
         const button = (
           <Button
             key={option.decision}
-            size="micro"
-            variant="ghost-muted"
-            className={`${APPROVAL_ACTION_CLASS_NAME}${
-              option.decision === "decline"
-                ? " text-destructive-foreground [:hover,[data-pressed]]:text-destructive-foreground"
-                : option.decision === "accept"
-                  ? " text-foreground"
-                  : option.warning
-                    ? " text-warning"
-                    : ""
-            }`}
+            size="xs"
+            variant={
+              option.decision === "accept"
+                ? "default"
+                : option.decision === "decline"
+                  ? "ghost"
+                  : "outline"
+            }
+            className={cn(
+              APPROVAL_ACTION_CLASS_NAME,
+              option.decision === "decline" &&
+                "bg-danger-soft text-danger [:hover,[data-pressed]]:bg-danger-soft [:hover,[data-pressed]]:text-danger [:hover,[data-pressed]]:ring-1 [:hover,[data-pressed]]:ring-danger/50",
+              option.warning && option.decision !== "decline" && "text-attention",
+            )}
             disabled={isResponding || !canRespond}
             aria-description={option.warning}
             onClick={() => void onRespondToApproval(requestId, option.decision)}
           >
             {option.warning ? <TriangleAlertIcon className="size-3 shrink-0" /> : null}
-            <span className="max-w-40 truncate">{option.label}</span>
+            <span className="max-w-44 truncate">{option.label}</span>
           </Button>
         );
         // A provider caution, such as a prompt injection warning on "allow

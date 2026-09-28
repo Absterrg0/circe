@@ -19,8 +19,9 @@ describe("ComposerPendingApprovalActions", () => {
     expect(markup).toContain("Allow for this task");
     expect(markup).toContain(">Allow once<");
     expect(markup).not.toContain(">Cancel<");
-    expect(markup).toContain("h-5");
-    expect(markup).toContain("sm:text-[11px]");
+    // Allow once is the one primary action; Deny reads as danger.
+    expect(markup).toMatch(/class="[^"]*bg-primary[^"]*"[^>]*>(?:<[^>]+>)*Allow once/);
+    expect(markup).toContain("text-danger");
   });
 
   it("shows the approval choices advertised by an MCP server", () => {
@@ -65,7 +66,7 @@ describe("ComposerPendingApprovalActions", () => {
     expect(markup).toContain(
       'aria-description="Untrusted files could re-run this action without asking."',
     );
-    expect(markup).toContain("text-warning");
+    expect(markup).toContain("text-attention");
     expect(markup).toContain("Allow for this thread");
   });
 
@@ -81,7 +82,7 @@ describe("ComposerPendingApprovalActions", () => {
       />,
     );
 
-    expect(markup).toContain('class="max-w-40 truncate"');
+    expect(markup).toContain('class="max-w-44 truncate"');
     expect(markup).toContain(label);
   });
 });

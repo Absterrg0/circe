@@ -29,6 +29,7 @@ import LegacyThreadSidebar from "./LegacySidebar";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
+import { CirceRail } from "./circe/CirceRail";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { useProjects } from "../state/entities";
 import {
@@ -213,10 +214,13 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
       <SidebarProvider
         className="h-dvh! min-h-0!"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
+        data-shell-rail="true"
+        data-overview={pathname === "/circe" ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}
       >
         <ProjectProjectionRetention />
+        <CirceRail macos={isMacosDesktop} electron={isElectron} />
         <Sidebar
           side="left"
           collapsible="offcanvas"

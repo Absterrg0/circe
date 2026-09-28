@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vite-plus/test";
+import { describe, expect, it, vi } from "vite-plus/test";
+
+const toast = vi.hoisted(() => ({ add: vi.fn() }));
+vi.mock("../ui/toast", () => ({ toastManager: toast }));
 
 import {
   consumeCirceLiveVoiceActivationReason,
@@ -15,6 +18,7 @@ import {
   submitCirceLiveVoiceDelegation,
   subscribeCirceLiveVoice,
   takeCirceLiveVoiceAnnouncements,
+  toggleCirceLiveVoiceFromUser,
 } from "./CirceLiveVoice.bridge";
 
 describe("Circe live voice bridge", () => {
@@ -79,5 +83,32 @@ describe("Circe live voice bridge", () => {
     expect(hasCirceLiveVoicePendingReply()).toBe(true);
     unregister();
     expect(hasCirceLiveVoicePendingReply()).toBe(false);
+  });
+
+  it("says why a user toggle cannot start a session without a live voice key", () => {
+    setCirceLiveVoiceActive(false);
+    setCirceLiveVoiceEnabled(false);
+    toast.add.mockClear();
+    toggleCirceLiveVoiceFromUser();
+    expect(getCirceLiveVoiceUiState().active).toBe(false);
+    expect(toast.add).toHaveBeenCalledWith(
+      expect.objectContaining({ title: "Live voice is not configured" }),
+    );
+
+    setCirceLiveVoiceEnabled(true);
+    toggleCirceLiveVoiceFromUser();
+    expect(getCirceLiveVoiceUiState().active).toBe(true);
+    toggleCirceLiveVoiceFromUser();
+    expect(getCirceLiveVoiceUiState().active).toBe(false);
+    setCirceLiveVoiceEnabled(false);
+  });
+
+  it("always lets a user end a live session, configured or not", () => {
+    setCirceLiveVoiceEnabled(false);
+    setCirceLiveVoiceActive(true);
+    toast.add.mockClear();
+    toggleCirceLiveVoiceFromUser();
+    expect(getCirceLiveVoiceUiState().active).toBe(false);
+    expect(toast.add).not.toHaveBeenCalled();
   });
 });

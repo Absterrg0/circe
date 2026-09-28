@@ -21,21 +21,20 @@ describe("ComposerPendingApprovalPanel", () => {
       />,
     );
 
-    expect(markup).toContain("Permission needed");
+    expect(markup).toContain("Needs you");
     expect(markup).toContain("in Circe");
     expect(markup).toContain('data-approval-detail="complete"');
     expect(markup).toContain('aria-label="Command"');
     expect(markup).toContain('role="group"');
     expect(markup).toContain('tabindex="0"');
+    // A person cannot approve what they cannot read: every character is in
+    // the card, long lines wrap instead of running off, and nothing clips.
     expect(markup).toContain(detail);
-    expect(markup).toContain("max-h-20");
+    expect(markup).toContain("whitespace-pre-wrap");
+    expect(markup).toContain("[overflow-wrap:anywhere]");
     expect(markup).toContain("overflow-auto");
-    expect(markup).toContain("whitespace-pre");
-    expect(markup).toContain("[scrollbar-width:thin]");
-    expect(markup).toContain("[&amp;::-webkit-scrollbar]:h-1.5");
     expect(markup).not.toContain("truncate");
     expect(markup).not.toContain("line-clamp");
-    expect(markup).toContain("rounded-[var(--radius)]");
     expect(markup).not.toContain("Command approval requested");
   });
 

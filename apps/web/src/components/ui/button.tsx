@@ -41,7 +41,7 @@ const buttonVariants = cva(
       variant: {
         chip: "",
         default:
-          "border-primary bg-primary text-primary-foreground [:disabled,:active,[data-pressed]]:shadow-none [:hover,[data-pressed]]:bg-primary/90",
+          "border-primary bg-primary text-primary-foreground shadow-[inset_0_1px_0_rgb(255_255_255/0.22),0_1px_2px_rgb(0_0_0/0.2)] [:disabled,:active,[data-pressed]]:shadow-none [:hover,[data-pressed]]:border-(--primary-hover) [:hover,[data-pressed]]:bg-(--primary-hover)",
         destructive:
           "border-destructive bg-destructive text-white [:disabled,:active,[data-pressed]]:shadow-none [:hover,[data-pressed]]:bg-destructive/90",
         "destructive-outline":

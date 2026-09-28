@@ -1,3 +1,4 @@
+import { toastManager } from "../ui/toast";
 import type { CirceLiveVoiceStatus } from "./CirceLiveVoice.logic";
 
 export interface CirceLiveVoiceSink {
@@ -134,4 +135,23 @@ export const subscribeCirceLiveVoice = (listener: () => void): (() => void) => {
   return () => {
     listeners.delete(listener);
   };
+};
+
+/**
+ * A user asked to start or end a live conversation (hotkey, rail mic, command
+ * center). Without a live voice key the session cannot start, so say so
+ * instead of leaving the press with no visible effect.
+ */
+export const toggleCirceLiveVoiceFromUser = (): void => {
+  if (!liveVoiceEnabled && !uiState.active) {
+    toastManager.add({
+      type: "warning",
+      title: "Live voice is not configured",
+      description:
+        "Link this node to Circe Mesh or add an OpenAI live voice key in its agent settings, then try again.",
+      timeout: 12_000,
+    });
+    return;
+  }
+  setCirceLiveVoiceActive(!uiState.active);
 };

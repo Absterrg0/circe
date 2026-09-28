@@ -2,7 +2,9 @@ import React from "react";
 import ReactDOM from "react-dom/client";
 import { createHashHistory, createBrowserHistory } from "@tanstack/react-router";
 
-import "@fontsource-variable/inter";
+import "@fontsource-variable/onest";
+import "@fontsource-variable/sora";
+import "@fontsource-variable/jetbrains-mono";
 import "./index.css";
 
 import { isElectron } from "./env";

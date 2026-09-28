@@ -1,0 +1,266 @@
+/* Circe UI primitives. Every color reads a token from index.css, so named
+   themes restyle them. Motion: 120ms hovers, 200ms panels, one easing.
+   Loops run only while something is alive, in stepped timing, and stop under
+   reduced motion. */
+
+.ci-label {
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 14px;
+  font-weight: 500;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+/* ------------------------------------------------------------ status */
+.ci-glyph {
+  display: block;
+  flex-shrink: 0;
+  overflow: visible;
+}
+.ci-glyph__orbit {
+  transform-box: view-box;
+  transform-origin: 50% 50%;
+  animation: ci-spin 1.2s steps(12) infinite;
+}
+.ci-glyph--running {
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--ember) 55%, transparent));
+}
+.ci-glyph--needs {
+  filter: drop-shadow(0 0 4px color-mix(in srgb, var(--attention) 50%, transparent));
+}
+.ci-glyph__bar {
+  transform-box: fill-box;
+  transform-origin: 50% 50%;
+  animation: ci-bar 0.9s steps(6) infinite alternate;
+}
+.ci-glyph__bar:nth-child(2) {
+  animation-delay: -0.3s;
+}
+.ci-glyph__bar:nth-child(3) {
+  animation-delay: -0.6s;
+}
+@keyframes ci-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes ci-bar {
+  from {
+    transform: scaleY(0.45);
+  }
+  to {
+    transform: scaleY(1);
+  }
+}
+
+.ci-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px 0 6px;
+  border-radius: var(--radius-sm);
+  font: 500 11.5px/1 var(--font-sans);
+  white-space: nowrap;
+  background: var(--well);
+  color: var(--ink-muted);
+}
+.ci-status--running {
+  background: var(--ember-soft);
+  color: var(--ember);
+}
+.ci-status--needs {
+  background: var(--attention-soft);
+  color: var(--attention);
+}
+.ci-status--done {
+  background: var(--success-soft);
+  color: var(--success);
+}
+.ci-status--failed {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+.ci-status--speaking {
+  background: var(--voice-soft);
+  color: var(--voice);
+}
+.ci-status--inline {
+  background: transparent;
+  padding: 0;
+  height: auto;
+  font-size: 12px;
+}
+
+.ci-presence {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px var(--presence-ring, var(--raised));
+}
+.ci-presence--online {
+  background: var(--success);
+}
+.ci-presence--busy {
+  background: var(--ember);
+  box-shadow:
+    0 0 0 2px var(--presence-ring, var(--raised)),
+    0 0 8px var(--ember);
+}
+.ci-presence--offline {
+  background: var(--presence-ring, var(--raised));
+  box-shadow:
+    inset 0 0 0 1.5px var(--ink-faint),
+    0 0 0 2px var(--presence-ring, var(--raised));
+}
+
+/* ----------------------------------------------------------- keycaps */
+.ci-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: var(--raised);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 -1px 0 var(--line);
+  font: 500 10.5px/1 var(--font-mono);
+  color: var(--ink-muted);
+}
+
+/* ------------------------------------------------------------- meter */
+.ci-meter {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+.ci-meter__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.ci-meter__value {
+  font: 500 12px/16px var(--font-mono);
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ci-meter__track {
+  height: 6px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: repeating-linear-gradient(90deg, var(--line) 0 3px, transparent 3px 5px);
+}
+.ci-meter__fill {
+  height: 100%;
+  background: repeating-linear-gradient(90deg, var(--ember) 0 3px, transparent 3px 5px);
+}
+.ci-meter--attention .ci-meter__fill {
+  background: repeating-linear-gradient(90deg, var(--attention) 0 3px, transparent 3px 5px);
+}
+.ci-meter--danger .ci-meter__fill {
+  background: repeating-linear-gradient(90deg, var(--danger) 0 3px, transparent 3px 5px);
+}
+
+/* ------------------------------------------------------------- nodes */
+.ci-node {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 28px;
+  padding: 0 10px 0 4px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: var(--raised);
+  font: 500 12.5px/1 var(--font-sans);
+  color: var(--ink);
+  white-space: nowrap;
+}
+.ci-node__tile {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+  display: grid;
+  place-items: center;
+  background: var(--well);
+  color: var(--ink-muted);
+}
+.ci-node__tile .ci-presence {
+  position: absolute;
+  right: -2px;
+  bottom: -2px;
+  width: 7px;
+  height: 7px;
+}
+.ci-node__route {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 2px;
+  padding-left: 8px;
+  border-left: 1px solid var(--line);
+  color: var(--ink-faint);
+  font-weight: 400;
+  height: 14px;
+}
+.ci-node--sm {
+  height: 24px;
+  padding-right: 8px;
+  gap: 6px;
+  font-size: 12px;
+}
+.ci-node--sm .ci-node__tile {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+}
+.ci-node--bare {
+  border-color: transparent;
+  background: transparent;
+}
+.ci-node--offline .ci-node__name {
+  color: var(--ink-muted);
+}
+
+/* ----------------------------------------------------- provider mark */
+.ci-providermark {
+  display: inline-grid;
+  place-items: center;
+  flex-shrink: 0;
+  border-radius: 4px;
+  background: var(--canvas);
+  border: 1px solid var(--line);
+  font-family: var(--font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--ink-muted);
+  line-height: 1;
+}
+
+/* ------------------------------------------------------------- diffs */
+.ci-diffstat {
+  display: inline-flex;
+  gap: 5px;
+  font: 500 11.5px/1 var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.ci-add {
+  color: var(--success);
+}
+.ci-del {
+  color: var(--danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ci-glyph__orbit,
+  .ci-glyph__bar {
+    animation: none;
+  }
+}

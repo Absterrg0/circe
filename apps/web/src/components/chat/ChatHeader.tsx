@@ -27,6 +27,11 @@ import {
   WorkspaceBreadcrumbSeparator,
 } from "../WorkspaceBreadcrumb";
 import { cn } from "~/lib/utils";
+import { useThreadShell } from "../../state/entities";
+import { useEnvironment } from "../../state/environments";
+import { overviewTaskState } from "../circe/CirceOverview.logic";
+import { NodeChip } from "../circe/ui/ProviderMark";
+import { StatusBadge } from "../circe/ui/StatusGlyph";
 
 interface ChatHeaderProps {
   activeThreadEnvironmentId: EnvironmentId;
@@ -341,6 +346,45 @@ export const ChatHeader = memo(function ChatHeader({
           )}
         </WorkspaceBreadcrumbItem>
       </WorkspaceBreadcrumb>
+      {isServerThread ? (
+        <ChatHeaderPlace environmentId={activeThreadEnvironmentId} threadId={activeThreadId} />
+      ) : null}
     </div>
   );
 });
+
+/**
+ * Where the task is and what it is doing: the status word when it matters,
+ * and the machine it runs on. A task never appears without its machine.
+ */
+function ChatHeaderPlace({
+  environmentId,
+  threadId,
+}: {
+  readonly environmentId: EnvironmentId;
+  readonly threadId: ThreadId;
+}) {
+  const threadRef = useMemo(
+    () => scopeThreadRef(environmentId, threadId),
+    [environmentId, threadId],
+  );
+  const thread = useThreadShell(threadRef);
+  const environment = useEnvironment(environmentId);
+  const state = thread ? overviewTaskState(thread) : null;
+  const phase = environment?.connection.phase;
+  return (
+    <div className="hidden shrink-0 items-center gap-2 md:flex">
+      {state === "needs" || state === "running" || state === "queued" || state === "failed" ? (
+        <StatusBadge state={state} />
+      ) : null}
+      {environment ? (
+        <NodeChip
+          name={environment.label.toLowerCase()}
+          size="sm"
+          bare
+          presence={phase === "connected" ? "online" : phase === "offline" ? "offline" : "busy"}
+        />
+      ) : null}
+    </div>
+  );
+}

@@ -143,9 +143,13 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
    default stacks are mirrored in `appearanceFonts.ts`. */
 @theme {
   --font-sans:
-    "Inter Variable", Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    "Onest Variable", Onest, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   --font-mono:
-    ui-monospace, "SF Mono", "SFMono-Regular", Menlo, Consolas, "Liberation Mono", monospace;
+    "JetBrains Mono Variable", "JetBrains Mono", ui-monospace, "SF Mono", "SFMono-Regular", Menlo,
+    Consolas, "Liberation Mono", monospace;
+  /* Sora carries the wordmark's round geometry: greetings, page and card
+     titles, and the tracked uppercase instrument label. Never paragraphs. */
+  --font-display: "Sora Variable", Sora, "Onest Variable", system-ui, sans-serif;
 }
 
 @theme inline {
@@ -209,12 +213,45 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-sidebar-row-active: var(--sidebar-row-active);
   --color-sidebar-row-selected: var(--sidebar-row-selected);
   --color-sidebar-border: var(--contrast-sidebar-border);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --radius-2xl: calc(var(--radius) + 8px);
-  --radius-3xl: calc(var(--radius) + 12px);
+  /* Precise, not bubbly: chips 6, controls and rows 8, cards and the
+     composer 12, the canvas, dialogs and the palette 16. */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-2xl: 20px;
+  --radius-3xl: 24px;
+  --color-canvas: var(--canvas);
+  --color-chrome: var(--chrome);
+  --color-raised: var(--raised);
+  --color-overlay: var(--overlay);
+  --color-well: var(--well);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-muted: var(--ink-muted);
+  --color-ink-faint: var(--ink-faint);
+  --color-ember: var(--ember);
+  --color-ember-strong: var(--ember-strong);
+  --color-on-ember: var(--on-ember);
+  --color-ember-soft: var(--ember-soft);
+  --color-attention: var(--attention);
+  --color-attention-soft: var(--attention-soft);
+  --color-on-attention: var(--on-attention);
+  --color-voice: var(--voice);
+  --color-voice-soft: var(--voice-soft);
+  --color-success-soft: var(--success-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-rail: var(--rail);
+  --color-rail-ink: var(--rail-ink);
+  --color-rail-ink-muted: var(--rail-ink-muted);
+  --shadow-glow-ember: var(--glow-ember);
+  --shadow-glow-attention: var(--glow-attention);
+  --shadow-glow-voice: var(--glow-voice);
+  --shadow-elevation-sm: var(--elevation-sm);
+  --shadow-elevation-lg: var(--elevation-lg);
+  --ease-circe: cubic-bezier(0.2, 0.8, 0.2, 1);
   @keyframes skeleton {
     /* The single loading-bar breath used by every skeleton: one opacity pulse
        per container, stepped so however many bars sit under it, the compositor
@@ -1175,138 +1212,208 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   animation-duration: 0s !important;
 }
 
-/* Circe's own palette, used whenever no named theme is selected. The values
-   come from assets/circe/tokens.css: warm ivory with a copper accent in
-   light, midnight blue-charcoal in dark. Solid fills use a deepened copper in
-   light mode because white text on the brand copper reads at 3.3:1; the
-   brand copper itself is kept for rings, indicators, and the orb. */
+/* Circe's own palette, used whenever no named theme is selected: Void (warm
+   near-black) in dark and Daylight (warm paper) in light, from the Circe
+   design system. Copper (`--primary`) is the only action color. Surfaces step
+   back to front: chrome (window ground, sidebar) -> background (the inset
+   canvas) -> card (raised: composer, approvals) -> popover (menus, toasts).
+   `--code-background` is the recessed well. */
 :root {
   color-scheme: light;
-  --radius: 0.625rem;
-  --circe-copper: #c97857;
-  --circe-peach: #e8ae93;
-  --circe-rose: #c9a79b;
-  --circe-deep-brown: #4a2d2a;
-  --circe-gradient: linear-gradient(135deg, #4a2d2a 0%, #9b6658 38%, #c97857 68%, #e8ae93 100%);
-  --circe-glow: rgb(201 120 87 / 26%);
+  --radius: 0.75rem;
   --ease-circe: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --background: #faf7f3;
-  --app-chrome-background: #f4efea;
+  --background: #faf8f5;
+  --app-chrome-background: #f1ede7;
   --toolbar-background: var(--background);
   --toolbar-foreground: var(--foreground);
   --toolbar-border: var(--border);
   --toolbar-control: var(--popover);
   --toolbar-control-foreground: var(--foreground);
   --toolbar-control-hover: var(--accent);
-  --surface-raised: #fffdfc;
-  --foreground: #14171b;
-  --card: #fffdfc;
-  --card-foreground: #14171b;
-  --popover: #fffdfc;
-  --popover-foreground: #14171b;
-  --primary: #a9573a;
-  --primary-foreground: #fffaf6;
-  --secondary: #f5f0ec;
-  --secondary-foreground: #14171b;
-  --muted: #f5f0ec;
-  --muted-foreground: #64686f;
-  --placeholder: #7d8289;
+  --surface-raised: #ffffff;
+  --foreground: #1a1714;
+  --card: #ffffff;
+  --card-foreground: #1a1714;
+  --popover: #ffffff;
+  --popover-foreground: #1a1714;
+  --primary: #a04a27;
+  --primary-hover: #8c3f1f;
+  --primary-foreground: #ffffff;
+  --secondary: #f1ede7;
+  --secondary-foreground: #1a1714;
+  --muted: #f1ede7;
+  --muted-foreground: #5d5750;
+  --placeholder: #6c655c;
   --secondary-label: var(--muted-foreground);
-  --icon-muted: #767b82;
-  --message-surface: #f3e6de;
-  --message-foreground: #2a1f1b;
+  --icon-muted: #5d5750;
+  --message-surface: #ffffff;
+  --message-foreground: #1a1714;
   --message-action: var(--primary);
   --message-action-foreground: var(--primary-foreground);
-  --message-action-hover: #974b30;
-  --accent: #eee7e2;
-  --accent-foreground: #14171b;
-  --error: #d9515d;
-  --error-foreground: #b3323f;
+  --message-action-hover: var(--primary-hover);
+  --accent: #efeae3;
+  --accent-foreground: #1a1714;
+  --error: #b23a2e;
+  --error-foreground: #b23a2e;
   --tool-error-icon: var(--error);
-  --error-surface: color-mix(in srgb, var(--error) 8%, transparent);
+  --error-surface: #f9e3df;
   --destructive: var(--error);
-  --border: #e3ddd8;
-  --input: #cfc6c0;
-  --ring: var(--circe-copper);
+  --border: #e3ddd4;
+  --input: #d6cfc5;
+  --ring: var(--primary);
   --destructive-foreground: var(--error-foreground);
-  --info: #667c96;
-  --info-foreground: #4d6179;
-  --success: #49a878;
-  --success-foreground: #2f7d55;
-  --warning: #d89545;
-  --warning-foreground: #95601c;
-  --warning-surface: color-mix(in srgb, var(--warning) 12%, transparent);
+  --info: #5d5750;
+  --info-foreground: #5d5750;
+  --success: #13704f;
+  --success-foreground: #13704f;
+  --success-surface: #dff0e7;
+  --warning: #835900;
+  --warning-foreground: #835900;
+  --warning-surface: #f7eed7;
   --update: var(--primary);
   --update-foreground: var(--primary);
-  --update-surface: color-mix(in srgb, var(--circe-copper) 14%, transparent);
-  --sidebar: #f4efea;
+  --update-surface: #f8e7dc;
+  --sidebar: #f1ede7;
   --sidebar-foreground: var(--foreground);
-  --sidebar-muted-foreground: #5f646b;
-  --sidebar-control-surface: #ebe4de;
-  --sidebar-row-hover: #ece5df;
-  --sidebar-row-active: #fffdfc;
-  --sidebar-row-selected: #fffdfc;
-  --sidebar-border: #e6dfd9;
+  --sidebar-muted-foreground: #5d5750;
+  --sidebar-control-surface: #e9e4dd;
+  --sidebar-row-hover: #e9e4dd;
+  --sidebar-row-active: #ffffff;
+  --sidebar-row-selected: #ffffff;
+  --sidebar-border: #e3ddd4;
   --sidebar-stage-fade: var(--sidebar);
-  --code-background: #f3eee9;
+  --code-background: #f3efe9;
   --code-foreground: var(--foreground);
-  --terminal-background: #fbf9f6;
+  --terminal-background: #f3efe9;
   --terminal-foreground: var(--foreground);
-  --terminal-cursor: var(--circe-copper);
-  --terminal-selection-background: rgb(201 120 87 / 22%);
+  --terminal-cursor: var(--primary);
+  --terminal-selection-background: rgb(160 74 39 / 18%);
+
+  /* Circe signals. Ember is running work and the one action color;
+     attention is work that needs the user; voice is anything spoken. Each has
+     a soft ground for badges and cards. Glow marks only those three states. */
+  --ember-soft: var(--update-surface);
+  --voice: #853f8f;
+  --voice-soft: #f4e7f4;
+  --on-attention: #ffffff;
+  --glow-ember:
+    0 0 0 1px color-mix(in srgb, var(--primary) 25%, transparent),
+    0 6px 18px -6px color-mix(in srgb, var(--primary) 40%, transparent);
+  --glow-attention:
+    0 0 0 1px color-mix(in srgb, var(--warning) 25%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--warning) 35%, transparent);
+  --glow-voice:
+    0 0 0 1px color-mix(in srgb, var(--voice) 25%, transparent),
+    0 8px 22px -8px color-mix(in srgb, var(--voice) 35%, transparent);
+  --elevation-sm: 0 1px 2px rgb(42 29 20 / 7%), 0 0 0 1px rgb(42 29 20 / 4%);
+  --elevation-lg:
+    0 24px 56px -16px rgb(42 29 20 / 28%), 0 2px 6px rgb(42 29 20 / 8%),
+    0 0 0 1px rgb(42 29 20 / 8%);
 
   @variant dark {
     color-scheme: dark;
-    --circe-glow: rgb(224 138 102 / 30%);
-    --background: #0f1620;
-    --app-chrome-background: #0b1119;
-    --surface-raised: #151b22;
-    --foreground: #f6f2ef;
-    --card: #151b22;
-    --card-foreground: #f6f2ef;
-    --popover: #171e26;
-    --popover-foreground: #f6f2ef;
-    --primary: #e08a66;
-    --primary-foreground: #1a0f0a;
-    --secondary: #1b222b;
-    --secondary-foreground: #f6f2ef;
-    --muted: #1b222b;
-    --muted-foreground: #a9b0b8;
-    --placeholder: #868c95;
-    --icon-muted: #8f96a0;
-    --message-surface: #2a211f;
-    --message-foreground: #f6ece6;
-    --message-action-hover: #ed9877;
-    --accent: #1f2731;
-    --accent-foreground: #f6f2ef;
-    --error: #ef6873;
-    --error-foreground: #f59aa2;
-    --tool-error-icon: #f59aa2;
-    --error-surface: color-mix(in srgb, var(--error) 14%, transparent);
-    --border: #262e38;
-    --input: #3b4551;
-    --ring: #e08a66;
-    --info: #8fa4bd;
-    --info-foreground: #aebfd3;
-    --success: #67c996;
-    --success-foreground: #8ad8ae;
-    --warning: #e7aa5a;
-    --warning-foreground: #efc182;
-    --warning-surface: color-mix(in srgb, var(--warning) 14%, transparent);
-    --update-surface: color-mix(in srgb, #e08a66 16%, transparent);
-    --sidebar: #0b1119;
-    --sidebar-muted-foreground: #9aa2ab;
-    --sidebar-control-surface: #161d26;
-    --sidebar-row-hover: #141b24;
-    --sidebar-row-active: #1a222c;
-    --sidebar-row-selected: #18202a;
-    --sidebar-border: #1c232d;
+    --background: #131211;
+    --app-chrome-background: #0e0d0c;
+    --surface-raised: #1b1917;
+    --foreground: #f1ece5;
+    --card: #1b1917;
+    --card-foreground: #f1ece5;
+    --popover: #221f1c;
+    --popover-foreground: #f1ece5;
+    --primary: #e8946f;
+    --primary-hover: #f2a986;
+    --primary-foreground: #1f0f07;
+    --secondary: #1b1917;
+    --secondary-foreground: #f1ece5;
+    --muted: #1b1917;
+    --muted-foreground: #aaa298;
+    --placeholder: #8f877e;
+    --icon-muted: #aaa298;
+    --message-surface: #1b1917;
+    --message-foreground: #f1ece5;
+    --accent: #24211e;
+    --accent-foreground: #f1ece5;
+    --error: #ec7166;
+    --error-foreground: #ec7166;
+    --tool-error-icon: #ec7166;
+    --error-surface: #2e1714;
+    --border: #26231f;
+    --input: #3a3530;
+    --info: #aaa298;
+    --info-foreground: #aaa298;
+    --success: #72c9a4;
+    --success-foreground: #72c9a4;
+    --success-surface: #14251e;
+    --warning: #ebbb62;
+    --warning-foreground: #ebbb62;
+    --warning-surface: #2a2214;
+    --update-surface: #2d1c14;
+    --sidebar: #0e0d0c;
+    --sidebar-muted-foreground: #aaa298;
+    --sidebar-control-surface: #1a1816;
+    --sidebar-row-hover: #1a1816;
+    --sidebar-row-active: #211e1b;
+    --sidebar-row-selected: #211e1b;
+    --sidebar-border: #1c1a17;
     --sidebar-stage-fade: var(--sidebar);
-    --code-background: #121922;
-    --terminal-background: #0c121a;
-    --terminal-cursor: #e08a66;
-    --terminal-selection-background: rgb(224 138 102 / 26%);
+    --code-background: #0c0b0a;
+    --terminal-background: #0c0b0a;
+    --terminal-selection-background: rgb(232 148 111 / 24%);
+    --voice: #d7aee0;
+    --voice-soft: #2a1e2c;
+    --on-attention: #241800;
+    --glow-ember:
+      0 0 0 1px color-mix(in srgb, var(--primary) 30%, transparent),
+      0 0 22px -4px color-mix(in srgb, var(--primary) 45%, transparent);
+    --glow-attention:
+      0 0 0 1px color-mix(in srgb, var(--warning) 28%, transparent),
+      0 0 26px -6px color-mix(in srgb, var(--warning) 40%, transparent);
+    --glow-voice:
+      0 0 0 1px color-mix(in srgb, var(--voice) 30%, transparent),
+      0 0 26px -6px color-mix(in srgb, var(--voice) 40%, transparent);
+    --elevation-sm: inset 0 1px 0 rgb(255 255 255 / 3%), 0 1px 2px rgb(0 0 0 / 40%);
+    --elevation-lg:
+      inset 0 1px 0 rgb(255 255 255 / 5%), 0 24px 64px -12px rgb(0 0 0 / 85%),
+      0 0 0 1px rgb(0 0 0 / 50%);
   }
+}
+
+/* Circe component tokens read the semantic roles, so a named theme restyles
+   Circe surfaces too. The rail and the orb stay Void in every theme: the
+   mark and the orb always sit on black. */
+:root {
+  --canvas: var(--background);
+  --chrome: var(--app-chrome-background);
+  --raised: var(--card);
+  --overlay: var(--popover);
+  --well: var(--code-background);
+  --line: var(--contrast-border);
+  --line-strong: color-mix(in oklab, var(--contrast-foreground) 38%, var(--background));
+  --ink: var(--contrast-foreground);
+  --ink-muted: var(--contrast-muted-foreground);
+  --ink-faint: var(--contrast-placeholder);
+  --row-hover: var(--sidebar-row-hover);
+  --row-selected: var(--sidebar-row-selected);
+  --ember: var(--primary);
+  --ember-strong: var(--primary-hover);
+  --on-ember: var(--primary-foreground);
+  --attention: var(--warning);
+  --attention-soft: var(--warning-surface);
+  --danger: var(--error);
+  --danger-soft: var(--error-surface);
+  --success-soft: var(--success-surface);
+  --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
+  --rail: #0b0a09;
+  --rail-ink: #ede8e1;
+  --rail-ink-muted: #8c847b;
+  --rail-hover: #141210;
+  --rail-active: #1d1a17;
+  --orb-void: #0b0a09;
+  --orb-deep: #6d3526;
+  --orb-copper: #e18a62;
+  --orb-peach: #ffd8bd;
+  --orb-hot: #fff4e9;
+  --gradient-voice: linear-gradient(90deg, #6d3526 0%, #e18a62 45%, #ffd8bd 100%);
 }
 
 /* The sidebar reads the root palette; this block only restates the roles a
@@ -1344,6 +1451,8 @@ html[data-theme-id]:not([data-theme-id=""]) {
      a distinct action color make these identical. */
   --primary: var(--app-theme-message-action);
   --primary-foreground: var(--app-theme-message-action-foreground);
+  --primary-hover: var(--app-theme-message-action-hover);
+  --success-surface: color-mix(in srgb, var(--success) 14%, var(--app-theme-canvas));
   --secondary: var(--app-theme-secondary);
   --secondary-foreground: var(--app-theme-secondary-foreground);
   --muted: var(--app-theme-muted);
