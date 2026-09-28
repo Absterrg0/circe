@@ -24,10 +24,10 @@ describe("DesktopCirceOrb", () => {
   it("maps every live state to a readable status, marking active sessions", () => {
     const profiles = [
       ["idle", "Circe", false],
-      ["requesting", "Starting conversation", true],
-      ["connecting", "Connecting", true],
+      ["requesting", "Starting conversation…", true],
+      ["connecting", "Connecting…", true],
       ["live", "Listening", true],
-      ["closing", "Ending conversation", true],
+      ["closing", "Ending conversation…", true],
       ["failed", "That didn't work", false],
     ] as const;
 
@@ -112,9 +112,9 @@ describe("DesktopCirceOrb", () => {
     expect(html).toContain("u_tint");
     expect(html).toContain("u_body");
     expect(html).toContain("u_sheen");
-    expect(html).toContain("#dbe8f7");
-    expect(html).toContain("#a8c8f0");
-    expect(html).toContain("#0d1118");
+    expect(html).toContain("#ffd8bd");
+    expect(html).toContain("#e18a62");
+    expect(html).toContain("#100e0d");
     // The orb is draggable: pointer capture keeps moves flowing after the
     // cursor leaves the tiny window, and a drag must not toggle the panel.
     expect(html).toContain("pointerdown");

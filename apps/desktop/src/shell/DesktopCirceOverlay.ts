@@ -23,12 +23,14 @@ export interface DesktopCirceOrbPresentation {
   readonly animated: boolean;
 }
 
-// One calm accent across states. Status is read from the label and the orb's
-// motion, not from a rotating rainbow, so the overlay reads as a single orb
-// rather than a light show.
-const ORB_ACCENT = "#9db4c7";
-const ORB_ACCENT_DEEP = "#5f7186";
-const ORB_ACCENT_FAILED = "#d59a9a";
+// The orb is copper light on dark glass. The accent follows Circe's signals:
+// voice while it listens, ember while it works, danger when it failed. Status
+// is also read from the label, never from color alone.
+const ORB_ACCENT = "#e18a62";
+const ORB_ACCENT_DEEP = "#6d3526";
+const ORB_ACCENT_VOICE = "#d7aee0";
+const ORB_ACCENT_WORKING = "#e8946f";
+const ORB_ACCENT_FAILED = "#ec7166";
 
 const DESKTOP_CIRCE_ORB_PROFILES: Readonly<
   Record<DesktopCirceLiveVoiceStatus, { label: string; accent: string; accentSecondary: string }>
@@ -37,14 +39,18 @@ const DESKTOP_CIRCE_ORB_PROFILES: Readonly<
   // Circe said), which the orb shows in place of these labels.
   idle: { label: "Circe", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
   requesting: {
-    label: "Starting conversation",
-    accent: ORB_ACCENT,
+    label: "Starting conversation…",
+    accent: ORB_ACCENT_WORKING,
     accentSecondary: ORB_ACCENT_DEEP,
   },
-  connecting: { label: "Connecting", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
-  live: { label: "Listening", accent: ORB_ACCENT, accentSecondary: ORB_ACCENT_DEEP },
+  connecting: {
+    label: "Connecting…",
+    accent: ORB_ACCENT_WORKING,
+    accentSecondary: ORB_ACCENT_DEEP,
+  },
+  live: { label: "Listening", accent: ORB_ACCENT_VOICE, accentSecondary: ORB_ACCENT_DEEP },
   closing: {
-    label: "Ending conversation",
+    label: "Ending conversation…",
     accent: ORB_ACCENT,
     accentSecondary: ORB_ACCENT_DEEP,
   },
@@ -306,58 +312,64 @@ const ORB25_PARAM_KEYS = [
 
 const ORB25_STATES = {
   idle: {
-    tint: "#dbe8f7",
-    body: "#0d1118",
-    sheen: "#a8c8f0",
+    tint: "#e18a62",
+    body: "#100e0d",
+    sheen: "#ffd8bd",
     ...ORB25_BASE,
-    contrast: 1.15,
+    contrast: 2.2,
     drift: 0.6,
-    edgeGain: 12.5,
-    exposure: 0.8,
+    edgeGain: 4,
+    exposure: 2.6,
+    light: 0.25,
+    rim: 0.9,
+    saturation: 1.1,
     speed: 3,
     swirl: 0.05,
     warp: 0.4,
     zoom: 1.07,
   },
   speaking: {
-    tint: "#c2d6f5",
-    body: "#090d1c",
-    sheen: "#8fb4f2",
+    tint: "#f2a986",
+    body: "#120c09",
+    sheen: "#ffd8bd",
     ...ORB25_BASE,
     blur: 2,
-    bulge: 2.22,
-    contrast: 1.35,
+    bulge: 1.1,
+    contrast: 1.8,
     drift: 0.8,
     edgeGain: 5,
-    exposure: 2.35,
-    fringe: 0.23,
-    ripple: 1.18,
-    scale: 11.5,
-    speed: 1.4,
-    swirl: 0.6,
-    warp: 1.55,
-    zoom: 0.945,
+    exposure: 2,
+    fringe: 0.04,
+    light: 0.3,
+    rim: 0.95,
+    ripple: 0.7,
+    saturation: 1.1,
+    scale: 9,
+    speed: 1.6,
+    swirl: 0.4,
+    warp: 0.9,
+    zoom: 1,
   },
   thinking: {
-    tint: "#c2d6f5",
-    body: "#090d1c",
-    sheen: "#8fb4f2",
+    tint: "#e8946f",
+    body: "#100e0d",
+    sheen: "#ffd8bd",
     ...ORB25_BASE,
-    blur: 2.75,
+    blur: 2.5,
     bulge: 0.38,
-    contrast: 1.5,
+    contrast: 2,
     drift: 0.15,
-    edgeGain: 33,
-    exposure: 0.55,
-    fringe: 0.2,
-    light: 0.525,
-    rim: 0.69,
-    ripple: 0.18,
-    saturation: 2,
-    speed: 4.7,
+    edgeGain: 6,
+    exposure: 2.2,
+    fringe: 0.04,
+    light: 0.3,
+    rim: 0.95,
+    ripple: 0.3,
+    saturation: 1.1,
+    speed: 4.5,
     swirl: 0.02,
-    warp: 0.34,
-    zoom: 1.12,
+    warp: 0.5,
+    zoom: 1.1,
   },
 } as const;
 
@@ -537,9 +549,9 @@ const orbScript = `<script>
   let phase = 0;
   let driftPhase = 0;
   let swirlPhase = 0;
-  let tint = [0.86, 0.91, 0.97];
-  let body = [0.05, 0.07, 0.09];
-  let sheen = [0.66, 0.78, 0.94];
+  let tint = [1, 0.85, 0.74];
+  let body = [0.06, 0.05, 0.05];
+  let sheen = [0.88, 0.54, 0.38];
   let params = { ...orbStates.idle };
 
   const isActiveStatus = () =>
@@ -551,7 +563,7 @@ const orbScript = `<script>
     typeof liveState.level === "number" && isFinite(liveState.level)
       ? Math.max(0, Math.min(1, liveState.level))
       : 0;
-  // Cool steel at rest; the working states share cold indigo and are told
+  // Peach light at rest; the working states share warmer copper and are told
   // apart by fold and scale. Live audio outranks the live status so the orb
   // answers the microphone immediately.
   const orbState = () => {
@@ -1014,24 +1026,25 @@ const orbScript = `<script>
 export function desktopCirceOverlayDataUrl(): string {
   const html = `<!doctype html><html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none';connect-src 'none';img-src 'none';style-src 'unsafe-inline';script-src 'unsafe-inline'"><style>
 html,body{margin:0;width:100%;height:100%;background:transparent;overflow:hidden}
-body{color:#f3f1ed;font:400 13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
-*{box-sizing:border-box}main{position:absolute;inset:0;--accent:#9db4c7;--accent-secondary:#5f7186;--level:0}
-.orb-wrap{position:absolute;right:0;top:calc(50% - 36px);width:72px;height:72px;display:grid;place-items:center;transition:transform .26s cubic-bezier(.22,.9,.28,1)}
+body{color:#f1ece5;font:400 13px/1.4 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}main{position:absolute;inset:0;--accent:#e18a62;--accent-secondary:#6d3526;--level:0}
+.orb-wrap{position:absolute;right:0;top:calc(50% - 36px);width:72px;height:72px;display:grid;place-items:center;transition:transform .2s cubic-bezier(.2,.8,.2,1)}
 .orb-canvas{position:absolute;inset:0;width:72px;height:72px;pointer-events:none}
-.orb{position:relative;z-index:2;width:52px;height:52px;border:1px solid rgba(255,255,255,.16);border-radius:50%;cursor:grab;padding:0;outline:none;background:radial-gradient(circle at 34% 28%,rgba(168,200,240,.45),rgba(255,255,255,0) 42%),radial-gradient(circle at 50% 46%,#2b3a52,#0d1118 78%);box-shadow:0 8px 24px rgba(0,0,0,.45),inset 0 1px 2px rgba(255,255,255,.18),inset 0 -6px 14px rgba(0,0,0,.40);transition:box-shadow .2s ease;touch-action:none;user-select:none;-webkit-user-select:none}
+.orb{position:relative;z-index:2;width:52px;height:52px;border:1px solid rgba(255,216,189,.18);border-radius:50%;cursor:grab;padding:0;outline:none;background:radial-gradient(circle at 24% 72%,rgba(225,138,98,.16),rgba(225,138,98,0) 46%),radial-gradient(circle at 48% 44%,#161210,#100e0d 50%,#140f0c 78%,#24130d);box-shadow:0 8px 24px rgba(0,0,0,.5),0 0 18px -4px rgba(225,138,98,.45),inset 0 1px 2px rgba(255,244,233,.14),inset 0 -6px 14px rgba(0,0,0,.45);transition:box-shadow .12s cubic-bezier(.2,.8,.2,1);touch-action:none;user-select:none;-webkit-user-select:none}
 main.webgl .orb{background:transparent;border-color:transparent;box-shadow:none}
-.orb:hover{box-shadow:0 10px 28px rgba(0,0,0,.48),inset 0 1px 2px rgba(255,255,255,.22),inset 0 -6px 14px rgba(0,0,0,.40)}
+.orb:hover{box-shadow:0 10px 28px rgba(0,0,0,.52),0 0 22px -4px rgba(225,138,98,.55),inset 0 1px 2px rgba(255,244,233,.18),inset 0 -6px 14px rgba(0,0,0,.45)}
 .orb.dragging{cursor:grabbing}
-.orb:focus-visible{outline:2px solid color-mix(in srgb,var(--accent) 75%,white);outline-offset:3px}
-main[data-expanded="true"] .orb-wrap{transform:scale(1.08)}
-.picker{position:absolute;left:0;top:0;bottom:0;width:calc(100% - 84px);padding:16px 12px;overflow:auto;scrollbar-width:thin;scrollbar-color:#44443d transparent;border:1px solid rgba(255,255,255,.09);border-radius:14px;background:linear-gradient(180deg,rgba(28,28,24,.94),rgba(18,18,15,.96));backdrop-filter:blur(18px) saturate(1.15);box-shadow:0 24px 60px rgba(0,0,0,.55),inset 0 1px 0 rgba(255,255,255,.05);color:#f3f1ed;opacity:0;transform:translateX(10px) scale(.985);transform-origin:100% 50%;transition:opacity .18s ease,transform .24s cubic-bezier(.22,.9,.28,1)}
+.orb:focus-visible{outline:2px solid #e8946f;outline-offset:3px}
+main[data-expanded="true"] .orb-wrap{transform:scale(1.06)}
+.picker{position:absolute;left:0;top:0;bottom:0;width:calc(100% - 84px);padding:14px 10px;overflow:auto;scrollbar-width:thin;scrollbar-color:#3a3530 transparent;border:1px solid rgba(255,255,255,.08);border-radius:16px;background:rgba(11,10,9,.94);backdrop-filter:blur(24px) saturate(1.4);box-shadow:0 24px 64px -12px rgba(0,0,0,.85),inset 0 1px 0 rgba(255,255,255,.05),0 0 0 1px rgba(0,0,0,.5);color:#f1ece5;opacity:0;transform:translateX(8px) scale(.97);transform-origin:100% 50%;transition:opacity .2s cubic-bezier(.2,.8,.2,1),transform .2s cubic-bezier(.2,.8,.2,1)}
+.picker::after{content:"";position:absolute;left:16px;right:16px;bottom:0;height:1px;background:linear-gradient(90deg,#6d3526,#e18a62 45%,#ffd8bd);opacity:.5}
 main[data-expanded="true"] .picker{opacity:1;transform:none}
-.picker[hidden]{display:none}.picker-brand{display:flex;justify-content:space-between;align-items:center;margin:0 6px 4px;font-size:15px;font-weight:600;letter-spacing:-.02em}.picker-brand span{color:#aaa89f;font-size:11px;font-weight:400;letter-spacing:0}
-.live-label{margin:0 6px 22px;color:#aaa89f;font-size:11px}.picker-label,.running-label{margin:0 6px 8px;color:#aaa89f;font-size:12px;font-weight:500}
-.picker-list,.running-list{display:flex;flex-direction:column;gap:4px}
-.provider-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:52px;width:100%;padding:9px 12px;text-align:left;color:#f3f1ed;background:transparent;border:1px solid transparent;border-radius:10px;cursor:pointer;transition:background .15s ease,border-color .15s ease}
-.provider-row:hover:not(:disabled){background:color-mix(in srgb,var(--accent) 10%,#23231d)}.provider-row[data-selected="true"]{background:color-mix(in srgb,var(--accent) 14%,#1d1d18);border-color:color-mix(in srgb,var(--accent) 38%,#4a4a40)}.provider-row[data-available="false"],.provider-row:disabled{cursor:default;opacity:.5}.provider-row:focus-visible{outline:2px solid #aaa89f;outline-offset:-2px}.row-text{display:grid;gap:2px;min-width:0}.row-provider{font-size:13px;font-weight:500}.row-model{font-size:11px;color:#aaa89f}.row-state{font-size:10px;color:#c9c7bc}.row-check{width:14px;height:14px;fill:none;stroke:#c9c7bc;stroke-width:1.5}.picker-empty{margin:0;padding:8px 6px;color:#aaa89f;font-size:12px}.picker-error{padding:8px;color:#cf8b80;font-size:11px}.picker-error[hidden]{display:none}.picker-hint{margin:20px 6px 0;color:#8d8c82;font-size:10px}
-.running-section{margin-top:18px;padding-top:18px;border-top:1px solid #34342d}.agent-row{display:flex;align-items:center;gap:8px;padding:9px 6px}.agent-marker{width:5px;height:5px;flex:none;border-radius:50%;background:#91ba79}.agent-row[data-status="offline"] .agent-marker{background:#8d8c82}.agent-row[data-status="waiting"] .agent-marker{background:#c9ad73}.agent-text{min-width:0;flex:1;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agent-text small{display:block;color:#aaa89f;font-size:10px;overflow:hidden;text-overflow:ellipsis;margin-top:3px}.agent-status{font-size:10px;color:#aaa89f;text-transform:capitalize}
+.picker[hidden]{display:none}.picker-brand{display:flex;justify-content:space-between;align-items:center;margin:0 6px 2px;font-size:15px;font-weight:600;letter-spacing:-.02em}.picker-brand span{color:#8f877e;font-size:10.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase}
+.live-label{margin:0 6px 18px;color:var(--accent);font-size:12.5px;line-height:18px}.picker-label,.running-label{margin:0 6px 8px;color:#8f877e;font-size:10.5px;font-weight:500;letter-spacing:.2em;text-transform:uppercase}
+.picker-list,.running-list{display:flex;flex-direction:column;gap:2px}
+.provider-row{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:48px;width:100%;padding:8px 10px;text-align:left;color:#f1ece5;background:transparent;border:1px solid transparent;border-radius:8px;cursor:pointer;transition:background .12s ease,border-color .12s ease}
+.provider-row:hover:not(:disabled){background:#1a1816}.provider-row[data-selected="true"]{background:#2d1c14;border-color:rgba(232,148,111,.35)}.provider-row[data-available="false"],.provider-row:disabled{cursor:default;opacity:.45}.provider-row:focus-visible{outline:2px solid #e8946f;outline-offset:-2px}.row-text{display:grid;gap:2px;min-width:0}.row-provider{font-size:13px;font-weight:500}.row-model{font-size:11px;color:#8f877e;font-family:ui-monospace,"SF Mono",Menlo,monospace}.row-state{font-size:10.5px;color:#aaa298}.row-check{width:14px;height:14px;fill:none;stroke:#e8946f;stroke-width:1.5}.picker-empty{margin:0;padding:8px 6px;color:#8f877e;font-size:12px}.picker-error{padding:8px;color:#ec7166;font-size:11.5px}.picker-error[hidden]{display:none}.picker-hint{margin:18px 6px 4px;color:#8f877e;font-size:11px}
+.running-section{margin-top:16px;padding-top:16px;border-top:1px solid #26231f}.agent-row{display:flex;align-items:center;gap:10px;padding:8px 6px}.agent-marker{width:7px;height:7px;flex:none;border-radius:50%;background:#e8946f;box-shadow:0 0 8px rgba(232,148,111,.6)}.agent-row[data-status="offline"] .agent-marker{background:transparent;box-shadow:inset 0 0 0 1.5px #8f877e}.agent-row[data-status="waiting"] .agent-marker{background:#ebbb62;box-shadow:0 0 8px rgba(235,187,98,.55)}.agent-row[data-status="ready"] .agent-marker{background:#72c9a4;box-shadow:none}.agent-text{min-width:0;flex:1;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.agent-text small{display:block;color:#8f877e;font-size:11px;overflow:hidden;text-overflow:ellipsis;margin-top:2px}.agent-status{font-size:11px;color:#aaa298;text-transform:capitalize}.agent-row[data-status="waiting"] .agent-status{color:#ebbb62}
 @media(prefers-reduced-motion: reduce){.orb-wrap,.picker,.orb{transition:none!important}main[data-expanded="true"] .orb-wrap{transform:none}}
 </style></head><body><main data-orb-root data-live="idle" data-expanded="false"><div class="orb-wrap"><canvas class="orb-canvas" data-orb-canvas aria-hidden="true"></canvas><button class="orb" data-orb aria-expanded="false" aria-label="Circe. Activate to choose providers and running agents."></button></div><section class="picker" aria-label="Circe activity" data-picker hidden><div class="picker-brand">Circe<span>Activity</span></div><p class="live-label" data-live-label></p><p class="picker-label">Default agent</p><div class="picker-list" data-provider-list></div><section class="running-section" data-running-section hidden><p class="running-label">Running agents</p><div class="running-list" data-running-list></div></section><p class="picker-error" data-picker-error hidden></p><p class="picker-hint">Hold Ctrl+Shift+J to talk to Circe. Tap it for a live conversation.</p></section></main><script type="x-shader/x-fragment" id="orb-frag">${ORB25_FRAGMENT_SHADER}</script>${orbScript}</body></html>`;
   return `data:text/html;charset=utf-8,${encodeURIComponent(html)}`;
