@@ -112,10 +112,25 @@ export interface Reply {
   readonly started: ReadonlyArray<string>;
 }
 
+/** Something Circe says on its own; `audience` names the device sessions it is for, absent for everyone. */
+export interface Notice {
+  readonly text: string;
+  readonly threadIds: ReadonlyArray<string>;
+  readonly audience?: ReadonlyArray<string>;
+}
+
 export interface Circe {
-  say(utterance: string, options?: { readonly focus?: Focus }): Promise<Reply>;
-  refresh(): Promise<ReadonlyArray<string>>;
-  onNotice(listener: (notice: string) => void): () => void;
+  /**
+   * `speaker` is the device session: only it can take back what it asked
+   * for or answer a question Circe asked it, and notices about the work it
+   * sent are for it.
+   */
+  say(
+    utterance: string,
+    options?: { readonly focus?: Focus; readonly speaker?: string },
+  ): Promise<Reply>;
+  refresh(): Promise<ReadonlyArray<Notice>>;
+  onNotice(listener: (notice: Notice) => void): () => void;
 }
 
 export interface CirceCore {

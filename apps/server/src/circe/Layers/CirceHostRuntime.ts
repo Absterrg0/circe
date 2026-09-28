@@ -91,7 +91,7 @@ export const CirceHostRuntimeLive = Layer.effect(
     let turnOrigin: string | null = null;
     const turnLock = yield* Semaphore.make(1);
     const heldThisTurn = new Set<string>();
-    let turnPhase: "turn" | "own" | "open" = "open";
+    let turnPhase: "turn" | "open" = "open";
     let turnNumber = 0;
     let turnPresentedComputerRequest: string | null = null;
     const host = yield* makeNodeHost({
@@ -157,16 +157,18 @@ export const CirceHostRuntimeLive = Layer.effect(
           });
 
     const hub = yield* PubSub.sliding<CirceHostNotice>(NOTICE_CAPACITY);
-    // Notices raised while a turn catches up on its own work are about that
-    // turn, so they go to its device only; every other notice is for all.
-    let noticeAudience: string | null = null;
-    circe?.onNotice((text) => {
-      const origin = noticeAudience;
+    // A notice about work a device sent is for that device; circe-core names
+    // it from the turn's speaker. Anything else is for everyone.
+    circe?.onNotice((notice) => {
       void run(
         crypto.randomUUIDv4.pipe(
           Effect.orDie,
           Effect.flatMap((id) =>
-            PubSub.publish(hub, { id, text, ...(origin === null ? {} : { origin }) }),
+            PubSub.publish(hub, {
+              id,
+              text: notice.text,
+              ...(notice.audience === undefined ? {} : { audience: [...notice.audience] }),
+            }),
           ),
         ),
       );
@@ -187,8 +189,8 @@ export const CirceHostRuntimeLive = Layer.effect(
         Stream.merge(bots.changes),
         Stream.merge(computer.changes),
         Stream.debounce(Duration.millis(300)),
-        // Refreshes take the turn lock too, so a notice is never raised
-        // while a turn's own catch-up is tagging notices with its device.
+        // Refreshes take the turn lock too, so none compares against a
+        // world a turn has frozen.
         Stream.runForEach(() =>
           turnLock
             .withPermits(1)(Effect.promise(() => circe.refresh()))
@@ -273,16 +275,11 @@ export const CirceHostRuntimeLive = Layer.effect(
                   ),
                 );
                 const asked = yield* askedToUseComputer(pendingBefore, reply);
-                // The world the turn froze opens in two steps. First the turn's
-                // own work, whose news belongs to the asking device; then the
-                // rest, including an agent's request that arrived meanwhile,
-                // which is news for everyone.
-                turnPhase = "own";
-                noticeAudience = input.origin ?? null;
-                yield* Effect.promise(() => circe.refresh().catch(() => []));
+                // The world the turn froze opens, and circe-core announces what
+                // changed meanwhile: the turn's own work and anything else,
+                // such as an agent's request that arrived during it.
                 heldThisTurn.clear();
                 turnPhase = "open";
-                noticeAudience = null;
                 yield* Effect.promise(() => circe.refresh().catch(() => []));
                 return asked;
               }),
@@ -293,9 +290,8 @@ export const CirceHostRuntimeLive = Layer.effect(
     const sayToCirce = (input: CirceHostSayInput): Effect.Effect<CirceHostSayResult> =>
       circe !== undefined
         ? Effect.tryPromise(() =>
-            circe.say(
-              input.utterance,
-              input.focus === undefined
+            circe.say(input.utterance, {
+              ...(input.focus === undefined
                 ? {}
                 : {
                     focus: {
@@ -306,8 +302,9 @@ export const CirceHostRuntimeLive = Layer.effect(
                         ? {}
                         : { projectId: input.focus.projectId }),
                     },
-                  },
-            ),
+                  }),
+              ...(input.origin === undefined ? {} : { speaker: input.origin }),
+            }),
           ).pipe(
             Effect.flatMap((reply) =>
               screenFor(reply.navigate).pipe(

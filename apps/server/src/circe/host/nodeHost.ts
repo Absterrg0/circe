@@ -102,12 +102,10 @@ export interface NodeHostOptions {
    * so anything that changed during a turn would never be announced. While a
    * turn runs (`turn`), every thread the turn did not touch reads as it was
    * when the turn began and a thread that appeared from elsewhere is hidden.
-   * After it, `own` shows the turn's own threads as they really are while
-   * the rest stay frozen, so their news is the asking device's; `open`
-   * shows everything, and the rest is news for everyone.
+   * After it, `open` shows everything, and circe-core sees what changed.
    */
   readonly turnPhase?: () => {
-    readonly phase: "turn" | "own" | "open";
+    readonly phase: "turn" | "open";
     /** Which turn; a new one starts its own frozen world. */
     readonly turn: number;
   };
@@ -397,33 +395,10 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
       });
 
     const turnOrigin = () => options.turnOrigin?.() ?? null;
-    /** The device session that started each thread, so undo from another device is refused. */
-    const startedBy = new Map<string, string | null>();
-    const recordStart = (threadId: string) => {
-      startedBy.set(threadId, turnOrigin());
+    const holdThisTurn = (threadId: string) => {
       options.heldThisTurn?.add(threadId);
-      const oldest = startedBy.keys().next();
-      if (startedBy.size > 200 && oldest.done !== true) startedBy.delete(oldest.value);
       return threadId;
     };
-    /** The device session that queued each message, for the same check on undo. */
-    const queuedBy = new Map<string, string | null>();
-    const queueKey = (threadId: string, text: string) => `${threadId}\u0000${text}`;
-    /**
-     * Refuses to take back what another device did; circe-core keeps one
-     * memory per node, so its "last action" may be someone else's. When this
-     * node cannot tell who did it, as after a restart, it refuses too.
-     */
-    const ownAction = (origin: string | null | undefined) => {
-      const current = turnOrigin();
-      if (current === null || origin === current) return Effect.void;
-      return refuse(
-        origin === undefined
-          ? "I can't tell which device did that, so undo it from the device that did"
-          : "that was done from another device; undo it there",
-      );
-    };
-    const ownStart = (threadId: string) => ownAction(startedBy.get(threadId));
     const computerError = (error: { readonly reason: string }) =>
       new CirceHostOperationError({ reason: error.reason });
 
@@ -431,7 +406,7 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
     const askForComputer = (text: string) =>
       computer.request({ goal: text, requester: { kind: "user", origin: turnOrigin() } }).pipe(
         Effect.mapError(computerError),
-        Effect.map((request) => recordStart(computerThreadId(request.id))),
+        Effect.map((request) => holdThisTurn(computerThreadId(request.id))),
       );
 
     /**
@@ -531,7 +506,7 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
             });
             tasks.set(threadId, text);
             return threadId as string;
-          }).pipe(Effect.map(recordStart)),
+          }).pipe(Effect.map(holdThisTurn)),
         ),
 
       deliver: (threadId, text, delivery) =>
@@ -578,9 +553,6 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
               });
             }
             if (delivery.mode === "queue" && shell.activeRunId !== null) {
-              queuedBy.set(queueKey(shell.id, text), turnOrigin());
-              const oldest = queuedBy.keys().next();
-              if (queuedBy.size > 200 && oldest.done !== true) queuedBy.delete(oldest.value);
               return yield* send(shell.id, text, { type: "queue_after_active" });
             }
             return yield* send(shell.id, text, { type: "start_immediately" });
@@ -634,7 +606,6 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
       close: (threadId) =>
         run(
           Effect.gen(function* () {
-            yield* ownStart(threadId);
             if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.close);
             // Taking back a request to use the computer withdraws or stops it.
             if (isComputerPlace(threadId)) {
@@ -661,7 +632,6 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
       withdraw: (threadId, text) =>
         run(
           Effect.gen(function* () {
-            yield* ownAction(queuedBy.get(queueKey(threadId, text)));
             if (circeBotIdOfPlace(threadId) !== null) return yield* refuse(botLimit.withdraw);
             if (isComputerPlace(threadId)) return yield* refuse("the computer keeps no queue");
             const shell = yield* threadShell(threadId);

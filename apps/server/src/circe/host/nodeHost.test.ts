@@ -397,15 +397,6 @@ it.effect("puts this computer in Circe's world and asks before using it", () =>
         host.deliver(corrected, "no", { mode: "reply", requestId: "request-2" }),
       );
       yield* Effect.promise(() => host.stop(corrected));
-      // Undo from another device is refused; the device that asked can undo it.
-      const undoElsewhere = yield* Effect.promise(() =>
-        host.close!(corrected).then(
-          () => "",
-          (error: Error) => error.message,
-        ),
-      );
-      assert.include(undoElsewhere, "another device");
-      origin = "desk";
       yield* Effect.promise(() => host.close!(corrected));
       assert.deepStrictEqual(computer.calls, [
         "request Open the browser from desk",
@@ -441,7 +432,7 @@ it.effect("leaves the computer out of the world on a node without a desktop", ()
   }).pipe(Effect.provide(NodeServices.layer)),
 );
 
-it.effect("holds work started this turn as running, and refuses undo from another device", () =>
+it.effect("holds work started this turn as running until the turn is over", () =>
   Effect.gen(function* () {
     const fs = yield* FileSystem.FileSystem;
     const root = yield* fs.makeTempDirectoryScoped({ prefix: "circe-node-host-turn-" });
@@ -463,11 +454,9 @@ it.effect("holds work started this turn as running, and refuses undo from anothe
       delivery: "waiting",
     };
     const heldThisTurn = new Set<string>();
-    let origin: string | null = "desk";
-    let turn = { phase: "turn" as "turn" | "own" | "open", turn: 1 };
+    let turn = { phase: "turn" as "turn" | "open", turn: 1 };
     yield* Effect.gen(function* () {
       const host = yield* makeNodeHost({
-        turnOrigin: () => origin,
         heldThisTurn,
         turnPhase: () => turn,
       });
@@ -476,11 +465,10 @@ it.effect("holds work started this turn as running, and refuses undo from anothe
       const during = (yield* Effect.promise(async () => host.state())).threads[0];
       assert.include(during, { id: threadId, runState: "running" });
       // Once the turn is over the answer is a change circe-core can announce.
-      turn = { phase: "own", turn: 1 };
-      const after = (yield* Effect.promise(async () => host.state())).threads[0];
-      assert.include(after, { id: threadId, runState: "idle" });
       heldThisTurn.clear();
       turn = { phase: "open", turn: 1 };
+      const after = (yield* Effect.promise(async () => host.state())).threads[0];
+      assert.include(after, { id: threadId, runState: "idle" });
 
       // A follow-up the bot answers before delivery returns is held the same way.
       turn = { phase: "turn", turn: 2 };
@@ -489,17 +477,6 @@ it.effect("holds work started this turn as running, and refuses undo from anothe
       assert.include((yield* Effect.promise(async () => host.state())).threads[0], {
         runState: "running",
       });
-      heldThisTurn.clear();
-      turn = { phase: "open", turn: 2 };
-
-      origin = "phone";
-      const refused = yield* Effect.promise(() =>
-        host.close!(threadId).then(
-          () => "",
-          (error: Error) => error.message,
-        ),
-      );
-      assert.include(refused, "another device");
     }).pipe(Effect.provide(yield* withProject(root, fakeBots(bots))));
   }).pipe(Effect.provide(NodeServices.layer)),
 );
@@ -527,7 +504,7 @@ it.effect("freezes what the turn did not touch until the turn is over", () =>
       sent: [],
       delivery: "waiting",
     };
-    let turn = { phase: "turn" as "turn" | "own" | "open", turn: 1 };
+    let turn = { phase: "turn" as "turn" | "open", turn: 1 };
     yield* Effect.gen(function* () {
       const host = yield* makeNodeHost({ heldThisTurn: new Set(), turnPhase: () => turn });
       const before = yield* Effect.promise(async () => host.state());
@@ -550,10 +527,6 @@ it.effect("freezes what the turn did not touch until the turn is over", () =>
       const during = yield* Effect.promise(async () => host.state());
       assert.include(during.threads[0], { id: "botchat:0:yt", runState: "idle" });
       assert.isFalse(during.threads.some((thread) => thread.id === "computer:request:agent-ask"));
-      turn = { phase: "own", turn: 1 };
-      const own = yield* Effect.promise(async () => host.state());
-      assert.include(own.threads[0], { runState: "idle" });
-
       // Opened up, both are changes circe-core sees and announces.
       turn = { phase: "open", turn: 1 };
       const after = yield* Effect.promise(async () => host.state());

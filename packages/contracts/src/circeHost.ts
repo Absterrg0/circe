@@ -56,7 +56,7 @@ export const CirceHostSayResult = Schema.Struct({
 });
 export type CirceHostSayResult = typeof CirceHostSayResult.Type;
 
-/** A subscriber names its device session, so notices about another device's turn skip it. */
+/** A subscriber names its device session, so notices about another device's work skip it. */
 export const CirceHostNoticeSubscriptionInput = Schema.Struct({
   origin: Schema.optional(TrimmedNonEmptyString.check(Schema.isMaxLength(128))),
 });
@@ -66,10 +66,17 @@ export type CirceHostNoticeSubscriptionInput = typeof CirceHostNoticeSubscriptio
 export const CirceHostNotice = Schema.Struct({
   id: Schema.String,
   text: Schema.String,
-  /** The device session the notice is about, when it came from that device's turn; absent is for everyone. */
-  origin: Schema.optional(Schema.String),
+  /** The device sessions that sent the work it is about; absent is for everyone. */
+  audience: Schema.optional(Schema.Array(Schema.String)),
 });
 export type CirceHostNotice = typeof CirceHostNotice.Type;
+
+/** Whether a notice is for the subscriber with this device session; one that names none hears all. */
+export const circeHostNoticeReaches = (
+  notice: CirceHostNotice,
+  origin: string | undefined,
+): boolean =>
+  notice.audience === undefined || origin === undefined || notice.audience.includes(origin);
 
 /** One spoken message: the node transcribes it through Circe Mesh, then handles the words. */
 export const CirceHostListenInput = Schema.Struct({

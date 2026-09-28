@@ -22,9 +22,9 @@ import * as NodePath from "node:path";
 import * as NodeURL from "node:url";
 
 const NAME = "@absterrg0/circe-core";
-const VERSION = "0.1.0";
+const VERSION = "0.2.0";
 const INTEGRITY =
-  "sha512-7OmfH1MQcEhub+fCt1gp1wjErqTv8fY4OrxuMLEE6x5g6juRreBaec3zB5suymRiCxx6KU/KYaNTWvV+sqZrDQ==";
+  "sha512-32C/nR0GVa+jsPkfCNJPFpI/MPCl0540kw36nB5tFh/jDRmTAubuzGdPhOaqstdGBdR6eOzGy73bpDNpzcdRtg==";
 const REGISTRY = "https://npm.pkg.github.com";
 
 const target = NodePath.join(

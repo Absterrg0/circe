@@ -29,6 +29,7 @@ import {
   type CirceSemanticProposal,
   type CirceTaskDeskView,
   type OrchestrationShellSnapshot,
+  circeHostNoticeReaches,
   circeNodeCapabilitiesForPreset,
   CirceWsRpcGroup,
   WS_METHODS,
@@ -837,17 +838,12 @@ export const CirceWsRpcHandlerExtensionLive = Layer.effect(
               context.observeRpcEffect(WS_METHODS.circeHostSpeak, circeHost.speak(input), {
                 "rpc.aggregate": "circe.host",
               }),
-            // A notice about one device's turn reaches that device only.
+            // A notice about work one device sent reaches that device only.
             [WS_METHODS.subscribeCirceHostNotices]: (input) =>
               context.observeRpcStream(
                 WS_METHODS.subscribeCirceHostNotices,
                 circeHost.notices.pipe(
-                  Stream.filter(
-                    (notice) =>
-                      notice.origin === undefined ||
-                      input.origin === undefined ||
-                      notice.origin === input.origin,
-                  ),
+                  Stream.filter((notice) => circeHostNoticeReaches(notice, input.origin)),
                 ),
                 {
                   "rpc.aggregate": "circe.host",
