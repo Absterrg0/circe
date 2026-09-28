@@ -65,12 +65,11 @@ export function AgentActivity(
   const monochrome =
     environment.widgetRenderingMode === "accented" || environment.widgetRenderingMode === "vibrant";
 
-  // Status tints mirror the web sidebar's pills
-  // (apps/web/src/components/Sidebar.logic.ts resolveThreadStatusPill): amber
-  // for approval, indigo for input, sky for working, emerald for completed.
-  // On iPhone the LA sits on a dark material, but macOS (iPhone Mirroring /
-  // Mac notification center) renders it on a light one — so pick the web
-  // palette's light (-600) or dark (-300) variant off the color scheme.
+  // Status tints are Circe's signals, the same in the app and on the Lock
+  // Screen: gold for anything waiting on the user, ember for running work,
+  // danger for failures, success for completed. On iPhone the LA sits on a
+  // dark material, but macOS (iPhone Mirroring / Mac notification center)
+  // renders it on a light one, so pick the Daylight or Void tone.
   const isLightScheme = environment.colorScheme === "light";
   const phaseTint = (phase: AgentActivityPhase | undefined): Foreground => {
     if (environment.isLuminanceReduced) {
@@ -81,17 +80,16 @@ export function AgentActivity(
     }
     switch (phase) {
       case "waiting_for_approval":
-        return isLightScheme ? "#d97706" : "#fcd34d"; // amber-600 / amber-300
       case "waiting_for_input":
-        return isLightScheme ? "#4f46e5" : "#a5b4fc"; // indigo-600 / indigo-300
+        return isLightScheme ? "#835900" : "#ebbb62";
       case "failed":
-        return isLightScheme ? "#dc2626" : "#fca5a5"; // red-600 / red-300
+        return isLightScheme ? "#b23a2e" : "#ec7166";
       case "completed":
-        return isLightScheme ? "#059669" : "#6ee7b7"; // emerald-600 / emerald-300
+        return isLightScheme ? "#13704f" : "#72c9a4";
       case "starting":
       case "running":
       default:
-        return isLightScheme ? "#0284c7" : "#7dd3fc"; // sky-600 / sky-300
+        return isLightScheme ? "#a04a27" : "#e8946f";
     }
   };
 

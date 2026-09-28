@@ -6,18 +6,18 @@ export type ThemePreviewColors = Readonly<{
   messageAction: string;
 }>;
 
-/** The standard Circe artwork is not a built-in theme, so its preview colors live here. */
+/** Circe's own palette is not a built-in theme, so its preview colors live here. */
 export const STANDARD_THEME_PREVIEW_COLORS: Readonly<Record<ThemeAppearance, ThemePreviewColors>> =
   {
     light: {
-      canvas: "#fcfcfc",
-      accent: "#f4f4f5",
-      messageAction: "#4f46e5",
+      canvas: "#faf8f5",
+      accent: "#efeae3",
+      messageAction: "#a04a27",
     },
     dark: {
-      canvas: "#0a0a0a",
-      accent: "#1c1c1f",
-      messageAction: "#8b9cff",
+      canvas: "#131211",
+      accent: "#24211e",
+      messageAction: "#e8946f",
     },
   };
 

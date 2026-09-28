@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vite-plus/test";
 
+import { STANDARD_THEME_PREVIEW_COLORS } from "@circe/shared/themePreview";
+
+import { getStandardThemeColors, toCanonicalThemeColor } from "../../themePalette";
 import { STANDARD_THEME_CARDS, previewColorsOf } from "./ThemePreviewCircles";
 
 describe("Circe standard theme preview", () => {
-  it("shows amber action colors instead of inherited indigo", () => {
+  it("previews Void and Daylight with the copper action color, like mobile", () => {
     const card = STANDARD_THEME_CARDS.find((entry) => entry.id === "default");
     expect(card).toBeDefined();
     expect(card?.label).toBe("Circe");
@@ -11,14 +14,17 @@ describe("Circe standard theme preview", () => {
     const light = previewColorsOf(card!, "light");
     const dark = previewColorsOf(card!, "dark");
 
-    expect(light?.messageAction).toBe("#96600a");
-    expect(light?.canvas).toBe("#faf7f1");
-    expect(light?.accent).toBe("#eae2d1");
-    expect(dark?.messageAction).toBe("#c99a2e");
-    expect(dark?.canvas).toBe("#16181b");
-    expect(dark?.accent).toBe("#23272c");
-
-    expect(light?.messageAction).not.toBe("#4f46e5");
-    expect(dark?.messageAction).not.toBe("#8b9cff");
+    // The same shared source mobile previews, and the stock palette's own
+    // canvas and action colors.
+    expect(light).toMatchObject(STANDARD_THEME_PREVIEW_COLORS.light);
+    expect(dark).toMatchObject(STANDARD_THEME_PREVIEW_COLORS.dark);
+    expect(toCanonicalThemeColor(light?.canvas)).toBe(getStandardThemeColors("light").canvas);
+    expect(toCanonicalThemeColor(dark?.canvas)).toBe(getStandardThemeColors("dark").canvas);
+    expect(toCanonicalThemeColor(light?.messageAction)).toBe(
+      getStandardThemeColors("light").messageAction,
+    );
+    expect(toCanonicalThemeColor(dark?.messageAction)).toBe(
+      getStandardThemeColors("dark").messageAction,
+    );
   });
 });

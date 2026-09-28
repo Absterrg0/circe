@@ -138,10 +138,11 @@ describe("mobile themes", () => {
   });
 
   it("uses the same preview roles and standard artwork as desktop", () => {
+    // Same shared artwork desktop previews, painted in the default palette.
     expect(getMobileThemePreviewColors(DEFAULT_MOBILE_THEME_ID, "light")).toEqual({
-      canvas: "#fcfcfc",
-      accent: "#f4f4f5",
-      messageAction: "#4f46e5",
+      canvas: readDefaultMobileThemeVariables("light")["--color-screen"],
+      accent: "#efeae3",
+      messageAction: readDefaultMobileThemeVariables("light")["--color-primary"],
     });
     const desktopOcean = BUILT_IN_THEMES.find((theme) => theme.id === "ocean")!;
     expect(getMobileThemePreviewColors("ocean", "light")).toEqual({

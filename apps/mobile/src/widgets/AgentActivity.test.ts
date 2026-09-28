@@ -65,7 +65,7 @@ const lightEnvironment = {
 } as const;
 
 describe("AgentActivity widget layout", () => {
-  it("tints each row by its own phase using the web sidebar's dark palette", () => {
+  it("tints each row by its own phase using the Circe Void signals", () => {
     const layout = AgentActivity(
       {
         ...props,
@@ -78,11 +78,11 @@ describe("AgentActivity widget layout", () => {
       environment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("#7dd3fc"); // sky-300: running
-    expect(banner).toContain("#fcd34d"); // amber-300: waiting_for_approval
+    expect(banner).toContain("#e8946f"); // Void ember: running
+    expect(banner).toContain("#ebbb62"); // Void attention: waiting_for_approval
   });
 
-  it("switches to the web sidebar's light palette when the scheme is light", () => {
+  it("switches to the Circe Daylight signals when the scheme is light", () => {
     // macOS (iPhone Mirroring / Mac notification center) renders the activity
     // on a light background; the dark-material palette is illegible there.
     const layout = AgentActivity(
@@ -97,10 +97,10 @@ describe("AgentActivity widget layout", () => {
       lightEnvironment as never,
     );
     const banner = JSON.stringify(layout.banner);
-    expect(banner).toContain("#0284c7"); // sky-600: running
-    expect(banner).toContain("#d97706"); // amber-600: waiting_for_approval
-    expect(banner).not.toContain("#7dd3fc");
-    expect(banner).not.toContain("#fcd34d");
+    expect(banner).toContain("#a04a27"); // Daylight ember: running
+    expect(banner).toContain("#835900"); // Daylight attention: waiting_for_approval
+    expect(banner).not.toContain("#e8946f");
+    expect(banner).not.toContain("#ebbb62");
   });
 
   it("orders rows attention-first in the banner", () => {
@@ -154,9 +154,9 @@ describe("AgentActivity widget layout", () => {
       },
       environment as never,
     );
-    expect(JSON.stringify(layout.compactLeading)).toContain("#a5b4fc"); // indigo-300
+    expect(JSON.stringify(layout.compactLeading)).toContain("#ebbb62"); // attention
     expect(JSON.stringify(layout.compactTrailing)).toContain("Input");
-    expect(JSON.stringify(layout.minimal)).toContain("#a5b4fc");
+    expect(JSON.stringify(layout.minimal)).toContain("#ebbb62");
   });
 
   it("deep links the banner to the row that needs attention", () => {
@@ -209,7 +209,7 @@ describe("AgentActivity widget layout", () => {
     const banner = JSON.stringify(layout.banner);
     expect(banner).toContain("Agent work completed");
     expect(banner).not.toContain("0 active");
-    expect(banner).toContain("#6ee7b7"); // emerald-300 header tint
+    expect(banner).toContain("#72c9a4"); // success header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Done");
     expect(JSON.stringify(layout.compactTrailing)).not.toContain("0 active");
     expect(JSON.stringify(layout.expandedLeading)).toContain("Done");
@@ -229,7 +229,7 @@ describe("AgentActivity widget layout", () => {
     );
     const banner = JSON.stringify(layout.banner);
     expect(banner).toContain("Agent work failed");
-    expect(banner).toContain("#fca5a5"); // red-300 header tint
+    expect(banner).toContain("#ec7166"); // danger header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Failed");
     expect(JSON.stringify(layout.expandedLeading)).toContain("Failed");
     expect(JSON.stringify(layout.minimal)).toContain("xmark.octagon.fill");
@@ -254,7 +254,7 @@ describe("AgentActivity widget layout", () => {
     const banner = JSON.stringify(layout.banner);
     expect(banner).toContain("Agent work failed");
     expect(banner).not.toContain("Agent work completed");
-    expect(banner).toContain("#fca5a5"); // red-300 header tint
+    expect(banner).toContain("#ec7166"); // danger header tint
     expect(JSON.stringify(layout.compactTrailing)).toContain("Failed");
     expect(JSON.stringify(layout.expandedLeading)).toContain("Failed");
     expect(JSON.stringify(layout.minimal)).toContain("xmark.octagon.fill");
