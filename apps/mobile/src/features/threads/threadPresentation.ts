@@ -33,28 +33,22 @@ function isLatestRunSettled(thread: EnvironmentThreadShell): boolean {
 export function resolveThreadStatus(
   thread: EnvironmentThreadShell,
 ): ThreadStatusPresentation | null {
+  // Circe's fixed status words and signal colors: gold for anything that
+  // needs the user, ember for running work, danger for failures.
+  const needsYou = {
+    label: "Needs you",
+    pillClassName: "bg-circe-attention-soft",
+    textClassName: "text-circe-attention",
+    iconColor: "#d9a441",
+    iconBackground: "rgba(217,164,65,0.22)",
+    pulse: false,
+  } as const;
   if (thread.hasPendingApprovals) {
-    return {
-      kind: "pending-approval",
-      label: "Needs Approval",
-      pillClassName: "bg-warning",
-      textClassName: "text-warning-foreground",
-      iconColor: "#ff9f0a",
-      iconBackground: "rgba(255,159,10,0.22)",
-      pulse: false,
-    };
+    return { kind: "pending-approval", ...needsYou };
   }
 
   if (thread.hasPendingUserInput) {
-    return {
-      kind: "awaiting-input",
-      label: "Awaiting Input",
-      pillClassName: "bg-primary/10",
-      textClassName: "text-foreground-secondary",
-      iconColor: "#5e5ce6",
-      iconBackground: "rgba(94,92,230,0.22)",
-      pulse: false,
-    };
+    return { kind: "awaiting-input", ...needsYou };
   }
 
   const runtimeStatus = thread.runtime?.status;
@@ -62,11 +56,11 @@ export function resolveThreadStatus(
   if (runtimeStatus === "running" || runtimeStatus === "waiting") {
     return {
       kind: "working",
-      label: "Working",
-      pillClassName: "bg-primary/10",
-      textClassName: "text-adaptive-sky-600-400",
-      iconColor: "#0a84ff",
-      iconBackground: "rgba(10,132,255,0.22)",
+      label: "Running",
+      pillClassName: "bg-circe-blush",
+      textClassName: "text-circe-copper",
+      iconColor: "#e18a62",
+      iconBackground: "rgba(225,138,98,0.22)",
       pulse: true,
     };
   }
@@ -74,11 +68,11 @@ export function resolveThreadStatus(
   if (runtimeStatus === "preparing" || runtimeStatus === "queued" || runtimeStatus === "starting") {
     return {
       kind: "connecting",
-      label: "Connecting",
-      pillClassName: "bg-primary/10",
+      label: "Queued",
+      pillClassName: "bg-subtle",
       textClassName: "text-foreground-secondary",
-      iconColor: "#0a84ff",
-      iconBackground: "rgba(10,132,255,0.22)",
+      iconColor: "#8f877e",
+      iconBackground: "rgba(143,135,126,0.22)",
       pulse: true,
     };
   }
@@ -86,11 +80,11 @@ export function resolveThreadStatus(
   if (runtimeStatus === "failed" || thread.latestRun?.status === "failed") {
     return {
       kind: "error",
-      label: "Error",
-      pillClassName: "bg-danger",
-      textClassName: "text-danger-foreground",
-      iconColor: "#ff453a",
-      iconBackground: "rgba(255,69,58,0.22)",
+      label: "Failed",
+      pillClassName: "bg-circe-danger-soft",
+      textClassName: "text-circe-danger",
+      iconColor: "#e0584b",
+      iconBackground: "rgba(224,88,75,0.22)",
       pulse: false,
     };
   }
@@ -100,15 +94,7 @@ export function resolveThreadStatus(
     isLatestRunSettled(thread) &&
     thread.hasActionableProposedPlan;
   if (hasPlanReadyPrompt) {
-    return {
-      kind: "plan-ready",
-      label: "Plan Ready",
-      pillClassName: "bg-primary/10",
-      textClassName: "text-foreground-secondary",
-      iconColor: "#bf5af2",
-      iconBackground: "rgba(191,90,242,0.22)",
-      pulse: false,
-    };
+    return { kind: "plan-ready", ...needsYou, label: "Plan ready" };
   }
 
   return null;

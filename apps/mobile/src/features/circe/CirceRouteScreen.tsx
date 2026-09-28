@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import type { EnvironmentId } from "@circe/contracts";
+import type { EnvironmentThreadShell } from "@circe/client/state/shell";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser } from "@clerk/expo";
 import { File } from "expo-file-system";
@@ -33,10 +34,13 @@ import * as Haptics from "expo-haptics";
 import { AppText as Text } from "../../components/AppText";
 import { CirceHeaderTitle } from "../../components/CirceHeaderTitle";
 import { SymbolView } from "../../components/AppSymbol";
-import type { AppSymbolName } from "../../components/AppSymbol";
 import { CirceOrb } from "../../components/circe-orb/CirceOrb";
 import { NativeStackScreenOptions } from "../../native/StackHeader";
 import { CirceComputerRequests } from "./CirceComputerRequests";
+import { CirceHomeWork } from "./CirceHomeWork";
+import { circeHomeStatusLine, summarizeCirceHome, type CirceHomeSummary } from "./circeHomeSummary";
+import { useThreadShells } from "../../state/entities";
+import { useEnvironments } from "../../state/environments";
 import { CirceTabBar } from "./CirceTabBar";
 import { ListeningChrome } from "./ListeningChrome";
 import { useAppearancePreferences } from "../settings/appearance/AppearancePreferencesProvider";
@@ -93,33 +97,74 @@ function greetingForHour(hour: number): string {
  * `useUser` requires the Clerk provider, which `CloudAuthProvider` only mounts
  * when the account service is configured, so the hook lives behind that check.
  */
-function AssistantGreeting() {
+function AssistantGreeting({
+  summary,
+  onlineMachines,
+  totalMachines,
+}: {
+  readonly summary: CirceHomeSummary<EnvironmentThreadShell>;
+  readonly onlineMachines: number;
+  readonly totalMachines: number;
+}) {
   const greeting = useMemo(() => greetingForHour(new Date().getHours()), []);
-  const address = hasCloudPublicConfig() ? <AccountGreetingName /> : "Guest";
+  const address = hasCloudPublicConfig() ? <AccountGreetingName /> : null;
+  const runningMachines = new Set(summary.running.map((thread) => thread.environmentId));
+  const { environments } = useEnvironments();
+  const runningMachine =
+    runningMachines.size === 1
+      ? (environments
+          .find((environment) => runningMachines.has(environment.environmentId))
+          ?.label.toLowerCase() ?? null)
+      : null;
+  const status = circeHomeStatusLine({
+    needs: summary.needs.length,
+    running: summary.running.length,
+    runningMachine,
+  });
 
   return (
-    <View className="gap-1 px-1 pt-2">
-      <Text className="font-circe-serif text-3xl leading-tight text-foreground">
-        {greeting}, {address}
+    <View className="gap-2 px-1 pt-2">
+      <Text className="font-circe-display text-3xl leading-tight text-foreground">
+        {greeting}
+        {address}.
       </Text>
-      <Text className="text-base text-foreground-muted">What shall we do today?</Text>
+      <Text className="text-base leading-snug text-foreground-muted">
+        {status.attention ? (
+          <Text className="text-circe-attention">{status.attention} </Text>
+        ) : null}
+        {status.rest}
+      </Text>
+      <View className="flex-row flex-wrap gap-x-4 gap-y-1 pt-1">
+        <Text className="text-sm text-circe-ink-faint">
+          <Text className="font-circe-display text-base text-circe-copper">
+            {summary.running.length}
+          </Text>{" "}
+          running
+        </Text>
+        <Text className="text-sm text-circe-ink-faint">
+          <Text className="font-circe-display text-base text-foreground">
+            {summary.completedToday}
+          </Text>{" "}
+          done today
+        </Text>
+        <Text className="text-sm text-circe-ink-faint">
+          <Text className="font-circe-display text-base text-foreground">
+            {onlineMachines}/{totalMachines}
+          </Text>{" "}
+          online
+        </Text>
+      </View>
     </View>
   );
 }
 
+/** ", Parv" for a signed-in user with a first name; nothing otherwise. */
 function AccountGreetingName() {
   const { isLoaded, isSignedIn, user } = useUser();
-  if (!isLoaded || isSignedIn !== true) return "Guest";
+  if (!isLoaded || isSignedIn !== true) return null;
   const name = user?.firstName?.trim();
-  return name && name.length > 0 ? name : "Guest";
+  return name && name.length > 0 ? `, ${name}` : null;
 }
-
-const QUICK_ACTIONS: ReadonlyArray<{ label: string; prompt: string; icon: AppSymbolName }> = [
-  { label: "Summarise my work", prompt: "Summarise my work across all machines", icon: "doc.text" },
-  { label: "Draft something", prompt: "Draft something for me: ", icon: "square.and.pencil" },
-  { label: "Find anything", prompt: "Find ", icon: "magnifyingglass" },
-  { label: "Plan my day", prompt: "Plan my day", icon: "clock" },
-];
 
 /**
  * The Circe home scene. Home and listening are one physical scene around a
@@ -130,6 +175,12 @@ const QUICK_ACTIONS: ReadonlyArray<{ label: string; prompt: string; icon: AppSym
 export function CirceRouteScreen() {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const threadShells = useThreadShells();
+  const homeSummary = useMemo(() => summarizeCirceHome(threadShells, new Date()), [threadShells]);
+  const { environments } = useEnvironments();
+  const onlineMachineCount = environments.filter(
+    (environment) => environment.connection.phase === "connected",
+  ).length;
   const controller = useCirceController();
   const catalog = controller.catalog;
   // No connected device means nothing the assistant can do; every entry point
@@ -489,7 +540,11 @@ export function CirceRouteScreen() {
           showsVerticalScrollIndicator={false}
         >
           <Animated.View style={homeStyle} pointerEvents={voiceActive ? "none" : "auto"}>
-            <AssistantGreeting />
+            <AssistantGreeting
+              summary={homeSummary}
+              onlineMachines={onlineMachineCount}
+              totalMachines={environments.length}
+            />
           </Animated.View>
 
           <SceneOrb
@@ -614,22 +669,7 @@ export function CirceRouteScreen() {
 
               <CirceComputerRequests catalog={controller.catalog} />
 
-              <View className="flex-row gap-2 pt-4">
-                {QUICK_ACTIONS.map((action) => (
-                  <Pressable
-                    key={action.label}
-                    accessibilityRole="button"
-                    accessibilityLabel={action.label}
-                    onPress={() => setUtterance(action.prompt)}
-                    className="flex-1 items-center gap-2 rounded-2xl border border-border-subtle bg-card px-1 py-3.5 active:opacity-70"
-                  >
-                    <SymbolView name={action.icon} size={20} tintColorClassName="accent-icon" />
-                    <Text className="text-center text-3xs font-t3-bold leading-tight text-foreground-muted">
-                      {action.label}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
+              <CirceHomeWork summary={homeSummary} />
             </Animated.View>
           )}
         </ScrollView>

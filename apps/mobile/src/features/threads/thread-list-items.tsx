@@ -569,7 +569,7 @@ export const ThreadListRow = memo(function ThreadListRow(props: {
   );
 
   const statusPill = effectiveStatus ? (
-    <View className={`${effectiveStatus.pillClassName} rounded-full px-1.5 py-0.5`}>
+    <View className={`${effectiveStatus.pillClassName} rounded-md px-1.5 py-0.5`}>
       <Text className={`text-3xs font-t3-bold ${effectiveStatus.textClassName}`}>
         {effectiveStatus.label}
       </Text>

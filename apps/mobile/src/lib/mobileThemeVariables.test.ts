@@ -47,7 +47,7 @@ describe("mobile theme runtime variables", () => {
     "keeps the %s default dark frame distinct from the rounded settings body",
     (themeId) => {
       const variables = getMobileThemeRuntimeVariables(themeId, "dark", "android");
-      expect(variables["--color-header"]).toBe("rgba(18, 20, 21, 1)");
+      expect(variables["--color-header"]).toBe("rgba(27, 25, 23, 1)");
       expect(variables["--color-header"]).not.toBe(
         themeColorWithAlpha(variables["--color-sheet-solid"], 1),
       );

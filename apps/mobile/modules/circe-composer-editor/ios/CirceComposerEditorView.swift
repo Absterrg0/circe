@@ -455,7 +455,7 @@ public final class CirceComposerEditorView: ExpoView, UITextViewDelegate, UIText
     skillText: "#a21caf",
     fileTint: "#737373"
   )
-  private var fontFamily = "Inter-Regular"
+  private var fontFamily = "Onest-Regular"
   private var fontSize: CGFloat = 14
   private var lineHeight: CGFloat = 20
   private var contentInsetVertical: CGFloat = 0

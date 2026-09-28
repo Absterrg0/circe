@@ -53,7 +53,7 @@ export function LiveConversationChrome({
       style={{ position: "absolute", left: 0, right: 0, top: 0, bottom: 0 }}
     >
       <Animated.View style={[{ alignItems: "center", gap: 8, paddingHorizontal: 32 }, titleStyle]}>
-        <Text className="font-circe-serif text-center" style={{ color: INK, fontSize: 32 }}>
+        <Text className="font-circe-display text-center" style={{ color: INK, fontSize: 32 }}>
           {title}
         </Text>
         <Text className="text-center text-base" style={{ color: MUTED }} numberOfLines={3}>

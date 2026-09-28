@@ -34,15 +34,18 @@ if (process.env.EXPO_PUBLIC_SHOWCASE === "1") {
   prepareNativeShowcaseCapture();
 }
 
-// The Circe display serif is also registered natively in app.config.ts, which
-// is what release builds use. Loading it here as well keeps the font available
-// in a dev client that was built before the native registration existed, so the
-// welcome hero can be judged without a full native rebuild. Loading an already
+// Circe's faces are also registered natively in app.config.ts, which is what
+// release builds use. Loading them here as well keeps them available in a dev
+// client built before the native registration changed. Loading an already
 // registered family is a no-op.
 void Font.loadAsync({
-  "InstrumentSerif-Regular": require("@expo-google-fonts/instrument-serif/400Regular/InstrumentSerif_400Regular.ttf"),
+  "Onest-Regular": require("@expo-google-fonts/onest/400Regular/Onest_400Regular.ttf"),
+  "Onest-Medium": require("@expo-google-fonts/onest/500Medium/Onest_500Medium.ttf"),
+  "Onest-Bold": require("@expo-google-fonts/onest/700Bold/Onest_700Bold.ttf"),
+  "Sora-SemiBold": require("@expo-google-fonts/sora/600SemiBold/Sora_600SemiBold.ttf"),
+  "JetBrainsMono-Regular": require("@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf"),
 }).catch(() => {
-  // Falls back to the stack in --font-circe-serif.
+  // Falls back to the system stacks in global.css.
 });
 
 void SplashScreen.preventAutoHideAsync().catch(() => {

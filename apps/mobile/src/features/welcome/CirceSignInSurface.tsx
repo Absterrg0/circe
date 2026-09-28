@@ -6,7 +6,7 @@ import { CirceWelcomeHero } from "../../components/circe-welcome-hero/CirceWelco
 import { CirceSignInError, CirceSignInPanel } from "./CirceSignInPanel";
 import { LegalFooter } from "./LegalFooter";
 import type { CirceGoogleSignIn } from "./useCirceGoogleSignIn";
-import { COPPER_TEXT, DISPLAY_SERIF, INK, MUTED } from "./welcomeAuthTokens";
+import { COPPER_TEXT, DISPLAY_FACE, INK, MUTED } from "./welcomeAuthTokens";
 import { CirceMark } from "./welcomeMarks";
 
 /**
@@ -68,7 +68,7 @@ export function CirceSignInSurface(props: {
           and the block loses the two-line balance. */}
       <RNText
         style={{
-          fontFamily: DISPLAY_SERIF,
+          fontFamily: DISPLAY_FACE,
           color: INK,
           fontSize: 34,
           lineHeight: 40,
@@ -77,7 +77,7 @@ export function CirceSignInSurface(props: {
         }}
       >
         Direct work across{"\n"}
-        <RNText style={{ fontFamily: DISPLAY_SERIF, color: COPPER_TEXT }}>every machine.</RNText>
+        <RNText style={{ fontFamily: DISPLAY_FACE, color: COPPER_TEXT }}>every machine.</RNText>
       </RNText>
 
       <Text

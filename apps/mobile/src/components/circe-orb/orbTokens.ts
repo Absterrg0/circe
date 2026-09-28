@@ -29,8 +29,8 @@ export const ORB_PALETTE = {
   accentDeep: "#A5482C",
 
   /** Surfaces the orb composites against. */
-  midnight: "#0C0D0E",
-  ivory: "#FCF9F4",
+  midnight: "#131211",
+  ivory: "#FAF8F5",
 } as const;
 
 export type OrbAppearance = "light" | "dark";

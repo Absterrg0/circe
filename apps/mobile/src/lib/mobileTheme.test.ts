@@ -70,10 +70,10 @@ describe("mobile themes", () => {
     const light = readDefaultMobileThemeVariables("light");
     const dark = readDefaultMobileThemeVariables("dark");
 
-    // Design system v1: warm ivory paper in light, layered warm near-black in
-    // dark. Pure black is explicitly out, and so is a cool blue-gray.
-    expect(light["--color-circe-canvas"]).toBe("#fcf9f4");
-    expect(dark["--color-circe-canvas"]).toBe("#0c0d0e");
+    // Daylight is warm paper, Void is warm near-black. Pure black is out, and
+    // so is a cool blue-gray.
+    expect(light["--color-circe-canvas"]).toBe("#faf8f5");
+    expect(dark["--color-circe-canvas"]).toBe("#131211");
 
     // Light is warm paper, which is testable: red leads blue.
     const [lightRed, , lightBlue] = light["--color-circe-canvas"]!.slice(1)
@@ -89,14 +89,22 @@ describe("mobile themes", () => {
     expect(dark["--color-circe-canvas"]).not.toBe("#000000");
     expect(Math.max(...darkChannels) - Math.min(...darkChannels)).toBeLessThanOrEqual(4);
 
-    // Copper is the one brand accent, and it is the same hue in both modes.
-    expect(light["--color-circe-copper"]).toBe("#e08a63");
-    expect(dark["--color-circe-copper"]).toBe("#e08a63");
+    // Copper (ember) is the one action color. Light uses the deep tone so text
+    // on it and text in it pass 4.5:1 on paper; the orb peach never changes.
+    expect(light["--color-circe-copper"]).toBe("#a04a27");
+    expect(dark["--color-circe-copper"]).toBe("#e8946f");
+    expect(light["--color-primary"]).toBe(light["--color-circe-copper"]);
+    expect(dark["--color-primary"]).toBe(dark["--color-circe-copper"]);
+    expect(light["--color-circe-peach"]).toBe(dark["--color-circe-peach"]);
 
-    // Dark mode leans on the bright copper for text; light mode uses the deep
-    // tone so it stays legible on paper.
-    expect(light["--color-circe-copper-deep"]).toBe("#a5482c");
-    expect(dark["--color-circe-copper-deep"]).toBe("#f0a078");
+    // Signals keep their meaning in both modes: attention is gold, voice is
+    // lilac, and each has a soft ground.
+    for (const variables of [light, dark]) {
+      expect(variables["--color-circe-attention"]).toMatch(/^#/);
+      expect(variables["--color-circe-attention-soft"]).toMatch(/^#/);
+      expect(variables["--color-circe-voice"]).toMatch(/^#/);
+      expect(variables["--color-circe-voice-soft"]).toMatch(/^#/);
+    }
   });
 
   it("keeps the default theme surfaces solid so first paint matches themed paint", () => {

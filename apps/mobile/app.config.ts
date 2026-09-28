@@ -144,18 +144,23 @@ const iosBundleIdentifier = isIosPersonalTeamBuild
   ? personalTeamBundleIdentifier!
   : variant.iosBundleIdentifier;
 
-const interFonts = {
-  regular: "@expo-google-fonts/inter/400Regular/Inter_400Regular.ttf",
-  medium: "@expo-google-fonts/inter/500Medium/Inter_500Medium.ttf",
-  bold: "@expo-google-fonts/inter/700Bold/Inter_700Bold.ttf",
+// Onest sets everything a person reads or clicks; its word spacing holds at
+// 12px on React Native, where word-spacing cannot be patched.
+const sansFonts = {
+  regular: "@expo-google-fonts/onest/400Regular/Onest_400Regular.ttf",
+  medium: "@expo-google-fonts/onest/500Medium/Onest_500Medium.ttf",
+  bold: "@expo-google-fonts/onest/700Bold/Onest_700Bold.ttf",
 } as const;
 
-// Circe display serif. Editorial high-contrast serif for identity moments only
-// (welcome hero statements); never inside dense product UI. Registered natively
-// so release builds pay no runtime cost, and also loaded at runtime in App.tsx
-// because a dev client built before this change does not carry the native font.
+// Sora carries the wordmark's round geometry for greetings, titles and the
+// tracked instrument label; JetBrains Mono sets anything a machine wrote.
+// Registered natively so release builds pay no runtime cost, and also loaded
+// at runtime in App.tsx because an older dev client does not carry them.
 const circeDisplayFonts = {
-  regular: "@expo-google-fonts/instrument-serif/400Regular/InstrumentSerif_400Regular.ttf",
+  semibold: "@expo-google-fonts/sora/600SemiBold/Sora_600SemiBold.ttf",
+} as const;
+const circeMonoFonts = {
+  regular: "@expo-google-fonts/jetbrains-mono/400Regular/JetBrainsMono_400Regular.ttf",
 } as const;
 
 const widgetsPlugin: NonNullable<ExpoConfig["plugins"]>[number] = [
@@ -352,29 +357,34 @@ const config: ExpoConfig = {
       {
         ios: {
           fonts: [
-            interFonts.regular,
-            interFonts.medium,
-            interFonts.bold,
-            circeDisplayFonts.regular,
+            sansFonts.regular,
+            sansFonts.medium,
+            sansFonts.bold,
+            circeDisplayFonts.semibold,
+            circeMonoFonts.regular,
           ],
         },
         android: {
           fonts: [
             {
-              fontFamily: "Inter-Regular",
-              fontDefinitions: [{ path: interFonts.regular, weight: 400 }],
+              fontFamily: "Onest-Regular",
+              fontDefinitions: [{ path: sansFonts.regular, weight: 400 }],
             },
             {
-              fontFamily: "Inter-Medium",
-              fontDefinitions: [{ path: interFonts.medium, weight: 500 }],
+              fontFamily: "Onest-Medium",
+              fontDefinitions: [{ path: sansFonts.medium, weight: 500 }],
             },
             {
-              fontFamily: "Inter-Bold",
-              fontDefinitions: [{ path: interFonts.bold, weight: 700 }],
+              fontFamily: "Onest-Bold",
+              fontDefinitions: [{ path: sansFonts.bold, weight: 700 }],
             },
             {
-              fontFamily: "InstrumentSerif-Regular",
-              fontDefinitions: [{ path: circeDisplayFonts.regular, weight: 400 }],
+              fontFamily: "Sora-SemiBold",
+              fontDefinitions: [{ path: circeDisplayFonts.semibold, weight: 600 }],
+            },
+            {
+              fontFamily: "JetBrainsMono-Regular",
+              fontDefinitions: [{ path: circeMonoFonts.regular, weight: 400 }],
             },
           ],
         },

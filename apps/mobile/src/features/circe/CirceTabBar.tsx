@@ -2,8 +2,11 @@ import { useNavigation } from "@react-navigation/native";
 import { Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useMemo } from "react";
+
 import { AppText as Text } from "../../components/AppText";
 import { SymbolView } from "../../components/AppSymbol";
+import { useThreadShells } from "../../state/entities";
 
 export type CirceTabId = "home" | "tasks" | "library";
 
@@ -18,14 +21,24 @@ const TABS: ReadonlyArray<{
 ];
 
 /**
- * Bottom tab bar matching the Circe reference: warm paper bar with a hairline
- * top border, copper active state, muted inactive state. Library opens the
- * archived-threads sheet; it never owns a stack route so it never stays
- * selected after the sheet dismisses.
+ * Bottom tab bar from the Circe design: chrome bar with a hairline top rule,
+ * an ember icon and ink label for the active tab. Tasks carries the gold
+ * count of tasks that need you. Library opens the archived-threads sheet; it
+ * never owns a stack route so it never stays selected after the sheet
+ * dismisses.
  */
 export function CirceTabBar({ selected }: { readonly selected: CirceTabId }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
+  const threads = useThreadShells();
+  const needs = useMemo(
+    () =>
+      threads.filter(
+        (thread) =>
+          thread.archivedAt === null && (thread.hasPendingApprovals || thread.hasPendingUserInput),
+      ).length,
+    [threads],
+  );
 
   return (
     <View
@@ -40,7 +53,9 @@ export function CirceTabBar({ selected }: { readonly selected: CirceTabId }) {
             key={tab.id}
             accessibilityRole="tab"
             accessibilityState={{ selected: active }}
-            accessibilityLabel={tab.label}
+            accessibilityLabel={
+              tab.id === "tasks" && needs > 0 ? `Tasks, ${needs} need you` : tab.label
+            }
             onPress={() => {
               if (tab.id === "home") navigation.navigate("Circe");
               else if (tab.id === "tasks") navigation.navigate("Home");
@@ -52,13 +67,22 @@ export function CirceTabBar({ selected }: { readonly selected: CirceTabId }) {
             }}
             className="flex-1 items-center justify-center gap-1 py-1 active:opacity-70"
           >
-            <SymbolView
-              name={tab.icon}
-              size={22}
-              tintColorClassName={active ? "accent-circe-copper" : "accent-icon-muted"}
-            />
+            <View>
+              <SymbolView
+                name={tab.icon}
+                size={22}
+                tintColorClassName={active ? "accent-circe-copper" : "accent-icon-muted"}
+              />
+              {tab.id === "tasks" && needs > 0 ? (
+                <View className="absolute -right-2.5 -top-1.5 h-4 min-w-4 items-center justify-center rounded-full bg-circe-attention px-1">
+                  <Text className="text-3xs font-t3-bold text-circe-on-attention">
+                    {needs > 99 ? "99+" : needs}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
             <Text
-              className={`text-2xs font-t3-bold ${active ? "text-circe-copper" : "text-foreground-muted"}`}
+              className={`text-2xs font-t3-medium ${active ? "text-foreground" : "text-circe-ink-faint"}`}
             >
               {tab.label}
             </Text>

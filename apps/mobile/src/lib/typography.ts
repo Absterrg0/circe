@@ -21,14 +21,14 @@ export const MOBILE_CODE_SURFACE = {
 } as const;
 
 /**
- * Circe section label. Mono uppercase micro labels for group headers and
- * settings sections, matching web `circe-section-label`. Render with the
- * `font-mono` utility class plus this style for tracking and casing.
+ * Circe instrument label: the tracked uppercase Sora label that heads
+ * sections, meters and the voice view, matching web `ci-label`. Render with
+ * the `font-circe-display` utility class plus this style. A few words only.
  */
 export const MOBILE_SECTION_LABEL = {
   fontSize: MOBILE_TYPOGRAPHY.micro.fontSize,
   lineHeight: MOBILE_TYPOGRAPHY.micro.lineHeight,
-  letterSpacing: 1.1,
+  letterSpacing: 2.2,
   textTransform: "uppercase",
-  fontWeight: "600",
+  fontWeight: "500",
 } as const;
