@@ -1,5 +1,7 @@
 # Circe Design System v1.0
 
+> The v1.0 palette below (ivory, midnight, copper) is retired. Colors now come from `tokens.json` and `docs/internals/circe-design-system.md`: neutral charcoal and near-white surfaces with one orange accent. Everything else in this spec still applies.
+
 > **Use this as the source of truth for Circe UI, product screenshots, marketing surfaces, and generated mockups.**
 > Circe should feel calm, capable, warm, focused, premium, operational, and device-agnostic.
 

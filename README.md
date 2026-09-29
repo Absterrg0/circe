@@ -108,8 +108,8 @@ The AUR packaging is maintained in this repository under [`packaging/aur`](./pac
 ## Design
 
 Circe follows the [Circe design system](./docs/internals/circe-design-system.md):
-quiet by default, warm paper and copper materials, editorial serif for identity,
-signal over spectacle.
+quiet by default, neutral charcoal with one orange accent, editorial serif for
+identity, signal over spectacle.
 
 ## Some notes
 

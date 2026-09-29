@@ -26,17 +26,18 @@ const itWithMagick = hasMagick() ? it : it.skip;
 
 const pngOutputs = [
   ["assets/circe/circe-master.png", 1254],
+  ["assets/circe/circe-app-icon-master.png", 1254],
   ["assets/circe/circe-ios-1024.png", 1024],
   ["assets/circe/circe-macos-1024.png", 1024],
   ["assets/circe/circe-universal-1024.png", 1024],
   ["assets/circe/circe-web-favicon-16x16.png", 16],
   ["assets/circe/circe-web-favicon-32x32.png", 32],
   ["assets/circe/circe-web-apple-touch-180.png", 180],
-  ["apps/web/public/circe-mark.png", 32],
+  ["apps/web/public/circe-mark.png", 256],
 ] as const;
 
 describe("Circe asset family", () => {
-  it("keeps the approved rose-gold mark as the vector source", () => {
+  it("keeps the approved Prism Orbit mark as the vector source", () => {
     const source = NodeFS.readFileSync(sourcePath, "utf8");
     // The approved mark embeds its raster artwork so the gradient matches the
     // brand board exactly instead of approximating it with an auto-trace.

@@ -27,8 +27,8 @@ export function NoActiveThreadState() {
                 it finds the right machine.
               </EmptyDescription>
             </EmptyHeader>
-            <Button className="mt-6 rounded-full px-5" render={<Link to="/circe" />}>
-              Open command center
+            <Button className="mt-6 rounded-full px-5" render={<Link to="/" />}>
+              Go home
             </Button>
           </div>
         </Empty>

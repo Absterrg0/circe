@@ -17,6 +17,7 @@ import { useThreadShell } from "../../state/entities";
 import type { AppRouter } from "../../router";
 import { buildThreadRouteParams, resolveThreadRouteTarget } from "../../threadRoutes";
 import {
+  isCirceHomePath,
   isCirceLocalVoiceRoute,
   isCirceShortcut,
   resolveCirceDesktopMenuAction,
@@ -66,7 +67,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
     select: (state) => {
       const pathname =
         (state as unknown as { location?: { pathname?: string } }).location?.pathname ?? "";
-      return pathname === "/circe" || pathname.startsWith("/circe/");
+      return isCirceHomePath(pathname);
     },
   });
   // Once the browser Circe surface opens, its runtime stays mounted until
@@ -92,7 +93,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
       if (event.defaultPrevented || !isCirceShortcut(event)) return;
       event.preventDefault();
       event.stopPropagation();
-      void router.navigate({ to: "/circe" });
+      void router.navigate({ to: "/" });
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
@@ -101,7 +102,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
   useEffect(
     () =>
       onOpenCirce(() => {
-        void router.navigate({ to: "/circe" });
+        void router.navigate({ to: "/" });
       }),
     [router],
   );
@@ -113,7 +114,7 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
       const resolvedAction = resolveCirceDesktopMenuAction(action);
       switch (resolvedAction) {
         case "open-control-center":
-          void router.navigate({ to: "/circe" });
+          void router.navigate({ to: "/" });
           break;
         case "live-voice-toggle":
           setCirceLiveVoiceActive(!getCirceLiveVoiceUiState().active);
@@ -181,8 +182,8 @@ export function CirceManagerHost({ router }: { readonly router: AppRouter }) {
     },
     [router],
   );
-  // Native voice stays mounted on desktop. Browser mounts lazily when the
-  // Circe surface first opens, then stays latched for the host lifetime.
+  // Native voice stays mounted on desktop. Browser mounts lazily when Home
+  // first opens, then stays latched for the host lifetime.
   const shouldMountRuntime = isElectron || circeSurfaceOpen || browserRuntimeLatched;
 
   return (

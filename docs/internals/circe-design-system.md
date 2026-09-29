@@ -8,7 +8,7 @@ Machine-readable tokens live in `assets/circe/tokens.json` and `assets/circe/tok
 
 Circe is a quiet control plane for work across machines.
 
-It should feel calm (low visual noise, generous whitespace, restrained hierarchy), capable (operational, trustworthy, precise), warm (soft rose and copper warmth, never cold blue SaaS), focused (every control must earn its place), and everywhere (consistent across desktop, mobile, voice, and control-center surfaces).
+It should feel calm (low visual noise, generous whitespace, restrained hierarchy), capable (operational, trustworthy, precise), warm (one orange accent on neutral charcoal, never cold blue SaaS), focused (every control must earn its place), and everywhere (consistent across desktop, mobile, voice, and control-center surfaces).
 
 Primary lines: "Your work. Everywhere.", "Think. Do. Across your machines.", "A more capable you."
 
@@ -24,24 +24,25 @@ Rules: never distort, rotate, stretch, bevel, outline, or recolor the logo arbit
 
 ## 3. Brand palette
 
-| Token        | Hex       | Use                             |
-| ------------ | --------- | ------------------------------- |
-| `ivory`      | `#FAF7F3` | Primary light background        |
-| `midnight`   | `#0F1620` | Primary dark background         |
-| `charcoal`   | `#2F2F33` | Secondary dark tone             |
-| `rose`       | `#C9A79B` | Brand warmth                    |
-| `stone`      | `#DCD3CD` | Borders and muted surfaces      |
-| `copper`     | `#C97857` | Primary accent                  |
-| `peach`      | `#E8AE93` | Highlight and gradient endpoint |
-| `deep-brown` | `#4A2D2A` | Logo depth                      |
+| Token         | Hex       | Use                                      |
+| ------------- | --------- | ---------------------------------------- |
+| `snow`        | `#FAFAFA` | Primary light background                 |
+| `charcoal`    | `#111113` | Primary dark background                  |
+| `ink`         | `#0C0C0D` | Dark chrome: sidebar, title bar, splash  |
+| `graphite`    | `#18181A` | Dark cards and raised surfaces           |
+| `zinc`        | `#E4E4E7` | Light borders and muted surfaces         |
+| `orange`      | `#F26B3A` | Brand accent: focus, indicators, the orb |
+| `orange-deep` | `#CC4A14` | Light-mode fills under white text        |
+| `peach`       | `#FFA47A` | Highlight and gradient endpoint          |
+| `ember`       | `#4A1A0A` | Orb and gradient depth                   |
 
-Brand gradient: `linear-gradient(135deg, #4A2D2A 0%, #9B6658 38%, #C97857 68%, #E8AE93 100%)`. Use it for the logo mark, the voice orb, signature brand moments, and hero imagery. Do not use it as the default fill for buttons, cards, or navigation.
+Brand gradient: `linear-gradient(135deg, #4A1A0A 0%, #A8401A 38%, #F26B3A 68%, #FFA47A 100%)`. Use it for signature brand moments and hero imagery. Do not use it as the default fill for buttons, cards, or navigation.
 
 ## 4. Semantic color tokens
 
-Light mode: `bg` `#FAF7F3`, `surface-1` `#FFFDFC`, `surface-2` `#F5F0EC`, `surface-3` `#EEE7E2`, `text-primary` `#14171B`, `text-secondary` `#64686F`, `text-muted` `#90959B`, `border` `#E3DDD8`, `border-strong` `#CFC6C0`, `accent` `#C97857`, `accent-hover` `#B96849`, `accent-soft` `#F2DFD6`, `success` `#49A878`, `warning` `#D89545`, `danger` `#D9515D`, `info` `#667C96`.
+Light mode: `bg` `#FAFAFA`, `surface-1` `#FFFFFF`, `surface-2` `#F4F4F5`, `surface-3` `#EEEEF0`, `text-primary` `#18181B`, `text-secondary` `#63636B`, `text-muted` `#8A8A92`, `border` `#E4E4E7`, `border-strong` `#D4D4D8`, `accent` `#CC4A14`, `accent-hover` `#B53F0F`, `accent-soft` `#FDEEE6`, `success` `#3FA36F`, `warning` `#D89545`, `danger` `#D9515D`, `info` `#667C96`.
 
-Dark mode: `bg` `#0F1620`, `surface-1` `#151B22`, `surface-2` `#1B222B`, `surface-3` `#232B35`, `text-primary` `#F6F2EF`, `text-secondary` `#A9B0B8`, `text-muted` `#747C86`, `border` `#2D343E`, `border-strong` `#3B4551`, `accent` `#E08A66`, `accent-hover` `#ED9877`, `accent-soft` `#33231F`, `success` `#67C996`, `warning` `#E7AA5A`, `danger` `#EF6873`, `info` `#8FA4BD`.
+Dark mode: `bg` `#111113`, `surface-1` `#18181A`, `surface-2` `#1E1E21`, `surface-3` `#222225`, `text-primary` `#F5F5F4`, `text-secondary` `#A1A1A6`, `text-muted` `#7D7D83`, `border` `#262629`, `border-strong` `#38383C`, `accent` `#F26B3A`, `accent-hover` `#FF7D4D`, `accent-soft` `#2A1C16`, `success` `#4CC38A`, `warning` `#E7AA5A`, `danger` `#EF6873`, `info` `#8FA4BD`.
 
 ## 5. Typography
 
@@ -59,7 +60,7 @@ Circe feels soft, not bubbly. `radius-xs` 6px, `radius-sm` 8px, `radius-md` 12px
 
 ## 8. Borders and shadows
 
-Prefer borders over heavy shadows. Light: 1px `#E3DDD8` border with `0 8px 28px rgba(24, 20, 18, 0.08)`. Dark: 1px `#2D343E` border with `0 12px 36px rgba(0, 0, 0, 0.32)`. Glow is reserved for the Circe orb, listening state, and small active brand indicators. Never glow entire cards or tables.
+Prefer borders over heavy shadows. Light: 1px `#E4E4E7` border with `0 8px 28px rgba(24, 24, 27, 0.08)`. Dark: 1px `#262629` border with `0 12px 36px rgba(0, 0, 0, 0.4)`. Glow is reserved for the Circe orb, listening state, and small active brand indicators. Never glow entire cards or tables.
 
 ## 9. Icons
 
@@ -79,11 +80,13 @@ Cards exist for grouping, not decoration. Hierarchy: background, then primary su
 
 ## 13. Navigation
 
-Desktop: quiet left rail or top navigation, active item in restrained warm tint with a thin accent indicator, no large filled buttons for every nav item. Mobile: 3 to 5 primary destinations max, never force device or project selection before user intent. The primary flow feels like telling Circe what you want.
+Desktop: an always-visible icon rail, and a context sidebar beside it that shows one list at a time. Pages (Home, Pull requests, Machines, Usage, Settings) navigate; lists (Agents, Chats, Bots) switch the sidebar, and routes that belong to a list (a chat, a bot, Machines, Settings) switch it too. The current page gets an orange tint and a thin orange bar; the list open in the sidebar gets a neutral raised surface. The one filled control on the rail is the orange New button. Home carries Circe's presence and the needs-you count, so there is no separate launcher.
+
+Pages avoid boxes. Sections are set off by a rule and a small heading, rows by hairlines; the command box is the one framed surface on Home. Cards remain for settings groups and floating panels, where they group controls.
 
 ## 14. Status colors
 
-Running is accent copper, Completed is success, Queued is neutral gray, Failed is danger, Needs input is warning, Offline is muted gray. Always combine color with text or iconography. Progress bars are 4 to 6px with a neutral track and accent fill, no animated rainbow gradients.
+Running is accent orange, Completed is success, Queued is neutral gray, Failed is danger, Needs input is warning, Offline is muted gray. Always combine color with text or iconography. Progress bars are 4 to 6px with a neutral track and accent fill, no animated rainbow gradients.
 
 ## 15. Voice and listening state
 
@@ -95,19 +98,19 @@ Micro interactions 120 to 180ms, panel transitions 180 to 240ms, modal and large
 
 ## 17. Light mode
 
-Warm ivory, never sterile white. Page `#FAF7F3`, main surfaces `#FFFDFC`, warm gray borders, copper accent, charcoal typography. Do not flood the interface with pure white.
+Near-white, not ivory. Page `#FAFAFA`, cards `#FFFFFF`, chrome `#F4F4F5`, zinc borders, charcoal type, orange only where it means something.
 
 ## 18. Dark mode
 
-Deep blue-charcoal, not black. Background `#0F1620`, main surfaces `#151B22`, elevated surfaces `#1B222B`. Avoid large fields of `#000000`.
+Neutral charcoal, not blue and not pure black. Background `#111113`, chrome `#0C0C0D`, cards `#18181A`, elevated surfaces `#1E1E21`. Avoid large fields of `#000000`.
 
 ## 19. Marketing imagery
 
-Warm ivory, deep midnight, copper and rose illumination, soft celestial or architectural curves, editorial composition, generous negative space. Product UI stays the hero; background imagery supports rather than competes; use the logo sparingly; no robots, brains, circuit-board cliches, holograms, stars, wands, or generic AI motifs.
+Charcoal and near-white fields with orange illumination, soft architectural curves, editorial composition, generous negative space. Product UI stays the hero; background imagery supports rather than competes; use the logo sparingly; no robots, brains, circuit-board cliches, holograms, stars, wands, or generic AI motifs.
 
 ## 20. Accessibility
 
-Body text contrast at least 4.5:1, large text at least 3:1, visible focus states, 44px minimum mobile touch targets, state never relies on color alone, support reduced motion, no faint warm-gray body text on ivory.
+Body text contrast at least 4.5:1, large text at least 3:1, visible focus states, 44px minimum mobile touch targets, state never relies on color alone, support reduced motion, no faint gray body text on near-white.
 
 ## 21. Product principles
 
@@ -123,12 +126,14 @@ When generating a new Circe screen: pick light or dark semantic tokens, use only
 
 ## Adoption note
 
-The mobile app currently uses DM Sans where this system specifies Inter; switch to Inter via the Expo font plugin when touching the font stack. The `circe-copper`, `circe-peach`, and canvas tokens in `apps/mobile` map to this palette (`#C97857`, `#E8AE93`, `#FAF7F3`, `#0F1620`); older hex values from the draft system must not be reintroduced. The in-app voice orb echoes the brand gradient in layered solids; the embedded-raster mark itself is reserved for logo surfaces per section 2.
+The mobile app currently uses DM Sans where this system specifies Inter; switch to Inter via the Expo font plugin when touching the font stack. Mobile still carries the retired copper and midnight values in `apps/mobile/src/lib/mobileTheme.ts` and `app.config.ts`; move them to this palette in the mobile pass so both apps look like one product.
 
 ## Web implementation notes
 
-The palette above is the web app's default: the base `:root` block in `apps/web/src/index.css` applies whenever no named theme is selected. `CIRCE_CODE_*_THEME_COLORS` in `apps/web/src/themePalette.ts` repeat the same values to seed new themes in the editor. Change both together.
+The palette above is the web app's default: the base `:root` block in `apps/web/src/index.css` applies whenever no named theme is selected. `CIRCE_CODE_*_THEME_COLORS` in `apps/web/src/themePalette.ts` repeat the same values to seed new themes in the editor, and `apps/web/index.html` plus the desktop window's first paint repeat the chrome color so launch does not flash. Change them together.
 
-White text on the brand copper `#C97857` measures 3.3:1, below the 4.5:1 body-text minimum. Light mode therefore fills buttons with a deepened copper, `#A9573A` (4.9:1 with `#FFFAF6`). The brand copper stays on focus rings, active indicators, and the orb. Dark mode fills with `#E08A66` under dark text.
+White text on the brand orange `#F26B3A` measures about 3:1, below the 4.5:1 body-text minimum. Light mode therefore fills buttons with `#CC4A14` (4.6:1 with white). Dark mode fills with the brand orange under near-black text (6.3:1). The brand orange stays on focus rings, active indicators, and the orb in both modes.
 
-The orb (`CirceOrb`) is the only animated brand element. It moves only while Circe is listening or working, uses stepped keyframes, and holds still under reduced motion.
+The mark is Prism Orbit (see `assets/circe/logo-assets-readme.md`). It is emissive art made for dark surfaces, so on light surfaces it sits on a charcoal tile, the same tile app icons use.
+
+The orb (`CirceOrb`) is the mark on a charcoal disc and the only animated brand element. It turns while Circe works, and a ring pulses while it listens. Both are transforms and opacity, so they stay on the compositor; it holds still at rest and under reduced motion.

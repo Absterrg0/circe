@@ -17,6 +17,7 @@ import {
   createCirceConversationAnswerCache,
   isCirceVoiceClarificationDiscard,
   isCirceShortcut,
+  isCirceHomePath,
   isCirceLocalVoiceRoute,
   circeManagerCatalogIsReady,
   resolveCirceDesktopMenuAction,
@@ -731,6 +732,13 @@ describe("Circe manager controls", () => {
     expect(isCirceLocalVoiceRoute(laptop, laptop)).toBe(true);
     expect(isCirceLocalVoiceRoute(laptop, EnvironmentId.make("remote"))).toBe(false);
     expect(isCirceLocalVoiceRoute(null, laptop)).toBe(false);
+  });
+
+  it("mounts the browser command runtime on Home and on the old command center path", () => {
+    expect(isCirceHomePath("/")).toBe(true);
+    expect(isCirceHomePath("/circe")).toBe(true);
+    expect(isCirceHomePath("/machines")).toBe(false);
+    expect(isCirceHomePath("/settings/general")).toBe(false);
   });
 
   it("homes a conversation in the most recently used local project", () => {

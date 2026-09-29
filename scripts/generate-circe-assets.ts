@@ -2,9 +2,11 @@
 // @effect-diagnostics nodeBuiltinImport:off globalConsole:off - This small raster export CLI is intentionally a synchronous ImageMagick boundary.
 
 /**
- * Render the generated Circe master into every existing Circe asset path.
+ * Render the Circe masters into every existing Circe asset path.
  *
- * The checked-in 1254px master is the source of truth. `--check` renders into
+ * Two checked-in 1254px masters are the source of truth: the transparent
+ * Prism Orbit mark for in-app use, and the mark on its charcoal tile for app
+ * icons and favicons, as on the brand sheet. `--check` renders into
  * a temporary directory and compares bytes, so
  * CI can catch a stale platform or web asset without mutating the checkout.
  */
@@ -15,15 +17,16 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
 const repoRoot = NodePath.resolve(import.meta.dirname, "..");
-const source = NodePath.join(repoRoot, "assets/circe/circe-master.png");
+const markSource = NodePath.join(repoRoot, "assets/circe/circe-master.png");
+const iconSource = NodePath.join(repoRoot, "assets/circe/circe-app-icon-master.png");
 const rasterOutputs = [
-  ["assets/circe/circe-ios-1024.png", 1024],
-  ["assets/circe/circe-macos-1024.png", 1024],
-  ["assets/circe/circe-universal-1024.png", 1024],
-  ["assets/circe/circe-web-favicon-16x16.png", 16],
-  ["assets/circe/circe-web-favicon-32x32.png", 32],
-  ["assets/circe/circe-web-apple-touch-180.png", 180],
-  ["apps/web/public/circe-mark.png", 32],
+  ["assets/circe/circe-ios-1024.png", 1024, iconSource],
+  ["assets/circe/circe-macos-1024.png", 1024, iconSource],
+  ["assets/circe/circe-universal-1024.png", 1024, iconSource],
+  ["assets/circe/circe-web-favicon-16x16.png", 16, iconSource],
+  ["assets/circe/circe-web-favicon-32x32.png", 32, iconSource],
+  ["assets/circe/circe-web-apple-touch-180.png", 180, iconSource],
+  ["apps/web/public/circe-mark.png", 256, markSource],
 ] as const;
 
 const icoOutputs = [
@@ -35,7 +38,7 @@ function runMagick(args: ReadonlyArray<string>): void {
   NodeChildProcess.execFileSync("magick", args, { cwd: repoRoot, stdio: "pipe" });
 }
 
-function renderPng(output: string, size: number): void {
+function renderPng(output: string, size: number, source: string): void {
   NodeFS.mkdirSync(NodePath.dirname(output), { recursive: true });
   runMagick([
     "-background",
@@ -61,7 +64,7 @@ function renderIco(output: string): void {
     "none",
     "-density",
     "96",
-    source,
+    iconSource,
     "-define",
     "icon:auto-resize=16,24,32,48,64,128,256",
     "-strip",
@@ -70,8 +73,8 @@ function renderIco(output: string): void {
 }
 
 function generate(destinationRoot: string): void {
-  for (const [relativePath, size] of rasterOutputs) {
-    renderPng(NodePath.join(destinationRoot, relativePath), size);
+  for (const [relativePath, size, source] of rasterOutputs) {
+    renderPng(NodePath.join(destinationRoot, relativePath), size, source);
   }
   for (const relativePath of icoOutputs) {
     renderIco(NodePath.join(destinationRoot, relativePath));
@@ -79,8 +82,10 @@ function generate(destinationRoot: string): void {
 }
 
 function assertSource(): void {
-  if (!NodeFS.existsSync(source)) {
-    throw new Error(`Missing Circe generated master: ${NodePath.relative(repoRoot, source)}`);
+  for (const source of [markSource, iconSource]) {
+    if (!NodeFS.existsSync(source)) {
+      throw new Error(`Missing Circe generated master: ${NodePath.relative(repoRoot, source)}`);
+    }
   }
 }
 
@@ -113,6 +118,6 @@ if (process.argv.includes("--check")) {
 } else {
   generate(repoRoot);
   console.log(
-    `Generated ${rasterOutputs.length + icoOutputs.length} Circe assets from ${NodePath.relative(repoRoot, source)}.`,
+    `Generated ${rasterOutputs.length + icoOutputs.length} Circe assets from the mark and app icon masters.`,
   );
 }

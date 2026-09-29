@@ -101,6 +101,14 @@ export function resolveCirceVoiceMentionTarget(input: {
   return { projectRef: input.projectRef, projectTitle: input.projectTitle };
 }
 
+/**
+ * Home hosts the command console. `/circe` is the command center's old path
+ * and redirects to Home; it still counts while the redirect settles.
+ */
+export function isCirceHomePath(pathname: string): boolean {
+  return pathname === "/" || pathname === "/circe" || pathname.startsWith("/circe/");
+}
+
 export function isCirceLocalVoiceRoute(
   originNodeId: EnvironmentId | null,
   routeNodeId: EnvironmentId | undefined,

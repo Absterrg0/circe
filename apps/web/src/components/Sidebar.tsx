@@ -65,9 +65,6 @@ import {
   Undo2Icon,
   XIcon,
 } from "lucide-react";
-import { SidebarBotsSection } from "./bots/SidebarBots";
-import { SidebarSectionHeading } from "./sidebar/SidebarSectionHeading";
-import { CirceCommandLauncher } from "./sidebar/CirceCommandLauncher";
 import {
   memo,
   useCallback,
@@ -249,7 +246,7 @@ import {
   useComboboxFilter,
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
-import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { SidebarChromeFooter, SidebarPanelHeader } from "./sidebar/SidebarChrome";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -274,8 +271,6 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 // Fresh keys deliberately reset both shelves to collapsed for existing users.
 const SETTLED_SHELF_EXPANDED_KEY = "circe:sidebar:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "circe:sidebar:snoozed-expanded";
-const CONVERSATIONS_SHELF_EXPANDED_KEY = "circe:sidebar:conversations-expanded";
-const AGENTS_COLLAPSED_KEY = "circe:sidebar:agents-collapsed";
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -1845,8 +1840,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       {...sortableRootProps}
       {...(fileDropHandlers ?? {})}
       className={cn(
-        // Matches the h-[4.875rem] content box; the py-0.5 padding is added on top.
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
+        // Matches the h-14 content box; the py-0.5 padding is added on top.
+        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_60px]",
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1867,24 +1862,18 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             />
           }
         >
-          <div className="relative z-10 h-[4.875rem] px-[var(--sidebar-row-content-inset)] py-[var(--sidebar-content-inset)]">
+          {/* Two lines: what the thread is and its state, then where it runs
+              and what it changed. */}
+          <div className="relative z-10 h-14 px-[var(--sidebar-row-content-inset)] py-[var(--sidebar-content-inset)]">
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
-              {props.project && !isConversation ? (
-                <ProjectFavicon project={props.project} className="size-4 shrink-0" />
-              ) : null}
-              {props.projectDisplayName ? (
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-secondary-label text-xs",
-                    shouldRecede ? "font-normal" : "font-medium",
-                  )}
-                >
-                  {props.projectDisplayName}
+              {conversationIndicator}
+              {title}
+              {isRegeneratingTitle ? (
+                <span role="status" className="sr-only">
+                  Regenerating title
                 </span>
-              ) : (
-                <span className="flex-1" />
-              )}
+              ) : null}
               {pinIndicator}
               {/* The visible state owns this slot's width: status at rest,
                   actions on hover/keyboard focus or while the popover is open. Keeping
@@ -2020,29 +2009,27 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 </span>
               )}
             </div>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5">
-              {conversationIndicator}
-              {title}
-              {isRegeneratingTitle ? (
-                <span role="status" className="sr-only">
-                  Regenerating title
-                </span>
+            <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-secondary-label text-xs">
+              {props.project && !isConversation ? (
+                <ProjectFavicon project={props.project} className="size-3.5 shrink-0" />
               ) : null}
-            </div>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
-              {/* Always the branch. The plan step used to take this slot while
-                  working, but it truncated to a half-sentence and dropped the
-                  branch, so the row lost its most stable identifier. */}
-              {thread.branch ? (
-                <>
-                  <ThreadWorktreeIndicator thread={thread} />
-                  <span className="min-w-0 flex-1 truncate whitespace-nowrap text-muted-foreground/40">
-                    {thread.branch}
-                  </span>
-                </>
-              ) : (
-                <span className="flex-1" />
-              )}
+              {/* Project, then always the branch. The plan step used to take
+                  this slot while working, but it truncated to a half-sentence
+                  and dropped the branch, the row's most stable identifier. */}
+              <span className="flex min-w-0 flex-1 items-center gap-1 truncate whitespace-nowrap">
+                {props.projectDisplayName ? (
+                  <span className="shrink-0 truncate">{props.projectDisplayName}</span>
+                ) : null}
+                {thread.branch ? (
+                  <>
+                    {props.projectDisplayName ? <span aria-hidden>·</span> : null}
+                    <ThreadWorktreeIndicator thread={thread} />
+                    <span className="min-w-0 truncate text-muted-foreground/60">
+                      {thread.branch}
+                    </span>
+                  </>
+                ) : null}
+              </span>
               {terminalStatusIcon}
               {prBadge}
               {diff ? (
@@ -2226,7 +2213,11 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
   );
 });
 
-export default function Sidebar() {
+/**
+ * The context sidebar's Agents and Chats lists. Search spans every thread;
+ * the list shows the rail's section.
+ */
+export default function Sidebar({ section }: { readonly section: "agents" | "chats" }) {
   const projects = useProjects();
   // Agents are grouped and scoped by codebase; each node's chat space is not
   // a project the user picks.
@@ -2820,24 +2811,6 @@ export default function Sidebar() {
   const toggleSettledShelf = useCallback(
     () => setSettledShelfExpanded((value) => !value),
     [setSettledShelfExpanded],
-  );
-  const [conversationsExpanded, setConversationsExpanded] = useLocalStorage(
-    CONVERSATIONS_SHELF_EXPANDED_KEY,
-    true,
-    Schema.Boolean,
-  );
-  const toggleConversations = useCallback(
-    () => setConversationsExpanded((value) => !value),
-    [setConversationsExpanded],
-  );
-  const [agentsCollapsed, setAgentsCollapsed] = useLocalStorage(
-    AGENTS_COLLAPSED_KEY,
-    false,
-    Schema.Boolean,
-  );
-  const toggleAgents = useCallback(
-    () => setAgentsCollapsed((value) => !value),
-    [setAgentsCollapsed],
   );
   const renderedSettledThreads = useMemo(() => {
     if (settledShelfExpanded) return visibleSettledThreads;
@@ -4636,21 +4609,43 @@ export default function Sidebar() {
 
   return (
     <>
-      <SidebarChromeHeader isElectron={isElectron} />
+      <SidebarPanelHeader
+        isElectron={isElectron}
+        title={section === "chats" ? "Chats" : "Agents"}
+        actions={
+          section === "chats" ? (
+            chatSpaceRef === null ? null : (
+              <SidebarHeaderIconButton label="New chat" onClick={startNewChat}>
+                <PlusIcon />
+              </SidebarHeaderIconButton>
+            )
+          ) : (
+            <>
+              {projectScopeControl}
+              <SidebarHeaderIconButton
+                label="New agent thread"
+                tooltip={
+                  newThreadShortcutLabel
+                    ? `New agent thread (${newThreadShortcutLabel})`
+                    : "New agent thread"
+                }
+                disabled={userProjects.length === 0}
+                onClick={(event: ReactMouseEvent) => handleNewThreadClick(event)}
+              >
+                <SquarePenIcon />
+              </SidebarHeaderIconButton>
+            </>
+          )
+        }
+      />
       <SidebarContent
         className="gap-0 min-h-full"
         fixedHeader={
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
           <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
-            <CirceCommandLauncher />
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
-              onNewChat={chatSpaceRef === null ? null : startNewChat}
-              onNewAgentThread={() => handleNewThreadClick()}
-              newAgentThreadDisabled={userProjects.length === 0}
-              newAgentThreadShortcutLabel={newThreadShortcutLabel}
-              onAddProject={openAddProjectCommandPalette}
               searchInputRef={threadSearchInputRef}
               searchQuery={threadSearchQuery}
               onSearchQueryChange={(value) => {
@@ -4887,57 +4882,23 @@ export default function Sidebar() {
                         );
                       };
                       const from = dragState?.activeSection ?? null;
-                      // Three groups, in this order: the user's Grok Bots,
-                      // Circe chats (the Conversations project), then coding
-                      // agents. Bot and chat rows are not sortable.
-                      const items: ReactNode[] = [<SidebarBotsSection key="bots-section" />];
-                      items.push(
-                        <SidebarSectionHeading
-                          key="chats-heading"
-                          label="Chats"
-                          count={conversationThreads.length}
-                          collapsed={!conversationsExpanded}
-                          onToggle={toggleConversations}
-                          {...(chatSpaceRef === null
-                            ? {}
-                            : {
-                                action: {
-                                  label: "New chat",
-                                  icon: <PlusIcon />,
-                                  onClick: startNewChat,
-                                },
-                              })}
-                        />,
-                      );
-                      if (conversationsExpanded) {
+                      // One list per rail section; bots have their own panel.
+                      // Chat rows are not sortable.
+                      const items: ReactNode[] = [];
+                      if (section === "chats") {
                         for (const thread of conversationThreads) {
                           items.push(renderThreadRow(thread, "active"));
                         }
                         if (conversationThreads.length === 0) {
                           items.push(
-                            <li key="chats-hint" className="circe-sidebar-hint">
-                              Questions you ask Circe that are not about a project land here.
+                            <li key="chats-empty" className="circe-panel-empty">
+                              Questions for Circe that are not about a project land here. Start one
+                              with <strong>+</strong>.
                             </li>,
                           );
                         }
+                        return items;
                       }
-                      items.push(
-                        <SidebarSectionHeading
-                          key="agents-heading"
-                          label="Agents"
-                          count={pinnedThreads.length + activeThreads.length}
-                          collapsed={agentsCollapsed}
-                          onToggle={toggleAgents}
-                          accessory={projectScopeControl}
-                          action={{
-                            label: "New agent thread",
-                            icon: <SquarePenIcon />,
-                            disabled: userProjects.length === 0,
-                            onClick: (event) => handleNewThreadClick(event),
-                          }}
-                        />,
-                      );
-                      if (agentsCollapsed) return items;
                       items.push(
                         <SidebarDraftBlock
                           key="draft-sessions"
@@ -5054,7 +5015,7 @@ export default function Sidebar() {
                       }
                       return items;
                     })()}
-                    {!agentsCollapsed && settledShelfExpanded && hiddenSettledCount > 0 ? (
+                    {section === "agents" && settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
                         <button
                           type="button"
@@ -5072,7 +5033,7 @@ export default function Sidebar() {
             </TooltipProvider>
           ) : null}
           {!isSearchingThreads &&
-          !agentsCollapsed &&
+          section === "agents" &&
           visibleDraftSessionCount === 0 &&
           pinnedThreads.length +
             activeThreads.length +

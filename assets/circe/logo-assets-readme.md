@@ -1,14 +1,19 @@
 # Circe logo assets
 
-Generated from the approved Circe brand board supplied in chat.
+The mark is Prism Orbit: translucent orange, rose, and violet ribbons orbiting a dark center. It is
+emissive artwork, so it is made to sit on dark surfaces.
 
-## Recommended usage
+## Sources
 
-- `circe-logo-horizontal-on-light.svg` — primary header/marketing logo on light surfaces.
-- `circe-logo-horizontal-on-dark.svg` — primary header/marketing logo on dark surfaces.
-- `circe-mark.svg` — symbol only, transparent.
-- `circe-app-icon-light-1024.png` / `circe-app-icon-dark-1024.png` — app/store icon masters.
-- `favicon.ico` — 16–256 px favicon bundle.
-- `brand-tokens.css` — core identity colors.
+- `circe-master.png` is the transparent mark (1254 px). In-app surfaces use it through
+  `apps/web/public/circe-mark.png`; on light surfaces the app sets it on a small charcoal tile.
+- `circe-app-icon-master.png` is the mark on its charcoal rounded tile with a faint orange rim
+  (1254 px). App icons, favicons, and the splash use it.
+- `circe-mark.svg` embeds the transparent mark so the gradients match the artwork exactly instead of
+  approximating them with an auto-trace.
 
-The SVGs intentionally embed the approved raster artwork so the gradient mark matches the supplied visual exactly instead of approximating it with an auto-trace.
+Run `pnpm circe:assets` to render every icon, favicon, and in-app mark from the two masters, and
+`pnpm circe:assets:check` to confirm the checked-in renditions are current. Both need ImageMagick 7.
+
+`logo-horizontal-on-light.svg` and `logo-horizontal-on-dark.svg` still carry the retired mark and are
+not used by the app.

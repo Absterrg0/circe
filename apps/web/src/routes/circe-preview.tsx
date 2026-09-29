@@ -1,26 +1,26 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-const COPPER = "#C97857";
-const COPPER_DEEP = "#B96849";
-const PEACH = "#E8AE93";
-const BLUSH = "#F2DFD6";
-const SAGE = "#49A878";
+const ORANGE = "#F26B3A";
+const ORANGE_DEEP = "#CC4A14";
+const PEACH = "#FFA47A";
+const BLUSH = "#FDEEE6";
+const SAGE = "#3FA36F";
 const SKY = "#667C96";
-const LIGHT_CANVAS = "#FAF7F3";
-const LIGHT_CARD = "#FFFDFC";
-const LIGHT_INK = "#14171B";
-const LIGHT_MUTED = "#64686F";
-const LIGHT_HAIRLINE = "#E3DDD8";
-const DARK_CANVAS = "#0F1620";
-const DARK_CARD = "#151B22";
-const DARK_INK = "#F6F2EF";
-const DARK_MUTED = "#A9B0B8";
+const LIGHT_CANVAS = "#FAFAFA";
+const LIGHT_CARD = "#FFFFFF";
+const LIGHT_INK = "#18181B";
+const LIGHT_MUTED = "#63636B";
+const LIGHT_HAIRLINE = "#E4E4E7";
+const DARK_CANVAS = "#111113";
+const DARK_CARD = "#18181A";
+const DARK_INK = "#F5F5F4";
+const DARK_MUTED = "#A1A1A6";
 const DARK_HAIRLINE = "rgba(255,255,255,0.08)";
-const DARK_COPPER = "#E08A66";
+const DARK_ORANGE = "#F26B3A";
 
 const SWATCHES: ReadonlyArray<{ name: string; value: string; dark?: string }> = [
-  { name: "Copper", value: COPPER, dark: DARK_COPPER },
-  { name: "Burnt copper", value: COPPER_DEEP },
+  { name: "Orange", value: ORANGE_DEEP, dark: DARK_ORANGE },
+  { name: "Brand orange", value: ORANGE },
   { name: "Peach", value: PEACH },
   { name: "Soft blush", value: BLUSH },
   { name: "Sage", value: SAGE },
@@ -44,7 +44,7 @@ function PhoneFrame({
   const ink = dark ? DARK_INK : LIGHT_INK;
   const muted = dark ? DARK_MUTED : LIGHT_MUTED;
   const hairline = dark ? DARK_HAIRLINE : LIGHT_HAIRLINE;
-  const copper = dark ? DARK_COPPER : COPPER;
+  const accent = dark ? DARK_ORANGE : ORANGE_DEEP;
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
       <div style={{ fontSize: 12, fontWeight: 600, color: LIGHT_MUTED }}>{title}</div>
@@ -93,7 +93,7 @@ function PhoneFrame({
                   flexDirection: "column",
                   alignItems: "center",
                   gap: 2,
-                  color: active ? copper : muted,
+                  color: active ? accent : muted,
                   fontSize: 11,
                   fontWeight: 700,
                 }}
@@ -118,8 +118,8 @@ function CircePreview() {
       <div>
         <h1 style={{ fontSize: 28, margin: 0 }}>Circe mobile preview</h1>
         <p style={{ color: LIGHT_MUTED, fontSize: 14 }}>
-          Step 1: copper and ivory tokens plus the Home, Tasks, and Library tab bar. Static mock for
-          visual review; the real mobile screens bind the same tokens.
+          Step 1: orange and charcoal tokens plus the Home, Tasks, and Library tab bar. Static mock
+          for visual review; the real mobile screens bind the same tokens.
         </p>
       </div>
       <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
@@ -155,7 +155,7 @@ function CircePreview() {
               color: LIGHT_INK,
             }}
           >
-            Good evening, <span style={{ color: COPPER }}>Parv.</span>
+            Good evening, <span style={{ color: ORANGE_DEEP }}>Parv.</span>
           </div>
           <div style={{ fontSize: 14, color: LIGHT_MUTED }}>What shall we do today?</div>
           <div
@@ -196,7 +196,11 @@ function CircePreview() {
           </div>
           <div style={{ fontSize: 13, color: LIGHT_MUTED }}>All your work, in motion.</div>
           {[
-            { title: "Fix auth tests in Rivvl", state: "Running · 2 of 6 steps", color: COPPER },
+            {
+              title: "Fix auth tests in Rivvl",
+              state: "Running · 2 of 6 steps",
+              color: ORANGE_DEEP,
+            },
             { title: "Summarise unread emails", state: "Completed", color: SAGE },
             {
               title: "Draft product update",
@@ -242,8 +246,8 @@ function CircePreview() {
               height: 140,
               borderRadius: "50%",
               margin: "24px auto",
-              background: `radial-gradient(circle at 35% 30%, ${BLUSH}, ${COPPER} 55%, ${COPPER_DEEP})`,
-              boxShadow: `0 0 60px ${COPPER}55`,
+              background: `radial-gradient(circle at 35% 30%, ${BLUSH}, ${ORANGE} 55%, ${ORANGE_DEEP})`,
+              boxShadow: `0 0 60px ${ORANGE}55`,
             }}
           />
           <div style={{ fontSize: 12, color: SKY, textAlign: "center" }}>Remote activity</div>

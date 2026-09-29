@@ -21,12 +21,14 @@ export const ITEM_ICON_CLASS = "size-4 text-icon-muted";
 export const ADDON_ICON_CLASS = "size-4";
 
 /**
- * Search terms for the Circe command center palette entry. The visible title
- * is "Open Circe", so the title words must stay searchable. "circe" remains
- * as a hidden compatibility alias for the legacy action value.
+ * Search terms for the palette entry that opens Home, where the command
+ * console lives. The visible title is "Open Circe", so the title words must
+ * stay searchable; "command center" still finds it for people used to the
+ * old name.
  */
 export const ARIS_COMMAND_CENTER_SEARCH_TERMS: readonly string[] = [
   "circe",
+  "home",
   "open",
   "command",
   "center",

@@ -13,6 +13,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PairRouteImport } from './routes/pair'
+import { Route as MachinesRouteImport } from './routes/machines'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as CircePreviewRouteImport } from './routes/circe-preview'
 import { Route as CirceRouteImport } from './routes/circe'
@@ -56,6 +57,11 @@ const SettingsRoute = SettingsRouteImport.update({
 const PairRoute = PairRouteImport.update({
   id: '/pair',
   path: '/pair',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MachinesRoute = MachinesRouteImport.update({
+  id: '/machines',
+  path: '/machines',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConnectRoute = ConnectRouteImport.update({
@@ -185,6 +191,7 @@ export interface FileRoutesByFullPath {
   '/circe': typeof CirceRoute
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
+  '/machines': typeof MachinesRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
@@ -213,6 +220,7 @@ export interface FileRoutesByTo {
   '/circe': typeof CirceRoute
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
+  '/machines': typeof MachinesRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
@@ -244,6 +252,7 @@ export interface FileRoutesById {
   '/circe': typeof CirceRoute
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
+  '/machines': typeof MachinesRoute
   '/pair': typeof PairRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
@@ -276,6 +285,7 @@ export interface FileRouteTypes {
     | '/circe'
     | '/circe-preview'
     | '/connect'
+    | '/machines'
     | '/pair'
     | '/settings'
     | '/usage'
@@ -304,6 +314,7 @@ export interface FileRouteTypes {
     | '/circe'
     | '/circe-preview'
     | '/connect'
+    | '/machines'
     | '/pair'
     | '/settings'
     | '/usage'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/circe'
     | '/circe-preview'
     | '/connect'
+    | '/machines'
     | '/pair'
     | '/settings'
     | '/usage'
@@ -365,6 +377,7 @@ export interface RootRouteChildren {
   CirceRoute: typeof CirceRoute
   CircePreviewRoute: typeof CircePreviewRoute
   ConnectRoute: typeof ConnectRoute
+  MachinesRoute: typeof MachinesRoute
   PairRoute: typeof PairRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   UsageRoute: typeof UsageRoute
@@ -401,6 +414,13 @@ declare module '@tanstack/react-router' {
       path: '/pair'
       fullPath: '/pair'
       preLoaderRoute: typeof PairRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/machines': {
+      id: '/machines'
+      path: '/machines'
+      fullPath: '/machines'
+      preLoaderRoute: typeof MachinesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/connect': {
@@ -633,6 +653,7 @@ const rootRouteChildren: RootRouteChildren = {
   CirceRoute: CirceRoute,
   CircePreviewRoute: CircePreviewRoute,
   ConnectRoute: ConnectRoute,
+  MachinesRoute: MachinesRoute,
   PairRoute: PairRoute,
   SettingsRoute: SettingsRouteWithChildren,
   UsageRoute: UsageRoute,

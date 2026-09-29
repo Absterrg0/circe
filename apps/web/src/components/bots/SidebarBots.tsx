@@ -2,21 +2,19 @@ import { useAtomValue } from "@effect/atom-react";
 import type { CirceBotSummary, EnvironmentId } from "@circe/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Option from "effect/Option";
-import * as Schema from "effect/Schema";
 import { AsyncResult } from "effect/unstable/reactivity";
 import { RefreshCwIcon } from "lucide-react";
 import { memo, useCallback, useEffect } from "react";
 
-import { useLocalStorage } from "../../hooks/useLocalStorage";
 import { useEnvironments } from "../../state/environments";
 import { circeBotsEnvironment } from "../../state/circeBots";
 import { useAtomCommand } from "../../state/use-atom-command";
-import { SidebarSectionHeading } from "../sidebar/SidebarSectionHeading";
-import { useSidebar } from "../ui/sidebar";
+import { SidebarPanelHeader } from "../sidebar/SidebarChrome";
+import { SidebarHeaderIconButton } from "../sidebar/SidebarThreadHeader";
+import { SidebarContent, SidebarGroup, useSidebar } from "../ui/sidebar";
 import { reportBotCount, useTotalBotCount } from "./botCounts";
 import { botMonogram, botTint } from "./botIdentity";
 
-const BOTS_COLLAPSED_KEY = "circe:sidebar:bots-collapsed";
 const BOT_ROUTE = /^\/bots\/([^/]+)\/([^/]+)\/?$/;
 
 export function BotAvatar(props: {
@@ -69,20 +67,20 @@ const NodeBots = memo(function NodeBots(props: {
       <li key={key} className="list-none" hidden={props.collapsed}>
         <button
           type="button"
-          className="circe-bot-row"
+          className="circe-panel-row"
           data-active={props.activeBotKey === key ? "true" : "false"}
           data-offline={props.online ? "false" : "true"}
           onClick={() => props.onOpen(props.environmentId, summary.bot.botId)}
         >
           <BotAvatar botId={summary.bot.botId} name={summary.bot.name} />
-          <span className="circe-bot-row__text">
-            <span className="circe-bot-row__name">{summary.bot.name}</span>
-            <span className="circe-bot-row__meta">
+          <span className="circe-panel-row__text">
+            <span className="circe-panel-row__name">{summary.bot.name}</span>
+            <span className="circe-panel-row__meta">
               {botMeta(summary, props.nodeLabel, props.online)}
             </span>
           </span>
           {summary.waiting > 0 && props.online ? (
-            <span className="circe-bot-row__badge">Waiting</span>
+            <span className="circe-panel-row__badge">Waiting</span>
           ) : null}
         </button>
       </li>
@@ -91,10 +89,11 @@ const NodeBots = memo(function NodeBots(props: {
 });
 
 /**
- * The sidebar's Bots group: every Grok Bot on every connected node that runs
- * agents. A Controller node has no bots, so it is never subscribed.
+ * The context sidebar's Bots list: every Grok Bot on every connected node that
+ * runs agents. A Controller node has no bots, so it is never subscribed, and
+ * no roster is subscribed at all while another list is showing.
  */
-export function SidebarBotsSection() {
+export function SidebarBotsPanel({ isElectron }: { readonly isElectron: boolean }) {
   const { environments } = useEnvironments();
   const navigate = useNavigate();
   const { isMobile, setOpenMobile } = useSidebar();
@@ -104,7 +103,6 @@ export function SidebarBotsSection() {
     routeMatch === null
       ? null
       : `${decodeURIComponent(routeMatch[1]!)}/${decodeURIComponent(routeMatch[2]!)}`;
-  const [collapsed, setCollapsed] = useLocalStorage(BOTS_COLLAPSED_KEY, false, Schema.Boolean);
   const total = useTotalBotCount();
   const refresh = useAtomCommand(circeBotsEnvironment.refresh, {
     reportFailure: false,
@@ -127,42 +125,54 @@ export function SidebarBotsSection() {
 
   return (
     <>
-      <SidebarSectionHeading
-        label="Bots"
-        count={total}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((value) => !value)}
-        action={{
-          label: "Look for bots again",
-          icon: <RefreshCwIcon />,
-          disabled: nodes.length === 0,
-          onClick: () => {
-            for (const node of nodes) {
-              if (node.connection.phase === "connected") {
-                void refresh({ environmentId: node.environmentId, input: {} });
+      <SidebarPanelHeader
+        isElectron={isElectron}
+        title="Bots"
+        actions={
+          <SidebarHeaderIconButton
+            label="Look for bots again"
+            disabled={nodes.length === 0}
+            onClick={() => {
+              for (const node of nodes) {
+                if (node.connection.phase === "connected") {
+                  void refresh({ environmentId: node.environmentId, input: {} });
+                }
               }
-            }
-          },
-        }}
+            }}
+          >
+            <RefreshCwIcon />
+          </SidebarHeaderIconButton>
+        }
       />
-      {nodes.map((node) => (
-        // Rows stay mounted while collapsed so the heading count stays current.
-        <NodeBots
-          key={node.environmentId}
-          environmentId={node.environmentId}
-          nodeLabel={multiNode ? (node.serverConfig?.environment.label ?? node.label) : null}
-          online={node.connection.phase === "connected"}
-          activeBotKey={activeBotKey}
-          collapsed={collapsed}
-          onOpen={open}
-        />
-      ))}
-      {!collapsed && total === 0 ? (
-        <li className="circe-sidebar-hint">
-          Grok Bots on your machines appear here once <strong>Grok Bot</strong> is running on one of
-          them.
-        </li>
-      ) : null}
+      <SidebarContent>
+        <SidebarGroup className="p-[var(--sidebar-content-inset)]">
+          <ul className="flex flex-col gap-px" aria-label="Bots">
+            {nodes.map((node) => (
+              <NodeBots
+                key={node.environmentId}
+                environmentId={node.environmentId}
+                nodeLabel={multiNode ? (node.serverConfig?.environment.label ?? node.label) : null}
+                online={node.connection.phase === "connected"}
+                activeBotKey={activeBotKey}
+                collapsed={false}
+                onOpen={open}
+              />
+            ))}
+            {total === 0 ? (
+              <li className="circe-panel-empty">
+                {nodes.length === 0 ? (
+                  "Connect a machine that runs agents to reach its Grok Bots."
+                ) : (
+                  <>
+                    Grok Bots on your machines show up here once <strong>Grok Bot</strong> is
+                    running on one of them.
+                  </>
+                )}
+              </li>
+            ) : null}
+          </ul>
+        </SidebarGroup>
+      </SidebarContent>
     </>
   );
 }

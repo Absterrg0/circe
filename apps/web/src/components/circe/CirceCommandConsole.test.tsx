@@ -166,7 +166,7 @@ vi.mock("../../state/use-atom-command", () => ({
 vi.mock("../../circeIdentity", () => ({ circeReporterIdentity: () => "interaction" }));
 vi.mock("../../env", () => ({ isElectron: false }));
 import { CirceVoiceRuntime } from "./CirceVoiceRuntime";
-import { CirceCommandConsole } from "./CirceControlCenter";
+import { CirceCommandConsole } from "./CirceCommandConsole";
 
 const localNode = EnvironmentId.make("local");
 const localProject = ProjectId.make("local-project");

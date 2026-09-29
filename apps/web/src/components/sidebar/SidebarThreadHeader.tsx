@@ -1,16 +1,8 @@
 /**
- * The sidebar header: search across everything, and one New menu for the
- * three kinds of work (a chat, an agent thread in a project, a new project).
- * Project scope lives with the Agents group it filters, not up here.
+ * The context sidebar's search across every thread. New work starts from the
+ * rail's New button or the list's own header action.
  */
-import {
-  FolderPlusIcon,
-  MessageCircleIcon,
-  PlusIcon,
-  SearchIcon,
-  SquarePenIcon,
-  XIcon,
-} from "lucide-react";
+import { SearchIcon, XIcon } from "lucide-react";
 import {
   type ComponentProps,
   type KeyboardEvent as ReactKeyboardEvent,
@@ -21,19 +13,12 @@ import {
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { SidebarMenuButton } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 
 export interface SidebarThreadHeaderProps {
   /** Lands on the search field so a popup can anchor to its width. */
   searchFieldRef?: RefObject<HTMLDivElement | null>;
-  /** Null when no node offers a chat space yet. */
-  onNewChat: (() => void) | null;
-  onNewAgentThread: () => void;
-  newAgentThreadDisabled: boolean;
-  newAgentThreadShortcutLabel: string | null | undefined;
-  onAddProject: () => void;
   searchInputRef: RefObject<HTMLInputElement | null>;
   searchQuery: string;
   onSearchQueryChange: (value: string) => void;
@@ -46,11 +31,6 @@ export interface SidebarThreadHeaderProps {
 
 export function SidebarThreadHeader({
   searchFieldRef,
-  onNewChat,
-  onNewAgentThread,
-  newAgentThreadDisabled,
-  newAgentThreadShortcutLabel,
-  onAddProject,
   searchInputRef,
   searchQuery,
   onSearchQueryChange,
@@ -110,30 +90,6 @@ export function SidebarThreadHeader({
           </Button>
         ) : null}
       </div>
-      <Menu>
-        <MenuTrigger render={<SidebarHeaderIconButton label="New" />}>
-          <PlusIcon />
-        </MenuTrigger>
-        <MenuPopup align="end" className="min-w-52">
-          {onNewChat !== null ? (
-            <MenuItem onClick={onNewChat}>
-              <MessageCircleIcon />
-              New chat
-            </MenuItem>
-          ) : null}
-          <MenuItem disabled={newAgentThreadDisabled} onClick={onNewAgentThread}>
-            <SquarePenIcon />
-            <span className="flex-1">New agent thread</span>
-            {newAgentThreadShortcutLabel ? (
-              <span className="text-xs text-muted-foreground">{newAgentThreadShortcutLabel}</span>
-            ) : null}
-          </MenuItem>
-          <MenuItem onClick={onAddProject}>
-            <FolderPlusIcon />
-            Add project
-          </MenuItem>
-        </MenuPopup>
-      </Menu>
     </div>
   );
 }

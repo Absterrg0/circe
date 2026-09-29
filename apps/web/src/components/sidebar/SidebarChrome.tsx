@@ -1,10 +1,8 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
-import type { ReactNode } from "react";
-import { memo, useCallback } from "react";
-import { Link, useCanGoBack, useLocation, useNavigate } from "@tanstack/react-router";
+import { ArrowLeftIcon } from "lucide-react";
+import { memo, useCallback, type ReactNode } from "react";
+import { useCanGoBack, useNavigate } from "@tanstack/react-router";
 
 import { cn } from "../../lib/utils";
-import { usePullRequestsSupported } from "../../state/environments";
 import {
   resolveEnvironmentIdentificationPillLabel,
   useEnvironmentStageLabel,
@@ -16,38 +14,41 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "../ui/sidebar";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
 import { SidebarProviderUpdatePill } from "./SidebarProviderUpdatePill";
 import { SidebarUpdateArchitectureWarning, SidebarUpdatePill } from "./SidebarUpdatePill";
-import { CIRCE_MARK_SRC } from "../circe/CirceBrand";
-import { PullRequestGlyph } from "~/components/pullRequest/pullRequestIcons";
 
-export const SidebarChromeHeader = memo(function SidebarChromeHeader({
+/**
+ * The context sidebar's title bar: the list's name, the environment stage pill,
+ * and that list's own actions. The brand lives on the rail. On macOS the
+ * traffic lights reach past the rail, so the title starts after them.
+ */
+export const SidebarPanelHeader = memo(function SidebarPanelHeader({
   isElectron,
+  title,
+  actions,
 }: {
   isElectron: boolean;
+  title: string;
+  actions?: ReactNode;
 }) {
   const stageLabel = useEnvironmentStageLabel();
-  // The workbench header stays flat: environment stage shows as a quiet pill
-  // on a crisp 1px rule, never as backdrop artwork.
   const pillLabel = resolveEnvironmentIdentificationPillLabel(stageLabel);
 
   return (
     <SidebarHeader
       className={cn(
-        "@container/sidebar-header relative h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center border-b border-sidebar-border px-3 py-0 md:px-0",
+        "@container/sidebar-header relative h-[var(--workspace-topbar-height)] shrink-0 flex-row items-center gap-2 border-b border-sidebar-border py-0 pe-2 ps-3 md:ps-[max(0.875rem,calc(var(--workspace-controls-left)-var(--app-rail-width)))]",
         isElectron && "drag-region",
       )}
     >
-      <SidebarTrigger className="relative z-10 md:hidden" />
-      <SidebarBrand />
+      <h2 className="min-w-0 truncate text-[15px] font-semibold tracking-[-0.01em] text-sidebar-foreground">
+        {title}
+      </h2>
       {pillLabel ? (
         <Badge
-          className="relative z-10 ml-1 hidden px-1.5 text-muted-foreground @[15rem]/sidebar-header:inline-flex"
+          className="hidden px-1.5 text-muted-foreground @[14rem]/sidebar-header:inline-flex"
           data-environment-identification="pill"
           size="sm"
           variant="secondary"
@@ -55,153 +56,51 @@ export const SidebarChromeHeader = memo(function SidebarChromeHeader({
           {pillLabel}
         </Badge>
       ) : null}
+      {actions ? (
+        <div className="ms-auto flex items-center gap-0.5 [-webkit-app-region:no-drag]">
+          {actions}
+        </div>
+      ) : null}
     </SidebarHeader>
   );
 });
 
-function SidebarBrand() {
-  return (
-    <Link
-      aria-label="Go to threads"
-      className="relative z-10 ml-[var(--workspace-titlebar-content-left)] hidden h-8 w-fit min-w-0 shrink-0 items-center gap-2.5 overflow-hidden rounded-[var(--control-radius)] pe-1.5 text-foreground outline-hidden ring-ring focus-visible:ring-2 md:flex"
-      to="/"
-    >
-      <img alt="" className="size-5 shrink-0" src={CIRCE_MARK_SRC} />
-      <span className="truncate text-[15px] font-semibold tracking-[-0.015em] text-foreground">
-        Circe
-      </span>
-    </Link>
-  );
-}
-
-function SidebarUtilityItem({
-  icon,
-  label,
-  onClick,
-}: {
-  icon: ReactNode;
-  label: string;
-  onClick: () => void;
-}) {
-  return (
-    <SidebarMenuItem className="shrink-0">
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <SidebarMenuButton aria-label={label} onClick={onClick} size="icon">
-              {icon}
-            </SidebarMenuButton>
-          }
-        />
-        <TooltipPopup side="top">{label}</TooltipPopup>
-      </Tooltip>
-    </SidebarMenuItem>
-  );
-}
-
+/** Back out of Settings, which swaps the thread list for its own navigation. */
 export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const navigate = useNavigate();
   const canGoBack = useCanGoBack();
   const { isMobile, setOpenMobile } = useSidebar();
-  const currentFooterPage = useLocation({
-    select: (location) =>
-      /^\/settings(?:\/|$)/.test(location.pathname)
-        ? "settings"
-        : /^\/projects\/[^/]+\/?$/.test(location.pathname)
-          ? "project-settings"
-          : location.pathname === "/usage"
-            ? "usage"
-            : location.pathname === "/circe"
-              ? "circe"
-              : location.pathname === "/pull-requests"
-                ? "pull-requests"
-                : null,
-  });
-  const pullRequestsSupported = usePullRequestsSupported();
-  const closeMobileSidebar = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-  }, [isMobile, setOpenMobile]);
-  const handlePullRequestsClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({
-      to: "/pull-requests",
-      search: readPullRequestListPreferences(),
-    });
-  }, [closeMobileSidebar, navigate]);
-  const handleSettingsClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/settings" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleCirceClick = useCallback(() => {
-    closeMobileSidebar();
-    void navigate({ to: "/circe" });
-  }, [closeMobileSidebar, navigate]);
-
-  const handleUsageClick = useCallback(() => {
-    if (isMobile) {
-      setOpenMobile(false);
-    }
-    void navigate({ to: "/usage" });
-  }, [isMobile, navigate, setOpenMobile]);
-
   const handleBackClick = useCallback(() => {
-    closeMobileSidebar();
+    if (isMobile) setOpenMobile(false);
     if (canGoBack) {
       window.history.back();
       return;
     }
     void navigate({ to: "/" });
-  }, [canGoBack, closeMobileSidebar, navigate]);
+  }, [canGoBack, isMobile, navigate, setOpenMobile]);
 
   return (
     <SidebarMenu className="flex-row items-center">
-      {currentFooterPage ? (
-        <SidebarMenuItem className="min-w-0 flex-1">
-          <SidebarMenuButton onClick={handleBackClick}>
-            <ArrowLeftIcon />
-            <span>Back</span>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
-      ) : (
-        <>
-          <SidebarUtilityItem
-            icon={<img alt="" className="size-4 rounded-sm" src={CIRCE_MARK_SRC} />}
-            label="Circe Control Center"
-            onClick={handleCirceClick}
-          />
-          <SidebarUtilityItem
-            icon={<SettingsIcon />}
-            label="Settings"
-            onClick={handleSettingsClick}
-          />
-          {pullRequestsSupported ? (
-            <SidebarUtilityItem
-              icon={<PullRequestGlyph.pullRequest />}
-              label="Pull Requests"
-              onClick={handlePullRequestsClick}
-            />
-          ) : null}
-          <SidebarUtilityItem
-            icon={<ChartNoAxesColumnIcon />}
-            label="Usage"
-            onClick={handleUsageClick}
-          />
-        </>
-      )}
+      <SidebarMenuItem className="min-w-0 flex-1">
+        <SidebarMenuButton onClick={handleBackClick}>
+          <ArrowLeftIcon />
+          <span>Back</span>
+        </SidebarMenuButton>
+      </SidebarMenuItem>
       <SidebarUpdatePill />
     </SidebarMenu>
   );
 });
 
+/** Update notices; they render nothing when there is nothing to update. */
 export const SidebarChromeFooter = memo(function SidebarChromeFooter() {
   return (
-    <SidebarFooter className="px-[var(--sidebar-content-inset)] py-1">
+    <SidebarFooter className="px-[var(--sidebar-content-inset)] py-1 empty:hidden">
       <SidebarProviderUpdatePill />
       <SidebarUpdateArchitectureWarning />
-      <SidebarUtilityMenu />
+      <div className="flex justify-end empty:hidden">
+        <SidebarUpdatePill />
+      </div>
     </SidebarFooter>
   );
 });

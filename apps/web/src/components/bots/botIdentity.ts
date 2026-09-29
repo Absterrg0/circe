@@ -2,12 +2,12 @@ import type { CirceBotId, EnvironmentId } from "@circe/contracts";
 
 /** Warm tints from the Circe palette; avatars never use off-brand hues. */
 const BOT_TINTS = [
-  "linear-gradient(140deg, #c97857, #8a4f3d)",
+  "linear-gradient(140deg, #f26b3a, #a8401a)",
   "linear-gradient(140deg, #c9a79b, #8c6a60)",
   "linear-gradient(140deg, #d89545, #9b6533)",
   "linear-gradient(140deg, #9b6658, #4a2d2a)",
   "linear-gradient(140deg, #667c96, #3e4f63)",
-  "linear-gradient(140deg, #e8ae93, #b5725a)",
+  "linear-gradient(140deg, #ffa47a, #cc4a14)",
 ] as const;
 
 function hash(value: string): number {
