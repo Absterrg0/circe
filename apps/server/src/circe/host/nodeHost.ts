@@ -1,3 +1,4 @@
+import type { CirceHost, HostSnapshot, PendingRequest, Project, Step, Thread } from "@absterrg0/circe-core";
 import {
   CIRCE_BOT_MESSAGE_MAX_CHARS,
   circeBotConversationId,
@@ -40,7 +41,6 @@ import {
   computerThreads,
   isComputerPlace,
 } from "./computerPlace.ts";
-import type { CirceHost, HostSnapshot, PendingRequest, Project, Step, Thread } from "./core.ts";
 
 /**
  * This node as a Circe host: its projects and threads as Circe's world, and
@@ -48,6 +48,14 @@ import type { CirceHost, HostSnapshot, PendingRequest, Project, Step, Thread } f
  * anything; Circe does, and every command goes through the same orchestrator
  * the coding UI uses, so the UI shows Circe's work as the user's own.
  */
+
+/**
+ * What the chat space is for, in the words circe-core ranks against. It has to
+ * say what goes elsewhere too: a bare "general requests" line also claims
+ * "open the calculator", which only this computer can do.
+ */
+export const CHAT_SPACE_ABOUT =
+  "Not a codebase: an agent answers questions in words, looking things up when it needs to, such as facts, weather, news, explanations and advice. It cannot open or use apps, websites or anything on the screen.";
 
 /** Threads described in full each turn; the rest are listed by title. */
 const DETAILED_THREADS = 12;
@@ -268,8 +276,8 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
           return {
             id: project.id,
             name: project.title,
-            about: "General questions and requests that are not about a coding project.",
-            general: true,
+            about: CHAT_SPACE_ABOUT,
+            kind: "general",
           } satisfies Project;
         }
         let description = described.get(project.id);

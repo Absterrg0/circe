@@ -1,6 +1,8 @@
 import type { CuaDriverLike } from "@trycua/cua-driver";
 import * as Schema from "effect/Schema";
 
+import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
+
 /**
  * One lazily started Cua runtime inside the Electron main process. The runtime
  * owns the OS session; nothing here makes policy decisions. Calls are
@@ -45,6 +47,27 @@ export interface CuaRuntimeOptions {
   /** Test seam: replace the dynamic import of `@trycua/cua-driver`. */
   readonly load?: () => Promise<unknown>;
   readonly requestTimeoutMs?: number;
+  /** Test seam: the environment the driver reads when it is created. */
+  readonly environment?: NodeJS.ProcessEnv;
+  readonly platform?: NodeJS.Platform;
+}
+
+const WAYLAND_BACKEND_VARIABLE = "CUA_DRIVER_RS_ENABLE_WAYLAND";
+
+/**
+ * On a native Wayland session the driver otherwise drives only XWayland, which
+ * lists none of the user's windows, so every mission finds nothing to act on.
+ * The Wayland backend reaches real windows and asks for portal consent once per
+ * session. An explicit value, including "0", is the user's choice and stays.
+ */
+export function prepareDriverEnvironment(
+  environment: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+): void {
+  if (platform !== "linux") return;
+  if ((environment.WAYLAND_DISPLAY ?? "").length === 0) return;
+  if (environment[WAYLAND_BACKEND_VARIABLE] !== undefined) return;
+  environment[WAYLAND_BACKEND_VARIABLE] = "1";
 }
 
 export class CuaRuntimeUnavailableError extends Error {
@@ -81,9 +104,13 @@ export class CuaRuntime {
   private readonly inFlight = new Set<AbortController>();
   private readonly requestTimeoutMs: number;
   private readonly load: () => Promise<unknown>;
+  private readonly environment: NodeJS.ProcessEnv;
+  private readonly platform: NodeJS.Platform;
 
   constructor(options: CuaRuntimeOptions = {}) {
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
+    this.environment = options.environment ?? HostProcessEnvironment.defaultValue();
+    this.platform = options.platform ?? HostProcessPlatform.defaultValue();
     this.load =
       options.load ?? (() => import("@trycua/cua-driver").then((module) => module as unknown));
   }
@@ -193,6 +220,7 @@ export class CuaRuntime {
     const start = (async () => {
       try {
         if (stale) await releaseDriver(stale);
+        prepareDriverEnvironment(this.environment, this.platform);
         const module = (await this.load()) as CuaDriverModule;
         const driver = module.CuaDriver.create(undefined);
         this.driver = driver;

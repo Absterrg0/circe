@@ -579,6 +579,28 @@ if (!result.ok) throw new Error(result.error);
 result.value.destroy();
 `;
 
+// Importing the driver opens its native library through the driver's own FFI
+// loader, which Electron's asar redirect does not cover. A path left inside
+// app.asar fails here exactly as it fails on the first computer action.
+const COMPUTER_DRIVER_PROBE_SOURCE = `
+const { pathToFileURL } = await import("node:url");
+const { CuaDriver } = await import(pathToFileURL(process.argv[1]).href);
+if (typeof CuaDriver?.create !== "function") throw new Error("CuaDriver.create is missing.");
+`;
+
+export class ComputerDriverProbeError extends Schema.TaggedError<ComputerDriverProbeError>()(
+  "ComputerDriverProbeError",
+  {
+    executablePath: Schema.String,
+    exitCode: Schema.Number,
+    output: Schema.String,
+  },
+) {
+  override get message(): string {
+    return `The packaged app could not load its computer driver (exit ${this.exitCode}); desktop use would fail on its first action. Output:\n${this.output}`;
+  }
+}
+
 export class ExternalizedBundleError extends Schema.TaggedError<ExternalizedBundleError>()(
   "ExternalizedBundleError",
   { sentinel: Schema.String, inlinedPackageCount: Schema.Number },
@@ -3528,6 +3550,68 @@ export const verifyWindowsPrimaryFffNativeLoad = Effect.fn(
   );
 });
 
+/**
+ * Loads the Cua computer driver inside the packaged app's own Electron runtime.
+ * Only a host that can run the target executes the probe.
+ */
+export const verifyPackagedComputerDriverLoad = Effect.fn(
+  "desktopArtifact.verifyPackagedComputerDriverLoad",
+)(function* (input: {
+  readonly packagedAppDir: string;
+  readonly appExecutableName: string;
+  readonly targetPlatform: "linux" | "win32";
+  readonly targetArch: typeof BuildArch.Type;
+  readonly verbose: boolean;
+}) {
+  const hostPlatform = yield* HostProcessPlatform;
+  const hostArchitecture = yield* HostProcessArchitecture;
+  if (hostPlatform !== input.targetPlatform || hostArchitecture !== input.targetArch) return;
+  const path = yield* Path.Path;
+  const executablePath = path.join(input.packagedAppDir, input.appExecutableName);
+  const driverEntryPath = path.join(
+    input.packagedAppDir,
+    "resources/app.asar/node_modules/@trycua/cua-driver/dist/index.js",
+  );
+  const probeEnv = { ...process.env };
+  delete probeEnv.ELECTRON_NO_ASAR;
+  delete probeEnv.NODE_OPTIONS;
+
+  yield* runCommand(
+    ChildProcess.make(
+      executablePath,
+      ["--input-type=module", "--eval", COMPUTER_DRIVER_PROBE_SOURCE, driverEntryPath],
+      {
+        cwd: input.packagedAppDir,
+        stdout: "pipe",
+        stderr: "pipe",
+        env: { ...probeEnv, ELECTRON_RUN_AS_NODE: "1", NODE_PATH: "" },
+      },
+    ),
+    { label: "packaged computer driver load probe", verbose: input.verbose },
+  ).pipe(
+    Effect.timeout(WINDOWS_PRIMARY_NATIVE_PROBE_TIMEOUT),
+    Effect.catchTags({
+      TimeoutError: () =>
+        Effect.fail(
+          new ComputerDriverProbeError({
+            executablePath,
+            exitCode: -1,
+            output: `The probe did not finish within ${Duration.toSeconds(WINDOWS_PRIMARY_NATIVE_PROBE_TIMEOUT)}s.`,
+          }),
+        ),
+      BuildCommandFailedError: (error) =>
+        Effect.fail(
+          new ComputerDriverProbeError({
+            executablePath,
+            exitCode: error.exitCode,
+            output: `${error.stderrTail ?? ""}${error.stdoutTail ?? ""}`.trim(),
+          }),
+        ),
+    }),
+  );
+  yield* Effect.log("[desktop-artifact] Verified the packaged computer driver loads.");
+});
+
 export const validateWindowsPackagedPayload = Effect.fn(
   "desktopArtifact.validateWindowsPackagedPayload",
 )(function* (input: {
@@ -3827,6 +3911,14 @@ export const validateWindowsPackagedPayload = Effect.fn(
 
   yield* verifyPackagedBundleIsSelfContained({
     asarPath,
+    verbose: input.verbose ?? false,
+  });
+
+  yield* verifyPackagedComputerDriverLoad({
+    packagedAppDir,
+    appExecutableName: input.appExecutableName,
+    targetPlatform: "win32",
+    targetArch: input.targetArch,
     verbose: input.verbose ?? false,
   });
 
@@ -4427,6 +4519,19 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         arch: options.arch,
         prebuildPath: options.wslPrebuild,
       }),
+      verbose: options.verbose,
+    });
+  }
+
+  if (options.platform === "linux") {
+    yield* verifyPackagedComputerDriverLoad({
+      packagedAppDir: path.join(
+        stageDistDir,
+        options.arch === "x64" ? "linux-unpacked" : `linux-${options.arch}-unpacked`,
+      ),
+      appExecutableName: "circe",
+      targetPlatform: "linux",
+      targetArch: options.arch,
       verbose: options.verbose,
     });
   }

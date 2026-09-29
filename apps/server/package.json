@@ -30,6 +30,7 @@
     "record:cursor-replay": "node --env-file-if-exists=../../.env --experimental-strip-types scripts/record-cursor-agent-sdk-replay-fixture.ts"
   },
   "dependencies": {
+    "@absterrg0/circe-core": "0.3.0",
     "@anthropic-ai/claude-agent-sdk": "^0.3.260",
     "@cursor/sdk": "1.0.22",
     "@effect/platform-node": "catalog:",

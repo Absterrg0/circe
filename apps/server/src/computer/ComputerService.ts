@@ -134,6 +134,8 @@ export class ComputerService extends Context.Service<ComputerService, ComputerSe
   "@absterrg0/circe/computer/ComputerService",
 ) {}
 
+const AUDIT_DETAIL_CHARS = 300;
+
 interface AuditEntry {
   readonly tsMs: number;
   readonly event: "mission.begin" | "mission.end" | "call";
@@ -144,6 +146,8 @@ interface AuditEntry {
   readonly owner?: string;
   readonly effect?: string;
   readonly refusalCode?: string;
+  /** Why a call failed, in the driver's words, so a failure can be diagnosed from the log. */
+  readonly detail?: string;
   readonly durationMs?: number;
   readonly pid?: number;
   readonly windowId?: number;
@@ -476,6 +480,9 @@ const makeService = Effect.fn("computer.makeService")(function* (options: Comput
           owner: ownerLabel(slot.mission.owner),
           effect: result.effect,
           ...(result.refusalCode ? { refusalCode: result.refusalCode } : {}),
+          ...(result.isError && result.text.length > 0
+            ? { detail: result.text.slice(0, AUDIT_DETAIL_CHARS) }
+            : {}),
           durationMs: (yield* Clock.currentTimeMillis) - startedAtMs,
           ...target,
         });

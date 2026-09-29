@@ -1,4 +1,14 @@
 import {
+  Circe,
+  fileMemory,
+  httpJev,
+  JevTimeoutError,
+  type Focus,
+  type Jev,
+  type JevRequest,
+  type JevResponse,
+} from "@absterrg0/circe-core";
+import {
   ProjectId,
   ThreadId,
   type CirceHostFocus,
@@ -27,17 +37,10 @@ import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "../../config.ts";
 import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
-import {
-  loadCirceCore,
-  type CirceCore,
-  type Focus,
-  type Jev,
-  type JevRequest,
-  type JevResponse,
-} from "../host/core.ts";
 import { approvalQuestion, isComputerPlace } from "../host/computerPlace.ts";
 import { makeNodeHost } from "../host/nodeHost.ts";
 import { makeNodeVoice } from "../host/nodeVoice.ts";
+import { spokenWords } from "../host/spokenWords.ts";
 import { CirceBots } from "../Services/CirceBots.ts";
 import { CirceComputerAccess } from "../Services/CirceComputerAccess.ts";
 import { CirceDecision } from "../Services/CirceDecision.ts";
@@ -63,6 +66,13 @@ const unavailable: CirceHostSayResult = {
   started: [],
 };
 
+/** A transcript with only sounds in it, like a cough, reaches no one. */
+const nothingHeard: CirceHostSayResult = {
+  status: "failed",
+  said: "I didn't catch that.",
+  started: [],
+};
+
 export const CirceHostRuntimeLive = Layer.effect(
   CirceHostRuntime,
   Effect.gen(function* () {
@@ -74,11 +84,6 @@ export const CirceHostRuntimeLive = Layer.effect(
         }).pipe(Effect.as(true)),
       ),
     );
-    // circe-core is private: a checkout without it runs with the layer off.
-    const core = enabled ? yield* Effect.promise(loadCirceCore) : undefined;
-    if (enabled && core === undefined) {
-      yield* Effect.logInfo("circe-core is not installed; the Circe host layer is off");
-    }
     const config = yield* ServerConfig.ServerConfig;
     const path = yield* Path.Path;
     const crypto = yield* Crypto.Crypto;
@@ -122,8 +127,8 @@ export const CirceHostRuntimeLive = Layer.effect(
         (yield* fs
           .exists(path.join(home, ".config", "circe", "typesafe-key"))
           .pipe(Effect.orElseSucceed(() => false))));
-    const routedJev = (core: CirceCore): Jev => {
-      const direct = core.httpJev();
+    const routedJev = (): Jev => {
+      const direct = httpJev();
       return {
         async ask(request) {
           if (ownKey) return direct.ask(request);
@@ -139,29 +144,29 @@ export const CirceHostRuntimeLive = Layer.effect(
             });
           }
           if (outcome.reason === "decision-timeout")
-            throw new core.JevTimeoutError("TypeSafe did not answer in time");
+            throw new JevTimeoutError("TypeSafe did not answer in time");
           throw new Error(`TypeSafe declined: ${outcome.reason}`);
         },
       };
     };
 
     const directory = path.join(config.stateDir, "circe-host");
-    const circe =
-      core === undefined
-        ? undefined
-        : core.createCirce({
-            host,
-            jev: routedJev(core),
-            memoryFile: path.join(directory, "memory.json"),
-            logFile: path.join(directory, "decisions.jsonl"),
-          });
+    const circe = enabled
+      ? new Circe({
+          host,
+          jev: routedJev(),
+          store: fileMemory(path.join(directory, "memory.json")),
+          logFile: path.join(directory, "decisions.jsonl"),
+        })
+      : undefined;
 
     const hub = yield* PubSub.sliding<CirceHostNotice>(NOTICE_CAPACITY);
     // Notices raised while a turn catches up on its own work are about that
-    // turn, so they go to its device only; every other notice is for all.
+    // turn, so they go to its device only. Otherwise a notice about work one
+    // device alone sent goes to that device, and every other notice is for all.
     let noticeAudience: string | null = null;
-    circe?.onNotice((text) => {
-      const origin = noticeAudience;
+    circe?.onNotice(({ text, audience }) => {
+      const origin = noticeAudience ?? (audience?.length === 1 ? audience[0]! : null);
       void run(
         crypto.randomUUIDv4.pipe(
           Effect.orDie,
@@ -249,7 +254,13 @@ export const CirceHostRuntimeLive = Layer.effect(
         } satisfies CirceHostSayResult;
       });
 
-    const say = (input: CirceHostSayInput): Effect.Effect<CirceHostSayResult> =>
+    const say = (spoken: CirceHostSayInput): Effect.Effect<CirceHostSayResult> => {
+      const utterance = spokenWords(spoken.utterance);
+      if (utterance.length === 0) return Effect.succeed(nothingHeard);
+      return sayWords({ ...spoken, utterance });
+    };
+
+    const sayWords = (input: CirceHostSayInput): Effect.Effect<CirceHostSayResult> =>
       circe !== undefined
         ? // circe-core cannot abandon a turn it started, so neither can this:
           // an interrupted caller waits for the turn instead of releasing the
@@ -293,9 +304,11 @@ export const CirceHostRuntimeLive = Layer.effect(
     const sayToCirce = (input: CirceHostSayInput): Effect.Effect<CirceHostSayResult> =>
       circe !== undefined
         ? Effect.tryPromise(() =>
-            circe.say(
-              input.utterance,
-              input.focus === undefined
+            circe.say(input.utterance, {
+              // Each device session is its own speaker: only it can take back
+              // its last action or answer a question Circe asked it.
+              ...(input.origin === undefined ? {} : { speaker: input.origin }),
+              ...(input.focus === undefined
                 ? {}
                 : {
                     focus: {
@@ -306,8 +319,8 @@ export const CirceHostRuntimeLive = Layer.effect(
                         ? {}
                         : { projectId: input.focus.projectId }),
                     },
-                  },
-            ),
+                  }),
+            }),
           ).pipe(
             Effect.flatMap((reply) =>
               screenFor(reply.navigate).pipe(
@@ -349,7 +362,7 @@ export const CirceHostRuntimeLive = Layer.effect(
 
     const listen = (input: CirceHostListenInput): Effect.Effect<CirceHostListenResult> =>
       Effect.gen(function* () {
-        // Without circe-core the words still come back, so the client can
+        // With the host layer off the words still come back, so the client can
         // carry them out through its own path instead of dropping them.
         const heard = yield* voice
           .transcribe({

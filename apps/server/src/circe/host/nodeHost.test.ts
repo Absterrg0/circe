@@ -1,3 +1,4 @@
+import { Circe, type Answer, type Jev, type JevRequest } from "@absterrg0/circe-core";
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
@@ -37,7 +38,7 @@ import {
   type CirceComputerDecisionSource,
   type CirceComputerRequester,
 } from "../Services/CirceComputerAccess.ts";
-import { makeNodeHost } from "./nodeHost.ts";
+import { CHAT_SPACE_ABOUT, makeNodeHost } from "./nodeHost.ts";
 
 /** Bots as the host reads them; tests change `places` to move the conversation along. */
 interface FakeBots {
@@ -204,8 +205,8 @@ it.effect(
           {
             id: ProjectId.make("project:conversations"),
             name: CIRCE_CONVERSATIONS_PROJECT_TITLE,
-            about: "General questions and requests that are not about a coding project.",
-            general: true,
+            about: CHAT_SPACE_ABOUT,
+            kind: "general",
           },
         ]);
         assert.deepStrictEqual(empty.threads, []);
@@ -256,7 +257,9 @@ it.effect("puts Grok Bots in Circe's world and sends work for a bot to the bot",
       assert.deepInclude(world.projects, {
         id: "bot:yt",
         name: "YT desk",
-        about: "A Grok Bot, not a codebase: Video ideas for the channel",
+        about: "A Grok Bot the user talks to: Video ideas for the channel",
+        kind: "place",
+        action: "ask the YT desk bot",
       });
       assert.deepInclude(world.threads[0], {
         id: "botchat:0:yt",
@@ -361,9 +364,10 @@ it.effect("puts this computer in Circe's world and asks before using it", () =>
     yield* Effect.gen(function* () {
       const host = yield* makeNodeHost({ turnOrigin: () => origin });
       const world = yield* Effect.promise(async () => host.state());
+      // A place Circe acts for the user, never one of the user's projects.
       assert.include(
         world.projects.find((project) => project.id === "computer:this"),
-        { name: "This computer" },
+        { name: "This computer", kind: "place", action: "use this computer" },
       );
       // Nothing asked yet: the place exists with no request in it.
       assert.isFalse(world.threads.some((thread) => thread.projectId === "computer:this"));
@@ -375,6 +379,8 @@ it.effect("puts this computer in Circe's world and asks before using it", () =>
       const asked = (yield* Effect.promise(async () => host.state())).threads.find(
         (thread) => thread.id === threadId,
       );
+      // Requests share one computer, so each is named by its own goal.
+      assert.equal(asked?.title, "Open the browser");
       assert.deepStrictEqual(asked?.pending, {
         id: "request-1",
         kind: "question",
@@ -566,5 +572,60 @@ it.effect("freezes what the turn did not touch until the turn is over", () =>
         { kind: "question" },
       );
     }).pipe(Effect.provide(yield* withProject(root, fakeBots(bots), fakeComputer(computer))));
+  }).pipe(Effect.provide(NodeServices.layer)),
+);
+
+/** A Jev that answers the named choices with certainty and everything else with nothing. */
+const scriptedJev = (choices: Record<string, string>): Jev => ({
+  ask: async (request: JevRequest) => ({
+    model: request.model,
+    answers: Object.fromEntries(
+      Object.entries(request.questions).map(([id, question]): [string, Answer] => {
+        if (question.type !== "choice") return [id, { type: "noul", noul: 0 }];
+        const picked = choices[id];
+        return [
+          id,
+          picked === undefined
+            ? { type: "choice", choice: "", confidence: 0, probabilities: {} }
+            : { type: "choice", choice: picked, confidence: 1, probabilities: { [picked]: 1 } },
+        ];
+      }),
+    ),
+    usage: { input_tokens: 0, output_tokens: 0 },
+    latencyMs: 0,
+    cached: false,
+  }),
+});
+
+it.effect("keeps this computer and Grok Bots out of the user's projects", () =>
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const root = yield* fs.makeTempDirectoryScoped({ prefix: "circe-node-host-places-" });
+    const bots: FakeBots = {
+      places: [{ bot: ytBot, lastSent: null, lastReply: null }],
+      sent: [],
+      delivery: "waiting",
+    };
+    const computer: FakeComputer = { ...noComputer(), controllable: true };
+    yield* Effect.gen(function* () {
+      const host = yield* makeNodeHost();
+      const ask = (utterance: string, choices: Record<string, string>) =>
+        Effect.promise(() => new Circe({ host, jev: scriptedJev(choices) }).say(utterance));
+
+      const listed = yield* ask("which projects are there in this app", {
+        intent: "ask_about_status",
+        info: "project_list",
+      });
+      assert.equal(listed.said, "Projects: Billing.");
+
+      const opened = yield* ask("open the calculator", {
+        intent: "use_place",
+        place: "This computer",
+      });
+      assert.equal(opened.status, "acted");
+      assert.deepStrictEqual(computer.calls, ["request open the calculator from null"]);
+    }).pipe(
+      Effect.provide(yield* withProject(root, fakeBots(bots), fakeComputer(computer))),
+    );
   }).pipe(Effect.provide(NodeServices.layer)),
 );

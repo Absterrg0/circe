@@ -21,7 +21,7 @@ The MVP has no central discovery service or repository synchronization. Nodes en
 
 ## Host layer turns
 
-When circe-core is installed, each client message goes first to the host layer of the node that owns what the user is looking at (`CirceHostRuntime`, `host/nodeHost.ts`). Three constraints are easy to break:
+circe-core (`@absterrg0/circe-core` on npm) interprets every message. Unless `CIRCE_HOST_ENABLED` is false, each client message goes first to the host layer of the node that owns what the user is looking at (`CirceHostRuntime`, `host/nodeHost.ts`). Three constraints are easy to break:
 
 - circe-core adopts its post-turn snapshot as its baseline without comparing it, so anything that changed during a turn would never be announced. While a turn runs, the node host freezes every thread the turn did not touch at its state when the turn began and hides threads that appeared from elsewhere; the turn's own threads read as running. Afterwards it opens the world in two refreshes: first the turn's own work, whose notices go only to the asking device, then everything else, whose notices go to all devices. Pump refreshes take the same turn lock, so a notice is never tagged with the wrong device.
 - circe-core keeps one memory per node, not per device. Every host message carries the device session's `origin`; a spoken yes settles a user's computer request only for the device that asked, and undo refuses to take back a start or queued message another device made, or one it cannot attribute. Undo of a continue or steer arrives as an ordinary `stop` and cannot be told apart from one; that needs per-action identity in circe-core.

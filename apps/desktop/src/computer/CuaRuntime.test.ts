@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import { CuaRuntime } from "./CuaRuntime.ts";
+import { CuaRuntime, prepareDriverEnvironment } from "./CuaRuntime.ts";
 
 /** A driver module whose drivers record their lifecycle; `available` flips one off. */
 const fakeModule = () => {
@@ -60,5 +60,40 @@ describe("CuaRuntime", () => {
       "create 2",
     ]);
     expect(fake.events.filter((event) => event.startsWith("destroy"))).toEqual(["destroy 1"]);
+  });
+
+  it("turns on the driver's Wayland backend before the driver exists on a Wayland session", async () => {
+    const fake = fakeModule();
+    const environment: NodeJS.ProcessEnv = { WAYLAND_DISPLAY: "wayland-0", DISPLAY: ":0" };
+    let seenAtCreate: string | undefined;
+    const runtime = new CuaRuntime({
+      environment,
+      platform: "linux",
+      load: async () => {
+        seenAtCreate = environment.CUA_DRIVER_RS_ENABLE_WAYLAND;
+        return fake.module;
+      },
+    });
+    await runtime.callTool("list_windows", {});
+    expect(seenAtCreate).toBe("1");
+  });
+});
+
+describe("prepareDriverEnvironment", () => {
+  it("leaves X11, other platforms, and an explicit choice alone", () => {
+    const x11: NodeJS.ProcessEnv = { DISPLAY: ":0" };
+    prepareDriverEnvironment(x11, "linux");
+    expect(x11.CUA_DRIVER_RS_ENABLE_WAYLAND).toBeUndefined();
+
+    const windows: NodeJS.ProcessEnv = { WAYLAND_DISPLAY: "wayland-0" };
+    prepareDriverEnvironment(windows, "win32");
+    expect(windows.CUA_DRIVER_RS_ENABLE_WAYLAND).toBeUndefined();
+
+    const optedOut: NodeJS.ProcessEnv = {
+      WAYLAND_DISPLAY: "wayland-0",
+      CUA_DRIVER_RS_ENABLE_WAYLAND: "0",
+    };
+    prepareDriverEnvironment(optedOut, "linux");
+    expect(optedOut.CUA_DRIVER_RS_ENABLE_WAYLAND).toBe("0");
   });
 });

@@ -67,10 +67,12 @@ coding agents. Nothing touches the computer before the user approves, and a new 
 waiting one with its own approval: a correction never inherits consent. Clients read the owner's
 state through `circe.computerAccess.subscribe` and settle it with typed `decide` and `stop`, so an
 approval never depends on hearing a spoken notice, works on a second device or after a reconnect,
-and works on a node without circe-core.
+and works with the Circe host layer off.
 
 Circe reaches it through circe-core. The node host puts "This computer" in circe-core's world as a
-project, and each request is its own thread. circe-core finds what a start created by the thread id
+place (`kind: "place"`), never as one of the user's projects: circe-core reaches it only when the
+user asks for something done on the screen and never lists or offers it as a project. Each request
+is its own thread there. circe-core finds what a start created by the thread id
 that appeared, so a fresh id per request is what makes undo reach the request and makes circe-core
 watch it until it finishes. Only the asker that made a waiting request may replace it (the same
 device session, or the same agent run for the same goal), so a yes is never spent on a question its

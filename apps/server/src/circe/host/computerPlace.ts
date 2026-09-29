@@ -1,12 +1,16 @@
+import type { Project, Thread } from "@absterrg0/circe-core";
+
+import { taskTitle } from "../controllerHelpers.ts";
 import type {
   CirceComputerAccessState,
   CirceComputerRequest,
 } from "../Services/CirceComputerAccess.ts";
-import type { Project, Thread } from "./core.ts";
 
 /**
- * This node's computer in circe-core's world. The computer is a project work
- * can go to, and each request to use it is its own thread, so circe-core sees
+ * This node's computer in circe-core's world. The computer is a place, not
+ * one of the user's projects: circe-core reaches it when the user asks for
+ * something done on the screen and never lists it as a project. Each request
+ * to use it is its own thread there, so circe-core sees
  * the thread a start created: undo closes that request, and it watches that
  * request until it finishes.
  *
@@ -39,7 +43,9 @@ export const computerProject: Project = {
   id: COMPUTER_PLACE_ID,
   name: TITLE,
   about:
-    "Not a codebase: the desktop of the computer Circe runs on. Opens apps, the web browser and websites, and clicks, types and reads what is on screen for the user.",
+    "The screen of the computer Circe runs on. Anything the user wants done on it goes here as a new request: open or close an app such as the calculator, Spotify or the browser, open a website, click, type, or read what is on screen.",
+  kind: "place",
+  action: "use this computer",
 };
 
 /** The requests circe-core should see: the latest settled one, and the one waiting or running. */
@@ -71,7 +77,8 @@ function base(request: CirceComputerRequest, at: string, nowMs: number) {
   return {
     id: computerThreadId(request.id),
     projectId: COMPUTER_PLACE_ID,
-    title: TITLE,
+    // Every request is on the same computer; its goal is what tells two apart.
+    title: taskTitle(request.goal),
     lastActivityMinutesAgo: Number.isNaN(atMs) ? 0 : Math.max(0, (nowMs - atMs) / 60_000),
     task: clip(request.goal),
     lastUserMessage: clip(request.goal),

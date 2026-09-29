@@ -1,12 +1,12 @@
+import type { Project, Thread } from "@absterrg0/circe-core";
 import { circeBotPlaceId } from "@circe/contracts";
 
 import type { CirceBotPlace } from "../Services/CirceBots.ts";
-import type { Project, Thread } from "./core.ts";
 
 /**
- * Grok Bots in circe-core's world. circe-core knows projects (places work
- * can go) and threads (work in a place), so each bot is both: a project the
- * user can send work to, holding the conversation the bot keeps in Grok.
+ * Grok Bots in circe-core's world. Each bot is a place, not one of the
+ * user's projects: circe-core sends it what the user asks the bot for and
+ * never lists it as a project. Its conversation in Grok is a thread there.
  * Each conversation Circe starts gets a new thread id, because circe-core
  * finds what a start created by the id that appeared: that is how it knows
  * to watch for the bot's answer, and why undo of a start reaches the host.
@@ -26,7 +26,9 @@ export function botProject(place: CirceBotPlace): Project {
   return {
     id: circeBotPlaceId(place.bot.botId),
     name: place.bot.name,
-    about: `A Grok Bot, not a codebase: ${about}`,
+    about: `A Grok Bot the user talks to: ${about}`,
+    kind: "place",
+    action: `ask the ${place.bot.name} bot`,
   };
 }
 

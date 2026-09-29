@@ -277,6 +277,12 @@ const SNOOZED_SHELF_EXPANDED_KEY = "circe:sidebar:snoozed-expanded";
 const CONVERSATIONS_SHELF_EXPANDED_KEY = "circe:sidebar:conversations-expanded";
 const AGENTS_COLLAPSED_KEY = "circe:sidebar:agents-collapsed";
 
+// Older chats carry a "Conversation:" title prefix; the Chats list already says that.
+function conversationTitle(title: string): string {
+  if (!title.startsWith(CIRCE_CONVERSATION_TITLE_PREFIX)) return title;
+  return title.slice(CIRCE_CONVERSATION_TITLE_PREFIX.length).trim() || title;
+}
+
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
   return label.endsWith(" ago") ? label.slice(0, -4) : label;
@@ -1055,8 +1061,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   thread: SidebarThreadSummary;
   variant: "card" | "slim";
   // Slim rows are either settled (action: un-settle) or merely quiet
-  // (seen Ready threads — action: settle).
-  variantAction: "settle" | "unsettle" | "unsnooze";
+  // (seen Ready threads — action: settle). Chats are a plain list: no
+  // lifecycle action, and their status shows in place of the time.
+  variantAction: "settle" | "unsettle" | "unsnooze" | "none";
   // False on environments whose server predates thread.settle/unsettle:
   // the lifecycle affordances hide entirely rather than fail on click.
   settlementSupported: boolean;
@@ -1600,7 +1607,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
         isRegeneratingTitle && "opacity-[0.55]",
       )}
     >
-      {thread.title}
+      {isConversation ? conversationTitle(thread.title) : thread.title}
     </span>
   );
 
@@ -1745,10 +1752,16 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 <span
                   className={cn(
                     "inline-flex justify-end tabular-nums text-secondary-label transition-opacity",
-                    !isWoke && "group-hover/sidebar-row:opacity-0",
+                    !isWoke && variantAction !== "none" && "group-hover/sidebar-row:opacity-0",
                   )}
                 >
-                  {variantAction === "unsnooze" && props.snoozeWakeLabelText !== null ? (
+                  {variantAction === "none" && topStatus && topStatus.icon !== "done" ? (
+                    <span
+                      className={cn("inline-flex items-center gap-1 text-xs", topStatus.className)}
+                    >
+                      <span role="status">{topStatus.label}</span>
+                    </span>
+                  ) : variantAction === "unsnooze" && props.snoozeWakeLabelText !== null ? (
                     // Snoozed rows show when they come BACK, not when they were
                     // last touched — the return ticket is the row's whole story.
                     <span className="text-xs text-blue-600 tabular-nums dark:text-blue-400">
@@ -1795,7 +1808,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       <AlarmClockOffIcon className="mb-px size-3" />
                     </button>
                   )
-                ) : !props.settlementSupported ? null : variantAction === "unsettle" ? (
+                ) : variantAction === "none" || !props.settlementSupported ? null : variantAction ===
+                  "unsettle" ? (
                   <Tooltip>
                     <TooltipTrigger
                       render={
@@ -4757,7 +4771,7 @@ export default function Sidebar() {
                     {(() => {
                       const renderThreadRowInner = (
                         thread: EnvironmentThreadShell,
-                        section: SidebarSection,
+                        section: SidebarSection | "chat",
                         sortable?: SortableThreadRowBag,
                       ) => {
                         const threadKey = scopedThreadKey(
@@ -4768,6 +4782,7 @@ export default function Sidebar() {
                         // from users (or the auto rules) actually parking work,
                         // not from the sidebar second-guessing what still matters.
                         const isCard = section === "active" || section === "pinned";
+                        const isChat = section === "chat";
                         const rowVariant = isCard ? "card" : "slim";
                         return (
                           <SidebarThreadRow
@@ -4778,11 +4793,13 @@ export default function Sidebar() {
                             variant={rowVariant}
                             // Snoozed rows wake, settled rows un-settle, and cards settle.
                             variantAction={
-                              section === "snoozed"
-                                ? "unsnooze"
-                                : section === "settled"
-                                  ? "unsettle"
-                                  : "settle"
+                              isChat
+                                ? "none"
+                                : section === "snoozed"
+                                  ? "unsnooze"
+                                  : section === "settled"
+                                    ? "unsettle"
+                                    : "settle"
                             }
                             settlementSupported={
                               serverConfigs.get(thread.environmentId)?.environment.capabilities
@@ -4869,7 +4886,7 @@ export default function Sidebar() {
                       };
                       const renderThreadRow = (
                         thread: EnvironmentThreadShell,
-                        section: SidebarSection,
+                        section: SidebarSection | "chat",
                       ) => {
                         const threadKey = scopedThreadKey(
                           scopeThreadRef(thread.environmentId, thread.id),
@@ -4911,7 +4928,7 @@ export default function Sidebar() {
                       );
                       if (conversationsExpanded) {
                         for (const thread of conversationThreads) {
-                          items.push(renderThreadRow(thread, "active"));
+                          items.push(renderThreadRow(thread, "chat"));
                         }
                         if (conversationThreads.length === 0) {
                           items.push(

@@ -101,6 +101,40 @@ describe("ComputerService", () => {
     ),
   );
 
+  it.live("audits why a driver call failed", () =>
+    withHost((context) =>
+      Effect.gen(function* () {
+        const service = yield* ComputerService;
+        yield* waitFor(() => context.host.hellos.length === 1);
+        context.host.setToolResult("list_windows", {
+          isError: true,
+          degraded: false,
+          effect: "not-dispatched",
+          text: "The action failed before completion: library open failed",
+          refusalCode: "driver-refused",
+          images: [],
+        });
+        const mission = yield* service.beginMission({
+          goal: "open the calculator",
+          source: "ui",
+          owner: { kind: "client" },
+        });
+        yield* service.call({ missionId: mission.id, tool: "list_windows", args: {} });
+
+        const auditLines = (yield* Effect.promise(() =>
+          NodeFSP.readFile(NodePath.join(context.stateDir, "computer-audit.jsonl"), "utf8"),
+        ))
+          .trim()
+          .split("\n")
+          .map((line) => JSON.parse(line) as Record<string, unknown>);
+        expect(auditLines.find((line) => line.event === "call")).toMatchObject({
+          refusalCode: "driver-refused",
+          detail: "The action failed before completion: library open failed",
+        });
+      }).pipe(Effect.provide(serviceLayer(context))),
+    ),
+  );
+
   it.live("refuses calls without an active mission and a second mission", () =>
     withHost((context) =>
       Effect.gen(function* () {
