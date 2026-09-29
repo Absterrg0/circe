@@ -3,7 +3,15 @@ import type { ThreadRuntimeSummary } from "@circe/client/state/models";
 import { describe, expect, it } from "vite-plus/test";
 
 import { makeThreadFixture, type ThreadFixtureOverrides } from "../../test-fixtures";
-import { buildCirceHomeTasks, countCirceTasksNeedingYou, greetingForHour } from "./CirceHome.logic";
+import type { ThreadPullRequestLink, ThreadPullRequestSnapshot } from "@circe/contracts";
+import {
+  buildCirceHomeTasks,
+  collectCirceHomePullRequests,
+  countCirceTasksNeedingYou,
+  formatElapsed,
+  greetingForHour,
+  pullRequestReadiness,
+} from "./CirceHome.logic";
 
 const NODE = EnvironmentId.make("laptop");
 const CODE = ProjectId.make("code");
@@ -130,5 +138,87 @@ describe("greetingForHour", () => {
     expect(greetingForHour(9)).toBe("Good morning");
     expect(greetingForHour(14)).toBe("Good afternoon");
     expect(greetingForHour(21)).toBe("Good evening");
+  });
+});
+
+function snapshot(overrides: Partial<ThreadPullRequestSnapshot> = {}): ThreadPullRequestSnapshot {
+  return {
+    state: "open",
+    title: "feat: stream agent output",
+    headBranch: "feat/stream",
+    baseBranch: "main",
+    isDraft: false,
+    updatedAt: "2026-09-29T09:00:00.000Z",
+    syncedAt: "2026-09-29T09:00:00.000Z",
+    ...overrides,
+  };
+}
+
+function link(
+  number: number,
+  overrides: Partial<ThreadPullRequestLink> = {},
+): ThreadPullRequestLink {
+  return {
+    host: "github.com",
+    repository: "circe/circe",
+    number,
+    url: `https://github.com/circe/circe/pull/${number}`,
+    source: "created",
+    linkedAt: "2026-09-29T08:00:00.000Z",
+    snapshot: snapshot(),
+    stack: null,
+    ...overrides,
+  };
+}
+
+describe("pullRequestReadiness", () => {
+  it("puts blockers ahead of review state", () => {
+    expect(pullRequestReadiness(snapshot({ isDraft: true, checksState: "failing" }))).toBe("draft");
+    expect(
+      pullRequestReadiness(snapshot({ reviewDecision: "approved", checksState: "failing" })),
+    ).toBe("failing");
+    expect(pullRequestReadiness(snapshot({ mergeability: "conflicting" }))).toBe("failing");
+    expect(pullRequestReadiness(snapshot({ reviewDecision: "changes-requested" }))).toBe("changes");
+    expect(
+      pullRequestReadiness(snapshot({ reviewDecision: "approved", checksState: "passing" })),
+    ).toBe("ready");
+    expect(
+      pullRequestReadiness(snapshot({ reviewDecision: "approved", checksState: "pending" })),
+    ).toBe("review");
+    expect(pullRequestReadiness(snapshot())).toBe("review");
+  });
+});
+
+describe("collectCirceHomePullRequests", () => {
+  it("lists open synced pull requests once, newest first, owned by the latest thread", () => {
+    const result = collectCirceHomePullRequests([
+      thread("older", {
+        updatedAt: "2026-09-29T08:00:00.000Z",
+        pullRequests: [link(1), link(2, { snapshot: snapshot({ state: "merged" }) })],
+      }),
+      thread("newer", {
+        updatedAt: "2026-09-29T11:00:00.000Z",
+        pullRequests: [
+          link(1),
+          link(3, { snapshot: snapshot({ updatedAt: "2026-09-29T11:30:00.000Z" }) }),
+          link(4, { snapshot: null }),
+          link(5, { source: "stack-dismissed" }),
+        ],
+      }),
+    ]);
+
+    expect(result.total).toBe(2);
+    expect(result.items.map((item) => item.link.number)).toEqual([3, 1]);
+    expect(result.items[1]!.thread.id).toBe("newer");
+  });
+});
+
+describe("formatElapsed", () => {
+  it("reads the minute clock as UTC and stays compact", () => {
+    expect(formatElapsed("2026-09-29T11:59:40.000Z", "2026-09-29T12:00")).toBe("now");
+    expect(formatElapsed("2026-09-29T11:48:00.000Z", "2026-09-29T12:00")).toBe("12m");
+    expect(formatElapsed("2026-09-29T10:55:00.000Z", "2026-09-29T12:00")).toBe("1h 5m");
+    expect(formatElapsed("2026-09-29T10:00:00.000Z", "2026-09-29T12:00")).toBe("2h");
+    expect(formatElapsed("2026-09-26T12:00:00.000Z", "2026-09-29T12:00")).toBe("3d");
   });
 });

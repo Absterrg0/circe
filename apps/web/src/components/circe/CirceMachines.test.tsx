@@ -71,6 +71,7 @@ vi.mock("../../state/circeMesh", () => ({
   circeMeshEnvironment: { refresh: Symbol("refresh") },
 }));
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => state.refresh }));
+vi.mock("../../state/entities", () => ({ useThreadShells: () => [] }));
 vi.mock("../ui/toast", () => ({ toastManager: { add: vi.fn() }, stackedThreadToast: vi.fn() }));
 vi.mock("./CirceNodeAgentSettings", () => ({ CirceNodeAgentSettings: () => null }));
 vi.mock("./CirceComputerSection", () => ({ CirceComputerSection: () => null }));

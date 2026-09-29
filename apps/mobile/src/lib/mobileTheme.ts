@@ -311,25 +311,27 @@ export function createMobileThemeVariables(colors: ThemeColors, appearance: Mobi
     "--color-chevron": withAlpha(c.textMuted, 0.42),
     // Circe reference tokens, v1.0. Static per appearance so every generated
     // theme carries the same set and Circe chrome stays consistent.
-    "--color-circe-copper": "#e08a63",
-    "--color-circe-copper-deep": appearance === "dark" ? "#f0a078" : "#a5482c",
-    "--color-circe-copper-bright": "#f0a078",
-    "--color-circe-peach": "#ffd8bd",
-    "--color-circe-blush": appearance === "dark" ? "#33231f" : "#f7cfb8",
-    "--color-circe-stone": appearance === "dark" ? "#2a2622" : "#f2e8de",
-    "--color-circe-success": appearance === "dark" ? "#83d7a3" : "#3f8f63",
-    "--color-circe-warning": appearance === "dark" ? "#e6a066" : "#b4703a",
-    "--color-circe-danger": appearance === "dark" ? "#f0646e" : "#c2454f",
-    "--color-circe-neutral": appearance === "dark" ? "#a1a7af" : "#77736f",
-    "--color-circe-canvas": appearance === "dark" ? "#0c0d0e" : "#fcf9f4",
-    "--color-circe-surface": appearance === "dark" ? "#121415" : "#fffdfa",
-    "--color-circe-surface-raised": appearance === "dark" ? "#191b1d" : "#f6f0e9",
-    "--color-circe-card": appearance === "dark" ? "#121415" : "#fffdfa",
-    "--color-circe-ink": appearance === "dark" ? "#f4f1ed" : "#151311",
-    "--color-circe-copy": appearance === "dark" ? "#b1afad" : "#696b70",
-    "--color-circe-tabbar": appearance === "dark" ? "#121415" : "#fffdfa",
+    // The token names predate the orange palette; the values follow
+    // docs/internals/circe-design-system.md so both apps read as one product.
+    "--color-circe-copper": "#f26b3a",
+    "--color-circe-copper-deep": appearance === "dark" ? "#ff7d4d" : "#cc4a14",
+    "--color-circe-copper-bright": "#ffa47a",
+    "--color-circe-peach": "#ffc2a3",
+    "--color-circe-blush": appearance === "dark" ? "#2a1c16" : "#fdeee6",
+    "--color-circe-stone": appearance === "dark" ? "#1e1e21" : "#f4f4f5",
+    "--color-circe-success": appearance === "dark" ? "#7fd8aa" : "#2a7a50",
+    "--color-circe-warning": appearance === "dark" ? "#efc182" : "#95601c",
+    "--color-circe-danger": appearance === "dark" ? "#f59aa2" : "#b3323f",
+    "--color-circe-neutral": appearance === "dark" ? "#a1a1a6" : "#63636b",
+    "--color-circe-canvas": appearance === "dark" ? "#111113" : "#fafafa",
+    "--color-circe-surface": appearance === "dark" ? "#18181a" : "#ffffff",
+    "--color-circe-surface-raised": appearance === "dark" ? "#1e1e21" : "#f4f4f5",
+    "--color-circe-card": appearance === "dark" ? "#18181a" : "#ffffff",
+    "--color-circe-ink": appearance === "dark" ? "#f5f5f4" : "#18181b",
+    "--color-circe-copy": appearance === "dark" ? "#a1a1a6" : "#63636b",
+    "--color-circe-tabbar": appearance === "dark" ? "#0c0c0d" : "#f4f4f5",
     "--color-circe-tabbar-border":
-      appearance === "dark" ? "rgba(255, 255, 255, 0.065)" : "rgba(56, 43, 35, 0.07)",
+      appearance === "dark" ? "rgba(255, 255, 255, 0.065)" : "rgba(24, 24, 27, 0.08)",
   };
 }
 
