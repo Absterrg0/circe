@@ -1,21 +1,12 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { EnvironmentId, ScheduledTaskId } from "@circe/contracts";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { ScheduledTasksSettings } from "../components/settings/ScheduledTasksSettings";
+import { validateScheduledSearch } from "./scheduled";
 
-function SettingsScheduledTasksRoute() {
-  const target = Route.useSearch();
-  return <ScheduledTasksSettings {...target} />;
-}
-
+// Schedules moved out of Settings into their own page. Old links, including
+// "open this schedule" links in task timelines, keep working.
 export const Route = createFileRoute("/settings/scheduled-tasks")({
-  validateSearch: (raw: Record<string, unknown>) => ({
-    ...(typeof raw.environmentId === "string" && raw.environmentId.trim()
-      ? { environmentId: EnvironmentId.make(raw.environmentId) }
-      : {}),
-    ...(typeof raw.taskId === "string" && raw.taskId.trim()
-      ? { taskId: ScheduledTaskId.make(raw.taskId) }
-      : {}),
-  }),
-  component: SettingsScheduledTasksRoute,
+  validateSearch: validateScheduledSearch,
+  beforeLoad: ({ search }) => {
+    throw redirect({ to: "/scheduled", search, replace: true });
+  },
 });

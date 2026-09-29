@@ -1,54 +1,30 @@
-import type { EnvironmentId } from "@circe/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
-import {
-  CalendarClockIcon,
-  ChartNoAxesColumnIcon,
-  LayersIcon,
-  ListTodoIcon,
-  MicIcon,
-  PlusIcon,
-  SearchIcon,
-  SettingsIcon,
-} from "lucide-react";
-import { memo, useEffect, useMemo, useState, type ReactNode } from "react";
+import { MicIcon, PlusIcon, SearchIcon, SettingsIcon } from "lucide-react";
+import { memo, useEffect, type ReactElement } from "react";
 import { useAtomValue } from "@effect/atom-react";
 
 import { openCommandPalette } from "../../commandPaletteBus";
 import { shortcutLabelForCommand } from "../../keybindings";
-import { useThreadShells } from "../../state/entities";
-import {
-  useEnvironmentConnectionSummaries,
-  useEnvironmentMachines,
-  usePullRequestsSupported,
-} from "../../state/environments";
 import { primaryServerKeybindingsAtom } from "../../state/server";
-import { useUiStateStore } from "../../uiStateStore";
-import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
-import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
-import { resolveSidebarThreadStatus } from "../Sidebar.logic";
 import { useSidebar } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { environmentMachineIcon } from "../EnvironmentMachineIcon";
 import { CIRCE_RAIL_MARK_SRC } from "./CirceBrand";
+import { toggleCirceLiveVoiceFromUser } from "./CirceLiveVoice.bridge";
 import {
-  getCirceLiveVoiceUiState,
-  subscribeCirceLiveVoice,
-  toggleCirceLiveVoiceFromUser,
-} from "./CirceLiveVoice.bridge";
-import { Presence, type CircePresenceState } from "./ui/StatusGlyph";
+  destinationHasPanel,
+  PRESENCE_WORD,
+  rememberTaskHref,
+  resolveCirceDestination,
+  useCirceMachines,
+  useCirceNavigate,
+  useCirceNavItems,
+  useLiveVoiceListening,
+  useNeedsYouCount,
+  type CirceNavItem,
+} from "./CirceNav";
+import { Presence } from "./ui/StatusGlyph";
 
 import "./circe-shell.css";
-
-type RailDestination = "overview" | "tasks" | "pulls" | "scheduled" | "usage" | "settings";
-
-function resolveRailDestination(pathname: string): RailDestination {
-  if (pathname === "/circe") return "overview";
-  if (pathname === "/pull-requests") return "pulls";
-  if (pathname === "/usage") return "usage";
-  if (pathname.startsWith("/settings/scheduled-tasks")) return "scheduled";
-  if (/^\/settings(\/|$)/.test(pathname)) return "settings";
-  return "tasks";
-}
 
 /** Lowercase two-character tile label from a node name: "forge" -> "fo". */
 export function railNodeMonogram(label: string): string {
@@ -56,37 +32,19 @@ export function railNodeMonogram(label: string): string {
   return letters.slice(0, 2) || "?";
 }
 
-function RailTip({ label, children }: { readonly label: string; readonly children: ReactNode }) {
+function RailTip({ label, children }: { readonly label: string; readonly children: ReactElement }) {
   return (
     <Tooltip>
-      <TooltipTrigger render={children as React.ReactElement} />
+      <TooltipTrigger render={children} />
       <TooltipPopup side="right">{label}</TooltipPopup>
     </Tooltip>
   );
 }
 
-function useNeedsYouCount(): number {
-  const threads = useThreadShells();
-  return useMemo(() => {
-    let count = 0;
-    for (const thread of threads) {
-      const status = resolveSidebarThreadStatus(thread);
-      if (status === "approval" || status === "input") count += 1;
-    }
-    return count;
-  }, [threads]);
-}
-
-function useLiveVoiceListening(): boolean {
-  const [state, setState] = useState(getCirceLiveVoiceUiState);
-  useEffect(() => subscribeCirceLiveVoice(() => setState(getCirceLiveVoiceUiState())), []);
-  return state.active;
-}
-
 /**
- * The desktop rail: the mark opens the overview, destinations switch what the
- * inset sidebar and canvas show, and one tile per machine scopes the task
- * list. It is Void in both themes so the mark always sits on black.
+ * The rail picks where you are; the inset panel beside it lists what is
+ * inside that place. Pressing the current destination again folds its
+ * panel. Machine tiles open that machine on Home and never start work.
  */
 export const CirceRail = memo(function CirceRail({
   macos,
@@ -96,63 +54,38 @@ export const CirceRail = memo(function CirceRail({
   readonly electron: boolean;
 }) {
   const navigate = useNavigate();
+  const href = useLocation({ select: (location) => location.href });
   const pathname = useLocation({ select: (location) => location.pathname });
-  const destination = resolveRailDestination(pathname);
+  const destination = resolveCirceDestination(pathname);
   const { open, setOpen } = useSidebar();
   const needs = useNeedsYouCount();
   const listening = useLiveVoiceListening();
-  const pullRequestsSupported = usePullRequestsSupported();
-  const environments = useEnvironmentConnectionSummaries();
-  const machineById = useEnvironmentMachines();
-  const scope = useUiStateStore((store) => store.sidebarMachineScope);
-  const setScope = useUiStateStore((store) => store.setSidebarMachineScope);
+  const navItems = useCirceNavItems();
+  const machines = useCirceMachines();
+  const go = useCirceNavigate();
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const paletteShortcut = shortcutLabelForCommand(keybindings, "commandPalette.toggle");
-  const sidebarShortcut = shortcutLabelForCommand(keybindings, "sidebar.toggle");
+  const panelShortcut = shortcutLabelForCommand(keybindings, "sidebar.toggle");
 
-  // A scope whose machine left the catalog falls back to all machines.
   useEffect(() => {
-    if (scope !== null && !environments.some((env) => env.environmentId === scope)) {
-      setScope(null);
-    }
-  }, [environments, scope, setScope]);
+    if (destination === "tasks" && pathname !== "/") rememberTaskHref(href);
+  }, [destination, href, pathname]);
 
-  const nodes = useMemo(
-    () =>
-      environments
-        .filter((env) => env.isEnabled)
-        .map((env) => {
-          const presence: CircePresenceState =
-            env.connectionState === "connected"
-              ? "online"
-              : env.connectionState === "connecting" || env.connectionState === "reconnecting"
-                ? "busy"
-                : "offline";
-          return {
-            environmentId: env.environmentId as EnvironmentId,
-            label: env.environmentLabel,
-            presence,
-            machine: machineById.get(env.environmentId) ?? "server",
-          };
-        }),
-    [environments, machineById],
-  );
-
-  const showTasks = () => {
-    if (destination === "tasks") {
-      // Tasks is where the sidebar lives: pressing it again folds the
-      // sidebar away, leaving the rail and the canvas.
+  const select = (id: CirceNavItem["id"]) => {
+    if (id === destination && destinationHasPanel(id)) {
       setOpen(!open);
       return;
     }
-    setOpen(true);
-    void navigate({ to: "/" });
+    if (destinationHasPanel(id)) setOpen(true);
+    go(id);
   };
 
-  const scopeTo = (environmentId: EnvironmentId | null) => {
-    setScope(environmentId);
-    setOpen(true);
-    if (destination !== "tasks") void navigate({ to: "/" });
+  const tipFor = (item: CirceNavItem) => {
+    const needsNote =
+      item.id === "tasks" && needs > 0 ? `, ${needs} need${needs === 1 ? "s" : ""} you` : "";
+    if (item.id !== destination || !destinationHasPanel(item.id)) return item.label + needsNote;
+    const action = open ? "Hide list" : "Show list";
+    return `${item.label}${needsNote}. ${action}${panelShortcut ? `  ${panelShortcut}` : ""}`;
   };
 
   return (
@@ -162,111 +95,70 @@ export const CirceRail = memo(function CirceRail({
       data-macos={macos ? "true" : "false"}
       data-drag={electron ? "true" : "false"}
     >
-      <RailTip label="Overview">
+      <RailTip label="Home">
         <button
           type="button"
           className="ci-rail__mark"
-          aria-label="Overview"
-          data-active={destination === "overview" ? "true" : "false"}
-          onClick={() => void navigate({ to: "/circe" })}
+          aria-label="Home"
+          aria-current={destination === "home" ? "page" : undefined}
+          data-active={destination === "home" ? "true" : "false"}
+          onClick={() => go("home")}
         >
           <img alt="" src={CIRCE_RAIL_MARK_SRC} />
         </button>
       </RailTip>
+
       <div className="ci-rail__group">
-        <RailTip
-          label={
-            needs > 0
-              ? `Tasks · ${needs} need${needs === 1 ? "s" : ""} you`
-              : `Tasks${sidebarShortcut && destination === "tasks" ? `  ${sidebarShortcut}` : ""}`
-          }
-        >
-          <button
-            type="button"
-            className="ci-rail__btn"
-            aria-label={needs > 0 ? `Tasks, ${needs} need you` : "Tasks"}
-            data-active={destination === "tasks" ? "true" : "false"}
-            onClick={showTasks}
-          >
-            <ListTodoIcon />
-            {needs > 0 ? (
-              <span className="ci-rail__badge">{needs > 99 ? "99+" : needs}</span>
-            ) : null}
-          </button>
-        </RailTip>
-        {pullRequestsSupported ? (
-          <RailTip label="Pull requests">
-            <button
-              type="button"
-              className="ci-rail__btn"
-              aria-label="Pull requests"
-              data-active={destination === "pulls" ? "true" : "false"}
-              onClick={() =>
-                void navigate({ to: "/pull-requests", search: readPullRequestListPreferences() })
-              }
-            >
-              <PullRequestGlyph.pullRequest />
-            </button>
-          </RailTip>
-        ) : null}
-        <RailTip label="Scheduled">
-          <button
-            type="button"
-            className="ci-rail__btn"
-            aria-label="Scheduled"
-            data-active={destination === "scheduled" ? "true" : "false"}
-            onClick={() => void navigate({ to: "/settings/scheduled-tasks" })}
-          >
-            <CalendarClockIcon />
-          </button>
-        </RailTip>
-        <RailTip label="Usage">
-          <button
-            type="button"
-            className="ci-rail__btn"
-            aria-label="Usage"
-            data-active={destination === "usage" ? "true" : "false"}
-            onClick={() => void navigate({ to: "/usage" })}
-          >
-            <ChartNoAxesColumnIcon />
-          </button>
-        </RailTip>
+        {navItems.map((item) => {
+          const Icon = item.icon;
+          const active = destination === item.id;
+          return (
+            <RailTip key={item.id} label={tipFor(item)}>
+              <button
+                type="button"
+                className="ci-rail__btn"
+                aria-label={
+                  item.id === "tasks" && needs > 0 ? `Tasks, ${needs} need you` : item.label
+                }
+                aria-current={active ? "page" : undefined}
+                data-active={active ? "true" : "false"}
+                onClick={() => select(item.id)}
+              >
+                <Icon />
+                {item.id === "tasks" && needs > 0 ? (
+                  <span className="ci-rail__badge">{needs > 99 ? "99+" : needs}</span>
+                ) : null}
+              </button>
+            </RailTip>
+          );
+        })}
       </div>
+
       <div className="ci-rail__rule" />
-      <div className="ci-rail__group ci-rail__nodes" aria-label="Machines">
-        {nodes.length > 1 ? (
-          <RailTip label="All machines">
-            <button
-              type="button"
-              className="ci-rail__node ci-rail__node--all"
-              aria-label="All machines"
-              aria-pressed={scope === null}
-              data-scoped={scope === null ? "true" : "false"}
-              onClick={() => scopeTo(null)}
-            >
-              <LayersIcon />
-            </button>
-          </RailTip>
-        ) : null}
-        {nodes.map((node) => {
-          const MachineIcon = environmentMachineIcon(node.machine);
-          const scoped = scope === node.environmentId;
+
+      <div className="ci-rail__group ci-rail__machines" aria-label="Machines">
+        {machines.map((machine) => {
+          const Icon = machine.icon;
           return (
             <RailTip
-              key={node.environmentId}
-              label={`${node.label} · ${node.presence === "online" ? "online" : node.presence === "busy" ? "connecting…" : "offline"}`}
+              key={machine.environmentId}
+              label={`${machine.label}, ${PRESENCE_WORD[machine.presence]}${machine.current ? ", this machine" : ""}`}
             >
               <button
                 type="button"
-                className="ci-rail__node"
-                aria-label={`${node.label}, ${node.presence}`}
-                aria-pressed={scoped}
-                data-scoped={scoped ? "true" : "false"}
-                data-offline={node.presence === "offline" ? "true" : "false"}
-                onClick={() => scopeTo(scoped || nodes.length === 1 ? null : node.environmentId)}
+                className="ci-rail__machine"
+                aria-label={`${machine.label}, ${PRESENCE_WORD[machine.presence]}`}
+                data-offline={machine.presence === "offline" ? "true" : "false"}
+                onClick={() =>
+                  void navigate({ to: "/circe", search: { machine: machine.environmentId } })
+                }
               >
-                {nodes.length > 1 ? railNodeMonogram(node.label) : <MachineIcon />}
-                <Presence state={node.presence} ring="var(--rail)" />
+                {machines.length > 1 ? (
+                  <span className="ci-rail__monogram">{railNodeMonogram(machine.label)}</span>
+                ) : (
+                  <Icon />
+                )}
+                <Presence state={machine.presence} ring="var(--chrome)" />
               </button>
             </RailTip>
           );
@@ -274,7 +166,7 @@ export const CirceRail = memo(function CirceRail({
         <RailTip label="Pair a machine">
           <button
             type="button"
-            className="ci-rail__node ci-rail__node--add"
+            className="ci-rail__machine ci-rail__machine--add"
             aria-label="Pair a machine"
             onClick={() => void navigate({ to: "/settings/connections" })}
           >
@@ -282,7 +174,9 @@ export const CirceRail = memo(function CirceRail({
           </button>
         </RailTip>
       </div>
+
       <div className="ci-rail__spacer" />
+
       <div className="ci-rail__group">
         <RailTip label={`Search${paletteShortcut ? `  ${paletteShortcut}` : ""}`}>
           <button
@@ -311,8 +205,12 @@ export const CirceRail = memo(function CirceRail({
             type="button"
             className="ci-rail__btn"
             aria-label="Settings"
+            aria-current={destination === "settings" ? "page" : undefined}
             data-active={destination === "settings" ? "true" : "false"}
-            onClick={() => void navigate({ to: "/settings" })}
+            onClick={() => {
+              setOpen(true);
+              void navigate({ to: "/settings" });
+            }}
           >
             <SettingsIcon />
           </button>

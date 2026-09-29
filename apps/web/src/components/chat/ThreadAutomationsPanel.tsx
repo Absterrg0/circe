@@ -5,7 +5,7 @@ import type { EnvironmentId, ScheduledTask, ThreadId } from "@circe/contracts";
 import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 
 import { cn } from "../../lib/utils";
-import { relativeLabel, scheduleLabel } from "../settings/ScheduledTasksSettings";
+import { relativeLabel, scheduleLabel } from "../scheduled/scheduleLabels";
 import { useEnvironmentQuery } from "../../state/query";
 import { serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
@@ -113,14 +113,14 @@ export function ThreadAutomationsPanel(props: {
                 size="icon-xs"
                 variant="ghost"
                 className={THREAD_DETAILS_PANEL_ICON_ACTION_CLASS}
-                aria-label="Manage schedule tasks"
-                onClick={() => void navigate({ to: "/settings/scheduled-tasks" })}
+                aria-label="Open schedules"
+                onClick={() => void navigate({ to: "/scheduled" })}
               >
                 <Settings2Icon className="size-3.5" />
               </Button>
             }
           />
-          <TooltipPopup>Manage schedule tasks</TooltipPopup>
+          <TooltipPopup>Open schedules</TooltipPopup>
         </Tooltip>
       </div>
 

@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import type { CirceMeshCatalog } from "@circe/client-runtime/circe/mesh";
-import { AtSignIcon } from "lucide-react";
 
 import { useThreadShells } from "../../state/entities";
 import { isSidebarSubagentThread } from "../Sidebar.logic";
@@ -101,27 +100,12 @@ export function CirceLiveAgents({
   }
 
   return (
-    <div className="ci-runs" role="table" aria-label="Activity">
-      <div className="ci-run ci-run--header" role="row">
-        <span />
-        <span className="ci-label" role="columnheader">
-          Task
-        </span>
-        <span className="ci-label" role="columnheader">
-          Agent
-        </span>
-        <span className="ci-label" role="columnheader">
-          Machine
-        </span>
-        <span className="ci-label ci-run__num" role="columnheader">
-          Time
-        </span>
-      </div>
+    <div className="ci-runs" role="list" aria-label="Recent tasks">
       {rows.map((row) => (
         <div
           key={`${row.thread.environmentId}:${row.thread.id}`}
           className={`ci-run ci-run--${row.state}`}
-          role="row"
+          role="listitem"
           tabIndex={0}
           onClick={() =>
             void navigate({
@@ -141,25 +125,20 @@ export function CirceLiveAgents({
           <span className="ci-run__glyph">
             <StatusGlyph state={row.state} size={16} label={CIRCE_STATUS_WORD[row.state]} />
           </span>
-          <span className="ci-run__task" role="cell">
+          <span className="ci-run__task">
             <span className="ci-run__title">{row.thread.title}</span>
             {row.projectTitle ? <span className="ci-run__project">{row.projectTitle}</span> : null}
           </span>
-          <span className="ci-run__agent" role="cell">
+          <span className="ci-run__agent">
             <ProviderMark name={row.providerLabel} />
             <span className="truncate">{row.providerLabel}</span>
           </span>
-          <span className="ci-run__node" role="cell">
-            {row.nodeLabel ? (
-              <>
-                <AtSignIcon aria-hidden className="size-3" />
-                {row.nodeLabel.toLowerCase()}
-              </>
-            ) : null}
+          <span className="ci-run__node">
+            {row.nodeLabel ? `@${row.nodeLabel.toLowerCase()}` : null}
           </span>
-          <span className="ci-run__num" role="cell">
-            {row.duration ? <span className="ci-run__dur">{row.duration}</span> : null}
+          <span className="ci-run__num">
             <span className="ci-run__time">{row.at}</span>
+            {row.duration ? <span className="ci-run__dur">{row.duration}</span> : null}
           </span>
         </div>
       ))}

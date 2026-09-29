@@ -243,9 +243,6 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --color-success-soft: var(--success-soft);
   --color-danger: var(--danger);
   --color-danger-soft: var(--danger-soft);
-  --color-rail: var(--rail);
-  --color-rail-ink: var(--rail-ink);
-  --color-rail-ink-muted: var(--rail-ink-muted);
   --shadow-glow-ember: var(--glow-ember);
   --shadow-glow-attention: var(--glow-attention);
   --shadow-glow-voice: var(--glow-voice);
@@ -1379,8 +1376,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 }
 
 /* Circe component tokens read the semantic roles, so a named theme restyles
-   Circe surfaces too. The rail and the orb stay Void in every theme: the
-   mark and the orb always sit on black. */
+   Circe surfaces too. The orb stays Void in every theme. */
 :root {
   --canvas: var(--background);
   --chrome: var(--app-chrome-background);
@@ -1403,11 +1399,6 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --danger-soft: var(--error-surface);
   --success-soft: var(--success-surface);
   --focus-ring: 0 0 0 2px var(--background), 0 0 0 4px var(--primary);
-  --rail: #0b0a09;
-  --rail-ink: #ede8e1;
-  --rail-ink-muted: #8c847b;
-  --rail-hover: #141210;
-  --rail-active: #1d1a17;
   --orb-void: #0b0a09;
   --orb-deep: #6d3526;
   --orb-copper: #e18a62;

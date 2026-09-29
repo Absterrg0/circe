@@ -4,26 +4,39 @@ Circe lets you direct coding agents with text or voice and hear their real resul
 
 ## Open Circe
 
-On the desktop, the rail at the left edge is how you move around Circe:
+On the desktop, the rail at the left edge picks where you are, and the panel next to it lists what is inside that place:
 
-- The Circe mark opens the **Overview**: what needs you, what is running, and your machines.
-- **Tasks** shows the task list. A gold count means that many tasks are waiting on you. Press **Tasks** again, or `Ctrl+B` (`Command+B` on macOS), to fold the list away.
-- **Pull requests**, **Scheduled** and **Usage** open those pages.
-- Each paired machine has a tile with its presence dot: green online, copper busy, hollow offline. Select a tile to show only that machine's tasks; the sidebar header names the machine, and the layers tile (or **All machines** in that header) shows everything again. The dashed **+** tile pairs a machine.
+- The Circe mark opens **Home**: what needs you, your machines, and recent work. Home uses the whole window, so it has no panel.
+- **Tasks** opens the task list and returns to the task you last had open. A gold count means that many tasks are waiting on you. With more than one machine, the machine name in the panel's header shows only that machine's tasks.
+- **Pull requests** lists views (Open, Needs my review, Mine, Merged, Closed) and your projects. Picking one filters the list beside it.
+- **Scheduled** lists your schedules, grouped by machine when you have more than one. See [Scheduled](#scheduled).
+- **Usage** opens usage and limits across your providers.
+- Each paired machine has a tile with its presence dot: green online, copper busy, hollow offline. Select a tile to open that machine's details on Home. The dashed **+** tile pairs a machine.
 - The magnifier opens the command palette, the microphone starts or ends a live conversation, and the gear opens Settings.
 
-The command palette's **Open overview** reaches the same page. In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation from anywhere.
+Press the page you are on again, or `Ctrl+B` (`Command+B` on macOS), to fold its panel away and give the page the whole window.
+
+The command palette's **Open overview** reaches Home. In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation from anywhere.
 
 On a phone or a narrow browser window the rail is gone; the sidebar sheet keeps the same destinations at its foot.
 
-### Overview
+### Home
 
-The overview leads with one sentence, for example **Good evening. Two tasks need you.**, then counts of running and completed work and how many machines are online. Under the command box:
+Home leads with a greeting and one sentence about your work, for example **Two tasks need you. 3 finished today.** Under the command box:
 
-- **Needs you** lists tasks waiting for an approval or an answer, newest first. **Review** or **Answer…** opens the task, where the full request is readable.
+- **Needs you** lists tasks waiting for an approval or an answer, newest first. **Review** or **Answer** opens the task, where the full request is readable.
+- **Machines** shows each machine with its preset and what it is doing. Each bar is one live task: gold needs you, copper is running. Select a machine to open its details: computer use, providers, projects and Circe settings. The desktop's own node is marked **this machine**. When a machine is offline, Home says so and says that its tasks stay there: Circe never moves work to another machine.
 - **Activity** is recent work on every machine, filterable to **Running** or **Failed**, with each task's agent, machine and time.
 
-The side column lists your machines with what each is doing. Select one to see its computer use, providers, projects and Circe settings underneath. The desktop's own node is marked **this machine**. When a machine is offline the overview says so, and says that its tasks stay there: Circe never moves work to another machine. **Refresh** reloads project and provider details; connection changes update the list on their own.
+### Scheduled
+
+A schedule runs a prompt in one of a machine's projects at a fixed time or on an interval. The machine that owns the project runs it.
+
+- Select a schedule in the panel to see when it runs next, how its last run went, its project, model and workspace, and its prompt. **Run now** starts it immediately, **Edit** changes it, and the switch pauses or resumes it.
+- With no schedule selected, the page lists the machine's schedules in the order they will run.
+- The **+** in the panel creates a schedule on that machine.
+
+Links to a schedule from a task's timeline open it here.
 
 ### Desktop activity orb
 

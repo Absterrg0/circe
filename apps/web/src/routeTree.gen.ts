@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as UsageRouteImport } from './routes/usage'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ScheduledRouteImport } from './routes/scheduled'
 import { Route as PairRouteImport } from './routes/pair'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as CircePreviewRouteImport } from './routes/circe-preview'
@@ -51,6 +52,11 @@ const UsageRoute = UsageRouteImport.update({
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScheduledRoute = ScheduledRouteImport.update({
+  id: '/scheduled',
+  path: '/scheduled',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PairRoute = PairRouteImport.update({
@@ -186,6 +192,7 @@ export interface FileRoutesByFullPath {
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
+  '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -214,6 +221,7 @@ export interface FileRoutesByTo {
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
+  '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -245,6 +253,7 @@ export interface FileRoutesById {
   '/circe-preview': typeof CircePreviewRoute
   '/connect': typeof ConnectRoute
   '/pair': typeof PairRoute
+  '/scheduled': typeof ScheduledRoute
   '/settings': typeof SettingsRouteWithChildren
   '/usage': typeof UsageRoute
   '/welcome': typeof WelcomeRoute
@@ -277,6 +286,7 @@ export interface FileRouteTypes {
     | '/circe-preview'
     | '/connect'
     | '/pair'
+    | '/scheduled'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/circe-preview'
     | '/connect'
     | '/pair'
+    | '/scheduled'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -335,6 +346,7 @@ export interface FileRouteTypes {
     | '/circe-preview'
     | '/connect'
     | '/pair'
+    | '/scheduled'
     | '/settings'
     | '/usage'
     | '/welcome'
@@ -366,6 +378,7 @@ export interface RootRouteChildren {
   CircePreviewRoute: typeof CircePreviewRoute
   ConnectRoute: typeof ConnectRoute
   PairRoute: typeof PairRoute
+  ScheduledRoute: typeof ScheduledRoute
   SettingsRoute: typeof SettingsRouteWithChildren
   UsageRoute: typeof UsageRoute
   WelcomeRoute: typeof WelcomeRoute
@@ -394,6 +407,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scheduled': {
+      id: '/scheduled'
+      path: '/scheduled'
+      fullPath: '/scheduled'
+      preLoaderRoute: typeof ScheduledRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/pair': {
@@ -634,6 +654,7 @@ const rootRouteChildren: RootRouteChildren = {
   CircePreviewRoute: CircePreviewRoute,
   ConnectRoute: ConnectRoute,
   PairRoute: PairRoute,
+  ScheduledRoute: ScheduledRoute,
   SettingsRoute: SettingsRouteWithChildren,
   UsageRoute: UsageRoute,
   WelcomeRoute: WelcomeRoute,

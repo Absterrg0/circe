@@ -27,9 +27,9 @@ Circe is one assistant for directing coding agents across all your machines. The
 
 ## Colour
 
-Two themes: **Void** (`dark`, the default, warm near-black) and **Daylight** (`light`, warm paper). Both keep the rail and the voice bar on `orb-void`, so the mark and the orb always sit on black. Components that must stay dark render with `data-theme="dark"` on their root, which re-scopes every token inside them.
+Two themes: **Void** (`dark`, the default, warm near-black) and **Daylight** (`light`, warm paper). Both keep the voice bar on `orb-void`, so the orb always sits on black; on light grounds the mark gets its own Void tile. Components that must stay dark render with `data-theme="dark"` on their root, which re-scopes every token inside them.
 
-**Surfaces, back to front:** `rail` → `chrome` (window ground, inset sidebar) → `canvas` (the inset main panel) → `raised` (the composer, approvals, inputs) → `overlay` (menus, palette, toasts). `well` is recessed: code, terminals, meter tracks. The steps are small on purpose; most content needs no surface at all.
+**Surfaces, back to front:** `chrome` (window ground and rail) → `panel` (the inset sidebar, the left pane of the card) → `canvas` (the card's main pane) → `raised` (the composer, approvals, inputs) → `overlay` (menus, palette, toasts). `well` is recessed: code, terminals, meter tracks. The steps are small on purpose; most content needs no surface at all.
 
 **Ink:** `ink` for primary text, `ink-muted` for secondary text and resting icons, `ink-faint` for placeholders, timestamps and directory parts of paths. All three pass 4.5:1 on every surface in both themes; `ink-faint` is not for text on coloured fills.
 
@@ -58,13 +58,13 @@ Success is a sage that leans toward teal, so it separates from `danger` by more 
 - Numbers that change in place (counts, meters, diff stats, times) use `font-variant-numeric: tabular-nums`.
 - Never set paragraphs in Sora or UI labels in mono.
 
-## Layout: rail, inset sidebar, canvas
+## Layout: rail, panel, canvas
 
-The desktop shell is three columns (`AppShell`):
+The desktop shell has two levels of navigation. The rail says where you are; the panel says what is inside that place; the canvas shows the thing you picked.
 
-1. **Rail** (`rail-width`, 64px). Always Void. Top to bottom: the mark (opens the overview), destinations (Tasks, Agents, Pull requests, Scheduled, Usage), a rule, one tile per machine (the layers tile means all machines; the scoped tile gets a ring), a dashed tile to pair a machine, then search, the mic (it lights in `voice` while Circe listens), settings and the account. The gold count on Tasks is the number of tasks that need you.
-2. **Inset sidebar** (`sidebar-width`, 280px, resizable 240 to 400). Sits on `chrome` and shows whatever the rail points at: tasks grouped as Needs you, Running, Today; agents; pull requests. Its header row is `topbar-height` and aligns with the canvas header. ⌘B collapses it to rail only.
-3. **Canvas.** An inset panel on `canvas` with a `line` border, `radius-xl` corners and `canvas-gap` (8px) from the window's top, right and bottom. The timeline and composer centre in `content-max` (760px). The overview runs rail only: a header bar, then a main column (headline, a stat line, the composer, Needs you, Activity) and a 360px side column (Machines, Limits) split by a hairline.
+1. **Rail** (`rail-width`, 60px) on `chrome`. Top to bottom: the mark (Home), destinations (Tasks, Pull requests, Scheduled, Usage), a rule, one tile per machine (it opens that machine on Home) and a dashed tile to pair one, then search, the mic (it lights in `voice` while Circe listens) and settings. The current destination is a lit tile on the `panel` ground, so the eye connects it to the panel it opens. The gold count on Tasks is the number of tasks that need you.
+2. **Panel** (`sidebar-width`, 280px, resizable 240 to 400). The left pane of the card, on `panel`. It lists what the destination holds: tasks for Tasks, views and projects for Pull requests, schedules by machine for Scheduled, sections for Settings. Home and Usage are dashboards and have no panel. Its header row is `topbar-height` and aligns with the canvas header. Pressing the current destination again, or ⌘B, folds it.
+3. **Canvas.** The right pane of the card, on `canvas`, split from the panel by a hairline. The card has a `line` border, `radius-xl` outer corners and `canvas-gap` (8px) from the window's top, right and bottom. Content centres in `content-max` (760 to 820px). Home is one column ordered by urgency: greeting and state, the composer, Needs you, Machines, Activity. A machine's setup opens in a sheet.
 
 On mobile the rail becomes the `TabBar` (Home, Tasks, Library) and the machine tiles become the "All machines" scope chip. Hit areas are at least `touch-min`.
 

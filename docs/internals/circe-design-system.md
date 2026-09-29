@@ -26,11 +26,19 @@ Tailwind v4 reads `--shadow-*` and `--radius-*` as theme variables, so the desig
 - **Approvals open the task.** The overview's Needs you rows offer Review or Answer rather than inline Allow and Deny, because the full request must be readable before approving and the row has no room for it. The approval drawer in the task follows the book's ApprovalCard.
 - **Desktop voice stays an orb.** The book's VoiceBar is a horizontal strip. The desktop overlay keeps its draggable orb and activity panel, with its window geometry and snapping, and takes the book's palette: copper light on dark glass, voice, ember and attention for state.
 - **The mobile home keeps its orb.** Home and the voice view are one scene around one orb that animates between them. The book's "no orb on the overview" applies to the desktop overview, where the orb was a decorative hero.
-- **Machine tiles.** With a single machine the rail tile shows its machine icon instead of a two-letter monogram, and there is no account avatar because a node has no single account.
+- **Machine tiles.** With a single machine the rail tile shows its machine icon instead of a two-letter monogram, and there is no account avatar because a node has no single account. A tile opens that machine on Home (`/circe?machine=`); it does not scope the task list, because a scope that only the Tasks panel shows made the tile look broken on every other page. The task scope lives in the Tasks panel header.
+- **The rail follows the theme.** The book keeps the rail Void in both themes. The rail now frames the panel-and-canvas card, and a dark frame around a light card read as a third surface. The rail sits on `chrome` like the window, and on light grounds the mark gets its own Void tile.
+- **No uppercase instrument labels in the shell.** Sidebar sections, Home and Scheduled use sentence-case headings; tracked uppercase read as template chrome next to the task list.
 
 ## Shell
 
-The rail is an in-flow column; the shadcn sidebar container is `position: fixed`, so `circe-shell.css` offsets it by `--rail-width` and slides it under the rail when collapsed. The rail replaces the floating sidebar toggle on desktop, so `--workspace-titlebar-content-left` is overridden there; on macOS the traffic lights sit over the rail, whose top padding clears them. The overview hides the sidebar with CSS rather than unmounting it, so the task list keeps its search, drag and scroll state.
+Two levels of navigation, one rule: the rail picks a destination, and the inset panel lists what is inside it. `CirceNav.tsx` owns the destination list, `resolveCirceDestination` and `destinationHasPanel`; the rail and `AppSidebarLayout` both read them, so a new destination cannot light the rail without choosing its panel. Destinations that list things (Tasks, Pull requests, Scheduled, Settings) have a panel. Dashboards (Home, Usage) do not, and `data-panel="none"` hides the sidebar with CSS rather than unmounting it, so the task list keeps its search, drag and scroll state.
+
+A panel drives its page through the URL, never through shared component state: the Pull requests panel writes the page's `involvement`, `state` and `projectId` search params, and the Scheduled panel writes `environmentId` and `taskId`. The panel and the page's own controls cannot disagree.
+
+The panel and the canvas are one card. The shadcn sidebar container is `position: fixed`, so `circe-shell.css` insets it by `--rail-width` and `--canvas-gap`, rounds only its left corners, and slides it under the rail when folded; the canvas rounds only its right corners while the panel is open. The rail replaces the floating sidebar toggle on desktop, so `--workspace-titlebar-content-left` is overridden there; on macOS the traffic lights sit over the rail and the panel header pads past them.
+
+Tasks returns to the last task route rather than `/`, because the index route starts a new draft.
 
 ## Motion and cost
 

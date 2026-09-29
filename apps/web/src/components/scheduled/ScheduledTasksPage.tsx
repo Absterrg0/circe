@@ -1,5 +1,5 @@
 import { useAtomValue } from "@effect/atom-react";
-import { Clock3Icon, PencilIcon, PlayIcon, PlusIcon, Trash2Icon } from "lucide-react";
+import { CalendarClockIcon, PencilIcon, PlayIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 import type {
   EnvironmentId,
@@ -18,7 +18,6 @@ import { ProviderInstanceId } from "@circe/contracts";
 import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
 
 import { cn } from "../../lib/utils";
-import { formatRelativeTime } from "../../timestampFormat";
 import { useEnvironmentSettings } from "../../hooks/useSettings";
 import { getCustomModelOptionsByInstance } from "../../modelSelection";
 import {
@@ -27,12 +26,11 @@ import {
   sortProviderInstanceEntries,
 } from "../../providerInstances";
 import { useEnvironment, usePrimaryEnvironmentId } from "../../state/environments";
+import { useNavigate } from "@tanstack/react-router";
 import { useProjects } from "../../state/entities";
-import { useEnvironmentQuery } from "../../state/query";
 import { EMPTY_SERVER_PROVIDERS, serverEnvironment } from "../../state/server";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { ProviderModelPicker } from "../chat/ProviderModelPicker";
-import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import {
   Dialog,
@@ -50,7 +48,19 @@ import { Switch } from "../ui/switch";
 import { Textarea } from "../ui/textarea";
 import { stackedThreadToast, toastManager } from "../ui/toast";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
-import { SettingsPageContainer, SettingsSection, useRelativeTimeTick } from "./settingsLayout";
+import { useRelativeTimeTick } from "../settings/settingsLayout";
+import { SidebarInset } from "../ui/sidebar";
+import { ScrollArea } from "../ui/scroll-area";
+import { WorkspacePageHeader } from "../WorkspacePageHeader";
+import { isElectron } from "../../env";
+import "./scheduled.css";
+import {
+  LAST_RUN_WORDS,
+  relativeLabel,
+  scheduleLabel,
+  useScheduledTasks,
+  WEEKDAY_LABELS,
+} from "./scheduleLabels";
 
 type ScheduleMode = "fixed" | "interval";
 type WorkspaceMode = "root" | "worktree" | "existing_worktree";
@@ -83,7 +93,6 @@ interface DraftState {
 
 /** JS day-of-week (0 = Sunday) rendered Monday-first, matching how people read a week. */
 const WEEKDAY_ORDER = [1, 2, 3, 4, 5, 6, 0] as const;
-const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const WEEKDAY_SHORT = ["Su", "Mo", "Tu", "We", "Th", "Fr", "Sa"] as const;
 const ALL_WEEKDAYS: ReadonlySet<number> = new Set([0, 1, 2, 3, 4, 5, 6]);
 
@@ -167,44 +176,6 @@ function scheduleFromDraft(draft: DraftState): ScheduledTaskSchedule {
   };
 }
 
-export function scheduleLabel(schedule: ScheduledTaskSchedule): string {
-  if (schedule.type === "interval") {
-    const minutes = schedule.everyMs / 60_000;
-    return Number.isInteger(minutes)
-      ? `Every ${minutes} min`
-      : `Every ${Math.round(schedule.everyMs / 1000)} sec`;
-  }
-  const weekdays = schedule.weekdays ?? [];
-  const days =
-    weekdays.length === 0
-      ? "Daily"
-      : weekdays.length === 5 && weekdays.every((day) => day >= 1 && day <= 5)
-        ? "Weekdays"
-        : weekdays.map((day) => WEEKDAY_LABELS[day]).join(", ");
-  return `${days} at ${schedule.timeOfDay}`;
-}
-
-/**
- * Human label for a run timestamp. `formatRelativeTime` only handles the
- * past, and `nextRunAt` is a future instant — render "in 5m" style labels
- * for upcoming runs instead of a misleading "just now".
- */
-export function relativeLabel(value: string | null): string {
-  if (!value) return "Not scheduled";
-  const diffMs = new Date(value).getTime() - Date.now();
-  if (diffMs <= 0) {
-    const relative = formatRelativeTime(value);
-    if (!relative) return "Not scheduled";
-    return relative.suffix ? `${relative.value} ${relative.suffix}` : relative.value;
-  }
-  const minutes = Math.ceil(diffMs / 60_000);
-  if (minutes < 2) return "in under a minute";
-  if (minutes < 60) return `in ${minutes}m`;
-  const hours = Math.round(minutes / 60);
-  if (hours < 24) return `in ${hours}h`;
-  return `in ${Math.round(hours / 24)}d`;
-}
-
 function taskToDraft(task: ScheduledTask): DraftState {
   const schedule = task.schedule;
   const weekdays =
@@ -238,64 +209,108 @@ function taskToDraft(task: ScheduledTask): DraftState {
   };
 }
 
-function statusVariant(status: ScheduledTask["lastRunStatus"]) {
-  if (status === "failed") return "error";
-  if (status === "succeeded") return "success";
-  if (status === "running") return "info";
-  return "outline";
+function reportFailure(title: string, error: unknown) {
+  toastManager.add(
+    stackedThreadToast({
+      type: "error",
+      title,
+      description: error instanceof Error ? error.message : String(error),
+    }),
+  );
 }
 
-export function ScheduledTasksSettings(target: {
+/** The canvas chrome: a breadcrumb title bar with the page's actions. */
+function ScheduledFrame({
+  crumbs,
+  actions,
+  children,
+}: {
+  readonly crumbs: ReadonlyArray<{ readonly label: string; readonly onClick?: () => void }>;
+  readonly actions?: ReactNode;
+  readonly children: ReactNode;
+}) {
+  return (
+    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground isolate">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <WorkspacePageHeader electron={isElectron}>
+          <nav className="sched-crumbs" aria-label="Breadcrumb">
+            {crumbs.map((crumb, index) => (
+              <span key={crumb.label} className="sched-crumbs__item">
+                {index > 0 ? <span className="sched-crumbs__sep">/</span> : null}
+                {crumb.onClick && index < crumbs.length - 1 ? (
+                  <button type="button" onClick={crumb.onClick}>
+                    {crumb.label}
+                  </button>
+                ) : (
+                  <span aria-current={index === crumbs.length - 1 ? "page" : undefined}>
+                    {crumb.label}
+                  </span>
+                )}
+              </span>
+            ))}
+          </nav>
+          <div className="ms-auto flex items-center gap-1.5">{actions}</div>
+        </WorkspacePageHeader>
+        <ScrollArea className="min-h-0 flex-1">
+          <div className="sched">{children}</div>
+        </ScrollArea>
+      </div>
+    </SidebarInset>
+  );
+}
+
+/**
+ * One machine's schedules. With a schedule picked in the panel the canvas
+ * shows that schedule; without one it shows the machine's schedules in the
+ * order they will run.
+ */
+export function ScheduledTasksPage(target: {
   readonly environmentId?: EnvironmentId;
   readonly taskId?: ScheduledTaskId;
+  readonly compose?: boolean;
 }) {
   const primaryEnvironmentId = usePrimaryEnvironmentId();
   const environment = useEnvironment(target.environmentId ?? primaryEnvironmentId);
-  // Live subscription: the server pushes a fresh list after every change
-  // (CRUD, run transitions, reschedules), so no manual refresh is needed.
-  const tasksQuery = useEnvironmentQuery(
-    environment
-      ? serverEnvironment.scheduledTasksLive({
-          environmentId: environment.environmentId,
-          input: {},
-        })
-      : null,
-  );
+  const tasksQuery = useScheduledTasks(environment?.environmentId ?? null);
   if (!environment || !tasksQuery.data) {
     return (
-      <SettingsPageContainer className="max-w-3xl">
-        <SettingsSection title="Schedule Tasks" icon={<Clock3Icon className="size-3.5" />}>
-          <p className="px-5 py-4 text-xs text-muted-foreground" role="status">
-            {tasksQuery.error ??
-              (environment
-                ? "Loading automations…"
-                : target.environmentId
-                  ? "The environment for this automation is unavailable. Reconnect to view it."
-                  : "Connect an environment to manage automations.")}
-          </p>
-        </SettingsSection>
-      </SettingsPageContainer>
+      <ScheduledFrame crumbs={[{ label: "Scheduled" }]}>
+        <p className="sched-note" role="status">
+          {tasksQuery.error ??
+            (environment
+              ? "Loading schedules…"
+              : target.environmentId
+                ? "The machine that owns this schedule is offline. Reconnect it to see its schedules."
+                : "Connect a machine to schedule work on it.")}
+        </p>
+      </ScheduledFrame>
     );
   }
   return (
-    <EnvironmentScheduledTasksSettings
-      key={`${environment.environmentId}:${target.taskId ?? ""}`}
+    <EnvironmentScheduledTasks
+      key={environment.environmentId}
       environmentId={environment.environmentId}
+      machineLabel={environment.label.toLowerCase()}
       taskId={target.taskId}
+      compose={target.compose === true}
       tasks={tasksQuery.data.tasks}
       error={tasksQuery.error}
     />
   );
 }
 
-function EnvironmentScheduledTasksSettings({
+function EnvironmentScheduledTasks({
   environmentId,
+  machineLabel,
   taskId,
+  compose,
   tasks,
   error,
 }: {
   readonly environmentId: EnvironmentId;
+  readonly machineLabel: string;
   readonly taskId: ScheduledTaskId | undefined;
+  readonly compose: boolean;
   readonly tasks: ReadonlyArray<ScheduledTask>;
   readonly error: string | null;
 }) {
@@ -324,13 +339,10 @@ function EnvironmentScheduledTasksSettings({
       ),
     [providers, settings],
   );
-  const linkedTask = tasks.find((task) => task.id === taskId);
-  // This component mounts after the first snapshot and is keyed by the link
-  // target. Live task updates must not overwrite an open editor's draft.
-  const [draft, setDraft] = useState<DraftState>(() =>
-    linkedTask ? taskToDraft(linkedTask) : EMPTY_DRAFT,
-  );
-  const [dialogOpen, setDialogOpen] = useState(() => linkedTask !== undefined);
+  // The editor keeps its own draft: live task updates must not overwrite
+  // what the user is typing.
+  const [draft, setDraft] = useState<DraftState>(EMPTY_DRAFT);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const editingTaskMissing =
     draft.editingId !== null && !tasks.some((task) => task.id === draft.editingId);
@@ -366,21 +378,11 @@ function EnvironmentScheduledTasksSettings({
     setDialogOpen(true);
   }, []);
 
-  const reportFailure = (title: string, error: unknown) => {
-    toastManager.add(
-      stackedThreadToast({
-        type: "error",
-        title,
-        description: error instanceof Error ? error.message : String(error),
-      }),
-    );
-  };
-
   const submit = useCallback(async () => {
     if (saving || editingTaskMissing) return;
     const selection = splitModelKey(draft.modelKey || defaultModelKey);
     if (!draft.title.trim() || !draft.prompt.trim() || !draft.projectId || selection === null) {
-      reportFailure("Schedule task is incomplete", "Add a title, prompt, project, and model.");
+      reportFailure("Schedule is incomplete", "Add a title, prompt, project, and model.");
       return;
     }
     // Keep the original selection object (with provider options) when the
@@ -416,7 +418,7 @@ function EnvironmentScheduledTasksSettings({
     setSaving(false);
     if (result._tag === "Failure") {
       if (!isAtomCommandInterrupted(result)) {
-        reportFailure("Could not save schedule task", squashAtomCommandFailure(result));
+        reportFailure("Could not save schedule", squashAtomCommandFailure(result));
       }
       return;
     }
@@ -430,7 +432,7 @@ function EnvironmentScheduledTasksSettings({
         input: { id: task.id },
       });
       if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-        reportFailure("Could not delete schedule task", squashAtomCommandFailure(result));
+        reportFailure("Could not delete schedule", squashAtomCommandFailure(result));
       }
     },
     [deleteTask, environmentId],
@@ -443,7 +445,7 @@ function EnvironmentScheduledTasksSettings({
         input: { id: task.id },
       });
       if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
-        reportFailure("Could not run schedule task", squashAtomCommandFailure(result));
+        reportFailure("Could not run schedule", squashAtomCommandFailure(result));
       }
     },
     [environmentId, runTaskNow],
@@ -460,115 +462,189 @@ function EnvironmentScheduledTasksSettings({
     }));
   }, [defaultModelKey, draft.projectId, projects]);
 
+  const navigate = useNavigate();
+  const selectTask = useCallback(
+    (id: ScheduledTaskId | undefined) =>
+      void navigate({
+        to: "/scheduled",
+        search: id === undefined ? { environmentId } : { environmentId, taskId: id },
+      }),
+    [environmentId, navigate],
+  );
+
+  // The panel's "New schedule" arrives as a one-shot flag in the URL: open
+  // the editor when the flag appears, then drop it so a reload or back does
+  // not reopen the editor.
+  const [seenCompose, setSeenCompose] = useState(false);
+  if (compose !== seenCompose) {
+    setSeenCompose(compose);
+    if (compose) openForCreate();
+  }
+  useEffect(() => {
+    if (!compose) return;
+    void navigate({
+      to: "/scheduled",
+      search: taskId === undefined ? { environmentId } : { environmentId, taskId },
+      replace: true,
+    });
+  }, [compose, environmentId, navigate, taskId]);
+
+  const setEnabled = useCallback(
+    async (task: ScheduledTask, enabled: boolean) => {
+      const result = await upsertTask({
+        environmentId,
+        input: {
+          id: task.id,
+          title: task.title,
+          prompt: task.prompt,
+          enabled,
+          schedule: task.schedule,
+          projectId: task.projectId,
+          threadId: task.threadId,
+          workspaceStrategy: task.workspaceStrategy,
+          modelSelection: task.modelSelection,
+          runtimeMode: task.runtimeMode,
+          interactionMode: task.interactionMode,
+          creationSource: "web",
+        },
+      });
+      if (result._tag === "Failure" && !isAtomCommandInterrupted(result)) {
+        reportFailure(
+          enabled ? "Could not resume schedule" : "Could not pause schedule",
+          squashAtomCommandFailure(result),
+        );
+      }
+    },
+    [environmentId, upsertTask],
+  );
+
+  const upcoming = useMemo(
+    () =>
+      tasks.toSorted((left, right) => {
+        if (left.enabled !== right.enabled) return left.enabled ? -1 : 1;
+        return (left.nextRunAt ?? "￿").localeCompare(right.nextRunAt ?? "￿");
+      }),
+    [tasks],
+  );
+  const selected = taskId === undefined ? undefined : tasks.find((task) => task.id === taskId);
+  const crumbs = [
+    { label: "Scheduled" },
+    { label: machineLabel, onClick: () => selectTask(undefined) },
+    ...(selected ? [{ label: selected.title }] : []),
+  ];
+
   return (
-    <SettingsPageContainer className="max-w-3xl">
-      <SettingsSection
-        title="Schedule Tasks"
-        icon={<Clock3Icon className="size-3.5" />}
-        headerAction={
-          <Button size="xs" variant="outline" onClick={openForCreate}>
-            <PlusIcon className="size-3.5" />
-            New
-          </Button>
-        }
-      >
-        {taskId && !linkedTask ? (
-          <p className="px-5 py-4 text-xs text-muted-foreground" role="status">
-            This automation no longer exists.
-          </p>
-        ) : null}
-        {error ? (
-          <div className="px-5 py-4 text-xs text-destructive">{error}</div>
-        ) : tasks.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 px-5 py-12 text-center">
-            <div className="grid size-10 place-items-center rounded-full border border-border/70 bg-muted/40 text-muted-foreground">
-              <Clock3Icon className="size-4.5" />
-            </div>
-            <div className="space-y-1">
-              <p className="text-sm font-medium text-foreground">No schedule tasks yet</p>
-              <p className="mx-auto max-w-xs text-xs text-muted-foreground">
-                Create one to run a prompt on a schedule — on an interval or at a fixed time.
-              </p>
-            </div>
-            <Button size="sm" onClick={openForCreate}>
-              <PlusIcon className="size-3.5" />
-              New task
+    <ScheduledFrame
+      crumbs={crumbs}
+      actions={
+        selected ? (
+          <>
+            <Button size="sm" variant="outline" onClick={() => void handleRunNow(selected)}>
+              <PlayIcon /> Run now
             </Button>
-          </div>
-        ) : (
-          <div className="divide-y divide-border/60">
-            {tasks.map((task) => (
-              <div key={task.id} className="grid gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1fr)_auto]">
-                <div className="min-w-0 space-y-2">
-                  <div className="flex min-w-0 flex-wrap items-center gap-2">
-                    <h3 className="truncate text-sm font-semibold text-foreground">{task.title}</h3>
-                    <Badge variant={task.enabled ? "success" : "outline"}>
-                      {task.enabled ? "Enabled" : "Paused"}
-                    </Badge>
-                    <Badge variant={statusVariant(task.lastRunStatus)}>{task.lastRunStatus}</Badge>
-                  </div>
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{task.prompt}</p>
-                  <div className="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted-foreground/80">
-                    <span>{scheduleLabel(task.schedule)}</span>
-                    <span>Next: {relativeLabel(task.nextRunAt)}</span>
-                    <span>Runs: {task.runCount}</span>
-                  </div>
-                  {task.lastRunError ? (
-                    <p className="text-[11px] text-destructive">{task.lastRunError}</p>
-                  ) : null}
-                </div>
-                <div className="flex items-start gap-1">
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
-                        <Button
-                          size="icon-sm"
-                          variant="ghost"
-                          aria-label={`Run ${task.title}`}
-                          onClick={() => void handleRunNow(task)}
-                        >
-                          <PlayIcon className="size-4" />
-                        </Button>
-                      }
-                    />
-                    <TooltipPopup>Run now</TooltipPopup>
-                  </Tooltip>
+            <Button size="sm" variant="ghost" onClick={() => openForEdit(selected)}>
+              <PencilIcon /> Edit
+            </Button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
                   <Button
                     size="icon-sm"
                     variant="ghost"
-                    aria-label={`Edit ${task.title}`}
-                    onClick={() => openForEdit(task)}
-                  >
-                    <PencilIcon className="size-4" />
-                  </Button>
-                  <Button
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label={`Delete ${task.title}`}
-                    onClick={() => void handleDelete(task)}
-                  >
-                    <Trash2Icon className="size-4" />
-                  </Button>
-                </div>
-              </div>
+                    aria-label={`Delete ${selected.title}`}
+                    onClick={() => {
+                      void handleDelete(selected);
+                      selectTask(undefined);
+                    }}
+                  />
+                }
+              >
+                <Trash2Icon />
+              </TooltipTrigger>
+              <TooltipPopup>Delete</TooltipPopup>
+            </Tooltip>
+          </>
+        ) : tasks.length > 0 ? (
+          <Button size="sm" onClick={openForCreate}>
+            <PlusIcon /> New schedule
+          </Button>
+        ) : null
+      }
+    >
+      {taskId && !selected ? (
+        <p className="sched-note" role="status">
+          That schedule no longer exists on {machineLabel}.
+        </p>
+      ) : null}
+      {error ? (
+        <p className="sched-note sched-note--error" role="alert">
+          {error}
+        </p>
+      ) : selected ? (
+        <ScheduleDetail
+          task={selected}
+          projectTitle={projects.find((project) => project.id === selected.projectId)?.title}
+          onEnabledChange={(enabled) => void setEnabled(selected, enabled)}
+        />
+      ) : tasks.length === 0 ? (
+        <div className="sched-empty">
+          <CalendarClockIcon className="sched-empty__icon" strokeWidth={1.25} />
+          <h2>Nothing scheduled on {machineLabel}</h2>
+          <p>
+            A schedule runs a prompt in one of {machineLabel}&rsquo;s projects at a fixed time or on
+            an interval.
+          </p>
+          <Button size="sm" onClick={openForCreate}>
+            <PlusIcon /> New schedule
+          </Button>
+        </div>
+      ) : (
+        <>
+          <h2 className="sched-heading">Up next on {machineLabel}</h2>
+          <ul className="sched-list">
+            {upcoming.map((task) => (
+              <li key={task.id}>
+                <button
+                  type="button"
+                  className="sched-row"
+                  data-enabled={task.enabled ? "true" : "false"}
+                  onClick={() => selectTask(task.id)}
+                >
+                  <span className="sched-row__when">
+                    {task.enabled ? relativeLabel(task.nextRunAt) : "Paused"}
+                  </span>
+                  <span className="sched-row__main">
+                    <span className="sched-row__title">{task.title}</span>
+                    <span className="sched-row__meta">
+                      {scheduleLabel(task.schedule)}
+                      {projects.find((project) => project.id === task.projectId)?.title
+                        ? `, in ${projects.find((project) => project.id === task.projectId)?.title}`
+                        : ""}
+                    </span>
+                  </span>
+                  <span className="sched-row__last" data-status={task.lastRunStatus}>
+                    {LAST_RUN_WORDS[task.lastRunStatus]}
+                  </span>
+                </button>
+              </li>
             ))}
-          </div>
-        )}
-      </SettingsSection>
+          </ul>
+        </>
+      )}
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogPopup className="max-w-xl">
           <DialogHeader>
-            <DialogTitle>{draft.editingId ? "Edit task" : "New task"}</DialogTitle>
+            <DialogTitle>{draft.editingId ? "Edit schedule" : "New schedule"}</DialogTitle>
             <DialogDescription>
-              Run a prompt automatically — on an interval or at a fixed time.
+              Run a prompt on {machineLabel} at a fixed time or on an interval.
             </DialogDescription>
           </DialogHeader>
 
           <DialogPanel className="space-y-5">
             {editingTaskMissing ? (
               <p className="text-xs text-destructive" role="status">
-                This automation no longer exists.
+                This schedule no longer exists.
               </p>
             ) : null}
             <Field label="Name" htmlFor="scheduled-task-title">
@@ -790,11 +866,76 @@ function EnvironmentScheduledTasksSettings({
           <DialogFooter>
             <DialogClose render={<Button variant="outline" size="sm" />}>Cancel</DialogClose>
             <Button size="sm" disabled={saving || editingTaskMissing} onClick={() => void submit()}>
-              {draft.editingId ? "Save task" : "Create task"}
+              {draft.editingId ? "Save schedule" : "Create schedule"}
             </Button>
           </DialogFooter>
         </DialogPopup>
       </Dialog>
-    </SettingsPageContainer>
+    </ScheduledFrame>
+  );
+}
+
+function workspaceLabel(strategy: ScheduledTask["workspaceStrategy"]): string {
+  if (strategy.type === "worktree") return `New worktree from ${strategy.baseRef}`;
+  if (strategy.type === "existing_worktree") return strategy.worktreePath;
+  return "The project checkout";
+}
+
+/** One schedule, read top to bottom: when it runs, how it last went, what it runs. */
+function ScheduleDetail({
+  task,
+  projectTitle,
+  onEnabledChange,
+}: {
+  readonly task: ScheduledTask;
+  readonly projectTitle: string | undefined;
+  readonly onEnabledChange: (enabled: boolean) => void;
+}) {
+  return (
+    <article className="sched-detail">
+      <header className="sched-detail__head">
+        <h2>{task.title}</h2>
+        <label className="sched-detail__toggle">
+          <Switch checked={task.enabled} onCheckedChange={onEnabledChange} />
+          {task.enabled ? "On" : "Paused"}
+        </label>
+      </header>
+      <p className="sched-detail__lead">
+        {scheduleLabel(task.schedule)}.{" "}
+        {task.enabled
+          ? `Next run ${relativeLabel(task.nextRunAt)}.`
+          : "Paused, so it will not run."}
+      </p>
+      <dl className="sched-facts">
+        <div>
+          <dt>Last run</dt>
+          <dd data-status={task.lastRunStatus}>
+            {LAST_RUN_WORDS[task.lastRunStatus]}
+            {task.lastRunAt ? `, ${relativeLabel(task.lastRunAt)}` : ""}
+          </dd>
+        </div>
+        <div>
+          <dt>Runs so far</dt>
+          <dd>{task.runCount}</dd>
+        </div>
+        <div>
+          <dt>Project</dt>
+          <dd>{projectTitle ?? "Project unavailable"}</dd>
+        </div>
+        <div>
+          <dt>Model</dt>
+          <dd>{task.modelSelection.model}</dd>
+        </div>
+        <div>
+          <dt>Workspace</dt>
+          <dd>{workspaceLabel(task.workspaceStrategy)}</dd>
+        </div>
+      </dl>
+      {task.lastRunError ? <p className="sched-detail__error">{task.lastRunError}</p> : null}
+      <section className="sched-detail__prompt">
+        <h3>Prompt</h3>
+        <p>{task.prompt}</p>
+      </section>
+    </article>
   );
 }

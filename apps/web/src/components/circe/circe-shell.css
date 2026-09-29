@@ -1,12 +1,25 @@
-/* The desktop shell: a Void rail, the inset sidebar on the chrome ground, and
-   the canvas as an inset panel. Below md the rail is gone and the sidebar is
-   the mobile sheet, so every rule here is gated on the rail being mounted. */
+/* The desktop shell has two levels of navigation.
+
+   The rail sits on the window ground and says where you are: Home, Tasks,
+   Pull requests, Scheduled, Usage, and your machines.
+
+   The panel says what is inside that place. It shares one inset card with
+   the canvas, split by a hairline, so the panel reads as the page's own
+   sidebar rather than a second copy of the rail. Home and Usage are
+   dashboards and have no panel (data-panel="none").
+
+   Below md the rail is gone and the panel is the mobile sheet, so every
+   rule here is gated on md. */
 
 :root {
-  --rail-width: 64px;
+  --rail-width: 60px;
   --canvas-gap: 8px;
+  /* The panel is a step toward the ground from the canvas: same card, a
+     quieter pane. */
+  --panel: color-mix(in srgb, var(--canvas) 62%, var(--chrome));
 }
 
+/* ------------------------------------------------------------- the rail */
 .ci-rail {
   position: relative;
   z-index: 20;
@@ -16,16 +29,10 @@
   display: none;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   padding: 12px 0 14px;
-  background: var(--rail);
-  color: var(--rail-ink-muted);
-  border-right: 1px solid rgb(255 255 255 / 5%);
-  /* The rail stays Void in Daylight: re-scope the tokens it paints with. */
-  --raised: #1b1917;
-  --line: #26231f;
-  --ink: var(--rail-ink);
-  --ink-faint: var(--rail-ink-muted);
+  background: var(--chrome);
+  color: var(--sidebar-muted-foreground);
 }
 @media (min-width: 768px) {
   .ci-rail {
@@ -33,7 +40,7 @@
   }
 }
 .ci-rail[data-macos="true"] {
-  padding-top: calc(var(--workspace-topbar-height) + 4px);
+  padding-top: calc(var(--workspace-topbar-height) + 2px);
 }
 .ci-rail[data-drag="true"] {
   -webkit-app-region: drag;
@@ -43,42 +50,29 @@
 }
 
 .ci-rail__mark {
-  position: relative;
   width: 40px;
   height: 40px;
   display: grid;
   place-items: center;
-  border-radius: var(--radius-md);
-  margin-bottom: 8px;
+  border-radius: 12px;
   outline: none;
+  margin-bottom: 8px;
+  transition: background-color 120ms var(--ease-circe);
 }
 .ci-rail__mark img {
-  position: relative;
-  width: 30px;
-  height: 30px;
-  display: block;
+  width: 28px;
+  height: 28px;
 }
-.ci-rail__mark::before {
-  content: "";
-  position: absolute;
-  inset: -6px;
-  border-radius: 9999px;
-  background: radial-gradient(
-    circle,
-    color-mix(in srgb, var(--orb-copper) 26%, transparent),
-    transparent 66%
-  );
-  opacity: 0;
-  transition: opacity 200ms var(--ease-circe);
+.ci-rail__mark:hover,
+.ci-rail__mark[data-active="true"] {
+  background: var(--sidebar-row-hover);
 }
-.ci-rail__mark:hover::before,
-.ci-rail__mark[data-active="true"]::before {
-  opacity: 1;
-}
-.ci-rail__mark:focus-visible {
-  box-shadow:
-    0 0 0 2px var(--rail),
-    0 0 0 4px var(--primary);
+/* The mark's glow is transparent light: on a light ground it sits on its
+   own Void tile. */
+:root:not(.dark) .ci-rail__mark img {
+  padding: 2px;
+  border-radius: 8px;
+  background: var(--orb-void, #0b0a09);
 }
 
 .ci-rail__group {
@@ -87,18 +81,20 @@
   align-items: center;
   gap: 4px;
 }
+
 .ci-rail__btn {
   appearance: none;
   position: relative;
   width: 40px;
   height: 40px;
+  flex-shrink: 0;
   display: grid;
   place-items: center;
   padding: 0;
   border: 0;
-  border-radius: var(--radius-md);
+  border-radius: 11px;
   background: transparent;
-  color: var(--rail-ink-muted);
+  color: var(--sidebar-muted-foreground);
   cursor: pointer;
   outline: none;
   transition:
@@ -111,32 +107,24 @@
   stroke-width: 1.5;
 }
 .ci-rail__btn:hover {
-  background: var(--rail-hover);
-  color: var(--rail-ink);
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
 }
+/* The current destination is a lit tile: the same ground as the panel it
+   opens, so the eye connects the two. */
+.ci-rail__btn[data-active="true"] {
+  background: var(--panel);
+  color: var(--sidebar-foreground);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.ci-rail__mark:focus-visible,
 .ci-rail__btn:focus-visible,
-.ci-rail__node:focus-visible {
+.ci-rail__machine:focus-visible {
   box-shadow:
-    0 0 0 2px var(--rail),
+    0 0 0 2px var(--chrome),
     0 0 0 4px var(--primary);
 }
-.ci-rail__btn[data-active="true"] {
-  background: var(--rail-active);
-  color: var(--rail-ink);
-  box-shadow: inset 0 1px 0 rgb(255 255 255 / 7%);
-}
-.ci-rail__btn[data-active="true"]::before {
-  content: "";
-  position: absolute;
-  left: -10px;
-  top: 50%;
-  width: 4px;
-  height: 4px;
-  margin-top: -2px;
-  border-radius: 9999px;
-  background: var(--primary);
-  box-shadow: 0 0 8px var(--primary);
-}
+
 .ci-rail__badge {
   position: absolute;
   top: 3px;
@@ -150,24 +138,26 @@
   font: 700 10px/16px var(--font-sans);
   text-align: center;
   font-variant-numeric: tabular-nums;
-  box-shadow:
-    0 0 0 2px var(--rail),
-    0 0 12px color-mix(in srgb, var(--attention) 55%, transparent);
+  box-shadow: 0 0 0 2px var(--chrome);
 }
 .ci-rail__rule {
-  width: 24px;
+  width: 22px;
   height: 1px;
-  margin: 8px 0;
-  background: rgb(255 255 255 / 9%);
+  margin: 10px 0;
+  background: var(--sidebar-border);
+  flex-shrink: 0;
 }
-.ci-rail__nodes {
+
+/* Machines. The list can outgrow the window, so it scrolls; its padding
+   leaves room for the presence dots, which sit on each tile's corner. */
+.ci-rail__machines {
   gap: 8px;
   min-height: 0;
   overflow-y: auto;
   scrollbar-width: none;
-  padding: 3px 0;
+  padding: 4px 6px;
 }
-.ci-rail__node {
+.ci-rail__machine {
   appearance: none;
   position: relative;
   width: 36px;
@@ -177,48 +167,41 @@
   place-items: center;
   padding: 0;
   border-radius: 10px;
-  border: 1px solid rgb(255 255 255 / 8%);
-  background: #1b1917;
-  font: 600 12px/1 var(--font-display);
-  letter-spacing: -0.01em;
-  color: var(--rail-ink);
+  border: 1px solid var(--line);
+  background: var(--raised);
+  color: var(--sidebar-foreground);
   cursor: pointer;
   outline: none;
-  text-transform: lowercase;
-  transition:
-    box-shadow 160ms var(--ease-circe),
-    border-color 120ms var(--ease-circe);
+  transition: border-color 120ms var(--ease-circe);
 }
-.ci-rail__node:hover {
-  border-color: rgb(255 255 255 / 18%);
+.ci-rail__machine:hover {
+  border-color: var(--line-strong);
 }
-.ci-rail__node[data-scoped="true"] {
-  background: var(--rail-active);
-  border-color: rgb(255 255 255 / 26%);
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 10%);
-}
-.ci-rail__node[data-offline="true"] {
-  color: var(--rail-ink-muted);
-}
-.ci-rail__node svg {
+.ci-rail__machine svg {
   width: 17px;
   height: 17px;
   stroke-width: 1.5;
 }
-.ci-rail__node .ci-presence {
+.ci-rail__machine[data-offline="true"] {
+  color: var(--ink-faint);
+}
+.ci-rail__machine .ci-presence {
   position: absolute;
   right: -3px;
   bottom: -3px;
-  --presence-ring: var(--rail);
 }
-.ci-rail__node--all {
-  color: var(--rail-ink-muted);
+.ci-rail__monogram {
+  font: 600 12px/1 var(--font-sans);
+  text-transform: lowercase;
 }
-.ci-rail__node--add {
+.ci-rail__machine--add {
   background: transparent;
   border-style: dashed;
-  border-color: rgb(255 255 255 / 16%);
-  color: var(--rail-ink-muted);
+  border-color: var(--line-strong);
+  color: var(--sidebar-muted-foreground);
+}
+.ci-rail__machine--add:hover {
+  color: var(--sidebar-foreground);
 }
 .ci-rail__spacer {
   flex: 1;
@@ -229,42 +212,200 @@
   box-shadow: var(--glow-voice);
 }
 
-/* ------------------------------------------------ inset canvas and sidebar */
+/* ------------------------------------------------------------ the panel */
+.ci-panel {
+  gap: 18px;
+  padding: 2px var(--sidebar-content-inset) 16px;
+}
+.ci-panel__group {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.ci-panel__heading-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.ci-panel__heading-row > .ci-panel__row {
+  flex: 1;
+  min-width: 0;
+}
+.ci-panel__heading {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  margin: 0;
+  padding: 0 10px;
+  font: 600 12px/1 var(--font-sans);
+  color: var(--sidebar-muted-foreground);
+  text-align: left;
+}
+.ci-panel__heading--link {
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.ci-panel__heading--link:hover,
+.ci-panel__heading--link[data-active="true"] {
+  color: var(--sidebar-foreground);
+}
+.ci-panel__row {
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border-radius: var(--radius-md);
+  font: 500 13.5px/1.25 var(--font-sans);
+  color: var(--sidebar-muted-foreground);
+  text-align: left;
+  cursor: pointer;
+  outline: none;
+  transition:
+    background-color 120ms var(--ease-circe),
+    color 120ms var(--ease-circe);
+}
+.ci-panel__row:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+.ci-panel__row[data-active="true"] {
+  background: var(--sidebar-row-selected);
+  color: var(--sidebar-foreground);
+}
+.ci-panel__row:focus-visible,
+.ci-panel__heading--link:focus-visible,
+.ci-panel__add:focus-visible {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+.ci-panel__row--two {
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
+.ci-panel__icon {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  stroke-width: 1.5;
+}
+.ci-panel__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ci-panel__meta {
+  margin-left: auto;
+  flex-shrink: 0;
+  font: 400 12px/1 var(--font-sans);
+  color: var(--ink-faint);
+}
+.ci-panel__stack {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.ci-panel__sub {
+  font: 400 12px/1.2 var(--font-sans);
+  color: var(--ink-faint);
+}
+.ci-panel__dot {
+  width: 7px;
+  height: 7px;
+  margin: 5px 2px 0 3px;
+  flex-shrink: 0;
+  border-radius: 9999px;
+  background: var(--success);
+}
+.ci-panel__dot[data-state="running"] {
+  background: var(--ember);
+}
+.ci-panel__dot[data-state="failed"] {
+  background: var(--danger);
+}
+.ci-panel__dot[data-state="paused"] {
+  background: transparent;
+  box-shadow: inset 0 0 0 1.5px var(--ink-faint);
+}
+.ci-panel__add {
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  color: var(--sidebar-muted-foreground);
+  outline: none;
+}
+.ci-panel__add:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+.ci-panel__add svg {
+  width: 15px;
+  height: 15px;
+}
+.ci-panel__note {
+  margin: 0;
+  padding: 4px 10px;
+  font: 400 12.5px/1.4 var(--font-sans);
+  color: var(--ink-faint);
+}
+
+/* -------------------------------------------------- panel and canvas card */
 @media (min-width: 768px) {
   [data-shell-rail="true"] {
-    /* The rail replaces the floating sidebar toggle and sits under the
-       traffic lights, so canvas headers need no left clearance. */
     --workspace-titlebar-content-left: 1rem !important;
+    background: var(--chrome);
   }
+  [data-shell-rail="true"] [data-sidebar-control] {
+    display: none;
+  }
+
+  /* The panel is the left pane of the card. */
   [data-shell-rail="true"] [data-slot="sidebar-container"] {
     left: var(--rail-width);
+    top: var(--canvas-gap);
+    bottom: var(--canvas-gap);
+    height: auto;
+    border: 1px solid var(--line);
     border-right: 0;
+    border-radius: var(--radius-xl) 0 0 var(--radius-xl);
+    overflow: hidden;
+    background: var(--panel);
+  }
+  [data-shell-rail="true"] [data-slot="sidebar-inner"] {
+    background: transparent;
   }
   [data-shell-rail="true"]
     [data-slot="sidebar"][data-collapsible="offcanvas"]
     [data-slot="sidebar-container"] {
     left: calc(var(--rail-width) - var(--sidebar-width));
   }
-  [data-shell-rail="true"] [data-sidebar-control] {
-    display: none;
+  /* On macOS the traffic lights overlap the panel's top-left corner. */
+  [data-shell-rail="true"]:has(.ci-rail[data-macos="true"]) [data-slot="sidebar-header"] {
+    padding-left: max(1rem, calc(var(--workspace-controls-left, 90px) - var(--rail-width)));
   }
+
+  /* The canvas is the right pane; with the panel open the hairline between
+     them is the canvas's left border. */
   [data-shell-rail="true"] [data-slot="sidebar-inset"] {
     height: calc(100dvh - 2 * var(--canvas-gap)) !important;
     min-height: 0 !important;
     margin: var(--canvas-gap) var(--canvas-gap) var(--canvas-gap) 0;
     border: 1px solid var(--line);
-    border-radius: var(--radius-xl);
-    box-shadow: var(--elevation-sm);
+    border-radius: 0 var(--radius-xl) var(--radius-xl) 0;
     overflow: hidden;
   }
-  [data-shell-rail="true"][data-sidebar-state="collapsed"] [data-slot="sidebar-inset"] {
-    margin-left: var(--canvas-gap);
+  [data-shell-rail="true"][data-sidebar-state="collapsed"] [data-slot="sidebar-inset"],
+  [data-shell-rail="true"][data-panel="none"] [data-slot="sidebar-inset"] {
+    border-radius: var(--radius-xl);
   }
-  /* The overview runs rail only; the task list stays mounted underneath. */
-  [data-shell-rail="true"][data-overview="true"] [data-slot="sidebar"] {
+  [data-shell-rail="true"][data-panel="none"] [data-slot="sidebar"] {
     display: none;
-  }
-  [data-shell-rail="true"][data-overview="true"] [data-slot="sidebar-inset"] {
-    margin-left: var(--canvas-gap);
   }
 }

@@ -30,6 +30,9 @@ import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import { CirceRail } from "./circe/CirceRail";
+import { destinationHasPanel, resolveCirceDestination } from "./circe/CirceNav";
+import { PullRequestsPanel } from "./pullRequest/PullRequestsPanel";
+import { ScheduledPanel } from "./scheduled/ScheduledPanel";
 import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
 import { useProjects } from "../state/entities";
 import {
@@ -142,7 +145,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const pathname = useLocation({ select: (location) => location.pathname });
   const panelAnimationsSuppressed = usePanelNavigationSuppression(pathname);
   const routePanelAnimationsActive = panelAnimationsActive && !panelAnimationsSuppressed;
-  const isOnSettings = pathname === "/settings" || pathname.startsWith("/settings/");
+  const destination = resolveCirceDestination(pathname);
   const isMacosDesktop = isElectron && isMacPlatform(navigator.platform);
   const [sidebarWidth, setSidebarWidth] = useState(readInitialThreadSidebarWidth);
   // Subscribed rather than read once: the clamp must track live window size,
@@ -215,7 +218,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         className="h-dvh! min-h-0!"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         data-shell-rail="true"
-        data-overview={pathname === "/circe" ? "true" : "false"}
+        data-panel={destinationHasPanel(destination) ? destination : "none"}
         defaultOpen
         style={sidebarProviderStyle}
       >
@@ -236,11 +239,15 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
             onResize: setSidebarWidth,
           }}
         >
-          {isOnSettings ? (
+          {destination === "settings" ? (
             <>
               <SidebarChromeHeader isElectron={isElectron} title="Settings" />
               <SettingsSidebarNav pathname={pathname} />
             </>
+          ) : destination === "pulls" ? (
+            <PullRequestsPanel />
+          ) : destination === "scheduled" ? (
+            <ScheduledPanel />
           ) : legacySidebarEnabled ? (
             <LegacyThreadSidebar />
           ) : (
