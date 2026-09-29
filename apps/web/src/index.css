@@ -106,6 +106,8 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --glass-saturation: 1;
   --desktop-window-right-resize-inset: 0px;
   --workspace-topbar-height: 52px;
+  /* The icon rail left of the context sidebar; desktop widths only. */
+  --app-rail-width: 3.5rem;
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);

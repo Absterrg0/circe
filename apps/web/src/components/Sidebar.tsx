@@ -65,9 +65,6 @@ import {
   Undo2Icon,
   XIcon,
 } from "lucide-react";
-import { SidebarBotsSection } from "./bots/SidebarBots";
-import { SidebarSectionHeading } from "./sidebar/SidebarSectionHeading";
-import { SidebarPrimaryNav } from "./sidebar/SidebarPrimaryNav";
 import {
   memo,
   useCallback,
@@ -249,7 +246,7 @@ import {
   useComboboxFilter,
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
-import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { SidebarChromeFooter, SidebarPanelHeader } from "./sidebar/SidebarChrome";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -274,8 +271,6 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 // Fresh keys deliberately reset both shelves to collapsed for existing users.
 const SETTLED_SHELF_EXPANDED_KEY = "circe:sidebar:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "circe:sidebar:snoozed-expanded";
-const CONVERSATIONS_SHELF_EXPANDED_KEY = "circe:sidebar:conversations-expanded";
-const AGENTS_COLLAPSED_KEY = "circe:sidebar:agents-collapsed";
 
 function compactSidebarTimeLabel(label: string): string {
   if (label === "just now") return "now";
@@ -2218,7 +2213,11 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
   );
 });
 
-export default function Sidebar() {
+/**
+ * The context sidebar's Agents and Chats lists. Search spans every thread;
+ * the list shows the rail's section.
+ */
+export default function Sidebar({ section }: { readonly section: "agents" | "chats" }) {
   const projects = useProjects();
   // Agents are grouped and scoped by codebase; each node's chat space is not
   // a project the user picks.
@@ -2812,24 +2811,6 @@ export default function Sidebar() {
   const toggleSettledShelf = useCallback(
     () => setSettledShelfExpanded((value) => !value),
     [setSettledShelfExpanded],
-  );
-  const [conversationsExpanded, setConversationsExpanded] = useLocalStorage(
-    CONVERSATIONS_SHELF_EXPANDED_KEY,
-    true,
-    Schema.Boolean,
-  );
-  const toggleConversations = useCallback(
-    () => setConversationsExpanded((value) => !value),
-    [setConversationsExpanded],
-  );
-  const [agentsCollapsed, setAgentsCollapsed] = useLocalStorage(
-    AGENTS_COLLAPSED_KEY,
-    false,
-    Schema.Boolean,
-  );
-  const toggleAgents = useCallback(
-    () => setAgentsCollapsed((value) => !value),
-    [setAgentsCollapsed],
   );
   const renderedSettledThreads = useMemo(() => {
     if (settledShelfExpanded) return visibleSettledThreads;
@@ -4628,22 +4609,43 @@ export default function Sidebar() {
 
   return (
     <>
-      <SidebarChromeHeader isElectron={isElectron} />
+      <SidebarPanelHeader
+        isElectron={isElectron}
+        title={section === "chats" ? "Chats" : "Agents"}
+        actions={
+          section === "chats" ? (
+            chatSpaceRef === null ? null : (
+              <SidebarHeaderIconButton label="New chat" onClick={startNewChat}>
+                <PlusIcon />
+              </SidebarHeaderIconButton>
+            )
+          ) : (
+            <>
+              {projectScopeControl}
+              <SidebarHeaderIconButton
+                label="New agent thread"
+                tooltip={
+                  newThreadShortcutLabel
+                    ? `New agent thread (${newThreadShortcutLabel})`
+                    : "New agent thread"
+                }
+                disabled={userProjects.length === 0}
+                onClick={(event: ReactMouseEvent) => handleNewThreadClick(event)}
+              >
+                <SquarePenIcon />
+              </SidebarHeaderIconButton>
+            </>
+          )
+        }
+      />
       <SidebarContent
         className="gap-0 min-h-full"
         fixedHeader={
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
           <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
-            <SidebarPrimaryNav />
-            <div aria-hidden className="mx-1 h-px bg-sidebar-border" />
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
-              onNewChat={chatSpaceRef === null ? null : startNewChat}
-              onNewAgentThread={() => handleNewThreadClick()}
-              newAgentThreadDisabled={userProjects.length === 0}
-              newAgentThreadShortcutLabel={newThreadShortcutLabel}
-              onAddProject={openAddProjectCommandPalette}
               searchInputRef={threadSearchInputRef}
               searchQuery={threadSearchQuery}
               onSearchQueryChange={(value) => {
@@ -4880,50 +4882,23 @@ export default function Sidebar() {
                         );
                       };
                       const from = dragState?.activeSection ?? null;
-                      // Three groups, in this order: the user's Grok Bots,
-                      // Circe chats (the Conversations project), then coding
-                      // agents. Bot and chat rows are not sortable.
-                      const items: ReactNode[] = [<SidebarBotsSection key="bots-section" />];
-                      items.push(
-                        <SidebarSectionHeading
-                          key="chats-heading"
-                          label="Chats"
-                          count={conversationThreads.length}
-                          collapsed={!conversationsExpanded}
-                          onToggle={toggleConversations}
-                          {...(chatSpaceRef === null
-                            ? {}
-                            : {
-                                action: {
-                                  label: "New chat",
-                                  icon: <PlusIcon />,
-                                  onClick: startNewChat,
-                                },
-                              })}
-                        />,
-                      );
-                      if (conversationsExpanded) {
+                      // One list per rail section; bots have their own panel.
+                      // Chat rows are not sortable.
+                      const items: ReactNode[] = [];
+                      if (section === "chats") {
                         for (const thread of conversationThreads) {
                           items.push(renderThreadRow(thread, "active"));
                         }
+                        if (conversationThreads.length === 0) {
+                          items.push(
+                            <li key="chats-empty" className="circe-panel-empty">
+                              Questions for Circe that are not about a project land here. Start one
+                              with <strong>+</strong>.
+                            </li>,
+                          );
+                        }
+                        return items;
                       }
-                      items.push(
-                        <SidebarSectionHeading
-                          key="agents-heading"
-                          label="Agents"
-                          count={pinnedThreads.length + activeThreads.length}
-                          collapsed={agentsCollapsed}
-                          onToggle={toggleAgents}
-                          accessory={projectScopeControl}
-                          action={{
-                            label: "New agent thread",
-                            icon: <SquarePenIcon />,
-                            disabled: userProjects.length === 0,
-                            onClick: (event) => handleNewThreadClick(event),
-                          }}
-                        />,
-                      );
-                      if (agentsCollapsed) return items;
                       items.push(
                         <SidebarDraftBlock
                           key="draft-sessions"
@@ -5040,7 +5015,7 @@ export default function Sidebar() {
                       }
                       return items;
                     })()}
-                    {!agentsCollapsed && settledShelfExpanded && hiddenSettledCount > 0 ? (
+                    {section === "agents" && settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
                         <button
                           type="button"
@@ -5058,7 +5033,7 @@ export default function Sidebar() {
             </TooltipProvider>
           ) : null}
           {!isSearchingThreads &&
-          !agentsCollapsed &&
+          section === "agents" &&
           visibleDraftSessionCount === 0 &&
           pinnedThreads.length +
             activeThreads.length +

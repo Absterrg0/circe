@@ -5,8 +5,9 @@ import "./circe-surfaces.css";
 export type CirceOrbState = "idle" | "listening" | "working" | "attention" | "error";
 
 /**
- * Circe's signature mark in the product: a warm sphere drawn with the brand
- * gradient. It is decorative; callers pair it with visible state text.
+ * Circe's presence: the Prism Orbit mark, still at rest, turning while Circe
+ * works, with a pulsing ring while it listens. It is decorative; callers pair
+ * it with visible state text.
  */
 export function CirceOrb(props: {
   readonly state?: CirceOrbState;

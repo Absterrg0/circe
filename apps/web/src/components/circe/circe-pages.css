@@ -1,31 +1,32 @@
 /*
- * Home and Machines. Plain cards on the page background, one accent (the
- * primary copper) for actions and focus, and status color only where it
- * carries meaning. Everything reads semantic tokens from index.css so named
+ * Home and Machines. No boxes: sections are set off by rules, rows by
+ * hairlines, and the command box is the one framed surface. One accent (the
+ * primary orange) for actions and focus, status color only where it carries
+ * meaning. Everything reads semantic tokens from index.css so named
  * themes apply unchanged.
  */
 
 /* ---------- Shared pieces ---------- */
 
-.circe-card {
+/* A headed block of a page, set off by a rule rather than a box. */
+.circe-section {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  background: var(--card);
+  border-top: 1px solid var(--border);
+  padding-top: 14px;
 }
 
-.circe-card__header {
+.circe-section__header {
   display: flex;
-  min-height: 44px;
+  min-height: 28px;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 0 16px;
+  margin-bottom: 6px;
 }
 
-.circe-card__header h2 {
+.circe-section__header h2 {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -34,10 +35,15 @@
   font-weight: 600;
 }
 
-.circe-card__empty {
-  padding: 4px 16px 16px;
+.circe-section__empty {
+  padding: 12px 2px;
   color: var(--muted-foreground);
-  font-size: 12.5px;
+  font-size: 13px;
+}
+
+.circe-count[data-tone="needsYou"] {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--primary);
 }
 
 .circe-count {
@@ -168,34 +174,35 @@
   font-size: 13px;
 }
 
-/* ---------- Task and machine rows ---------- */
+/* ---------- Task rows ---------- */
 
 .circe-task-list {
   display: flex;
   flex-direction: column;
-  padding: 0 6px 6px;
 }
 
-.circe-task-row,
-.circe-machine-row {
+.circe-task-list > li + li {
+  border-top: 1px solid color-mix(in srgb, var(--border) 70%, transparent);
+}
+
+/* Rows bleed 8px past the column so hover fills reach the text's edges. */
+.circe-task-row {
   display: flex;
-  width: 100%;
-  min-height: 48px;
+  min-height: 52px;
   align-items: center;
   gap: 12px;
-  border-radius: 10px;
-  padding: 7px 10px;
+  margin: 0 -8px;
+  width: calc(100% + 16px);
+  border-radius: 8px;
+  padding: 8px;
   text-align: left;
-  cursor: pointer;
 }
 
-.circe-task-row:hover,
-.circe-machine-row:hover {
+.circe-task-row:hover {
   background: var(--accent);
 }
 
-.circe-task-row:focus-visible,
-.circe-machine-row:focus-visible {
+.circe-task-row:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: -2px;
 }
@@ -214,16 +221,20 @@
 }
 
 .circe-task-row[data-status="approval"] .circe-task-row__icon,
-.circe-task-row[data-status="input"] .circe-task-row__icon {
+.circe-task-row[data-status="input"] .circe-task-row__icon,
+.circe-task-row[data-status="approval"] .circe-task-row__state,
+.circe-task-row[data-status="input"] .circe-task-row__state {
   color: var(--warning-foreground);
 }
 
-.circe-task-row[data-status="failed"] .circe-task-row__icon {
+.circe-task-row[data-status="failed"] .circe-task-row__icon,
+.circe-task-row[data-status="failed"] .circe-task-row__state {
   color: var(--error-foreground);
 }
 
 .circe-task-row[data-status="working"] .circe-task-row__icon,
-.circe-task-row[data-status="waiting"] .circe-task-row__icon {
+.circe-task-row[data-status="waiting"] .circe-task-row__icon,
+.circe-task-row[data-status="working"] .circe-task-row__state {
   color: var(--primary);
 }
 
@@ -238,7 +249,7 @@
 .circe-task-row__title {
   overflow: hidden;
   color: var(--foreground);
-  font-size: 13px;
+  font-size: 13.5px;
   font-weight: 500;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -247,43 +258,67 @@
 .circe-task-row__meta {
   overflow: hidden;
   color: var(--muted-foreground);
-  font-size: 11.5px;
+  font-size: 12px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.circe-task-row__time {
+.circe-task-row__state {
   flex-shrink: 0;
   color: var(--muted-foreground);
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  font-weight: 500;
 }
 
-.circe-machine-row__icon {
-  display: grid;
-  width: 32px;
-  height: 32px;
+.circe-task-row__time {
+  width: 3.25rem;
   flex-shrink: 0;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+
+/* ---------- Tabs ---------- */
+
+.circe-tabs {
+  display: flex;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.circe-tab {
+  position: relative;
+  display: inline-flex;
+  height: 38px;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.circe-tab:hover,
+.circe-tab[aria-selected="true"] {
   color: var(--foreground);
 }
 
-.circe-machine-row__icon > svg {
-  width: 16px;
-  height: 16px;
+.circe-tab[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 0;
+  bottom: -1px;
+  left: 0;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--primary);
 }
 
-.circe-machine-row__chevron {
-  width: 14px;
-  height: 14px;
-  color: var(--muted-foreground);
-}
-
-.circe-machine-row[aria-pressed="true"] {
-  background: var(--accent);
-  box-shadow: inset 0 0 0 1px var(--border);
+.circe-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+  border-radius: 4px;
 }
 
 /* ---------- Command console ---------- */
@@ -487,39 +522,89 @@
 .circe-home {
   display: flex;
   width: 100%;
-  max-width: 68rem;
+  max-width: 50rem;
   flex-direction: column;
-  gap: 20px;
+  gap: 18px;
   margin: 0 auto;
-  padding: 40px 24px 56px;
+  padding: 7vh 24px 56px;
+}
+
+.circe-home__intro {
+  margin-bottom: 6px;
+  text-align: center;
 }
 
 .circe-home__intro h2 {
   color: var(--foreground);
-  font-size: 28px;
+  font-size: 34px;
   font-weight: 650;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .circe-home__intro p {
-  margin-top: 6px;
+  margin-top: 8px;
   color: var(--muted-foreground);
-  font-size: 14px;
+  font-size: 15px;
 }
 
-.circe-home__grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  margin-top: 8px;
+.circe-home__work {
+  margin-top: 22px;
+}
+
+.circe-home__machines {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.circe-home__machines h2 {
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+
+.circe-home__machines ul {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.circe-machine-pill {
+  display: inline-flex;
+  height: 28px;
+  align-items: center;
+  gap: 7px;
+  border-radius: 999px;
+  padding: 0 11px 0 10px;
+  background: var(--muted);
+  color: var(--foreground);
+  font-size: 12.5px;
+  font-weight: 500;
+}
+
+.circe-machine-pill:hover {
+  background: var(--accent);
+}
+
+.circe-machine-pill:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.circe-machine-pill__meta {
+  color: var(--muted-foreground);
+  font-weight: 400;
 }
 
 /* ---------- Machines ---------- */
 
 .circe-machines {
   width: 100%;
-  max-width: 72rem;
+  max-width: 60rem;
   margin: 0 auto;
   padding: 28px 24px 56px;
 }
@@ -528,43 +613,45 @@
   margin-bottom: 16px;
 }
 
-.circe-machines__layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  align-items: start;
-  gap: 24px;
-}
-
-.circe-machines__aside {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.circe-machine-list {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
 .circe-machines__detail {
   display: flex;
   min-width: 0;
   flex-direction: column;
-  gap: 16px;
+  gap: 28px;
 }
 
-.circe-machines__detail > .circe-computer,
-.circe-machines__detail > .circe-node-settings {
-  margin-top: 0;
-  border-radius: 14px;
-  background: var(--card);
-}
-
-.circe-machines__grid {
+.circe-machines__columns {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 32px;
+}
+
+/* The computer and agent-settings blocks are self-contained cards elsewhere;
+   on this page they are sections like the rest. */
+.circe-machines__detail > .circe-computer,
+.circe-machines__detail > .circe-node-settings {
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--border);
+  border-radius: 0;
+  background: transparent;
+}
+
+.circe-machines__detail > .circe-computer {
+  padding: 16px 0 0;
+}
+
+.circe-machines__detail > .circe-node-settings .circe-node-settings__summary {
+  padding-inline: 0;
+  border-radius: 0;
+}
+
+.circe-machines__detail > .circe-node-settings .circe-node-settings__summary:hover {
+  background: transparent;
+}
+
+.circe-machines__detail > .circe-node-settings .circe-node-settings__body {
+  padding-inline: 0;
 }
 
 .circe-machine-header {
@@ -613,7 +700,6 @@
 .circe-plain-list {
   display: flex;
   flex-direction: column;
-  padding: 0 16px 12px;
 }
 
 .circe-plain-list--scroll {
@@ -668,15 +754,13 @@
   font-size: 12px;
 }
 
-/* Account devices reachable through Circe Mesh. */
+/* Account devices reachable through Circe Mesh, under the Machines list. */
 .circe-device-access {
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 14px 16px;
-  background: var(--card);
+  gap: 8px;
+  border-top: 1px solid var(--sidebar-border);
+  padding: 12px 6px 0;
 }
 
 .circe-device-access .circe-muted-note {
@@ -716,21 +800,25 @@
 }
 
 @media (max-width: 900px) {
-  .circe-home__grid,
-  .circe-machines__grid,
-  .circe-machines__layout {
+  .circe-machines__columns {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 
 @media (max-width: 520px) {
   .circe-home {
-    padding: 24px 16px 40px;
+    padding: 28px 16px 40px;
+  }
+  .circe-home__intro h2 {
+    font-size: 26px;
   }
   .circe-machines {
     padding: 20px 16px 40px;
   }
   .circe-presence {
+    display: none;
+  }
+  .circe-task-row__state {
     display: none;
   }
 }

@@ -196,8 +196,7 @@ import {
   ThreadStatusPill,
 } from "./Sidebar.logic";
 import { sortThreads } from "../lib/threadSort";
-import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
-import { SidebarPrimaryNav } from "./sidebar/SidebarPrimaryNav";
+import { SidebarChromeFooter, SidebarPanelHeader } from "./sidebar/SidebarChrome";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { CommandDialogTrigger } from "./ui/command";
@@ -2978,8 +2977,7 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
       fixedHeader={
         // Lifted above the stage backdrop, whose fade bleeds below the
         // header and would otherwise paint across the search row's outline.
-        <SidebarGroup className="relative z-[1] gap-2 px-2 pt-2 pb-1">
-          <SidebarPrimaryNav />
+        <SidebarGroup className="relative z-[1] px-2 pt-2 pb-1">
           <SidebarMenu>
             <SidebarMenuItem>
               <CommandDialogTrigger
@@ -3786,7 +3784,7 @@ export default function LegacySidebar() {
       {prewarmedSidebarThreadRefs.map((threadRef) => (
         <SidebarThreadDetailPrewarmer key={scopedThreadKey(threadRef)} threadRef={threadRef} />
       ))}
-      <SidebarChromeHeader isElectron={isElectron} />
+      <SidebarPanelHeader isElectron={isElectron} title="Threads" />
 
       <SidebarProjectsContent
         showArm64IntelBuildWarning={showArm64IntelBuildWarning}

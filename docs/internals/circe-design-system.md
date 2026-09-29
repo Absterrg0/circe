@@ -36,7 +36,7 @@ Rules: never distort, rotate, stretch, bevel, outline, or recolor the logo arbit
 | `peach`       | `#FFA47A` | Highlight and gradient endpoint          |
 | `ember`       | `#4A1A0A` | Orb and gradient depth                   |
 
-Brand gradient: `linear-gradient(135deg, #4A1A0A 0%, #A8401A 38%, #F26B3A 68%, #FFA47A 100%)`. Use it for the voice orb, signature brand moments, and hero imagery. Do not use it as the default fill for buttons, cards, or navigation.
+Brand gradient: `linear-gradient(135deg, #4A1A0A 0%, #A8401A 38%, #F26B3A 68%, #FFA47A 100%)`. Use it for signature brand moments and hero imagery. Do not use it as the default fill for buttons, cards, or navigation.
 
 ## 4. Semantic color tokens
 
@@ -80,7 +80,9 @@ Cards exist for grouping, not decoration. Hierarchy: background, then primary su
 
 ## 13. Navigation
 
-Desktop: one left sidebar. Its top holds the destinations (Home, Pull requests, Machines, Usage) as labeled rows; below them sit search and the thread groups; Settings sits in the footer. The active item uses a neutral raised surface, not a filled accent. Home carries Circe's presence and the needs-you count, so there is no separate launcher. Mobile: 3 to 5 primary destinations max, never force device or project selection before user intent. The primary flow feels like telling Circe what you want.
+Desktop: an always-visible icon rail, and a context sidebar beside it that shows one list at a time. Pages (Home, Pull requests, Machines, Usage, Settings) navigate; lists (Agents, Chats, Bots) switch the sidebar, and routes that belong to a list (a chat, a bot, Machines, Settings) switch it too. The current page gets an orange tint and a thin orange bar; the list open in the sidebar gets a neutral raised surface. The one filled control on the rail is the orange New button. Home carries Circe's presence and the needs-you count, so there is no separate launcher.
+
+Pages avoid boxes. Sections are set off by a rule and a small heading, rows by hairlines; the command box is the one framed surface on Home. Cards remain for settings groups and floating panels, where they group controls.
 
 ## 14. Status colors
 
@@ -132,4 +134,6 @@ The palette above is the web app's default: the base `:root` block in `apps/web/
 
 White text on the brand orange `#F26B3A` measures about 3:1, below the 4.5:1 body-text minimum. Light mode therefore fills buttons with `#CC4A14` (4.6:1 with white). Dark mode fills with the brand orange under near-black text (6.3:1). The brand orange stays on focus rings, active indicators, and the orb in both modes.
 
-The orb (`CirceOrb`) is the only animated brand element. It moves only while Circe is listening or working, uses stepped keyframes, and holds still under reduced motion.
+The mark is Prism Orbit (see `assets/circe/logo-assets-readme.md`). It is emissive art made for dark surfaces, so on light surfaces it sits on a charcoal tile, the same tile app icons use.
+
+The orb (`CirceOrb`) is the mark on a charcoal disc and the only animated brand element. It turns while Circe works, and a ring pulses while it listens. Both are transforms and opacity, so they stay on the compositor; it holds still at rest and under reduced motion.

@@ -18,18 +18,21 @@ import {
 } from "../keybindings";
 import { isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
-import { useEnvironmentIdentificationMode, useLegacySidebarEnabled } from "../hooks/useSettings";
+import { useLegacySidebarEnabled } from "../hooks/useSettings";
 import {
   PanelAnimationSuppressionProvider,
   usePanelAnimationSettings,
   usePanelNavigationSuppression,
 } from "../panelAnimations";
 
+import { SidebarBotsPanel } from "./bots/SidebarBots";
 import LegacyThreadSidebar from "./LegacySidebar";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
-import { SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { AppRail, useRailPanelStore, useRouteRailPanelSync } from "./sidebar/AppRail";
+import { SidebarPanelHeader } from "./sidebar/SidebarChrome";
+import { SidebarMachinesPanel } from "./sidebar/SidebarMachinesPanel";
 import { useProjects } from "../state/entities";
 import {
   resolveInitialThreadSidebarWidth,
@@ -103,8 +106,9 @@ function SidebarControl() {
     // The right-side layout controls carry mr-px (border compensation inside
     // the panel), so the trigger mirrors it: both clusters sit one extra pixel
     // off their edge and the titlebar reads symmetric.
+    // Narrow windows only: on desktop the rail carries the toggle.
     <div
-      className="pointer-events-none fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center"
+      className="pointer-events-none fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center md:hidden"
       data-sidebar-control=""
     >
       <Tooltip>
@@ -121,7 +125,39 @@ function SidebarControl() {
   );
 }
 
-// Settings swaps the thread sidebar out of the tree. Keep the lightweight
+/** The rail runs across the top of the sidebar sheet on narrow windows. */
+function MobileRail() {
+  const { isMobile } = useSidebar();
+  return isMobile ? <AppRail orientation="horizontal" /> : null;
+}
+
+/**
+ * The context sidebar beside the rail: the list the rail picked, or the one
+ * the current route belongs to.
+ */
+function ContextSidebarPanel({ legacySidebarEnabled }: { readonly legacySidebarEnabled: boolean }) {
+  useRouteRailPanelSync();
+  const pathname = useLocation({ select: (location) => location.pathname });
+  const panel = useRailPanelStore((store) => store.panel);
+  switch (panel) {
+    case "settings":
+      return (
+        <>
+          <SidebarPanelHeader isElectron={isElectron} title="Settings" />
+          <SettingsSidebarNav pathname={pathname} />
+        </>
+      );
+    case "bots":
+      return <SidebarBotsPanel isElectron={isElectron} />;
+    case "machines":
+      return <SidebarMachinesPanel isElectron={isElectron} />;
+    case "agents":
+    case "chats":
+      return legacySidebarEnabled ? <LegacyThreadSidebar /> : <ThreadSidebar section={panel} />;
+  }
+}
+
+// Other lists swap the thread sidebar out of the tree. Keep the lightweight
 // project projection subscribed so returning to a draft never renders the
 // zero-project state while the environment snapshot reconnects.
 function ProjectProjectionRetention() {
@@ -134,14 +170,11 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const legacySidebarEnabled = useLegacySidebarEnabled();
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
-  // Settings routes show the settings nav in place of whichever thread
-  // sidebar is active.
   // Seeds server-side visited tracking from this browser's localStorage the
   useThreadVisitedMigration();
   const pathname = useLocation({ select: (location) => location.pathname });
   const panelAnimationsSuppressed = usePanelNavigationSuppression(pathname);
   const routePanelAnimationsActive = panelAnimationsActive && !panelAnimationsSuppressed;
-  const isOnSettings = pathname === "/settings" || pathname.startsWith("/settings/");
   const isMacosDesktop = isElectron && isMacPlatform(navigator.platform);
   const [sidebarWidth, setSidebarWidth] = useState(readInitialThreadSidebarWidth);
   // Subscribed rather than read once: the clamp must track live window size,
@@ -165,6 +198,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   });
   const sidebarProviderStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
+    "--sidebar-left-offset": "var(--app-rail-width)",
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...(isMacosDesktop && !isWindowFullscreen
       ? { "--workspace-controls-left": MACOS_TRAFFIC_LIGHTS_LEFT_INSET }
@@ -217,6 +251,7 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
         style={sidebarProviderStyle}
       >
         <ProjectProjectionRetention />
+        <AppRail reserveTitlebar={isMacosDesktop && !isWindowFullscreen} />
         <Sidebar
           side="left"
           collapsible="offcanvas"
@@ -232,16 +267,8 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
             onResize: setSidebarWidth,
           }}
         >
-          {isOnSettings ? (
-            <>
-              <SidebarChromeHeader isElectron={isElectron} />
-              <SettingsSidebarNav pathname={pathname} />
-            </>
-          ) : legacySidebarEnabled ? (
-            <LegacyThreadSidebar />
-          ) : (
-            <ThreadSidebar />
-          )}
+          <MobileRail />
+          <ContextSidebarPanel legacySidebarEnabled={legacySidebarEnabled} />
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>
         {children}

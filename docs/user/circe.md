@@ -4,22 +4,29 @@ Circe lets you direct coding agents with text or voice and hear their real resul
 
 ## Getting around
 
-The sidebar starts with four destinations:
+Two columns sit on the left. The narrow icon rail is always there; the wider sidebar next to it shows one list at a time.
+
+The rail's pages:
 
 - **Home** is where Circe opens. Tell Circe what to do, and see what needs you, what is running, what finished recently, and which machines are online. The number on **Home** counts tasks waiting on you: an approval, a question, or a failed run.
 - **Pull requests** lists pull requests across your projects (shown when a connected machine supports them).
-- **Machines** shows every paired machine and what it can run.
+- **Machines** shows the machine you pick in the sidebar's Machines list.
 - **Usage** shows cost, tokens, and plan limits.
+- **Settings** sits at the bottom of the rail.
 
-Below them are search and your threads. **Settings** sits at the bottom of the sidebar; inside Settings the same spot reads **Back**.
+The rail's lists, shown in the sidebar: **Agents**, **Chats**, and **Bots**. Clicking the list that is already showing hides the sidebar; the panel button above Settings hides or shows it too, and so does `Ctrl+B` (`Command+B` on macOS). Opening a chat, a bot, Machines, or Settings switches the sidebar to that list on its own.
+
+The orange **+** on the rail starts a chat, starts an agent thread, or adds a project.
 
 The command palette's **Open Circe** also goes Home. In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation without leaving the page you are on; in a browser the same keys open Home.
 
-While Circe listens or works, the Home icon turns into Circe's orb, so you can see its state from anywhere.
+While Circe listens or works, the Home icon turns into Circe's orb, so you can see its state from anywhere. The orb is the Circe mark: still at rest, turning while Circe works, with a pulsing ring while it listens.
+
+On narrow windows the rail runs across the top of the sidebar, which opens from the button at the top left.
 
 ## Machines
 
-**Machines** lists every paired node, with **This device** first on the desktop. Pick one to see its role, whether it is online, its providers and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
+The sidebar's **Machines** list shows every paired node, with **This device** first on the desktop, and the devices linked to your Circe Mesh account below it. Pick a machine to see its role, whether it is online, its providers and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
 
 The same page holds each machine's **Computer** access and its node settings, including **Default agent for new tasks** and **Live conversation**. **Manage** beside Providers opens that machine's provider settings. **Pair a machine** opens Settings → Connections. Connection changes refresh the list on their own; the refresh button reloads project and provider details.
 
@@ -35,8 +42,9 @@ and disconnected agents have explicit labels in the panel. Agent entries include
 their provider and device, and the list scrolls when necessary. Selecting a
 provider changes the default for new tasks. The panel has no chat composer.
 
-Home's **Needs you**, **Running**, and **Recent** lists follow task updates across connected
-machines, and use the same status rules as the sidebar. Parked work (settled, or snoozed until
+Home's **Needs you**, **Running**, and **Recent** tabs follow task updates across connected
+machines, and use the same status rules as the sidebar. Home opens on **Needs you** when something
+waits on you, then **Running**, then **Recent**. Parked work (settled, or snoozed until
 later) stays off **Needs you** until it raises its hand again. Open a row to go to the task. Home
 follows the app's light or dark appearance and stacks to one column on narrow windows. Reduced
 motion keeps status changes visible without animation.
@@ -65,15 +73,13 @@ Without a device name, Circe routes by project. Name the project and the work ru
 that owns it. If two devices have a project with the same name, Circe asks which one, listing each
 project with its device.
 
-## Sidebar
+## Sidebar lists
 
-Under the destinations and search, the sidebar lists your threads in up to three groups. Each one collapses from its heading:
+- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. Each row shows the title and status on top, and the project, branch, pull request, and diff size underneath. The folder button in the header shows one project at a time; the pen starts an agent thread.
+- **Chats** holds conversations that are not about a codebase. The **+** in the header starts one, with no project to pick. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
+- **Bots** lists the Grok Bots on your machines, or says how to get one running when there are none. See [Grok Bots](./grok-bots.md).
 
-- **Bots** lists the Grok Bots on your machines. It appears once a bot exists. See [Grok Bots](./grok-bots.md).
-- **Chats** holds conversations that are not about a codebase. The **+** starts one, with no project to pick.
-- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. Each row shows the title and status on top, and the project, branch, pull request, and diff size underneath. The folder button on its heading shows one project at a time; it never hides chats.
-
-The **+** next to search starts a chat, starts an agent thread, or adds a project. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
+Search at the top of Agents and Chats looks through every thread.
 
 ## One Circe product per node
 

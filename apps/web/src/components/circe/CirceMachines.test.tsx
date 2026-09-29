@@ -74,7 +74,6 @@ vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => state.ref
 vi.mock("../ui/toast", () => ({ toastManager: { add: vi.fn() }, stackedThreadToast: vi.fn() }));
 vi.mock("./CirceNodeAgentSettings", () => ({ CirceNodeAgentSettings: () => null }));
 vi.mock("./CirceComputerSection", () => ({ CirceComputerSection: () => null }));
-vi.mock("./CirceMeshDevices", () => ({ CirceMeshDevices: () => null }));
 
 import { CirceMachines } from "./CirceMachines";
 
@@ -82,9 +81,9 @@ const LAPTOP = EnvironmentId.make("my-laptop");
 const REMOTE = EnvironmentId.make("remote");
 const EMPTY: CirceMeshCatalog = { nodes: [], projects: [], providers: [] };
 
-function renderPanel() {
+function renderPanel(initialNodeId: EnvironmentId | null = null) {
   hooks.beginRender();
-  const panel = CirceMachines({});
+  const panel = CirceMachines({ initialNodeId });
   for (const effect of state.effects.splice(0)) effect();
   return panel;
 }
@@ -113,14 +112,14 @@ describe("Circe machines connection lifecycle", () => {
       },
     ];
     const panel = renderPanel();
-    const rail = visitElements(panel, (element) => Array.isArray(element.props.devices));
+    const header = visitElements(panel, (element) => "device" in element.props);
 
-    expect(rail?.props.devices).toEqual([
+    expect(header?.props.device).toEqual(
       expect.objectContaining({
         node: expect.objectContaining({ nodeId: LAPTOP }),
         isCurrentDevice: true,
       }),
-    ]);
+    );
     expect(state.refresh).toHaveBeenCalledTimes(2);
     await Promise.resolve();
     renderPanel();
@@ -139,8 +138,8 @@ describe("Circe machines connection lifecycle", () => {
       },
     ];
     const panel = renderPanel();
-    const rail = visitElements(panel, (element) => Array.isArray(element.props.devices));
-    expect(rail?.props.devices).toEqual([expect.objectContaining({ isCurrentDevice: false })]);
+    const header = visitElements(panel, (element) => "device" in element.props);
+    expect(header?.props.device).toEqual(expect.objectContaining({ isCurrentDevice: false }));
   });
 
   it("keeps device and provider configuration scoped to the selected remote node", () => {
@@ -151,15 +150,13 @@ describe("Circe machines connection lifecycle", () => {
       serverConfig: null,
       connection: { phase: "connected", error: null },
     }));
-    const rail = visitElements(renderPanel(), (element) => Array.isArray(element.props.devices));
-    if (typeof rail?.props.onSelect !== "function") throw new Error("Missing device selection");
-    rail.props.onSelect(REMOTE);
-    const hero = visitElements(renderPanel(), (element) => "device" in element.props);
+    // The Machines list in the context sidebar selects through the route.
+    const hero = visitElements(renderPanel(REMOTE), (element) => "device" in element.props);
     expect(hero?.props.device).toEqual(
       expect.objectContaining({ node: expect.objectContaining({ nodeId: REMOTE }) }),
     );
     const providerSection = visitElements(
-      renderPanel(),
+      renderPanel(REMOTE),
       (element) => Array.isArray(element.props.providers) && "onManage" in element.props,
     );
     if (typeof providerSection?.props.onManage !== "function")
@@ -211,12 +208,13 @@ describe("Circe machines connection lifecycle", () => {
       },
     });
     await Promise.resolve();
-    const rail = visitElements(renderPanel(), (element) => Array.isArray(element.props.devices));
-    expect(rail?.props.devices).toEqual([
+    const panel = renderPanel();
+    const header = visitElements(panel, (element) => "device" in element.props);
+    expect(header?.props.device).toEqual(
       expect.objectContaining({
         node: expect.objectContaining({ label: "My laptop" }),
         projects: [],
       }),
-    ]);
+    );
   });
 });
