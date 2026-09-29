@@ -1,6 +1,11 @@
 import type { EnvironmentThreadShell } from "@circe/client/state/models";
 import { effectiveSnoozed } from "@circe/client/state/thread-settled";
-import { isChatWorkspace, type WorkspaceKind } from "@circe/contracts";
+import {
+  isChatWorkspace,
+  type ThreadPullRequestLink,
+  type ThreadPullRequestSnapshot,
+  type WorkspaceKind,
+} from "@circe/contracts";
 
 import {
   filterSidebarV2VisibleThreads,
@@ -106,4 +111,79 @@ export function greetingForHour(hour: number): string {
   if (hour < 12) return "Good morning";
   if (hour < 18) return "Good afternoon";
   return "Good evening";
+}
+
+/** Where a pull request stands, in the order a reviewer would act on it. */
+export type CirceHomePullRequestReadiness = "failing" | "changes" | "ready" | "review" | "draft";
+
+export function pullRequestReadiness(
+  snapshot: ThreadPullRequestSnapshot,
+): CirceHomePullRequestReadiness {
+  if (snapshot.isDraft) return "draft";
+  if (snapshot.checksState === "failing" || snapshot.mergeability === "conflicting") {
+    return "failing";
+  }
+  if (snapshot.reviewDecision === "changes-requested") return "changes";
+  if (snapshot.reviewDecision === "approved" && snapshot.checksState !== "pending") return "ready";
+  return "review";
+}
+
+export interface CirceHomePullRequest {
+  readonly key: string;
+  readonly link: ThreadPullRequestLink & { readonly snapshot: ThreadPullRequestSnapshot };
+  readonly readiness: CirceHomePullRequestReadiness;
+  /** The newest thread that links it; opening the row opens that thread. */
+  readonly thread: EnvironmentThreadShell;
+}
+
+const PULL_REQUEST_LIMIT = 4;
+
+/**
+ * Open pull requests that agents opened or the user linked, from the synced
+ * snapshots already on thread shells. Home never queries the host itself; a
+ * link that has not synced yet has no title to show and waits for its sync.
+ */
+export function collectCirceHomePullRequests(threads: ReadonlyArray<EnvironmentThreadShell>): {
+  readonly total: number;
+  readonly items: ReadonlyArray<CirceHomePullRequest>;
+} {
+  const byKey = new Map<string, CirceHomePullRequest>();
+  for (const thread of filterSidebarV2VisibleThreads(threads, null)) {
+    for (const link of thread.pullRequests) {
+      const snapshot = link.snapshot;
+      if (link.source === "stack-dismissed" || snapshot === null || snapshot.state !== "open") {
+        continue;
+      }
+      const key = `${link.host}/${link.repository}#${link.number}`;
+      const existing = byKey.get(key);
+      if (existing !== undefined && existing.thread.updatedAt >= thread.updatedAt) continue;
+      byKey.set(key, {
+        key,
+        link: { ...link, snapshot },
+        readiness: pullRequestReadiness(snapshot),
+        thread,
+      });
+    }
+  }
+  const sorted = [...byKey.values()].toSorted((left, right) =>
+    (right.link.snapshot.updatedAt ?? right.link.linkedAt).localeCompare(
+      left.link.snapshot.updatedAt ?? left.link.linkedAt,
+    ),
+  );
+  return { total: sorted.length, items: sorted.slice(0, PULL_REQUEST_LIMIT) };
+}
+
+/** Read the minute clock (`YYYY-MM-DDTHH:MM`, UTC) or a full ISO timestamp. */
+function parseInstant(value: string): number {
+  return Date.parse(value.length === 16 ? `${value}:00.000Z` : value);
+}
+
+/** Compact elapsed time for a running task: "now", "12m", "1h 5m", "3d". */
+export function formatElapsed(startedAt: string, now: string): string {
+  const minutes = Math.max(0, Math.floor((parseInstant(now) - parseInstant(startedAt)) / 60_000));
+  if (!Number.isFinite(minutes) || minutes < 1) return "now";
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return minutes % 60 === 0 ? `${hours}h` : `${hours}h ${minutes % 60}m`;
+  return `${Math.floor(hours / 24)}d`;
 }

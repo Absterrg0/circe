@@ -123,29 +123,28 @@
       --color-wordmark: #151311;
       --color-chevron: rgba(29, 26, 21, 0.3);
 
-      /* Circe design system v1 (static, not derived from the shared palette).
-         Instrument Serif was replaced by the bundled display serif; the copper
-         ramp runs from the shell tones through the deep text accent. Success,
-         warning, danger and neutral are semantic only and never decorative.
+      /* Circe brand tokens (static, not derived from the shared palette). The
+         "copper" names predate the orange palette. Success, warning, danger and
+         neutral are semantic only and never decorative.
          Values must match createMobileThemeVariables. */
-      --color-circe-copper: #e08a63;
-      --color-circe-copper-deep: #a5482c;
-      --color-circe-copper-bright: #f0a078;
-      --color-circe-peach: #ffd8bd;
-      --color-circe-blush: #f7cfb8;
-      --color-circe-stone: #f2e8de;
-      --color-circe-success: #3f8f63;
-      --color-circe-warning: #b4703a;
-      --color-circe-danger: #c2454f;
-      --color-circe-neutral: #77736f;
-      --color-circe-canvas: #fcf9f4;
-      --color-circe-surface: #fffdfa;
-      --color-circe-surface-raised: #f6f0e9;
-      --color-circe-card: #fffdfa;
-      --color-circe-ink: #151311;
-      --color-circe-copy: #696b70;
-      --color-circe-tabbar: #fffdfa;
-      --color-circe-tabbar-border: rgba(56, 43, 35, 0.07);
+      --color-circe-copper: #f26b3a;
+      --color-circe-copper-deep: #cc4a14;
+      --color-circe-copper-bright: #ffa47a;
+      --color-circe-peach: #ffc2a3;
+      --color-circe-blush: #fdeee6;
+      --color-circe-stone: #f4f4f5;
+      --color-circe-success: #2a7a50;
+      --color-circe-warning: #95601c;
+      --color-circe-danger: #b3323f;
+      --color-circe-neutral: #63636b;
+      --color-circe-canvas: #fafafa;
+      --color-circe-surface: #ffffff;
+      --color-circe-surface-raised: #f4f4f5;
+      --color-circe-card: #ffffff;
+      --color-circe-ink: #18181b;
+      --color-circe-copy: #63636b;
+      --color-circe-tabbar: #f4f4f5;
+      --color-circe-tabbar-border: rgba(24, 24, 27, 0.08);
     }
 
     @variant dark {
@@ -261,23 +260,23 @@
       /* Circe design system v1, dark expression. Layered warm near-black,
          never pure black and never a blue-gray SaaS slate. Values must match
          createMobileThemeVariables. */
-      --color-circe-copper: #e08a63;
-      --color-circe-copper-deep: #f0a078;
-      --color-circe-copper-bright: #f0a078;
-      --color-circe-peach: #ffd8bd;
-      --color-circe-blush: #33231f;
-      --color-circe-stone: #2a2622;
-      --color-circe-success: #83d7a3;
-      --color-circe-warning: #e6a066;
-      --color-circe-danger: #f0646e;
-      --color-circe-neutral: #a1a7af;
-      --color-circe-canvas: #0c0d0e;
-      --color-circe-surface: #121415;
-      --color-circe-surface-raised: #191b1d;
-      --color-circe-card: #121415;
-      --color-circe-ink: #f4f1ed;
-      --color-circe-copy: #b1afad;
-      --color-circe-tabbar: #121415;
+      --color-circe-copper: #f26b3a;
+      --color-circe-copper-deep: #ff7d4d;
+      --color-circe-copper-bright: #ffa47a;
+      --color-circe-peach: #ffc2a3;
+      --color-circe-blush: #2a1c16;
+      --color-circe-stone: #1e1e21;
+      --color-circe-success: #7fd8aa;
+      --color-circe-warning: #efc182;
+      --color-circe-danger: #f59aa2;
+      --color-circe-neutral: #a1a1a6;
+      --color-circe-canvas: #111113;
+      --color-circe-surface: #18181a;
+      --color-circe-surface-raised: #1e1e21;
+      --color-circe-card: #18181a;
+      --color-circe-ink: #f5f5f4;
+      --color-circe-copy: #a1a1a6;
+      --color-circe-tabbar: #0c0c0d;
       --color-circe-tabbar-border: rgba(255, 255, 255, 0.065);
     }
   }

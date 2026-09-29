@@ -9,9 +9,11 @@ import {
   ServerIcon,
   WifiOffIcon,
 } from "lucide-react";
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 
 import { isElectron } from "../../env";
+import { useThreadShells } from "../../state/entities";
+import { filterSidebarV2VisibleThreads, resolveSidebarThreadStatus } from "../Sidebar.logic";
 import { cn } from "../../lib/utils";
 import { WorkspacePageHeader } from "../WorkspacePageHeader";
 import {
@@ -24,9 +26,11 @@ import { Button } from "../ui/button";
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
+import { CirceCardHeader, CirceCardLinkLabel } from "./CirceCard";
 import { CirceComputerSection } from "./CirceComputerSection";
 import type { CirceControlCenterDevice } from "./CirceControlCenter.logic";
 import { CirceNodeAgentSettings } from "./CirceNodeAgentSettings";
+import type { CirceTone } from "./CirceStatusGlyph";
 import { useCirceMeshCatalog } from "./useCirceMeshCatalog";
 import "./circe-pages.css";
 
@@ -35,10 +39,18 @@ function presetLabel(device: CirceControlCenterDevice): string {
   return preset === undefined ? "Unknown preset" : preset[0]!.toUpperCase() + preset.slice(1);
 }
 
-function MachineHeader({ device }: { readonly device: CirceControlCenterDevice }) {
+function MachineHeader({
+  device,
+  running,
+}: {
+  readonly device: CirceControlCenterDevice;
+  readonly running: number;
+}) {
   const online = device.node.reachability === "online";
+  const readyProviders = device.providers.filter((provider) => provider.available).length;
+  const projects = device.projects.filter((project) => !isChatWorkspace(project)).length;
   return (
-    <header className="circe-machine-header">
+    <header className="circe-card circe-machine-header">
       <span className="circe-machine-header__icon">
         {device.node.capabilities?.ui === false ? <ServerIcon /> : <MonitorIcon />}
       </span>
@@ -58,33 +70,24 @@ function MachineHeader({ device }: { readonly device: CirceControlCenterDevice }
           {device.node.catalogError}
         </p>
       ) : null}
+      <dl className="circe-machine-header__stats">
+        <div>
+          <dt>Running</dt>
+          <dd>{running}</dd>
+        </div>
+        <div>
+          <dt>Agents ready</dt>
+          <dd>
+            {readyProviders}
+            <span className="text-muted-foreground"> / {device.providers.length}</span>
+          </dd>
+        </div>
+        <div>
+          <dt>Projects</dt>
+          <dd>{projects}</dd>
+        </div>
+      </dl>
     </header>
-  );
-}
-
-/** A headed block of the page, set off by a rule rather than a box. */
-function Section({
-  title,
-  count,
-  action,
-  children,
-}: {
-  readonly title: string;
-  readonly count?: number;
-  readonly action?: ReactNode;
-  readonly children: ReactNode;
-}) {
-  return (
-    <section className="circe-section" aria-label={title}>
-      <header className="circe-section__header">
-        <h2>
-          {title}
-          {count !== undefined && count > 0 ? <span className="circe-count">{count}</span> : null}
-        </h2>
-        {action}
-      </header>
-      {children}
-    </section>
   );
 }
 
@@ -96,80 +99,88 @@ function ProviderSection({
   readonly onManage: () => void;
 }) {
   return (
-    <Section
-      title="Providers"
-      count={providers.length}
-      action={
-        <button type="button" onClick={onManage} className="circe-text-action">
-          Manage
-        </button>
-      }
-    >
+    <section className="circe-card" aria-label="Agents">
+      <CirceCardHeader
+        title="Agents"
+        count={providers.length}
+        link={
+          <button type="button" onClick={onManage} className="circe-card__link">
+            <CirceCardLinkLabel>Manage</CirceCardLinkLabel>
+          </button>
+        }
+      />
       {providers.length === 0 ? (
-        <p className="circe-section__empty">Connect a provider to start working.</p>
+        <p className="circe-card__empty">Connect a coding agent to start working.</p>
       ) : (
-        <ul className="circe-plain-list">
+        <ul className="circe-rows">
           {providers.map((provider) => {
-            const state = provider.available
-              ? "Ready"
+            const tone: CirceTone = provider.available
+              ? "done"
               : !provider.snapshot.enabled
-                ? "Off"
-                : "Needs setup";
+                ? "idle"
+                : "attention";
             return (
-              <li className="circe-plain-row" key={provider.snapshot.instanceId}>
-                <span className="circe-plain-row__icon">
-                  <ProviderInstanceIcon
-                    driverKind={provider.snapshot.driver}
-                    displayName={provider.snapshot.displayName ?? provider.snapshot.driver}
-                    iconClassName="size-4"
-                  />
-                </span>
-                <span className="circe-plain-row__name">
-                  {provider.snapshot.displayName ?? provider.snapshot.driver}
-                </span>
-                <span
-                  className={cn(
-                    "circe-plain-row__state",
-                    provider.available && "text-success-foreground",
-                  )}
-                >
-                  {state}
-                </span>
+              <li key={provider.snapshot.instanceId}>
+                <div className="circe-row">
+                  <span className="circe-row__icon">
+                    <ProviderInstanceIcon
+                      driverKind={provider.snapshot.driver}
+                      displayName={provider.snapshot.displayName ?? provider.snapshot.driver}
+                      iconClassName="size-4"
+                    />
+                  </span>
+                  <span className="circe-row__text">
+                    <span className="circe-row__title">
+                      {provider.snapshot.displayName ?? provider.snapshot.driver}
+                    </span>
+                  </span>
+                  <span className="circe-state" data-tone={tone}>
+                    <span className="circe-status-dot" aria-hidden />
+                    {provider.available
+                      ? "Ready"
+                      : !provider.snapshot.enabled
+                        ? "Off"
+                        : "Needs setup"}
+                  </span>
+                </div>
               </li>
             );
           })}
         </ul>
       )}
-    </Section>
+    </section>
   );
 }
 
 function ProjectSection({ projects }: { readonly projects: CirceControlCenterDevice["projects"] }) {
   return (
-    <Section title="Projects" count={projects.length}>
+    <section className="circe-card" aria-label="Projects">
+      <CirceCardHeader title="Projects" count={projects.length} />
       {projects.length === 0 ? (
-        <p className="circe-section__empty">No projects on this machine yet.</p>
+        <p className="circe-card__empty">No projects on this machine yet.</p>
       ) : (
-        <ul className="circe-plain-list circe-plain-list--scroll">
+        <ul className="circe-rows circe-rows--scroll">
           {projects.map((project) => (
-            <li className="circe-plain-row" key={project.ref.projectId}>
-              <span className="circe-plain-row__icon">
-                <FolderGit2Icon className="size-4" />
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="circe-plain-row__name block">{project.title}</span>
-                <Tooltip>
-                  <TooltipTrigger render={<span className="circe-plain-row__path" tabIndex={0} />}>
-                    {project.workspaceRoot}
-                  </TooltipTrigger>
-                  <TooltipPopup>{project.workspaceRoot}</TooltipPopup>
-                </Tooltip>
-              </span>
+            <li key={project.ref.projectId}>
+              <div className="circe-row">
+                <span className="circe-row__icon">
+                  <FolderGit2Icon />
+                </span>
+                <span className="circe-row__text">
+                  <span className="circe-row__title">{project.title}</span>
+                  <Tooltip>
+                    <TooltipTrigger render={<span className="circe-row__meta" tabIndex={0} />}>
+                      <span>{project.workspaceRoot}</span>
+                    </TooltipTrigger>
+                    <TooltipPopup>{project.workspaceRoot}</TooltipPopup>
+                  </Tooltip>
+                </span>
+              </div>
             </li>
           ))}
         </ul>
       )}
-    </Section>
+    </section>
   );
 }
 
@@ -187,6 +198,15 @@ export function CirceMachines({
   const navigate = useNavigate();
   const { catalog, view, pending, error, refresh, primaryEnvironmentId } = useCirceMeshCatalog();
   const selectedNodeId = initialNodeId ?? primaryEnvironmentId;
+  const threads = useThreadShells();
+  const runningByNode = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const thread of filterSidebarV2VisibleThreads(threads, null)) {
+      if (resolveSidebarThreadStatus(thread) !== "working") continue;
+      counts.set(thread.environmentId, (counts.get(thread.environmentId) ?? 0) + 1);
+    }
+    return counts;
+  }, [threads]);
   const device = useMemo(
     () =>
       view.devices.find((candidate) => candidate.node.nodeId === selectedNodeId) ??
@@ -254,7 +274,10 @@ export function CirceMachines({
               </div>
             ) : (
               <div className="circe-machines__detail" key={device.node.nodeId}>
-                <MachineHeader device={device} />
+                <MachineHeader
+                  device={device}
+                  running={runningByNode.get(device.node.nodeId) ?? 0}
+                />
                 <div className="circe-machines__columns">
                   <ProviderSection
                     providers={device.providers}

@@ -76,13 +76,15 @@ Quiet and structural: 42 to 46px height, subtle border, slight surface contrast,
 
 ## 12. Cards and panels
 
-Cards exist for grouping, not decoration. Hierarchy: background, then primary surface, then a nested surface only when needed. Default card is 14 to 16px radius, 1px border, little or no shadow. Avoid endless card-within-card nesting.
+A card holds one kind of thing: tasks, pull requests, agents, machines, a settings group. Its header names it, gives a count, and links to where all of it lives ("View all", "Manage"). Rows inside a card are split by inset hairlines and never become nested cards. Cards are 16px radius, 1px border, no shadow in dark and a hairline shadow in light. Empty cards say in one sentence what will appear there, with an action when one exists.
+
+Rows are 48 to 56px: a 30px icon tile or an 18px status glyph, a title with a muted meta line, then the state on the right. The state is always words plus a tone (dot or glyph), never color alone.
 
 ## 13. Navigation
 
-Desktop: an always-visible icon rail, and a context sidebar beside it that shows one list at a time. Pages (Home, Pull requests, Machines, Usage, Settings) navigate; lists (Agents, Chats, Bots) switch the sidebar, and routes that belong to a list (a chat, a bot, Machines, Settings) switch it too. The current page gets an orange tint and a thin orange bar; the list open in the sidebar gets a neutral raised surface. The one filled control on the rail is the orange New button. Home carries Circe's presence and the needs-you count, so there is no separate launcher.
+Desktop: an always-visible icon rail, and a context sidebar beside it that shows one list at a time. Pages (Home, Pull requests, Machines, Usage, Settings) navigate; lists (Agents, Chats, Bots) switch the sidebar, and routes that belong to a list (a chat, a bot, Machines, Settings) switch it too. Exactly one rail item is marked: the current page, with an orange tint and a thin orange bar. The list open in the sidebar only brightens its icon, because the sidebar's title already names it; a second fill read as two selections. The one filled control on the rail is the orange New button. Home carries Circe's presence and the needs-you count, so there is no separate launcher.
 
-Pages avoid boxes. Sections are set off by a rule and a small heading, rows by hairlines; the command box is the one framed surface on Home. Cards remain for settings groups and floating panels, where they group controls.
+Home is a dashboard in three bands: the greeting and command box over a static warm glow and horizon line (the page's one brand moment), a tabbed task card (Needs you, Running, Recent), then Pull requests, Agents, and Machines cards in a grid that drops to two columns and then one. Everything on Home is derived from state the client already holds; Home adds no host queries or polling. Machines follows the same card system: a header card with running, agents-ready, and project counts, then Agents and Projects cards side by side.
 
 ## 14. Status colors
 
@@ -126,7 +128,7 @@ When generating a new Circe screen: pick light or dark semantic tokens, use only
 
 ## Adoption note
 
-The mobile app currently uses DM Sans where this system specifies Inter; switch to Inter via the Expo font plugin when touching the font stack. Mobile still carries the retired copper and midnight values in `apps/mobile/src/lib/mobileTheme.ts` and `app.config.ts`; move them to this palette in the mobile pass so both apps look like one product.
+The mobile app currently uses DM Sans where this system specifies Inter; switch to Inter via the Expo font plugin when touching the font stack. Mobile's `--color-circe-*` brand tokens (`mobileTheme.ts`, mirrored by hand in `global.css`) carry this palette; their `copper` names predate it and stay to avoid touching every call site. The splash and Android icon colors in `app.config.ts` still use older values.
 
 ## Web implementation notes
 
@@ -135,5 +137,7 @@ The palette above is the web app's default: the base `:root` block in `apps/web/
 White text on the brand orange `#F26B3A` measures about 3:1, below the 4.5:1 body-text minimum. Light mode therefore fills buttons with `#CC4A14` (4.6:1 with white). Dark mode fills with the brand orange under near-black text (6.3:1). The brand orange stays on focus rings, active indicators, and the orb in both modes.
 
 The mark is Prism Orbit (see `assets/circe/logo-assets-readme.md`). It is emissive art made for dark surfaces, so on light surfaces it sits on a charcoal tile, the same tile app icons use.
+
+Component tokens (`--circe-surface`, `--circe-line`, `--circe-tone-*`, `--circe-radius-*`, and friends) sit in their own `:root` block in `index.css`. They are derived from the semantic roles with `var()` and `color-mix()`, never raw hex, so a named theme restyles cards and status the same way it restyles chrome. Page CSS (`circe-pages.css`) reads only these and the semantic roles. A status names its tone once with `data-tone` (`running`, `attention`, `failed`, `done`, `idle`); glyphs, dots, counts, and labels inside read `--tone`.
 
 The orb (`CirceOrb`) is the mark on a charcoal disc and the only animated brand element. It turns while Circe works, and a ring pulses while it listens. Both are transforms and opacity, so they stay on the compositor; it holds still at rest and under reduced motion.

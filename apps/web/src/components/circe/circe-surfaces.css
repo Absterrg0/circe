@@ -208,8 +208,9 @@
   color: var(--sidebar-foreground);
 }
 
+/* The list open in the sidebar reads as lit, not selected: its title already
+   names it, and only the current page gets a fill. */
 .circe-rail-button[data-panel="true"] {
-  background: var(--sidebar-row-active);
   color: var(--sidebar-foreground);
 }
 

@@ -70,33 +70,23 @@ describe("mobile themes", () => {
     const light = readDefaultMobileThemeVariables("light");
     const dark = readDefaultMobileThemeVariables("dark");
 
-    // Design system v1: warm ivory paper in light, layered warm near-black in
-    // dark. Pure black is explicitly out, and so is a cool blue-gray.
-    expect(light["--color-circe-canvas"]).toBe("#fcf9f4");
-    expect(dark["--color-circe-canvas"]).toBe("#0c0d0e");
-
-    // Light is warm paper, which is testable: red leads blue.
-    const [lightRed, , lightBlue] = light["--color-circe-canvas"]!.slice(1)
-      .match(/.{2}/g)!
-      .map((channel) => Number.parseInt(channel, 16));
-    expect(lightRed!).toBeGreaterThan(lightBlue!);
-
-    // Dark is a layered near-black: never pure black, and never saturated
-    // enough to read as a colored slate. The channels stay close together.
+    // Near-white in light, neutral charcoal in dark: never ivory, never pure
+    // black, never a cool slate. Same values as the web app's base palette.
+    expect(light["--color-circe-canvas"]).toBe("#fafafa");
+    expect(dark["--color-circe-canvas"]).toBe("#111113");
     const darkChannels = dark["--color-circe-canvas"]!.slice(1)
       .match(/.{2}/g)!
       .map((channel) => Number.parseInt(channel, 16));
-    expect(dark["--color-circe-canvas"]).not.toBe("#000000");
     expect(Math.max(...darkChannels) - Math.min(...darkChannels)).toBeLessThanOrEqual(4);
 
-    // Copper is the one brand accent, and it is the same hue in both modes.
-    expect(light["--color-circe-copper"]).toBe("#e08a63");
-    expect(dark["--color-circe-copper"]).toBe("#e08a63");
+    // Orange is the one brand accent, the same hue in both modes.
+    expect(light["--color-circe-copper"]).toBe("#f26b3a");
+    expect(dark["--color-circe-copper"]).toBe("#f26b3a");
 
-    // Dark mode leans on the bright copper for text; light mode uses the deep
-    // tone so it stays legible on paper.
-    expect(light["--color-circe-copper-deep"]).toBe("#a5482c");
-    expect(dark["--color-circe-copper-deep"]).toBe("#f0a078");
+    // Text in the accent: light mode uses the deep orange (4.6:1 on white),
+    // dark mode the brighter one.
+    expect(light["--color-circe-copper-deep"]).toBe("#cc4a14");
+    expect(dark["--color-circe-copper-deep"]).toBe("#ff7d4d");
   });
 
   it("keeps the default theme surfaces solid so first paint matches themed paint", () => {

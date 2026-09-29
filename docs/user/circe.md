@@ -8,13 +8,13 @@ Two columns sit on the left. The narrow icon rail is always there; the wider sid
 
 The rail's pages:
 
-- **Home** is where Circe opens. Tell Circe what to do, and see what needs you, what is running, what finished recently, and which machines are online. The number on **Home** counts tasks waiting on you: an approval, a question, or a failed run.
+- **Home** is where Circe opens. Tell Circe what to do, and see what needs you, what is running, what finished recently, which pull requests are open, and which agents and machines are ready. The number on **Home** counts tasks waiting on you: an approval, a question, or a failed run.
 - **Pull requests** lists pull requests across your projects (shown when a connected machine supports them).
 - **Machines** shows the machine you pick in the sidebar's Machines list.
 - **Usage** shows cost, tokens, and plan limits.
 - **Settings** sits at the bottom of the rail.
 
-The rail's lists, shown in the sidebar: **Agents**, **Chats**, and **Bots**. Clicking the list that is already showing hides the sidebar; the panel button above Settings hides or shows it too, and so does `Ctrl+B` (`Command+B` on macOS). Opening a chat, a bot, Machines, or Settings switches the sidebar to that list on its own.
+The rail's lists, shown in the sidebar: **Agents**, **Chats**, and **Bots**. The current page is marked in orange; the list open in the sidebar only brightens, and the sidebar's title names it. Clicking the list that is already showing hides the sidebar; the panel button above Settings hides or shows it too, and so does `Ctrl+B` (`Command+B` on macOS). Opening a chat, a bot, Machines, or Settings switches the sidebar to that list on its own.
 
 The orange **+** on the rail starts a chat, starts an agent thread, or adds a project.
 
@@ -26,9 +26,9 @@ On narrow windows the rail runs across the top of the sidebar, which opens from 
 
 ## Machines
 
-The sidebar's **Machines** list shows every paired node, with **This device** first on the desktop, and the devices linked to your Circe Mesh account below it. Pick a machine to see its role, whether it is online, its providers and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
+The sidebar's **Machines** list shows every paired node, with **This device** first on the desktop, and the devices linked to your Circe Mesh account below it. Pick a machine to see its role, whether it is online, how many tasks it is running, its agents and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
 
-The same page holds each machine's **Computer** access and its node settings, including **Default agent for new tasks** and **Live conversation**. **Manage** beside Providers opens that machine's provider settings. **Pair a machine** opens Settings → Connections. Connection changes refresh the list on their own; the refresh button reloads project and provider details.
+The same page holds each machine's **Computer** access and its node settings, including **Default agent for new tasks** and **Live conversation**. **Manage** beside Agents opens that machine's provider settings. **Pair a machine** opens Settings → Connections. Connection changes refresh the list on their own; the refresh button reloads project and provider details.
 
 ### Desktop activity dot
 
@@ -45,9 +45,21 @@ provider changes the default for new tasks. The panel has no chat composer.
 Home's **Needs you**, **Running**, and **Recent** tabs follow task updates across connected
 machines, and use the same status rules as the sidebar. Home opens on **Needs you** when something
 waits on you, then **Running**, then **Recent**. Parked work (settled, or snoozed until
-later) stays off **Needs you** until it raises its hand again. Open a row to go to the task. Home
-follows the app's light or dark appearance and stacks to one column on narrow windows. Reduced
-motion keeps status changes visible without animation.
+later) stays off **Needs you** until it raises its hand again. Each row shows the project, branch,
+agent and model, its state, and how long it has been running. Open a row to go to the task.
+
+Below the tasks, three cards:
+
+- **Pull requests** lists open pull requests your agents opened or you linked to a task, with
+  whether each is ready to merge, needs review, has changes requested, or is failing checks. It
+  shows what the last sync saw; **View all** opens the full Pull requests page, which asks the host.
+- **Agents** lists each coding agent that is turned on, once however many machines run it, with how
+  many tasks it is running or whether it needs setup. **Manage** opens provider settings.
+- **Machines** lists paired machines, online or offline, and how many tasks each is running.
+
+Home follows the app's light or dark appearance and stacks to one column on narrow windows.
+Nothing on Home animates at rest, and reduced motion keeps status changes visible without
+animation.
 
 ### Choose the agent for voice tasks
 
@@ -99,8 +111,10 @@ The command box sits at the top of Home. Circe's state (**Ready**, **Listening**
 there. Optionally pick a project from the project chip, which reads **Any
 project** until you choose one, and optionally one of its recent tasks. Type the
 instruction and press Enter, or choose **Send**; Shift+Enter adds a new line. The
-microphone button starts or ends a live conversation. The line under the box
-names the current target, for example **Working in Rivvl on Laptop · Review
+microphone button starts or ends a live conversation. The chips under the box
+(**Fix failing tests**, **Review open PRs**, and so on) fill in the start of an instruction for you
+to finish; they never send on their own. Once you pick a target, the line under the box
+names it, for example **Working in Rivvl on Laptop · Review
 task**. Choose the **×** beside the
 chips to reset it. A disconnected selection stays put and reads
 **(unavailable)**; it never moves to another node on its own.

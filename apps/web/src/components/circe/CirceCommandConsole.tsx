@@ -17,7 +17,7 @@ import {
   MicIcon,
   XIcon,
 } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 
 import {
   getCirceCommandState,
@@ -53,6 +53,15 @@ interface ConsoleTask {
   readonly pendingReply?: CirceTaskPendingReply | null;
 }
 
+/** A starting instruction offered under the box. Picking one fills the box; it never sends. */
+export interface CirceCommandSuggestion {
+  readonly label: string;
+  readonly icon: ReactNode;
+  readonly text: string;
+}
+
+const NO_SUGGESTIONS: ReadonlyArray<CirceCommandSuggestion> = [];
+
 const PRESENCE_LABEL = {
   idle: "Ready",
   listening: "Listening",
@@ -68,8 +77,15 @@ const PRESENCE_LABEL = {
  * target, and stay locked while a command is in flight so an answer cannot
  * land on a different target than the question.
  */
-export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCatalog | null }) {
+export function CirceCommandConsole({
+  catalog,
+  suggestions = NO_SUGGESTIONS,
+}: {
+  readonly catalog: CirceMeshCatalog | null;
+  readonly suggestions?: ReadonlyArray<CirceCommandSuggestion>;
+}) {
   const [draft, setDraft] = useState("");
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
   const [feedback, setFeedback] = useState<CirceCommandFeedback | null>(() =>
     getCirceLastCommandFeedback(),
   );
@@ -187,6 +203,7 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
     <section aria-label="Circe command" className="circe-console min-w-0">
       <div className="circe-composer-frame">
         <textarea
+          ref={composerRef}
           aria-label="Circe instruction"
           className="circe-composer w-full"
           placeholder={
@@ -350,13 +367,38 @@ export function CirceCommandConsole({ catalog }: { readonly catalog: CirceMeshCa
           </div>
         </div>
       </div>
-      <p className="circe-target-context" aria-live="polite">
-        {liveVoice.active
-          ? "Voice conversation is on and owns the microphone. End it to type."
-          : targetSnapshot?.projectRef
-            ? `Working in ${targetLabel}`
-            : "Circe picks the machine and project from what you say, and asks when it is not sure."}
-      </p>
+      {liveVoice.active || targetSnapshot?.projectRef ? (
+        <p className="circe-target-context" aria-live="polite">
+          {liveVoice.active
+            ? "Voice conversation is on and owns the microphone. End it to type."
+            : `Working in ${targetLabel}`}
+        </p>
+      ) : null}
+      {suggestions.length > 0 && !awaitingAnswer && !liveVoice.active ? (
+        <div className="circe-suggestions" aria-label="Suggestions">
+          {suggestions.map((suggestion) => (
+            <button
+              key={suggestion.label}
+              type="button"
+              className="circe-suggestion"
+              disabled={commandPending}
+              onClick={() => {
+                setDraft(suggestion.text);
+                const composer = composerRef.current;
+                if (composer === null) return;
+                composer.focus();
+                // Leave the caret at the end so the user can finish the sentence.
+                requestAnimationFrame(() =>
+                  composer.setSelectionRange(suggestion.text.length, suggestion.text.length),
+                );
+              }}
+            >
+              {suggestion.icon}
+              {suggestion.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {waitingView ? (
         <div aria-live="polite" className="circe-feedback circe-feedback-waiting">
           <ActivityIcon className="size-4 shrink-0" />
