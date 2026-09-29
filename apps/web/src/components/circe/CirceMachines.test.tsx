@@ -73,8 +73,10 @@ vi.mock("../../state/circeMesh", () => ({
 vi.mock("../../state/use-atom-command", () => ({ useAtomCommand: () => state.refresh }));
 vi.mock("../ui/toast", () => ({ toastManager: { add: vi.fn() }, stackedThreadToast: vi.fn() }));
 vi.mock("./CirceNodeAgentSettings", () => ({ CirceNodeAgentSettings: () => null }));
+vi.mock("./CirceComputerSection", () => ({ CirceComputerSection: () => null }));
+vi.mock("./CirceMeshDevices", () => ({ CirceMeshDevices: () => null }));
 
-import { CirceControlCenter } from "./CirceControlCenter";
+import { CirceMachines } from "./CirceMachines";
 
 const LAPTOP = EnvironmentId.make("my-laptop");
 const REMOTE = EnvironmentId.make("remote");
@@ -82,12 +84,12 @@ const EMPTY: CirceMeshCatalog = { nodes: [], projects: [], providers: [] };
 
 function renderPanel() {
   hooks.beginRender();
-  const panel = CirceControlCenter();
+  const panel = CirceMachines({});
   for (const effect of state.effects.splice(0)) effect();
   return panel;
 }
 
-describe("Circe control center connection lifecycle", () => {
+describe("Circe machines connection lifecycle", () => {
   beforeEach(() => {
     hooks.reset();
     state.primaryId = null;

@@ -26,7 +26,7 @@ and does not silently switch to a local key.
 
 For an unlinked node:
 
-1. Open the Circe control center and find **Live conversation** under the node's settings.
+1. Open **Machines**, pick the node, and find **Live conversation** under its node settings.
 2. Paste an OpenAI project API key, confirm or change the model (default `gpt-live-1`) and voice
    (default `marin`), then **Save**.
 3. The key is written to the node secret store as `circe-live-voice-openai-api-key`
@@ -52,8 +52,9 @@ WebRTC negotiation, audio routing, or the model's delegation behavior. Before ca
 candidate good, do this by hand on the target desktop:
 
 1. Link the node to Circe Mesh without a local API key. Repeat with an unlinked node and its own key.
-2. Open the control center and press **Live conversation**. Expect the button to move through
-   `Connecting…` to `End conversation`, and the browser to prompt for microphone permission once.
+2. Open Home and press the microphone button. Expect it to highlight, its label to move from
+   **Connecting voice** to **End voice conversation**, and the browser to prompt for microphone
+   permission once.
 3. Tap `Ctrl+Shift+J` (`Command+Shift+J` on macOS). Expect the tray item to read **Start live conversation**
    and the tap to start a session; tap again to end it.
 4. On Linux, the first use of the global shortcut may show a desktop-portal approval dialog for the

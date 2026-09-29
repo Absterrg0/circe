@@ -127,24 +127,27 @@ export function SidebarBotsSection() {
 
   return (
     <>
-      <SidebarSectionHeading
-        label="Bots"
-        count={total}
-        collapsed={collapsed}
-        onToggle={() => setCollapsed((value) => !value)}
-        action={{
-          label: "Look for bots again",
-          icon: <RefreshCwIcon />,
-          disabled: nodes.length === 0,
-          onClick: () => {
-            for (const node of nodes) {
-              if (node.connection.phase === "connected") {
-                void refresh({ environmentId: node.environmentId, input: {} });
+      {/* The group appears once a bot exists; an empty heading only adds noise. */}
+      {total > 0 ? (
+        <SidebarSectionHeading
+          label="Bots"
+          count={total}
+          collapsed={collapsed}
+          onToggle={() => setCollapsed((value) => !value)}
+          action={{
+            label: "Look for bots again",
+            icon: <RefreshCwIcon />,
+            disabled: nodes.length === 0,
+            onClick: () => {
+              for (const node of nodes) {
+                if (node.connection.phase === "connected") {
+                  void refresh({ environmentId: node.environmentId, input: {} });
+                }
               }
-            }
-          },
-        }}
-      />
+            },
+          }}
+        />
+      ) : null}
       {nodes.map((node) => (
         // Rows stay mounted while collapsed so the heading count stays current.
         <NodeBots
@@ -157,12 +160,6 @@ export function SidebarBotsSection() {
           onOpen={open}
         />
       ))}
-      {!collapsed && total === 0 ? (
-        <li className="circe-sidebar-hint">
-          Grok Bots on your machines appear here once <strong>Grok Bot</strong> is running on one of
-          them.
-        </li>
-      ) : null}
     </>
   );
 }

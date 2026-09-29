@@ -10213,8 +10213,9 @@ export default function ChatView(props: ChatViewProps) {
                 </div>
               </div>
             ) : null}
-            {/* Banners overlay the timeline without changing its content height. */}
-            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col">
+            {/* Banners overlay the timeline without changing its content height,
+                and stop short of the inline details panel like the messages do. */}
+            <div className="pointer-events-none absolute inset-x-0 top-0 z-20 flex flex-col pe-[var(--thread-details-panel-inset)]">
               <ProviderStatusBanner
                 status={visibleProviderStatus}
                 onDismiss={() => setDismissedProviderStatusBannerKey(providerStatusBannerKey)}

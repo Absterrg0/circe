@@ -24,7 +24,7 @@ const THEME_STORAGE_KEY = "circe:theme";
 const DEFAULT_DARK_CHROME = getDefaultThemeColors("dark").chrome;
 // With no theme applied, the splash paints the stock chrome that index.css
 // uses (`--app-chrome-background`), so the first frame matches the app.
-const STOCK_LIGHT_CHROME = "#f4efea";
+const STOCK_LIGHT_CHROME = "#f4f4f5";
 
 const bootScript = (() => {
   const match = indexHtml.match(/<script>([\s\S]*?)<\/script>/);

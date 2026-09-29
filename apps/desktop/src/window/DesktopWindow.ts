@@ -193,7 +193,7 @@ function getIconOption(
 
 /** The renderer's first paint is the Circe chrome color, so match it to avoid a flash. */
 function getInitialWindowBackgroundColor(shouldUseDarkColors: boolean): string {
-  return shouldUseDarkColors ? "#0b1119" : "#f4efea";
+  return shouldUseDarkColors ? "#0c0c0d" : "#f4f4f5";
 }
 
 function boundStartupProbeText(value: string): string {

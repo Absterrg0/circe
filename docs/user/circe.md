@@ -2,21 +2,26 @@
 
 Circe lets you direct coding agents with text or voice and hear their real results on a connected device or paired node. T3 remains the manager: Codex, Claude, Cursor, Grok, OpenCode, and configured provider instances remain workers that T3 starts and links.
 
-## Open Circe
+## Getting around
 
-- Choose **Ask Circe** at the top of the sidebar, or the Circe mark at its foot, to open **Circe Control Center**.
-- Open the command palette and choose **Open Circe** to reach the same control center.
-- In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation without opening the control center.
+The sidebar starts with four destinations:
 
-The **Machines** map in the control center draws every paired node around Circe. Solid lines lead to
-online machines and dashed lines to offline ones. Select a machine to inspect its
-role, reachability, capabilities, projects, and provider readiness. Device connection management,
-provider configuration, setup, and report-speaking preferences are available from that page. Each project and provider stays attached to the device
-that owns it; the control center does not merge credentials or workspaces between nodes.
+- **Home** is where Circe opens. Tell Circe what to do, and see what needs you, what is running, what finished recently, and which machines are online. The number on **Home** counts tasks waiting on you: an approval, a question, or a failed run.
+- **Pull requests** lists pull requests across your projects (shown when a connected machine supports them).
+- **Machines** shows every paired machine and what it can run.
+- **Usage** shows cost, tokens, and plan limits.
 
-The desktop's own node is listed first as **This device**, alongside connected and offline remote
-nodes. Connection changes update the mesh automatically; **Refresh** reloads project and provider
-details.
+Below them are search and your threads. **Settings** sits at the bottom of the sidebar; inside Settings the same spot reads **Back**.
+
+The command palette's **Open Circe** also goes Home. In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation without leaving the page you are on; in a browser the same keys open Home.
+
+While Circe listens or works, the Home icon turns into Circe's orb, so you can see its state from anywhere.
+
+## Machines
+
+**Machines** lists every paired node, with **This device** first on the desktop. Pick one to see its role, whether it is online, its providers and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
+
+The same page holds each machine's **Computer** access and its node settings, including **Default agent for new tasks** and **Live conversation**. **Manage** beside Providers opens that machine's provider settings. **Pair a machine** opens Settings → Connections. Connection changes refresh the list on their own; the refresh button reloads project and provider details.
 
 ### Desktop activity dot
 
@@ -30,16 +35,15 @@ and disconnected agents have explicit labels in the panel. Agent entries include
 their provider and device, and the list scrolls when necessary. Selecting a
 provider changes the default for new tasks. The panel has no chat composer.
 
-The **Work** board under the command box has **Recent tasks** and **Running agents** views.
-Both follow task updates across connected devices. Open a task to inspect it.
-The device sidebar contains providers, projects, and expandable node settings.
-The command center follows the app's light or dark appearance and stacks its
-columns on narrow screens. Reduced motion keeps status changes visible without
-animation.
+Home's **Needs you**, **Running**, and **Recent** lists follow task updates across connected
+machines, and use the same status rules as the sidebar. Parked work (settled, or snoozed until
+later) stays off **Needs you** until it raises its hand again. Open a row to go to the task. Home
+follows the app's light or dark appearance and stacks to one column on narrow windows. Reduced
+motion keeps status changes visible without animation.
 
 ### Choose the agent for voice tasks
 
-Select an execution device in **Circe Control Center**, then use **Default agent for new tasks**
+Open **Machines** and pick the machine that runs the work, then use **Default agent for new tasks**
 to choose its provider, model, and available model options. Save the selection. If the provider is
 not ready, use **Providers → Configure** on that device to install or sign in first.
 
@@ -63,11 +67,11 @@ project with its device.
 
 ## Sidebar
 
-The sidebar has three groups, and each one collapses from its heading:
+Under the destinations and search, the sidebar lists your threads in up to three groups. Each one collapses from its heading:
 
-- **Bots** lists the Grok Bots on your machines. See [Grok Bots](./grok-bots.md).
+- **Bots** lists the Grok Bots on your machines. It appears once a bot exists. See [Grok Bots](./grok-bots.md).
 - **Chats** holds conversations that are not about a codebase. The **+** starts one, with no project to pick.
-- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. The folder button on its heading shows one project at a time; it never hides chats.
+- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. Each row shows the title and status on top, and the project, branch, pull request, and diff size underneath. The folder button on its heading shows one project at a time; it never hides chats.
 
 The **+** next to search starts a chat, starts an agent thread, or adds a project. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
 
@@ -82,14 +86,16 @@ Circe application. The selected node role changes its capabilities, not its prod
   detailed UI is needed; it has no local desktop workspace or runtime.
 - **Headless** is the background execution runtime only.
 
-## Command composer in Control Center
+## Command box on Home
 
-The command box sits at the top of the control center, under Circe's status.
-Text is always usable there. Optionally pick a project from the project chip,
-which reads **Anywhere** until you choose one, and optionally one of its recent
-tasks. Type the instruction and choose **Send**, or press Ctrl+Enter
-(Command+Enter on macOS). The line under the box names the current target, for
-example **Working in Rivvl — Laptop · Review task**. Choose the **×** beside the
+The command box sits at the top of Home. Circe's state (**Ready**, **Listening**,
+**Working**, **Needs you**) shows beside the send button. Text is always usable
+there. Optionally pick a project from the project chip, which reads **Any
+project** until you choose one, and optionally one of its recent tasks. Type the
+instruction and press Enter, or choose **Send**; Shift+Enter adds a new line. The
+microphone button starts or ends a live conversation. The line under the box
+names the current target, for example **Working in Rivvl on Laptop · Review
+task**. Choose the **×** beside the
 chips to reset it. A disconnected selection stays put and reads
 **(unavailable)**; it never moves to another node on its own.
 
@@ -135,7 +141,7 @@ Retries reuse the same request identity and stored payload even if the desk or
 catalog changed since. Retired request records age out of a bounded store, so a
 very old cancel answers `unknown`.
 
-When a task's provider asks a question, Circe speaks it once and you can answer it in any later voice turn, even while another task is focused: the answer goes to the task that asked. The control center shows the waiting task with a **Needs answer** state if you would rather answer there.
+When a task's provider asks a question, Circe speaks it once and you can answer it in any later voice turn, even while another task is focused: the answer goes to the task that asked. Home lists the waiting task under **Needs you** if you would rather answer there.
 
 Circe Host keeps a bounded list of recent task identities for each connected device. To switch by name, use explicit task language such as “Switch to the Rivvl review task.” If more than one recent task matches, Circe asks you to choose instead of guessing. Starting another conversation creates the task immediately once the request includes an objective.
 
@@ -211,7 +217,7 @@ Ask a general question, such as today's weather, what changed in a release, or a
 
 ### Live conversation
 
-Live conversation is the voice path: one full-duplex GPT-Live session. Link the node to Circe Mesh, or add an OpenAI API key under its **Live conversation** settings in the Circe control center, then press **Live conversation** in the command row or tap `Ctrl+Shift+J` (`Command+Shift+J` on macOS). The microphone stays open while Circe listens and speaks at the same time, so you can interrupt, correct yourself, and keep talking while work runs. Press **End conversation**, or tap the same shortcut again, to close the session and release the microphone. The tray shows **Start** or **End live conversation** with the live status.
+Live conversation is the voice path: one full-duplex GPT-Live session. Link the node to Circe Mesh, or add an OpenAI API key under its **Live conversation** settings on the **Machines** page, then press **Live conversation** in the command row or tap `Ctrl+Shift+J` (`Command+Shift+J` on macOS). The microphone stays open while Circe listens and speaks at the same time, so you can interrupt, correct yourself, and keep talking while work runs. Press **End conversation**, or tap the same shortcut again, to close the session and release the microphone. The tray shows **Start** or **End live conversation** with the live status.
 
 The live model handles the spoken conversation only. Requests to start, steer, stop, check, or review work are delegated to the same Director and grounding pipeline as typed turns: names are resolved against real projects and tasks, ambiguous ones trigger a spoken clarification, and the model never invents a target or reports work that did not happen. Task completions, failures, and approval or input requests are spoken as the backend reports them, not from an interim state.
 
@@ -243,8 +249,8 @@ Product naming keeps installed identities intact. Display copy, palette, and cor
 
 ## Performance behavior
 
-Circe Host itself adds no resident AI model. The microphone is open only while a live conversation runs. The live presentation stream is event-driven. The control center
-uses one bounded mesh refresh for all devices. Disabling voice reports also removes that
+Circe Host itself adds no resident AI model. The microphone is open only while a live conversation runs. The live presentation stream is event-driven. Home and
+Machines use one bounded mesh refresh for all devices. Disabling voice reports also removes that
 client's live presentation subscription; durable results remain in T3 and are shown by the ordinary
 thread UI after reconnect.
 

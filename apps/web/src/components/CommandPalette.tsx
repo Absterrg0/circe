@@ -51,6 +51,7 @@ import {
   LinkIcon,
   MessageSquareIcon,
   MonitorIcon,
+  MonitorSmartphoneIcon,
   MoonIcon,
   PaletteIcon,
   SettingsIcon,
@@ -1841,7 +1842,7 @@ function OpenCommandPaletteDialog(props: {
     value: "action:circe",
     searchTerms: [...ARIS_COMMAND_CENTER_SEARCH_TERMS],
     title: "Open Circe",
-    description: "Open the Circe command center",
+    description: "Go Home and tell Circe what to do",
     icon: <AudioLinesIcon className={ITEM_ICON_CLASS} />,
     run: async () => openCirce(),
   });
@@ -2043,6 +2044,17 @@ function OpenCommandPaletteDialog(props: {
       },
     });
   }
+
+  actionItems.push({
+    kind: "action",
+    value: "action:machines",
+    searchTerms: ["machines", "devices", "nodes", "computers", "providers", "mesh", "online"],
+    title: "Open machines",
+    icon: <MonitorSmartphoneIcon className={ITEM_ICON_CLASS} />,
+    run: async () => {
+      await navigate({ to: "/machines" });
+    },
+  });
 
   actionItems.push({
     kind: "action",

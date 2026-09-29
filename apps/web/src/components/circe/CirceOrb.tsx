@@ -10,7 +10,7 @@ export type CirceOrbState = "idle" | "listening" | "working" | "attention" | "er
  */
 export function CirceOrb(props: {
   readonly state?: CirceOrbState;
-  readonly size?: "sm" | "md" | "lg" | "xl";
+  readonly size?: "xs" | "sm" | "md" | "lg" | "xl";
   readonly className?: string;
 }) {
   return (

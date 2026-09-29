@@ -197,6 +197,7 @@ import {
 } from "./Sidebar.logic";
 import { sortThreads } from "../lib/threadSort";
 import { SidebarChromeFooter, SidebarChromeHeader } from "./sidebar/SidebarChrome";
+import { SidebarPrimaryNav } from "./sidebar/SidebarPrimaryNav";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { CommandDialogTrigger } from "./ui/command";
@@ -2977,7 +2978,8 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
       fixedHeader={
         // Lifted above the stage backdrop, whose fade bleeds below the
         // header and would otherwise paint across the search row's outline.
-        <SidebarGroup className="relative z-[1] px-2 pt-2 pb-1">
+        <SidebarGroup className="relative z-[1] gap-2 px-2 pt-2 pb-1">
+          <SidebarPrimaryNav />
           <SidebarMenu>
             <SidebarMenuItem>
               <CommandDialogTrigger

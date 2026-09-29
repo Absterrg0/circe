@@ -1,0 +1,736 @@
+/*
+ * Home and Machines. Plain cards on the page background, one accent (the
+ * primary copper) for actions and focus, and status color only where it
+ * carries meaning. Everything reads semantic tokens from index.css so named
+ * themes apply unchanged.
+ */
+
+/* ---------- Shared pieces ---------- */
+
+.circe-card {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.circe-card__header {
+  display: flex;
+  min-height: 44px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 16px;
+}
+
+.circe-card__header h2 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.circe-card__empty {
+  padding: 4px 16px 16px;
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.circe-count {
+  display: inline-flex;
+  min-width: 20px;
+  height: 18px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  padding: 0 6px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.circe-status-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--muted-foreground) 55%, transparent);
+}
+
+.circe-status-dot[data-online="true"] {
+  background: var(--success);
+}
+
+.circe-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.circe-pill[data-online="true"] {
+  color: var(--success-foreground);
+}
+
+.circe-text-action {
+  border-radius: 6px;
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 550;
+  cursor: pointer;
+}
+
+.circe-text-action:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.circe-text-action:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
+}
+
+.circe-text-action:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Headings, notes, and counts the per-machine sections share. */
+.circe-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.circe-section-heading h3 {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.circe-inline-count {
+  margin-left: 5px;
+  color: var(--muted-foreground);
+  font-size: 11px;
+  font-weight: 450;
+}
+
+.circe-muted-note {
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.circe-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid color-mix(in srgb, var(--error) 30%, transparent);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--error-surface);
+  color: var(--error-foreground);
+  font-size: 12.5px;
+}
+
+.circe-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 72px 16px;
+  text-align: center;
+}
+
+.circe-empty h2 {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.circe-empty p {
+  margin-bottom: 8px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+/* ---------- Task and machine rows ---------- */
+
+.circe-task-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 6px 6px;
+}
+
+.circe-task-row,
+.circe-machine-row {
+  display: flex;
+  width: 100%;
+  min-height: 48px;
+  align-items: center;
+  gap: 12px;
+  border-radius: 10px;
+  padding: 7px 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.circe-task-row:hover,
+.circe-machine-row:hover {
+  background: var(--accent);
+}
+
+.circe-task-row:focus-visible,
+.circe-machine-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.circe-task-row__icon {
+  display: grid;
+  width: 18px;
+  flex-shrink: 0;
+  place-items: center;
+  color: var(--muted-foreground);
+}
+
+.circe-task-row__icon > svg {
+  width: 17px;
+  height: 17px;
+}
+
+.circe-task-row[data-status="approval"] .circe-task-row__icon,
+.circe-task-row[data-status="input"] .circe-task-row__icon {
+  color: var(--warning-foreground);
+}
+
+.circe-task-row[data-status="failed"] .circe-task-row__icon {
+  color: var(--error-foreground);
+}
+
+.circe-task-row[data-status="working"] .circe-task-row__icon,
+.circe-task-row[data-status="waiting"] .circe-task-row__icon {
+  color: var(--primary);
+}
+
+.circe-task-row__text {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.circe-task-row__title {
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circe-task-row__meta {
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circe-task-row__time {
+  flex-shrink: 0;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.circe-machine-row__icon {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.circe-machine-row__icon > svg {
+  width: 16px;
+  height: 16px;
+}
+
+.circe-machine-row__chevron {
+  width: 14px;
+  height: 14px;
+  color: var(--muted-foreground);
+}
+
+.circe-machine-row[aria-pressed="true"] {
+  background: var(--accent);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+
+/* ---------- Command console ---------- */
+
+.circe-console {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.circe-composer-frame {
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--card);
+  box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+  transition: border-color 120ms ease;
+}
+
+.circe-composer-frame:focus-within {
+  border-color: color-mix(in srgb, var(--primary) 55%, var(--border));
+}
+
+.circe-composer {
+  display: block;
+  min-height: 56px;
+  max-height: 240px;
+  resize: none;
+  border: 0;
+  padding: 14px 16px 6px;
+  background: transparent;
+  color: var(--foreground);
+  font-size: 15px;
+  line-height: 1.5;
+  outline: none;
+  field-sizing: content;
+}
+
+.circe-composer::placeholder {
+  color: var(--placeholder);
+}
+
+.circe-composer-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px 8px 10px;
+}
+
+.circe-command-fields {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.circe-chip {
+  position: relative;
+  display: inline-flex;
+  max-width: 260px;
+  height: 28px;
+  align-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 10px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.circe-chip:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.circe-chip[data-selected="true"] {
+  border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+  color: var(--foreground);
+}
+
+.circe-chip:focus-within {
+  outline: 2px solid var(--ring);
+  outline-offset: 1px;
+}
+
+.circe-select {
+  min-width: 0;
+  max-width: 190px;
+  overflow: hidden;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-overflow: ellipsis;
+  outline: none;
+  appearance: none;
+  cursor: pointer;
+}
+
+.circe-select:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.circe-select option {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.circe-chip-clear {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  place-items: center;
+  border-radius: 999px;
+  color: var(--muted-foreground);
+  cursor: pointer;
+}
+
+.circe-chip-clear:hover {
+  background: var(--accent);
+  color: var(--foreground);
+}
+
+.circe-composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+.circe-presence {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-right: 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.circe-presence[data-state="attention"] {
+  color: var(--warning-foreground);
+}
+
+.circe-presence[data-state="error"] {
+  color: var(--error-foreground);
+}
+
+.circe-voice-button[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+  color: var(--primary);
+}
+
+.circe-composer-actions .circe-send-button {
+  border-radius: 999px;
+}
+
+.circe-target-context {
+  padding: 0 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.circe-feedback {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: var(--card);
+  color: var(--foreground);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.circe-feedback-waiting {
+  color: var(--muted-foreground);
+}
+
+.circe-feedback-label {
+  flex-shrink: 0;
+  color: var(--primary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.circe-feedback-error {
+  border-color: color-mix(in srgb, var(--error) 30%, transparent);
+  background: var(--error-surface);
+}
+
+/* ---------- Home ---------- */
+
+.circe-home {
+  display: flex;
+  width: 100%;
+  max-width: 68rem;
+  flex-direction: column;
+  gap: 20px;
+  margin: 0 auto;
+  padding: 40px 24px 56px;
+}
+
+.circe-home__intro h2 {
+  color: var(--foreground);
+  font-size: 28px;
+  font-weight: 650;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.circe-home__intro p {
+  margin-top: 6px;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.circe-home__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 8px;
+}
+
+/* ---------- Machines ---------- */
+
+.circe-machines {
+  width: 100%;
+  max-width: 72rem;
+  margin: 0 auto;
+  padding: 28px 24px 56px;
+}
+
+.circe-machines > .circe-alert {
+  margin-bottom: 16px;
+}
+
+.circe-machines__layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  align-items: start;
+  gap: 24px;
+}
+
+.circe-machines__aside {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.circe-machine-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.circe-machines__detail {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.circe-machines__detail > .circe-computer,
+.circe-machines__detail > .circe-node-settings {
+  margin-top: 0;
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.circe-machines__grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.circe-machine-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+  padding-bottom: 4px;
+}
+
+.circe-machine-header__icon {
+  display: grid;
+  width: 44px;
+  height: 44px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.circe-machine-header__icon > svg {
+  width: 20px;
+  height: 20px;
+}
+
+.circe-machine-header h2 {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.circe-machine-header p {
+  color: var(--muted-foreground);
+  font-size: 12.5px;
+}
+
+.circe-machine-header__error {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 6px;
+  color: var(--error-foreground);
+  font-size: 12px;
+}
+
+.circe-plain-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 16px 12px;
+}
+
+.circe-plain-list--scroll {
+  max-height: 320px;
+  overflow: auto;
+  scrollbar-width: thin;
+}
+
+.circe-plain-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+}
+
+.circe-plain-row + .circe-plain-row {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+}
+
+.circe-plain-row__icon {
+  display: grid;
+  width: 26px;
+  height: 26px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 7px;
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.circe-plain-row__name {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circe-plain-row__path {
+  display: block;
+  overflow: hidden;
+  color: var(--muted-foreground);
+  font-size: 11.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circe-plain-row__state {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+/* Account devices reachable through Circe Mesh. */
+.circe-device-access {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 14px 16px;
+  background: var(--card);
+}
+
+.circe-device-access .circe-muted-note {
+  margin: 0;
+}
+
+.circe-device-access-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.circe-device-access-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 0;
+}
+
+.circe-device-access-row + .circe-device-access-row {
+  border-top: 1px solid var(--border);
+}
+
+.circe-device-access-name {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--foreground);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.circe-device-access-error {
+  margin: 0;
+  color: var(--error-foreground);
+  font-size: 11px;
+}
+
+@media (max-width: 900px) {
+  .circe-home__grid,
+  .circe-machines__grid,
+  .circe-machines__layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 520px) {
+  .circe-home {
+    padding: 24px 16px 40px;
+  }
+  .circe-machines {
+    padding: 20px 16px 40px;
+  }
+  .circe-presence {
+    display: none;
+  }
+}

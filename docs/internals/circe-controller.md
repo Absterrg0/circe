@@ -202,7 +202,7 @@ Unknown or unavailable selections return structured clarification. There is no s
 ### Node-owned default agent
 
 `ServerSettings.circeDefaultModelSelection` is a nullable, atomically replaced model selection.
-The control center reads and updates it through the selected environment's existing config and
+The Machines page reads and updates it through the selected environment's existing config and
 settings commands, never through primary-environment settings. No additional mesh protocol or
 provider-specific dispatch path is needed.
 
@@ -214,8 +214,8 @@ cannot suppress a spoken provider choice. Continuations, queued work, and rerout
 existing task's selection. A configured but unavailable selection is an error to explain, not
 permission to choose a different agent.
 
-The web/desktop control center projects live registered connections alongside the asynchronously
-loaded mesh catalog. It marks the desktop primary environment as this device, but never labels a
+Home and the Machines page share one catalog hook (`useCirceMeshCatalog`) that projects live
+registered connections alongside the asynchronously loaded mesh catalog. It marks the desktop primary environment as this device, but never labels a
 browser's remote primary environment as the user's device. Connection membership/status changes
 refresh catalogs without polling, and stale refresh responses cannot overwrite newer results.
 

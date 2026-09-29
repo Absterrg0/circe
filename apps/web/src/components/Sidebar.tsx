@@ -67,7 +67,7 @@ import {
 } from "lucide-react";
 import { SidebarBotsSection } from "./bots/SidebarBots";
 import { SidebarSectionHeading } from "./sidebar/SidebarSectionHeading";
-import { CirceCommandLauncher } from "./sidebar/CirceCommandLauncher";
+import { SidebarPrimaryNav } from "./sidebar/SidebarPrimaryNav";
 import {
   memo,
   useCallback,
@@ -1845,8 +1845,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       {...sortableRootProps}
       {...(fileDropHandlers ?? {})}
       className={cn(
-        // Matches the h-[4.875rem] content box; the py-0.5 padding is added on top.
-        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_78px]",
+        // Matches the h-14 content box; the py-0.5 padding is added on top.
+        "list-none py-0.5 [content-visibility:auto] [contain-intrinsic-size:auto_60px]",
         sortable?.isDragging && "relative z-20",
       )}
     >
@@ -1867,24 +1867,18 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             />
           }
         >
-          <div className="relative z-10 h-[4.875rem] px-[var(--sidebar-row-content-inset)] py-[var(--sidebar-content-inset)]">
+          {/* Two lines: what the thread is and its state, then where it runs
+              and what it changed. */}
+          <div className="relative z-10 h-14 px-[var(--sidebar-row-content-inset)] py-[var(--sidebar-content-inset)]">
             <div className="flex h-5 min-w-0 items-center gap-1.5">
               {draftIndicator}
-              {props.project && !isConversation ? (
-                <ProjectFavicon project={props.project} className="size-4 shrink-0" />
-              ) : null}
-              {props.projectDisplayName ? (
-                <span
-                  className={cn(
-                    "min-w-0 flex-1 truncate text-secondary-label text-xs",
-                    shouldRecede ? "font-normal" : "font-medium",
-                  )}
-                >
-                  {props.projectDisplayName}
+              {conversationIndicator}
+              {title}
+              {isRegeneratingTitle ? (
+                <span role="status" className="sr-only">
+                  Regenerating title
                 </span>
-              ) : (
-                <span className="flex-1" />
-              )}
+              ) : null}
               {pinIndicator}
               {/* The visible state owns this slot's width: status at rest,
                   actions on hover/keyboard focus or while the popover is open. Keeping
@@ -2020,29 +2014,27 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 </span>
               )}
             </div>
-            <div className="mt-1 flex min-w-0 items-center gap-1.5">
-              {conversationIndicator}
-              {title}
-              {isRegeneratingTitle ? (
-                <span role="status" className="sr-only">
-                  Regenerating title
-                </span>
+            <div className="mt-1 flex h-4 min-w-0 items-center gap-1.5 text-secondary-label text-xs">
+              {props.project && !isConversation ? (
+                <ProjectFavicon project={props.project} className="size-3.5 shrink-0" />
               ) : null}
-            </div>
-            <div className="mt-0.5 flex min-w-0 items-center gap-1.5 text-secondary-label text-xs">
-              {/* Always the branch. The plan step used to take this slot while
-                  working, but it truncated to a half-sentence and dropped the
-                  branch, so the row lost its most stable identifier. */}
-              {thread.branch ? (
-                <>
-                  <ThreadWorktreeIndicator thread={thread} />
-                  <span className="min-w-0 flex-1 truncate whitespace-nowrap text-muted-foreground/40">
-                    {thread.branch}
-                  </span>
-                </>
-              ) : (
-                <span className="flex-1" />
-              )}
+              {/* Project, then always the branch. The plan step used to take
+                  this slot while working, but it truncated to a half-sentence
+                  and dropped the branch, the row's most stable identifier. */}
+              <span className="flex min-w-0 flex-1 items-center gap-1 truncate whitespace-nowrap">
+                {props.projectDisplayName ? (
+                  <span className="shrink-0 truncate">{props.projectDisplayName}</span>
+                ) : null}
+                {thread.branch ? (
+                  <>
+                    {props.projectDisplayName ? <span aria-hidden>·</span> : null}
+                    <ThreadWorktreeIndicator thread={thread} />
+                    <span className="min-w-0 truncate text-muted-foreground/60">
+                      {thread.branch}
+                    </span>
+                  </>
+                ) : null}
+              </span>
               {terminalStatusIcon}
               {prBadge}
               {diff ? (
@@ -4643,7 +4635,8 @@ export default function Sidebar() {
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
           <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
-            <CirceCommandLauncher />
+            <SidebarPrimaryNav />
+            <div aria-hidden className="mx-1 h-px bg-sidebar-border" />
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
               onNewChat={chatSpaceRef === null ? null : startNewChat}
@@ -4912,13 +4905,6 @@ export default function Sidebar() {
                       if (conversationsExpanded) {
                         for (const thread of conversationThreads) {
                           items.push(renderThreadRow(thread, "active"));
-                        }
-                        if (conversationThreads.length === 0) {
-                          items.push(
-                            <li key="chats-hint" className="circe-sidebar-hint">
-                              Questions you ask Circe that are not about a project land here.
-                            </li>,
-                          );
                         }
                       }
                       items.push(
