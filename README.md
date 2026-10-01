@@ -1,167 +1,162 @@
+<p align="center">
+  <img src="./assets/circe/circe-web-apple-touch-180.png" width="88" height="88" alt="Circe" />
+</p>
+
 # Circe
 
+One assistant for all of your machines. You say what you want, and it happens on the machine where
+it needs to happen, with your own accounts and your own coding-agent subscriptions doing the work.
+
 > [!IMPORTANT]
-> **Circe is paused.** I parked this project on 2026-09-20. The code stays
-> public and the work is real, but I am not shipping, supporting, or accepting
-> feature work on it right now.
+> **Circe is not a finished product.** It is a working prototype I am building in the open. Some
+> parts hold up well, some are rough, and some are not built yet. This repository is here to show
+> the idea and the work, not to sell you a tool. The [demos](#demos) are the fastest way to see
+> what it does. The [status](#what-works-and-what-does-not) section says where it stands.
 
-Circe is built on top of [T3 Code](https://github.com/pingdotgg/t3code), the
-open-source coding-agent harness. T3 provides the orchestration engine,
-provider adapters, Git, terminals, approvals, and the detailed coding UI;
-Circe adds the voice-first control plane, multi-node routing, and grounded
-surface missions on top of it. This repository is a fork of T3 Code, not a
-from-scratch product.
+Website: [heycirce.com](https://heycirce.com)
 
-## What I was trying to build
+## What it is
 
-One assistant for all of my machines. Not a chat app, and not a coding tool
-with a voice layer — an operator. I say what I want, and it happens on the
-machine where it needs to happen, with my real accounts and my own provider
-subscriptions doing the thinking.
+Circe is a control plane for coding agents with voice as the interface. It is built on
+[T3 Code](https://github.com/pingdotgg/t3code), the open-source coding-agent harness. T3 provides
+the orchestration engine, provider adapters, Git, terminals, approvals, and the detailed coding
+UI. Circe adds three things on top:
 
-The destination was a personal mesh of machines I own. "Get my resume from
-laptop A, put it in the portfolio on laptop B" should be one sentence, executed
-as a typed, auditable plan where every step names its node, every artifact is
-owned by a node, and a disconnected machine is reported rather than silently
-swapped for another. Voice is the interface, not the product.
+- **Voice you can trust.** A spoken request is matched against the real projects, tasks, and
+  machines you have. When a name is unclear, Circe asks. A model never invents an id, picks
+  between two matches, or dispatches a command on its own.
+- **Many machines, one assistant.** Each machine owns its projects, credentials, and history.
+  Work runs on the machine that owns the project, or the one you name. A disconnected machine is
+  reported, never silently swapped for another.
+- **Desktop and browser use.** Circe can open apps, click, type, and scroll in your own signed-in
+  apps. It asks before it touches anything, types only words you said, and reports done only when
+  the screen shows the result.
 
-What is in this repo today:
+It works with Claude Code, Codex, Cursor, Grok Build, OpenCode, and Google Antigravity. If they are
+set up on your computer, Circe can direct them.
 
-- The T3 Code foundation, forked from
-  [pingdotgg/t3code](https://github.com/pingdotgg/t3code): orchestration,
-  provider adapters (Codex, Claude, Cursor, Grok, OpenCode, Antigravity), Git,
-  terminals, approvals, and event-sourced state.
-- Circe: deterministic voice control, grounded task routing against real
-  catalogs, multi-node discovery and remote control, and spoken reports.
-- Grounded surface missions: a closed, TypeSafe step loop that drives the real
-  desktop and the user's own browser on Linux, including GNOME Wayland
-  (AT-SPI element grounding, ydotool/uinput input, portal capture). The model
-  never invents a target, a coordinate, or typed text; typed text is selected
-  from bounded spans of the user's own words.
+## Demos
 
-What is not built: cross-node artifacts and mesh plans (the workflow engine
-this vision needs), window-scoped browser grounding, and the daily reliability
-work that would make the operator trustworthy enough to charge for.
+Three demos run from a clone with no microphone, no account, and no server. They call the same
+code the app uses to decide what a request means.
 
-## What Circe was
+```sh
+vp i
+node demos/01-ground-a-spoken-request.ts
+node demos/02-typed-text-comes-from-your-words.ts
+node demos/03-spoken-report.ts
+```
 
-Circe is a control plane for coding agents. Direct provider CLIs from one calm
-interface across your machines: desktop workspace and local execution, remote
-control from phone or browser, deterministic voice control, task navigation,
-and spoken reports.
+**A misheard project name does not send work to the wrong repository.**
 
-Works with your subscriptions on Claude Code, Codex, Cursor, Grok Build,
-OpenCode, and Google Antigravity. If they're set up on your computer, Circe can
-control them.
+```text
+You say:  "start a task in rival to fix the login bug"
+Circe:    routes to Rivvl on desktop
+          heard "rival" (near match)
+          sends: "start a task in Rivvl to fix the login bug"
 
-## Installation
+You say:  "I need you to check out Zivil."
+Circe:    asks "Did you mean Rivvl?"
+          heard "Zivil", will not act until you confirm
 
-> [!WARNING]
-> Circe currently supports Codex, Claude, Cursor, Grok Build, OpenCode, and
-> Antigravity. Install and authenticate at least one provider before use:
->
-> - Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
-> - Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
-> - Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
-> - Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
-> - OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
-> - Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**. No CLI is required.
+You say:  "Open Portfolio."
+Circe:    asks "More than one project matches “Portfolio”. Which one did you mean?"
+          option: Portfolio on laptop
+          option: Portfolio on build-box
+```
 
-### Try it out (install-free)
+**Circe can only type words you said.** On a real desktop the model picks from a closed list of
+spans cut from your instruction, so a web page with hidden instructions cannot make it type
+something else.
 
-The easiest way to test Circe is to run the server in your terminal (requires
-Node.js 22.16+, 23.11+, or 24.10+):
+```text
+Goal:      search for weather in Ahmedabad on the browser
+May type:  "weather", "search for weather in Ahmedabad on the browser", ...
+           (31 candidates, every one a span of the goal)
+Done when: the screen shows the result the goal names
+```
 
-```bash
+**A written report becomes something worth hearing.** The full report stays in the task. Speech
+gets whole sentences inside a budget, with code replaced by one plain line.
+
+The full output, the source for each demo, and a list of things to try in the app are in
+[demos/](./demos/README.md).
+
+## What works and what does not
+
+| Area                                                                          | State                                                                                                                                   |
+| ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Coding-agent foundation (orchestration, providers, Git, terminals, approvals) | Solid. Inherited from T3 Code.                                                                                                          |
+| Grounded voice routing against real project and task catalogs                 | Works. Covered by the demos and their tests.                                                                                            |
+| Multi-machine discovery, pairing, and remote control                          | Works.                                                                                                                                  |
+| Live spoken conversation                                                      | Works, with rough edges. Needs a Circe Mesh link or your own OpenAI API key.                                                            |
+| Desktop and browser use                                                       | Works for simple goals. Linux, including GNOME Wayland, is where it has been exercised most. Longer goals fail too often for a product. |
+| Phone app                                                                     | In the repo as a React Native client. Build it from source.                                                                             |
+| Cross-machine plans ("get the file from laptop A, use it on laptop B")        | Not built. This is the workflow engine the idea needs.                                                                                  |
+| The daily reliability that would make it trustworthy enough to charge for     | Not there yet.                                                                                                                          |
+
+## Try it
+
+You need at least one coding agent installed and signed in:
+
+- Claude: install [Claude Code](https://claude.com/product/claude-code) and run `claude auth login`
+- Codex: install [Codex CLI](https://developers.openai.com/codex/cli) and run `codex login`
+- Cursor: install [Cursor CLI](https://cursor.com/cli) and run `agent login`
+- Grok Build: install [Grok Build CLI](https://x.ai/cli) and run `grok login`
+- OpenCode: install [OpenCode](https://opencode.ai) and run `opencode auth login`
+- Antigravity: enable it in Settings, then use **Install Antigravity** and **Sign in with Google**
+
+Then run the server in a terminal (Node.js 22.16+, 23.11+, or 24.10+):
+
+```sh
 npx @absterrg0/circe@latest
 ```
 
-This launches Circe on your machine as well as the local web app to control
-your agents.
+This starts Circe on your machine and opens the local web app. `--help` lists the CLI options.
 
-Tip: Use `npx @absterrg0/circe@latest --help` for the full CLI reference.
-Follow [Circe installation instructions](./docs/user/install.md) for the desktop
-and mobile apps.
+Desktop builds are on [GitHub Releases](https://github.com/Absterrg0/circe/releases). Voice, the
+orb, the hotkey, and desktop use live in the desktop app, so that is the one to try. Full steps are
+in [docs/user/install.md](./docs/user/install.md).
 
-### Desktop app
-
-Install the latest version of the desktop app from
-[GitHub Releases](https://github.com/Absterrg0/Circe/releases), or from your
-favorite package registry:
-
-#### Arch Linux (AUR)
-
-Stable:
-
-```bash
-yay -S circe-bin
-```
-
-Nightly:
-
-```bash
-yay -S circe-nightly-bin
-```
-
-The AUR packaging is maintained in this repository under [`packaging/aur`](./packaging/aur).
-
-## Design
-
-Circe follows the [Circe design system](./docs/internals/circe-design-system.md):
-quiet by default, neutral charcoal with one orange accent, editorial serif for
-identity, signal over spectacle.
-
-## Some notes
-
-We are very very early in this project. Expect bugs.
-
-We are (mostly) not accepting contributions yet. Small fixes may be considered. Big features will not be.
+Expect bugs. The published builds can lag behind this branch.
 
 ## Documentation
 
-Full docs live in [docs/](./docs). There's no docs site yet.
-
+- [Circe: voice, machines, and routing](./docs/user/circe.md)
+- [Desktop use](./docs/user/desktop-use.md)
 - [Install and first run](./docs/user/install.md)
+- [Remote access from a phone or another machine](./docs/user/remote-access.md)
 - [Permission modes](./docs/user/permission-modes.md)
 - [Keyboard shortcuts](./docs/user/keybindings.md)
-- [Project settings](./docs/user/project-settings.md)
-- [Remote access from a phone or another machine](./docs/user/remote-access.md)
-- [Keeping app and server in sync](./docs/user/updating.md)
-- [Source control integrations](./docs/user/source-control.md)
-- [Circe](./docs/user/circe.md)
-- Multiple accounts: [Codex](./docs/user/providers-codex.md) · [Claude](./docs/user/providers-claude.md)
 - [Run Circe as a background service](./docs/user/background-service.md)
+- [Design system](./docs/internals/circe-design-system.md)
 
-Building from source? Start at [docs/internals/overview.md](./docs/internals/overview.md).
+All of the docs are in [docs/](./docs). To read the architecture, start at
+[docs/internals/overview.md](./docs/internals/overview.md).
 
-## If you REALLY want to contribute still.... read this first
+## Build from source
 
-### Install `vp`
+Circe uses [Vite+](https://viteplus.dev/guide/), so install the `vp` tool first.
 
-Circe uses Vite+ so you'll need to install the global `vp` command-line tool.
-
-#### macOS / Linux
-
-```bash
-curl -fsSL https://vite.plus | bash
+```sh
+curl -fsSL https://vite.plus | bash   # macOS and Linux
+irm https://vite.plus/ps1 | iex       # Windows
 ```
 
-#### Windows
-
-```bash
-irm https://vite.plus/ps1 | iex
-```
-
-Checkout their getting started guide for more information: https://viteplus.dev/guide/
-
-### Install dependencies
-
-```bash
+```sh
 vp i
+vp run dev
 ```
 
-Read [CONTRIBUTING.md](./CONTRIBUTING.md) before reporting a bug or opening a PR.
+`vp run dev` starts the server and the web app with state local to the checkout. The ports and the
+pairing link are printed by the dev runner.
 
-Have a feature request? Start an [Ideas discussion](https://github.com/Absterrg0/Circe/discussions/categories/ideas).
+## Contributing
 
-Need support? Join the [Discord](https://discord.gg/jn4EGJjrvv).
+I am not taking feature contributions while the core is still moving. Small fixes are welcome.
+Read [CONTRIBUTING.md](./CONTRIBUTING.md) first.
+
+## Credit and license
+
+Circe is a fork of [T3 Code](https://github.com/pingdotgg/t3code) by T3 Tools, and most of the
+coding foundation is their work. MIT licensed. See [LICENSE](./LICENSE).
