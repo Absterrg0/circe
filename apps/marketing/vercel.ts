@@ -31,5 +31,11 @@ export const config: VercelConfig = {
       destination: "https://app.heycirce.com",
       permanent: true,
     },
+    // The product links here. Builds live on GitHub Releases.
+    {
+      source: "/download",
+      destination: "https://github.com/Absterrg0/circe/releases",
+      permanent: false,
+    },
   ],
 };

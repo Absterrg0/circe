@@ -1,12 +1,9 @@
 export const GITHUB_REPOSITORY_URL = "https://github.com/Absterrg0/circe";
 
-export const IOS_APP_STORE_URL =
-  "https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824";
+export const DEMOS_URL = `${GITHUB_REPOSITORY_URL}/tree/main/demos`;
+export const DOCS_URL = `${GITHUB_REPOSITORY_URL}/tree/main/docs`;
+export const RELEASES_URL = `${GITHUB_REPOSITORY_URL}/releases`;
+export const INSTALL_DOC_URL = `${GITHUB_REPOSITORY_URL}/blob/main/docs/user/install.md`;
 
-export const ANDROID_PLAY_STORE_URL =
-  "https://play.google.com/store/apps/details?id=com.abstergo.circe";
-
-export const MARKETING_STATS = {
-  githubStars: "22k+",
-  users: "300,000",
-} as const;
+/** The hosted web client. */
+export const APP_URL = "https://app.heycirce.com";

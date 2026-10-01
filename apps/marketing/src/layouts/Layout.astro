@@ -1,15 +1,7 @@
 ---
-import { getImage, Image } from "astro:assets";
-import appIcon from "../assets/icon.webp";
-import desktopScreenshot from "../assets/app-desktop.webp";
-import dmSansLatinUrl from "../assets/fonts/dm-sans-latin.woff2?url";
-import "../styles/fonts.css";
-import {
-  ANDROID_PLAY_STORE_URL,
-  GITHUB_REPOSITORY_URL,
-  IOS_APP_STORE_URL,
-  MARKETING_STATS,
-} from "../lib/site";
+import { Image } from "astro:assets";
+import circeIcon from "../assets/circe-icon.png";
+import { APP_URL, DEMOS_URL, DOCS_URL, GITHUB_REPOSITORY_URL, RELEASES_URL } from "../lib/site";
 
 interface Props {
   title?: string;
@@ -18,25 +10,13 @@ interface Props {
 }
 
 const {
-  title = "Circe",
-  description = "Circe. The open-source control plane for coding agents.",
+  title = "Circe: one assistant for all of your machines",
+  description = "Circe is an open-source, voice-first control plane for coding agents. Say what you want, and it happens on the machine that owns the work. Unfinished, and built in the open.",
   pageClass,
 } = Astro.props;
 
-// Social preview card. Link unfurlers (Instagram, iMessage, X, Slack) want a
-// 1200x630 jpg or png at an absolute URL. Built from the hero screenshot so it
-// stays in sync with the homepage.
-const socialImage = await getImage({
-  src: desktopScreenshot,
-  width: 1200,
-  height: 630,
-  fit: "cover",
-  position: "top",
-  format: "jpg",
-  quality: 90,
-});
-const socialImageUrl = new URL(socialImage.src, Astro.site);
 const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
+const socialImageUrl = new URL("/og.png", Astro.site);
 ---
 
 <html lang="en">
@@ -44,6 +24,7 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content={description} />
+    <meta name="theme-color" content="#fafafa" />
     <link rel="canonical" href={canonicalUrl} />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Circe" />
@@ -53,15 +34,21 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     <meta property="og:image" content={socialImageUrl} />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
-    <meta property="og:image:alt" content="The Circe desktop app with a thread open." />
+    <meta property="og:image:alt" content="The Circe mark: warm ribbons orbiting a dark center." />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@t3dotgg" />
     <meta name="twitter:title" content={title} />
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={socialImageUrl} />
     <link
       rel="preload"
-      href={dmSansLatinUrl}
+      href="/fonts/inter-latin-wght-normal.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin="anonymous"
+    />
+    <link
+      rel="preload"
+      href="/fonts/instrument-serif-latin-400-normal.woff2"
       as="font"
       type="font/woff2"
       crossorigin="anonymous"
@@ -73,71 +60,72 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     <title>{title}</title>
   </head>
   <body>
-    <div class:list={["page", pageClass]}>
-      <nav class="nav">
-        <div class="nav-inner">
-          <a href="/" class="nav-brand" aria-label="Circe home">
-            <span class="nav-brand-name">Circe</span>
-          </a>
-          <div class="nav-right">
-            <a class="nav-link" href="/download">Download</a>
-            <a
-              class="nav-stars"
-              href={GITHUB_REPOSITORY_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              aria-label={`Star Circe on GitHub — ${MARKETING_STATS.githubStars} stars`}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                <path d="M12 2.3l2.9 5.88 6.49.94-4.7 4.58 1.11 6.47L12 17.12l-5.8 3.05 1.11-6.47-4.7-4.58 6.49-.94L12 2.3z"/>
-              </svg>
-              <span><strong>{MARKETING_STATS.githubStars}</strong> GitHub stars</span>
-            </a>
-          </div>
-        </div>
-      </nav>
+    <a class="skip-link" href="#main">Skip to content</a>
 
-      <main class="main">
-        <slot />
-      </main>
+    <header class="nav" data-nav>
+      <div class="nav-inner">
+        <a href="/" class="brand" aria-label="Circe home">
+          <Image
+            class="brand-tile"
+            src={circeIcon}
+            alt=""
+            width={30}
+            height={30}
+            densities={[1, 2, 3]}
+            loading="eager"
+          />
+          <span class="brand-name">Circe</span>
+        </a>
+        <nav class="nav-links" aria-label="Sections">
+          <a href="/#demos">Demos</a>
+          <a href="/#how">How it works</a>
+          <a href="/#status">Status</a>
+        </nav>
+        <a class="button button-secondary nav-github" href={GITHUB_REPOSITORY_URL} rel="noopener">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+            <path
+              d="M12 .5a11.5 11.5 0 0 0-3.64 22.41c.58.1.79-.25.79-.56v-2c-3.2.7-3.88-1.37-3.88-1.37-.52-1.33-1.28-1.69-1.28-1.69-1.05-.71.08-.7.08-.7 1.16.08 1.77 1.19 1.77 1.19 1.03 1.77 2.7 1.26 3.36.96.1-.75.4-1.26.73-1.55-2.55-.29-5.24-1.28-5.24-5.69 0-1.26.45-2.29 1.18-3.1-.12-.29-.51-1.46.11-3.05 0 0 .97-.31 3.17 1.18a11 11 0 0 1 5.78 0c2.2-1.49 3.17-1.18 3.17-1.18.62 1.59.23 2.76.11 3.05.74.81 1.18 1.84 1.18 3.1 0 4.42-2.69 5.39-5.26 5.68.41.36.78 1.06.78 2.14v3.17c0 .31.21.67.8.56A11.5 11.5 0 0 0 12 .5Z"
+            ></path>
+          </svg>
+          <span>GitHub</span>
+        </a>
+      </div>
+    </header>
 
-      <footer class="footer">
-        <div class="footer-inner">
-          <div class="footer-brand">
-            <Image
-              src={appIcon}
-              alt=""
-              width={20}
-              height={20}
-              densities={[1, 2, 3]}
-              format="webp"
-              quality={90}
-              loading="lazy"
-              decoding="async"
-            />
-            <span>&copy; {new Date().getFullYear()} T3 Tools Inc · MIT licensed</span>
-          </div>
-          <div class="footer-links">
-            <a href={GITHUB_REPOSITORY_URL} target="_blank" rel="noopener noreferrer">GitHub</a>
-            <a href="https://discord.gg/jn4EGJjrvv" target="_blank" rel="noopener noreferrer">Discord</a>
-            <a href="/download">Download</a>
-            <a href={IOS_APP_STORE_URL} target="_blank" rel="noopener noreferrer">iOS app</a>
-            <a href={ANDROID_PLAY_STORE_URL} target="_blank" rel="noopener noreferrer">Android app</a>
-            <a href="/terms-of-service">Terms</a>
-            <a href="/privacy-policy">Privacy</a>
-            <a href="/security-policy">Security</a>
-          </div>
+    <main id="main" class:list={[pageClass]}>
+      <slot />
+    </main>
+
+    <footer class="footer">
+      <div class="footer-inner">
+        <div class="footer-brand">
+          <Image
+            class="brand-tile"
+            src={circeIcon}
+            alt=""
+            width={24}
+            height={24}
+            densities={[1, 2, 3]}
+            loading="lazy"
+          />
+          <p>
+            Circe is an unfinished open-source project, built on{" "}
+            <a href="https://github.com/pingdotgg/t3code" rel="noopener">T3 Code</a>. MIT licensed.
+          </p>
         </div>
-      </footer>
-    </div>
+        <nav class="footer-links" aria-label="Footer">
+          <a href={GITHUB_REPOSITORY_URL} rel="noopener">GitHub</a>
+          <a href={DEMOS_URL} rel="noopener">Demos</a>
+          <a href={DOCS_URL} rel="noopener">Docs</a>
+          <a href={RELEASES_URL} rel="noopener">Releases</a>
+          <a href={APP_URL} rel="noopener">Web app</a>
+        </nav>
+      </div>
+    </footer>
 
     <script>
-      const nav = document.querySelector(".nav");
-      const onScroll = () => {
-        if (!nav) return;
-        if (window.scrollY > 12) nav.classList.add("is-scrolled");
-        else nav.classList.remove("is-scrolled");
-      };
+      const nav = document.querySelector("[data-nav]");
+      const onScroll = () => nav?.classList.toggle("is-scrolled", window.scrollY > 8);
       window.addEventListener("scroll", onScroll, { passive: true });
       onScroll();
     </script>
@@ -145,61 +133,114 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
 </html>
 
 <style is:global>
-  :root {
-    --bg: #09090b;
-    --bg-elev: #0c0c0e;
-    --bg-card: #111113;
-    --fg: #fafafa;
-    --fg-muted: #a1a1aa;
-    --fg-dim: #71717a;
-    --fg-faint: #52525b;
-    --border: rgba(255, 255, 255, 0.08);
-    --border-strong: rgba(255, 255, 255, 0.14);
-    --accent-h: 250;
-    --accent: oklch(0.68 0.17 var(--accent-h));
-    --accent-dim: oklch(0.68 0.17 var(--accent-h) / 0.15);
-    --ok: oklch(0.72 0.16 150);
-    --warn: oklch(0.76 0.15 75);
-    --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
-    --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
-    --radius: 12px;
-    --radius-sm: 8px;
-    --radius-lg: 16px;
+  /* Inter v4 and Instrument Serif, self-hosted. Licenses: /fonts/inter-OFL.txt, /fonts/instrument-serif-OFL.txt, /fonts/jetbrains-mono-OFL.txt. */
+  @font-face {
+    font-family: "Inter Variable";
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url("/fonts/inter-latin-wght-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Instrument Serif";
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/instrument-serif-latin-400-normal.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "Instrument Serif";
+    font-style: italic;
+    font-weight: 400;
+    font-display: swap;
+    src: url("/fonts/instrument-serif-latin-400-italic.woff2") format("woff2");
+  }
+  @font-face {
+    font-family: "JetBrains Mono Variable";
+    font-style: normal;
+    font-weight: 100 800;
+    font-display: swap;
+    src: url("/fonts/jetbrains-mono-latin-wght-normal.woff2") format("woff2");
   }
 
-  * {
+  /* Circe design system v1.0, light mode. Source: assets/circe/tokens.css. */
+  :root {
+    --snow: #fafafa;
+    --charcoal: #111113;
+    --ink: #0c0c0d;
+    --graphite: #18181a;
+    --orange: #f26b3a;
+    --orange-deep: #cc4a14;
+    --peach: #ffa47a;
+    --ember: #4a1a0a;
+
+    --bg: #fafafa;
+    --surface-1: #ffffff;
+    --surface-2: #f4f4f5;
+    --surface-3: #eeeef0;
+    --text-primary: #18181b;
+    --text-secondary: #63636b;
+    --text-muted: #8a8a92;
+    --border: #e4e4e7;
+    --border-strong: #d4d4d8;
+    --accent: #cc4a14;
+    --accent-hover: #b53f0f;
+    --accent-soft: #fdeee6;
+    --success: #3fa36f;
+    --success-soft: #e9f6ef;
+    --warning: #d89545;
+    --warning-soft: #fbf1e3;
+
+    --radius-xs: 6px;
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 22px;
+    --radius-pill: 999px;
+
+    --shadow-soft: 0 8px 28px rgba(24, 24, 27, 0.08);
+    --shadow-hairline: 0 1px 2px rgba(24, 24, 27, 0.04);
+    --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+    --brand-gradient: linear-gradient(135deg, #4a1a0a 0%, #a8401a 38%, #f26b3a 68%, #ffa47a 100%);
+
+    --font-sans:
+      "Inter Variable", Inter, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --font-serif: "Instrument Serif", "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    --font-mono:
+      "JetBrains Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, monospace;
+
+    --page: 1120px;
+    --gutter: 24px;
+  }
+
+  *,
+  *::before,
+  *::after {
     box-sizing: border-box;
-    margin: 0;
-    padding: 0;
   }
 
   html {
-    color-scheme: dark;
     scroll-behavior: smooth;
+    scroll-padding-top: 88px;
+    -webkit-text-size-adjust: 100%;
   }
 
   body {
+    margin: 0;
     background: var(--bg);
-    color: var(--fg);
+    color: var(--text-primary);
     font-family: var(--font-sans);
-    font-feature-settings: "ss01", "ss02";
+    font-size: 16px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    min-height: 100vh;
-    overflow-x: hidden;
-    line-height: 1.5;
+    text-rendering: optimizeLegibility;
   }
 
-  body::after {
-    content: "";
-    position: fixed;
-    inset: 0;
-    pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-    background-repeat: repeat;
-    background-size: 256px 256px;
-    z-index: 9999;
+  h1,
+  h2,
+  h3,
+  p {
+    margin: 0;
   }
 
   a {
@@ -207,324 +248,209 @@ const canonicalUrl = new URL(Astro.url.pathname, Astro.site);
     text-decoration: none;
   }
 
-  button {
-    font-family: inherit;
-    cursor: pointer;
-    border: 0;
-    background: none;
-    color: inherit;
-  }
-
-  img,
-  svg {
+  img {
     display: block;
     max-width: 100%;
+    height: auto;
   }
 
-  .eyebrow {
-    font-family: var(--font-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--fg-dim);
-    font-weight: 500;
+  :focus-visible {
+    outline: 2px solid var(--orange);
+    outline-offset: 3px;
+    border-radius: var(--radius-xs);
   }
 
-  .display {
-    font-weight: 500;
-    letter-spacing: -0.035em;
-    line-height: 1.05;
+  ::selection {
+    background: var(--accent-soft);
+    color: var(--text-primary);
+  }
+
+  .skip-link {
+    position: absolute;
+    left: 16px;
+    top: -48px;
+    z-index: 100;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    background: var(--charcoal);
+    color: #fff;
+    font-size: 14px;
+    transition: top 150ms var(--ease);
+  }
+  .skip-link:focus {
+    top: 12px;
   }
 
   .container {
     width: 100%;
-    max-width: 1240px;
+    max-width: calc(var(--page) + var(--gutter) * 2);
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 var(--gutter);
   }
 
-  .btn {
+  /* Buttons: one filled primary per context, quiet secondary. */
+  .button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
-    font-weight: 500;
-    font-size: 14px;
-    padding: 10px 18px;
-    border-radius: 8px;
-    transition: transform 0.18s ease, background 0.18s ease,
-      border-color 0.18s ease, color 0.18s ease;
-    white-space: nowrap;
-  }
-
-  .btn-primary {
-    background: var(--fg);
-    color: #09090b;
-    font-weight: 600;
-  }
-
-  .btn-primary:hover {
-    transform: translateY(-1px);
-    background: #fff;
-  }
-
-  .btn-primary:active {
-    transform: translateY(0);
-  }
-
-  .btn-ghost {
-    color: var(--fg-muted);
-    border: 1px solid var(--border);
-    background: transparent;
-  }
-
-  .btn-ghost:hover {
-    color: var(--fg);
-    border-color: var(--border-strong);
-    background: rgba(255, 255, 255, 0.02);
-  }
-
-  .btn-lg {
-    padding: 14px 22px;
+    height: 44px;
+    padding: 0 18px;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
     font-size: 15px;
-    border-radius: 10px;
+    font-weight: 500;
+    line-height: 1;
+    white-space: nowrap;
+    cursor: pointer;
+    transition:
+      background-color 150ms var(--ease),
+      border-color 150ms var(--ease),
+      color 150ms var(--ease),
+      transform 150ms var(--ease);
+  }
+  .button:active {
+    transform: scale(0.985);
+  }
+  .button-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .button-primary:hover {
+    background: var(--accent-hover);
+  }
+  .button-secondary {
+    background: var(--surface-1);
+    border-color: var(--border-strong);
+    color: var(--text-primary);
+    box-shadow: var(--shadow-hairline);
+  }
+  .button-secondary:hover {
+    border-color: #b9b9c0;
+    background: var(--surface-2);
   }
 
-  .tile {
-    position: relative;
-    border: 1px solid var(--border);
-    border-radius: var(--radius);
-    background: linear-gradient(180deg, rgba(255, 255, 255, 0.015), rgba(255, 255, 255, 0));
-    overflow: hidden;
-  }
-
-  :focus-visible {
-    outline: 2px solid var(--accent);
-    outline-offset: 2px;
-    border-radius: 4px;
-  }
-
-  @keyframes fade-in {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  /* Page-load sequence: [data-rise] plays once with delay --d. */
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: none; }
-  }
-  [data-rise] {
-    animation: rise 0.7s cubic-bezier(0.2, 0.7, 0.2, 1) both;
-    animation-delay: var(--d, 0ms);
-  }
-  @media (prefers-reduced-motion: reduce) {
-    [data-rise] { animation: none; }
-  }
-</style>
-
-<style>
-  .page {
-    min-height: 100vh;
-    display: flex;
-    flex-direction: column;
-    overflow-x: clip;
-  }
-
+  /* Navigation */
   .nav {
     position: sticky;
     top: 0;
     z-index: 50;
-    backdrop-filter: blur(18px);
-    -webkit-backdrop-filter: blur(18px);
-    background: color-mix(in srgb, var(--bg) 75%, transparent);
     border-bottom: 1px solid transparent;
-    transition: border-color 0.3s ease;
+    background: rgba(250, 250, 250, 0.72);
+    backdrop-filter: saturate(140%) blur(14px);
+    -webkit-backdrop-filter: saturate(140%) blur(14px);
+    transition: border-color 200ms var(--ease);
   }
-
   .nav.is-scrolled {
     border-bottom-color: var(--border);
   }
-
   .nav-inner {
-    max-width: 1240px;
-    margin: 0 auto;
-    padding: 12px 32px;
     display: flex;
     align-items: center;
-    justify-content: space-between;
     gap: 24px;
-  }
-
-  .nav-brand {
-    display: inline-flex;
-    align-items: center;
-    color: var(--fg);
-    transition: color 0.2s ease;
-  }
-
-  .nav-brand:hover {
-    color: #fff;
-  }
-
-  .nav-brand-name {
-    font-size: 16px;
-    font-weight: 650;
-    letter-spacing: -0.025em;
-    line-height: 1;
-  }
-
-  .nav-right {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-  }
-
-  .nav-link {
-    padding: 0 10px;
-    color: var(--fg-muted);
-    font-size: 13px;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    transition: color 0.18s ease;
-  }
-
-  .nav-link:hover {
-    color: var(--fg);
-  }
-
-  .nav-stars {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    height: 36px;
-    padding: 0 14px;
-    border: 1px solid var(--border);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.02);
-    color: var(--fg-muted);
-    font-size: 13px;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-    transition: color 0.18s ease, border-color 0.18s ease, background 0.18s ease;
-  }
-
-  .nav-stars:hover {
-    color: var(--fg);
-    border-color: var(--border-strong);
-    background: rgba(255, 255, 255, 0.04);
-  }
-
-  .nav-stars strong {
-    color: var(--fg);
-    font-weight: 600;
-  }
-
-  .nav-stars svg {
-    color: var(--warn);
-    flex-shrink: 0;
-  }
-
-  .main {
-    flex: 1;
-    display: flex;
-    flex-direction: column;
-  }
-
-  .footer {
-    margin-top: auto;
-    border-top: 1px solid var(--border);
-    padding: 40px 0 32px;
-  }
-
-  .footer-inner {
-    max-width: 1240px;
+    max-width: calc(var(--page) + var(--gutter) * 2);
+    height: 64px;
     margin: 0 auto;
-    padding: 0 32px;
+    padding: 0 var(--gutter);
+  }
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .brand-tile {
+    border-radius: 8px;
+    flex: none;
+  }
+  .brand-name {
+    font-family: var(--font-serif);
+    font-size: 26px;
+    line-height: 1;
+    letter-spacing: -0.01em;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+    margin-left: auto;
+  }
+  .nav-links a {
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    transition:
+      color 150ms var(--ease),
+      background-color 150ms var(--ease);
+  }
+  .nav-links a:hover {
+    color: var(--text-primary);
+    background: var(--surface-2);
+  }
+  .nav-github {
+    height: 38px;
+    padding: 0 14px;
+    font-size: 14px;
+  }
+
+  /* Footer */
+  .footer {
+    border-top: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  .footer-inner {
     display: flex;
     flex-wrap: wrap;
-    gap: 24px;
     align-items: center;
     justify-content: space-between;
+    gap: 16px 32px;
+    max-width: calc(var(--page) + var(--gutter) * 2);
+    margin: 0 auto;
+    padding: 28px var(--gutter);
   }
-
   .footer-brand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    font-size: 13px;
-    color: var(--fg-dim);
+    gap: 12px;
+    color: var(--text-secondary);
+    font-size: 14px;
   }
-
-  .footer-brand img {
-    width: 20px;
-    height: 20px;
-    border-radius: 4px;
+  .footer-brand a {
+    color: var(--text-primary);
+    text-decoration: underline;
+    text-decoration-color: var(--border-strong);
+    text-underline-offset: 3px;
   }
-
   .footer-links {
     display: flex;
     flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 20px;
+    gap: 4px 20px;
+    font-size: 14px;
+    color: var(--text-secondary);
   }
-
-  .footer-links a {
-    font-size: 13px;
-    color: var(--fg-dim);
-    transition: color 0.2s ease;
-  }
-
   .footer-links a:hover {
-    color: var(--fg);
+    color: var(--text-primary);
   }
 
-  @media (max-width: 820px) {
-    .nav-inner,
-    .footer-inner {
-      padding-left: 20px;
-      padding-right: 20px;
-    }
-
-    .legal-document-page .nav {
+  @media (max-width: 720px) {
+    .nav-links {
       display: none;
     }
-
-    .footer {
-      padding-bottom: max(32px, env(safe-area-inset-bottom));
-    }
-
-    .footer-inner {
-      align-items: flex-start;
-      flex-direction: column;
-      gap: 28px;
-    }
-
-    .footer-links {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      width: 100%;
-      gap: 14px 20px;
-      justify-content: initial;
+    .nav-github {
+      margin-left: auto;
     }
   }
 
-  @media (max-width: 420px) {
-    .nav-inner {
-      gap: 12px;
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
     }
-
-    .nav-stars {
-      height: 34px;
-      gap: 6px;
-      padding: 0 12px;
-      font-size: 12px;
+    *,
+    *::before,
+    *::after {
+      transition-duration: 0.01ms !important;
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
     }
   }
 </style>
