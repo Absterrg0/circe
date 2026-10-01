@@ -19,6 +19,7 @@ import {
   setLiveConversationState,
   setLiveVoiceSink,
   submitLiveConversationDelegation,
+  hasLiveConversationPendingReply,
 } from "./liveVoiceBridge";
 
 /**
@@ -165,6 +166,7 @@ export async function startLiveConversation(input: StartLiveConversationInput): 
     },
     delegate: (utterance, delegationId) =>
       submitLiveConversationDelegation(utterance, delegationId),
+    awaitingReply: hasLiveConversationPendingReply,
     onStatus: (status) => {
       setLiveConversationState({ active: status !== "failed", status, caption: null });
     },

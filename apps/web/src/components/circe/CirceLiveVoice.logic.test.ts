@@ -408,7 +408,69 @@ describe("Circe live voice controller", () => {
     await f.controller.close();
   });
 
-  it("admits the committed utterance at the silence endpoint, not when the model speaks", async () => {
+  it("keeps a greeting answered by GPT Live out of the backend", async () => {
+    vi.useFakeTimers();
+    try {
+      const delegated: string[] = [];
+      const f = fixture({
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({
+        type: "session.input_transcript.delta",
+        delta: "hey how are you doing",
+      });
+      f.peer.channel.emit({
+        type: "session.output_transcript.delta",
+        delta: "I'm doing well. How are you?",
+      });
+      await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS * 2);
+      expect(delegated).toEqual([]);
+      const closing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(2);
+      await closing;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it.each([true, false])(
+    "does not carry an answered greeting into the next delegated command (timing: %s)",
+    async (timed) => {
+      const delegated: string[] = [];
+      const f = fixture({
+        delegate: (utterance) => {
+          delegated.push(utterance);
+          return true;
+        },
+      });
+      await f.controller.start();
+      f.peer.channel.emit(started);
+      f.peer.channel.emit({
+        type: "session.input_transcript.delta",
+        delta: "hey how are you doing",
+        ...(timed ? { start_ms: 100, end_ms: 500 } : {}),
+      });
+      f.peer.channel.emit({ type: "session.output_transcript.delta", delta: "Doing well." });
+      f.peer.channel.emit({
+        type: "session.input_transcript.delta",
+        delta: "open calculator",
+        ...(timed ? { start_ms: 3000, end_ms: 3500 } : {}),
+      });
+      f.peer.channel.emit({
+        type: "session.delegation.created",
+        delegation: { id: "calculator", target: "client" },
+      });
+      expect(delegated).toEqual(["open calculator"]);
+      await f.controller.close();
+    },
+  );
+
+  it("waits for explicit delegation even after silence or model speech", async () => {
     vi.useFakeTimers();
     try {
       const delegated: string[] = [];
@@ -436,6 +498,11 @@ describe("Circe live voice controller", () => {
       });
       expect(delegated).toEqual([]);
       await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS);
+      expect(delegated).toEqual([]);
+      f.peer.channel.emit({
+        type: "session.delegation.created",
+        delegation: { id: "weather", target: "client" },
+      });
       expect(delegated).toEqual(["what's the weather in ahmedabad"]);
       const closing = f.controller.close();
       await vi.advanceTimersByTimeAsync(2);
@@ -484,6 +551,7 @@ describe("Circe live voice controller", () => {
       const delegated: string[] = [];
       const f = fixture({
         closeTimeoutMs: 1,
+        awaitingReply: () => true,
         delegate: (utterance) => {
           delegated.push(utterance);
           return true;
@@ -507,7 +575,7 @@ describe("Circe live voice controller", () => {
     }
   });
 
-  it("admits one utterance per turn when the provider delegation follows the endpoint", async () => {
+  it("delegates once when the provider waits longer than the silence endpoint", async () => {
     vi.useFakeTimers();
     try {
       const delegated: string[] = [];
@@ -522,7 +590,7 @@ describe("Circe live voice controller", () => {
       f.peer.channel.emit(started);
       f.peer.channel.emit({ type: "session.input_transcript.delta", delta: "fix the login bug" });
       await vi.advanceTimersByTimeAsync(CIRCE_LIVE_VOICE_ENDPOINT_MS);
-      expect(delegated).toEqual(["fix the login bug"]);
+      expect(delegated).toEqual([]);
       f.peer.channel.emit({
         type: "session.delegation.created",
         delegation: { id: "item_late", target: "client" },
@@ -1055,6 +1123,34 @@ describe("cloud live voice release", () => {
       expect(f.tracks[0]?.stopped).toBe(true);
     },
   );
+
+  it("never wedges in closing when the relay release hangs", async () => {
+    vi.useFakeTimers();
+    try {
+      const release = vi.fn(() => new Promise<void>(() => {}));
+      const f = fixture({ start: async () => cloudSession, release, closeTimeoutMs: 1000 });
+      await f.controller.start();
+      const closing = f.controller.close();
+      expect(f.controller.getStatus()).toBe("closing");
+      // A concurrent close while the release is still in flight shares the
+      // same bounded wait instead of resolving immediately with the slot held.
+      const alsoClosing = f.controller.close();
+      await vi.advanceTimersByTimeAsync(1000);
+      await closing;
+      await alsoClosing;
+      expect(f.controller.getStatus()).toBe("idle");
+      expect(f.closed).toEqual(["user"]);
+      expect(f.tracks[0]?.stopped).toBe(true);
+      // The toggle is free again: a new session can start despite the hung RPC.
+      await f.controller.start();
+      expect(f.startCalls).toHaveLength(2);
+      const lastClose = f.controller.close();
+      await vi.advanceTimersByTimeAsync(1000);
+      await lastClose;
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 
   it("reports a failed release while still freeing local media", async () => {
     const f = fixture({

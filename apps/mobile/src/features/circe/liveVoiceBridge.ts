@@ -32,6 +32,7 @@ const IDLE_STATE: LiveConversationState = { active: false, status: "idle", capti
 let state: LiveConversationState = IDLE_STATE;
 let sink: LiveVoiceSink | null = null;
 let delegate: LiveVoiceDelegateHandler | null = null;
+let pendingReplyReader: (() => boolean) | null = null;
 const listeners = new Set<() => void>();
 
 const emit = (): void => {
@@ -105,6 +106,18 @@ export function registerLiveConversationDelegate(handler: LiveVoiceDelegateHandl
   };
 }
 
+/** The controller owner supplies its typed pending question or confirmation. */
+export function registerLiveConversationPendingReply(reader: () => boolean): () => void {
+  pendingReplyReader = reader;
+  return () => {
+    if (pendingReplyReader === reader) pendingReplyReader = null;
+  };
+}
+
+export function hasLiveConversationPendingReply(): boolean {
+  return pendingReplyReader?.() ?? false;
+}
+
 export function submitLiveConversationDelegation(utterance: string, delegationId: string): boolean {
   return delegate?.(utterance, delegationId) ?? false;
 }
@@ -137,5 +150,6 @@ export function canStartLiveConversation(): boolean {
 export function resetLiveConversationForTests(): void {
   sink = null;
   delegate = null;
+  pendingReplyReader = null;
   state = IDLE_STATE;
 }

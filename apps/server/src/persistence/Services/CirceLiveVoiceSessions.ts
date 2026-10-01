@@ -8,9 +8,11 @@ import type { PersistenceDecodeError, PersistenceSqlError } from "../Errors.ts";
 type PersistenceError = PersistenceSqlError | PersistenceDecodeError;
 
 /**
- * One durable lease for a local-key live voice session. Only local-key
- * sessions are stored: cloud sessions are owned by the relay reservation,
- * which is already durable and swept server-side.
+ * One durable lease for a live voice session. Local-key sessions close against
+ * the provider with the node's own key; relay sessions close against the relay
+ * reservation. Both routes are stored: a node restart must still be able to
+ * release its own orphaned relay slot, which the relay otherwise holds until
+ * its own expiry.
  */
 export const CirceLiveVoiceSessionLease = Schema.Struct({
   sessionId: TrimmedNonEmptyString,
@@ -19,6 +21,8 @@ export const CirceLiveVoiceSessionLease = Schema.Struct({
   createdAt: Schema.Int,
   /** Absolute server-side ceiling, epoch milliseconds. */
   deadlineAt: Schema.Int,
+  /** Which upstream owns the session id. */
+  route: Schema.Literals(["local", "relay"]),
 });
 export type CirceLiveVoiceSessionLease = typeof CirceLiveVoiceSessionLease.Type;
 

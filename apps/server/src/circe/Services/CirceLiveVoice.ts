@@ -18,6 +18,7 @@ import {
   CirceLiveVoiceRuntimeError,
   CirceLiveVoiceUnavailableError,
   CIRCE_LIVE_VOICE_MAX_SDP_LENGTH,
+  CIRCE_LIVE_VOICE_SESSION_CEILING_MS,
   TrimmedNonEmptyString,
   type CirceLiveVoiceError,
   type CirceLiveVoiceSettings,
@@ -37,8 +38,8 @@ const LIVE_SESSION_END_TIMEOUT = "10 seconds";
  * a heartbeat well inside this window; three missed beats close the session.
  */
 const LIVE_SESSION_LEASE_MILLIS = 45_000;
-/** Absolute server-side ceiling, above the client's own 10-minute cap. */
-const LIVE_SESSION_MAX_MILLIS = 12 * 60_000;
+/** Absolute server-side ceiling. The relay sizes its reservation ceiling from the same value. */
+const LIVE_SESSION_MAX_MILLIS = CIRCE_LIVE_VOICE_SESSION_CEILING_MS;
 /** First retry delay after a failed close; doubles up to the session ceiling. */
 const LIVE_SESSION_RETRY_BASE_MILLIS = 30_000;
 /** How often the node closes sessions whose lease lapsed. */
@@ -124,12 +125,14 @@ export function buildCirceLiveVoiceInstructions(context?: string): string {
     "- Work: start new work in the right project, send follow-ups to an agent, steer or queue for a running agent, stop agents, answer an agent's question, and approve or deny an agent's request.",
     "- Status: what is running, what needs the user, how a given agent or project is going, and what happened recently. It reads live state; your reference data may be stale.",
     "- Navigation: open a thread or project on screen.",
+    "- Computer use: open applications, type, click, read the screen, and carry out desktop or browser tasks on the user's computer.",
     "- Memory: standing rules like 'always approve running the tests', watching an agent until it finishes, and taking back or correcting what it just did.",
     "- Clarification: when a request is ambiguous, the backend asks a short question; ask it exactly and delegate the user's answer.",
     "",
     "Delegate to the backend when:",
     "- The user asks for anything about their work, projects, agents, or status, including a simple 'what's running?'. Always delegate these; never answer them from the reference data.",
     "- The user answers a question the backend asked, corrects something, or says 'yes', 'do it', 'the other one', 'undo that', or similar.",
+    "- The user asks you to open an app, type, click, calculate in an app, or do anything on their desktop or in a browser. Delegate these immediately; you cannot execute them yourself.",
     "- The user asks any question you cannot answer from this conversation.",
     "",
     "Do not delegate to the backend when:",
@@ -245,9 +248,11 @@ export function createCirceLiveVoiceSession(
   );
 }
 
+const RELAY_SESSION_IN_USE_CODE = "live_voice_session_in_use";
+
 const relayErrorMessages: Readonly<Record<string, string>> = {
   live_voice_not_configured: "Cloud live voice is not configured on this relay.",
-  live_voice_session_in_use:
+  [RELAY_SESSION_IN_USE_CODE]:
     "This account already has an active live conversation. End it before starting another.",
   live_voice_environment_disabled: "This device is turned off for the account.",
   live_voice_usage_limit: "This account reached its live conversation limit for now.",
@@ -266,7 +271,12 @@ const checkRelayResponse = (response: HttpClientResponse.HttpClientResponse) =>
       (response.status === 401 || response.status === 403
         ? "Circe Mesh rejected this node's voice credentials. Relink this node and try again."
         : `Cloud live voice request failed (HTTP ${response.status}).`);
-    return yield* new CirceLiveVoiceRuntimeError({ message });
+    return yield* new CirceLiveVoiceRuntimeError({
+      message,
+      // The slot conflict is the one relay failure the node and its clients
+      // act on, so it travels as a typed reason rather than as message text.
+      ...(body?.code === RELAY_SESSION_IN_USE_CODE ? { reason: "session-in-use" as const } : {}),
+    });
   });
 
 export const layer = Layer.effect(
@@ -314,6 +324,14 @@ export const layer = Layer.effect(
     type RelayConfig = NonNullable<Effect.Success<typeof readRelayConfig>>;
     interface LiveSessionLease {
       readonly route: RelayConfig | null;
+      /** True for sessions the relay owns: the id only closes on its route. */
+      readonly relay: boolean;
+      /**
+       * True from recovery until a renderer renews it. A recovered lease that
+       * nobody renews belongs to a session whose client died with the previous
+       * process.
+       */
+      recovered: boolean;
       lastRenewedAt: number;
       readonly deadlineAt: number;
       /** Earliest time the sweeper may retry a close that has not succeeded. */
@@ -356,8 +374,8 @@ export const layer = Layer.effect(
       );
     const releasesToRetry = new Set<string>();
     // Local-key sessions have no relay reservation. Close them straight against
-    // the provider with the node's own key, using the same confirmed-closure
-    // proof the relay uses (`session_id_not_found`).
+    // the provider with the node's own key, using the same closure rule the
+    // relay uses: a 2xx, `session_id_not_found`, or the provider's empty 404.
     const endLocalSession = (apiKey: string, sessionId: string) =>
       client
         .execute(
@@ -369,11 +387,19 @@ export const layer = Layer.effect(
           Effect.flatMap((response) => {
             if (response.status >= 200 && response.status < 300) return Effect.void;
             if (response.status === 404) {
-              return HttpClientResponse.schemaBodyJson(
-                Schema.Struct({
-                  error: Schema.Struct({ code: Schema.Literal("session_id_not_found") }),
-                }),
-              )(response).pipe(Effect.asVoid);
+              // The provider answers an empty 404 once it has dropped a
+              // session. A 404 with a body must still name this session.
+              return response.text.pipe(
+                Effect.flatMap((body) =>
+                  body.trim().length === 0
+                    ? Effect.void
+                    : HttpClientResponse.schemaBodyJson(
+                        Schema.Struct({
+                          error: Schema.Struct({ code: Schema.Literal("session_id_not_found") }),
+                        }),
+                      )(response).pipe(Effect.asVoid),
+                ),
+              );
             }
             return HttpClientResponse.filterStatusOk(response).pipe(Effect.asVoid);
           }),
@@ -392,7 +418,23 @@ export const layer = Layer.effect(
     const releaseSession: CirceLiveVoiceShape["releaseSession"] = ({ sessionId }) =>
       Effect.gen(function* () {
         const known = leases.get(sessionId);
-        const config = known === undefined ? yield* readRelayConfig : known.route;
+        const config =
+          known === undefined
+            ? yield* readRelayConfig
+            : known.relay
+              ? (known.route ?? (yield* readRelayConfig.pipe(Effect.orElseSucceed(() => null))))
+              : known.route;
+        if (known?.relay === true && config === null) {
+          // A relay session outlives a mesh unlink: the id only closes on its
+          // route, so keep both the lease and its row for a sweep after relink
+          // instead of mis-closing it against the provider key.
+          if (known !== undefined) backOff(known, yield* Clock.currentTimeMillis);
+          yield* Effect.logWarning(
+            "Relay live voice session retained: this node is not linked to Circe Mesh",
+            { sessionId },
+          );
+          return;
+        }
         if (config !== null) {
           yield* executeRelay(
             HttpClientRequest.delete(`${config.endpoint}/${encodeURIComponent(sessionId)}`).pipe(
@@ -412,6 +454,14 @@ export const layer = Layer.effect(
           );
           releasesToRetry.delete(sessionId);
           leases.delete(sessionId);
+          yield* leaseRepository.remove({ sessionId }).pipe(
+            Effect.catch((error) =>
+              Effect.logWarning("Relay live voice lease could not be removed after closure", {
+                sessionId,
+                error,
+              }),
+            ),
+          );
           return;
         }
         // Local-key session: confirm upstream closure before forgetting it. A
@@ -452,17 +502,21 @@ export const layer = Layer.effect(
       Effect.gen(function* () {
         const nowMillis = yield* Clock.currentTimeMillis;
         const lease = leases.get(sessionId);
-        if (lease !== undefined) lease.lastRenewedAt = nowMillis;
+        if (lease === undefined) return;
+        lease.lastRenewedAt = nowMillis;
+        lease.recovered = false;
       });
+    // A lease no renderer is keeping alive: renewals stopped for the whole
+    // window, or the absolute ceiling passed.
+    const hasLapsed = (lease: LiveSessionLease, now: number) =>
+      now - lease.lastRenewedAt > LIVE_SESSION_LEASE_MILLIS || now >= lease.deadlineAt;
     const sweepExpired: CirceLiveVoiceShape["sweepExpired"] = () =>
       Effect.gen(function* () {
         const now = yield* Clock.currentTimeMillis;
         // Snapshot first: a successful release mutates the lease map, so
         // iterating the live map would skip sessions or miss deletions.
         const lapsed = Array.from(leases.entries()).filter(
-          ([, lease]) =>
-            (now - lease.lastRenewedAt > LIVE_SESSION_LEASE_MILLIS || now >= lease.deadlineAt) &&
-            now >= lease.nextAttemptAt,
+          ([, lease]) => hasLapsed(lease, now) && now >= lease.nextAttemptAt,
         );
         for (const [sessionId] of lapsed) {
           yield* releaseSession({ sessionId }).pipe(Effect.catch(() => Effect.void));
@@ -479,7 +533,7 @@ export const layer = Layer.effect(
             // slot. Local sessions never touch the relay, so a stuck cloud
             // release must not block them.
             for (const sessionId of releasesToRetry) yield* releaseSession({ sessionId });
-            const response = yield* executeRelay(
+            const postSession = executeRelay(
               HttpClientRequest.post(relayConfig.endpoint).pipe(
                 HttpClientRequest.setHeader(
                   "Authorization",
@@ -489,6 +543,34 @@ export const layer = Layer.effect(
                   sdpOffer: input.sdpOffer,
                   instructions: buildCirceLiveVoiceInstructions(input.context),
                 }),
+              ),
+            );
+            // A relay slot this node abandoned (its client died with the
+            // previous process, or stopped renewing) reads as "in use". Free
+            // those and try once more. A session a client is still renewing is
+            // never released here: it is a live conversation on this node, and
+            // the conflict is reported exactly as for one on another device.
+            const response = yield* postSession.pipe(
+              Effect.catchIf(
+                (error) => error.reason === "session-in-use",
+                (inUse) =>
+                  Effect.gen(function* () {
+                    const now = yield* Clock.currentTimeMillis;
+                    const abandoned = Array.from(leases.entries())
+                      .filter(
+                        ([, lease]) => lease.relay && (lease.recovered || hasLapsed(lease, now)),
+                      )
+                      .map(([sessionId]) => sessionId);
+                    for (const sessionId of abandoned) {
+                      yield* releaseSession({ sessionId }).pipe(Effect.catch(() => Effect.void));
+                    }
+                    // Nothing was freed, so the slot is held somewhere this
+                    // node cannot reach. A second create would only fail again.
+                    if (abandoned.every((sessionId) => leases.has(sessionId))) {
+                      return yield* inUse;
+                    }
+                    return yield* postSession;
+                  }),
               ),
             );
             const session = yield* HttpClientResponse.schemaBodyJson(
@@ -501,10 +583,41 @@ export const layer = Layer.effect(
                   }),
               ),
             );
+            const relayDeadlineAt = startedAt + LIVE_SESSION_MAX_MILLIS;
+            const environmentId = yield* serverEnvironment.getEnvironmentId;
+            // Persist the relay id before returning it. Without the row a
+            // restart orphans the slot: the new process no longer knows the id
+            // and the account stays wedged until the relay expires it alone.
+            yield* leaseRepository
+              .put({
+                sessionId: session.sessionId,
+                environmentId,
+                createdAt: startedAt,
+                deadlineAt: relayDeadlineAt,
+                route: "relay",
+              })
+              .pipe(
+                Effect.catch((persistenceError) =>
+                  Effect.gen(function* () {
+                    yield* Effect.logWarning(
+                      "Relay live voice lease could not be persisted; releasing the session",
+                      { sessionId: session.sessionId, error: persistenceError },
+                    );
+                    yield* releaseSession({ sessionId: session.sessionId }).pipe(
+                      Effect.catch(() => Effect.void),
+                    );
+                    return yield* new CirceLiveVoiceRuntimeError({
+                      message: "Live voice could not be tracked on this node.",
+                    });
+                  }),
+                ),
+              );
             leases.set(session.sessionId, {
               route: relayConfig,
+              relay: true,
+              recovered: false,
               lastRenewedAt: startedAt,
-              deadlineAt: startedAt + LIVE_SESSION_MAX_MILLIS,
+              deadlineAt: relayDeadlineAt,
               nextAttemptAt: startedAt,
               failedAttempts: 0,
             });
@@ -528,7 +641,13 @@ export const layer = Layer.effect(
           // session exists upstream with no durable owner, so close it before
           // failing rather than leak an untracked billed session.
           yield* leaseRepository
-            .put({ sessionId: created.sessionId, environmentId, createdAt: startedAt, deadlineAt })
+            .put({
+              sessionId: created.sessionId,
+              environmentId,
+              createdAt: startedAt,
+              deadlineAt,
+              route: "local",
+            })
             .pipe(
               Effect.catch((persistenceError) =>
                 Effect.gen(function* () {
@@ -552,6 +671,8 @@ export const layer = Layer.effect(
                     // discarding the only remaining cleanup handle.
                     leases.set(created.sessionId, {
                       route: null,
+                      relay: false,
+                      recovered: false,
                       lastRenewedAt: startedAt,
                       deadlineAt,
                       // The compensating hangup already failed once: back off
@@ -572,6 +693,8 @@ export const layer = Layer.effect(
             );
           leases.set(created.sessionId, {
             route: null,
+            relay: false,
+            recovered: false,
             lastRenewedAt: startedAt,
             deadlineAt,
             nextAttemptAt: startedAt,
@@ -583,10 +706,12 @@ export const layer = Layer.effect(
       renewSession,
       sweepExpired,
     });
-    // Recover durable local leases from a previous process before starting the
+    // Recover durable leases from a previous process before starting the
     // sweeper. A live renderer resumes heartbeats within the renew window and
     // keeps its session; a dead one is swept after that window. A lease whose
     // absolute deadline already passed closes on the first sweep immediately.
+    // Relay rows recover with their route rebuilt: without it a restart
+    // orphans the relay slot, since the id only closes on its route.
     //
     // A failed read must never be taken for an empty ledger: the first attempt
     // runs here, and a failure retries in the background until it succeeds, so
@@ -594,10 +719,13 @@ export const layer = Layer.effect(
     const recoverLeases = Effect.gen(function* () {
       const rows = yield* leaseRepository.list();
       const recoveredAt = yield* Clock.currentTimeMillis;
+      const relayConfig = yield* readRelayConfig.pipe(Effect.orElseSucceed(() => null));
       for (const row of rows) {
         if (!leases.has(row.sessionId)) {
           leases.set(row.sessionId, {
-            route: null,
+            route: row.route === "relay" ? relayConfig : null,
+            relay: row.route === "relay",
+            recovered: true,
             lastRenewedAt: recoveredAt,
             deadlineAt: row.deadlineAt,
             nextAttemptAt: recoveredAt,

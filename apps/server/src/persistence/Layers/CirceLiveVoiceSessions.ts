@@ -19,12 +19,13 @@ export const CirceLiveVoiceSessionsLive = Layer.effect(
     const put = SqlSchema.void({
       Request: CirceLiveVoiceSessionLease,
       execute: (lease) => sql`
-        INSERT INTO circe_live_voice_sessions (session_id, environment_id, created_at, deadline_at)
-        VALUES (${lease.sessionId}, ${lease.environmentId}, ${lease.createdAt}, ${lease.deadlineAt})
+        INSERT INTO circe_live_voice_sessions (session_id, environment_id, created_at, deadline_at, route)
+        VALUES (${lease.sessionId}, ${lease.environmentId}, ${lease.createdAt}, ${lease.deadlineAt}, ${lease.route})
         ON CONFLICT (session_id) DO UPDATE SET
           environment_id = excluded.environment_id,
           created_at = excluded.created_at,
-          deadline_at = excluded.deadline_at
+          deadline_at = excluded.deadline_at,
+          route = excluded.route
       `,
     });
 
@@ -33,7 +34,7 @@ export const CirceLiveVoiceSessionsLive = Layer.effect(
       Result: CirceLiveVoiceSessionLease,
       execute: () => sql`
         SELECT session_id AS "sessionId", environment_id AS "environmentId",
-          created_at AS "createdAt", deadline_at AS "deadlineAt"
+          created_at AS "createdAt", deadline_at AS "deadlineAt", route
         FROM circe_live_voice_sessions
       `,
     });

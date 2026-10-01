@@ -23,6 +23,7 @@ layer("CirceLiveVoiceSessions repository", (it) => {
         environmentId: EnvironmentId.make("node-1"),
         createdAt: 1000,
         deadlineAt: 2000,
+        route: "local" as const,
       };
       yield* leases.put(lease);
       assert.deepStrictEqual(yield* leases.list(), [lease]);
@@ -36,6 +37,24 @@ layer("CirceLiveVoiceSessions repository", (it) => {
       assert.strictEqual(yield* leases.remove({ sessionId: "live_1" }), true);
       assert.deepStrictEqual(yield* leases.list(), []);
       assert.strictEqual(yield* leases.remove({ sessionId: "live_1" }), false);
+    }),
+  );
+
+  // The service tests use an in-memory ledger, so only this test proves a relay
+  // row survives the real schema and SQL in both directions.
+  it.effect("stores and reads back a relay lease", () =>
+    Effect.gen(function* () {
+      const leases = yield* CirceLiveVoiceSessionRepository;
+      const lease = {
+        sessionId: "cloud_1",
+        environmentId: EnvironmentId.make("node-1"),
+        createdAt: 1000,
+        deadlineAt: 2000,
+        route: "relay" as const,
+      };
+      yield* leases.put(lease);
+      assert.deepStrictEqual(yield* leases.list(), [lease]);
+      assert.strictEqual(yield* leases.remove({ sessionId: "cloud_1" }), true);
     }),
   );
 });

@@ -1,7 +1,8 @@
 import { circeLiveVoiceCaption } from "@circe/client-runtime/circe/liveVoice";
 import { useAtomValue } from "@effect/atom-react";
 import { isAtomCommandInterrupted, squashAtomCommandFailure } from "@circe/client/state/runtime";
-import type { EnvironmentId } from "@circe/contracts";
+import { CirceLiveVoiceRuntimeError, type EnvironmentId } from "@circe/contracts";
+import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { usePrimaryCloudLinkState } from "../../cloud/primaryCloudLinkState";
@@ -32,6 +33,14 @@ function liveVoiceFailureMessage(result: unknown): string {
   const error = squashAtomCommandFailure(result as Parameters<typeof squashAtomCommandFailure>[0]);
   if (error instanceof Error && error.message.trim().length > 0) return error.message;
   return "Live voice could not start on this device.";
+}
+
+const isLiveVoiceRuntimeError = Schema.is(CirceLiveVoiceRuntimeError);
+
+/** True when the node reports the account's one cloud slot is already held. */
+function isLiveVoiceSlotInUse(result: unknown): boolean {
+  const error = squashAtomCommandFailure(result as Parameters<typeof squashAtomCommandFailure>[0]);
+  return isLiveVoiceRuntimeError(error) && error.reason === "session-in-use";
 }
 
 function CirceLiveVoiceEnvironmentRuntime({
@@ -114,6 +123,18 @@ function CirceLiveVoiceEnvironmentRuntime({
     // Announcement sessions speak a report without listening: silent track,
     // input muted, no microphone prompt.
     const activationReason = consumeCirceLiveVoiceActivationReason();
+    // A background announcement that loses the account's slot ends without a
+    // toast: the user did not ask for it and cannot see the session holding
+    // the slot. User-initiated starts still toast so the conflict is visible.
+    // `start` sets this for the one failure it is about to throw.
+    let quietStartFailure = false;
+    const reportFailure = (message: string) => {
+      if (quietStartFailure) {
+        quietStartFailure = false;
+        return;
+      }
+      onFailure(message);
+    };
     const controller = createCirceLiveVoiceController({
       listen: activationReason !== "announcement",
       // Announcement sessions only read a report; keep them short so the
@@ -139,6 +160,7 @@ function CirceLiveVoiceEnvironmentRuntime({
           if (isAtomCommandInterrupted(result)) {
             throw new Error("Live voice startup was interrupted.");
           }
+          quietStartFailure = activationReason === "announcement" && isLiveVoiceSlotInUse(result);
           throw new Error(liveVoiceFailureMessage(result));
         }
         return result.value;
@@ -163,7 +185,7 @@ function CirceLiveVoiceEnvironmentRuntime({
       onClosed: () => {
         if (!disposed) setCirceLiveVoiceActive(false);
       },
-      onFailure,
+      onFailure: reportFailure,
       context: () => {
         const current = catalogRef.current;
         if (current === null) return undefined;

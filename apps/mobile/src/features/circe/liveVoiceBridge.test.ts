@@ -6,6 +6,8 @@ import {
   isLiveConversationActive,
   noteInLiveConversation,
   registerLiveConversationDelegate,
+  registerLiveConversationPendingReply,
+  hasLiveConversationPendingReply,
   resetLiveConversationForTests,
   setLiveConversationState,
   setLiveVoiceSink,
@@ -62,6 +64,19 @@ describe("live conversation bridge", () => {
 
     unsubscribe();
     expect(submitLiveConversationDelegation("orphaned", "delegation-2")).toBe(false);
+  });
+
+  it("reads current pending replies and releases only its own registration", () => {
+    let pending = false;
+    const first = registerLiveConversationPendingReply(() => pending);
+    expect(hasLiveConversationPendingReply()).toBe(false);
+    pending = true;
+    expect(hasLiveConversationPendingReply()).toBe(true);
+    const second = registerLiveConversationPendingReply(() => false);
+    first();
+    expect(hasLiveConversationPendingReply()).toBe(false);
+    second();
+    expect(hasLiveConversationPendingReply()).toBe(false);
   });
 
   it("notifies subscribers on state changes and stops after unsubscribe", () => {

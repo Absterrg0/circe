@@ -291,9 +291,11 @@ describe("linked node live voice", () => {
       const error = yield* service.createSession(input).pipe(Effect.flip);
       expect(error).toMatchObject({
         _tag: "CirceLiveVoiceRuntimeError",
+        reason: "session-in-use",
         message:
           "This account already has an active live conversation. End it before starting another.",
       });
+      // This node holds nothing it could free, so it does not ask twice.
       expect(calls).toHaveLength(1);
       expect(calls[0]?.url).toBe(
         "https://relay.example/v1/environments/node-one/live-voice/sessions",
@@ -506,6 +508,21 @@ describe("local live voice durability", () => {
     }).pipe(Effect.provide(serviceLayer));
   });
 
+  it.effect("drops the lease when the provider no longer has the session", () => {
+    // The provider answers an empty 404 for a session it has already dropped.
+    const { serviceLayer, leaseStore } = localFixture((request) =>
+      request.url.endsWith("/hangup")
+        ? new Response(null, { status: 404 })
+        : localAnswer("live_local"),
+    );
+    return Effect.gen(function* () {
+      const service = yield* CirceLiveVoice;
+      yield* service.createSession(input);
+      yield* service.releaseSession({ sessionId: "live_local" });
+      expect(leaseStore.rows.has("live_local")).toBe(false);
+    }).pipe(Effect.provide(serviceLayer));
+  });
+
   it.effect("keeps the durable lease when the close is not confirmed", () => {
     const { serviceLayer, calls, leaseStore } = localFixture((request) =>
       request.url.endsWith("/hangup")
@@ -541,6 +558,7 @@ describe("local live voice durability", () => {
       environmentId: EnvironmentId.make("node-one"),
       createdAt: -1000,
       deadlineAt: -1,
+      route: "local" as const,
     };
     const { serviceLayer, calls, leaseStore } = localFixture(
       (request) => (request.url.endsWith("/hangup") ? Response.json({}) : localAnswer("live_dead")),
@@ -560,6 +578,7 @@ describe("local live voice durability", () => {
       environmentId: EnvironmentId.make("node-one"),
       createdAt: 0,
       deadlineAt: 10_000_000_000,
+      route: "local" as const,
     };
     const { serviceLayer, calls, leaseStore } = localFixture(
       (request) =>
@@ -588,6 +607,7 @@ describe("local live voice durability", () => {
       environmentId: EnvironmentId.make("node-one"),
       createdAt: 0,
       deadlineAt: 10_000_000_000,
+      route: "local" as const,
     };
     const { serviceLayer, calls, leaseStore } = cloudFixture(() => Response.json({}), {
       seed: [seed],
@@ -603,8 +623,8 @@ describe("local live voice durability", () => {
     }).pipe(Effect.provide(serviceLayer));
   });
 
-  it.effect("does not persist cloud leases", () => {
-    const { serviceLayer, leaseStore } = cloudFixture(() =>
+  it.effect("persists a relay lease and deletes it after confirmed closure", () => {
+    const { serviceLayer, calls, leaseStore } = cloudFixture(() =>
       Response.json({
         sessionId: "cloud_only",
         sdpAnswer: "v=0\r\ns=answer\r\n",
@@ -615,7 +635,132 @@ describe("local live voice durability", () => {
     return Effect.gen(function* () {
       const service = yield* CirceLiveVoice;
       yield* service.createSession(input);
-      expect(leaseStore.rows.size).toBe(0);
+      expect(leaseStore.rows.get("cloud_only")).toMatchObject({ route: "relay" });
+      yield* service.releaseSession({ sessionId: "cloud_only" });
+      expect(leaseStore.rows.has("cloud_only")).toBe(false);
+      expect(calls.map((call) => call.method)).toEqual(["POST", "DELETE"]);
+    }).pipe(Effect.provide(serviceLayer));
+  });
+
+  it.effect("frees a known stale relay slot and retries the create once", () => {
+    const stale: CirceLiveVoiceSessionLease = {
+      sessionId: "stale_cloud",
+      environmentId: EnvironmentId.make("node-one"),
+      createdAt: 0,
+      deadlineAt: 10_000_000_000,
+      route: "relay",
+    };
+    let posts = 0;
+    const { serviceLayer, calls, leaseStore } = cloudFixture(
+      (request) => {
+        if (request.method === "DELETE") return Response.json({});
+        posts += 1;
+        return posts === 1
+          ? Response.json(
+              {
+                _tag: "RelayLiveVoiceSessionInUseError",
+                code: "live_voice_session_in_use",
+                traceId: "trace-stale",
+              },
+              { status: 409 },
+            )
+          : Response.json({
+              sessionId: "cloud_fresh",
+              sdpAnswer: "v=0\r\ns=answer\r\n",
+              model: "gpt-live-1",
+              voice: "marin",
+            });
+      },
+      { seed: [stale] },
+    );
+    return Effect.gen(function* () {
+      const service = yield* CirceLiveVoice;
+      expect(yield* service.createSession(input)).toMatchObject({ sessionId: "cloud_fresh" });
+      // The orphaned slot this node still knew was released before the retry.
+      expect(calls.map((call) => [call.method, call.url.split("/").at(-1)])).toEqual([
+        ["POST", "sessions"],
+        ["DELETE", "stale_cloud"],
+        ["POST", "sessions"],
+      ]);
+      expect(leaseStore.rows.has("stale_cloud")).toBe(false);
+      expect(leaseStore.rows.get("cloud_fresh")).toMatchObject({ route: "relay" });
+    }).pipe(Effect.provide(serviceLayer));
+  });
+
+  it.effect("never ends a conversation a client is still renewing to free the slot", () => {
+    // Two clients share this node: the phone is mid-conversation, a recovered
+    // lease was reclaimed by its renderer, and an old local-key session is
+    // still on the ledger. A second start hits "in use" and must leave all
+    // three alone.
+    const reclaimed: CirceLiveVoiceSessionLease = {
+      sessionId: "reclaimed_cloud",
+      environmentId: EnvironmentId.make("node-one"),
+      createdAt: 0,
+      deadlineAt: 10_000_000_000,
+      route: "relay",
+    };
+    const local: CirceLiveVoiceSessionLease = {
+      sessionId: "recovered_local",
+      environmentId: EnvironmentId.make("node-one"),
+      createdAt: 0,
+      deadlineAt: 10_000_000_000,
+      route: "local",
+    };
+    let posts = 0;
+    const { serviceLayer, calls, leaseStore } = cloudFixture(
+      () => {
+        posts += 1;
+        return posts === 1
+          ? Response.json({
+              sessionId: "phone_cloud",
+              sdpAnswer: "v=0\r\ns=answer\r\n",
+              model: "gpt-live-1",
+              voice: "marin",
+            })
+          : Response.json(
+              {
+                _tag: "RelayLiveVoiceSessionInUseError",
+                code: "live_voice_session_in_use",
+                traceId: "trace-live",
+              },
+              { status: 409 },
+            );
+      },
+      { seed: [reclaimed, local] },
+    );
+    return Effect.gen(function* () {
+      const service = yield* CirceLiveVoice;
+      yield* service.renewSession({ sessionId: "reclaimed_cloud" });
+      yield* service.createSession(input);
+      const error = yield* service.createSession(input).pipe(Effect.flip);
+      expect(error).toMatchObject({ reason: "session-in-use" });
+      expect(calls.map((call) => call.method)).toEqual(["POST", "POST"]);
+      expect([...leaseStore.rows.keys()].toSorted()).toEqual([
+        "phone_cloud",
+        "reclaimed_cloud",
+        "recovered_local",
+      ]);
+    }).pipe(Effect.provide(serviceLayer));
+  });
+
+  it.effect("sweeps a recovered relay lease whose deadline already passed", () => {
+    const seed: CirceLiveVoiceSessionLease = {
+      sessionId: "dead_cloud",
+      environmentId: EnvironmentId.make("node-one"),
+      createdAt: -1000,
+      deadlineAt: -1,
+      route: "relay",
+    };
+    const { serviceLayer, calls, leaseStore } = cloudFixture(() => Response.json({}), {
+      seed: [seed],
+    });
+    return Effect.gen(function* () {
+      const service = yield* CirceLiveVoice;
+      yield* service.sweepExpired();
+      expect(leaseStore.rows.has("dead_cloud")).toBe(false);
+      expect(calls.map((call) => [call.method, call.url.split("/").at(-1)])).toEqual([
+        ["DELETE", "dead_cloud"],
+      ]);
     }).pipe(Effect.provide(serviceLayer));
   });
 
@@ -625,6 +770,7 @@ describe("local live voice durability", () => {
       environmentId: EnvironmentId.make("node-one"),
       createdAt: 0,
       deadlineAt: 10_000_000_000,
+      route: "local" as const,
     };
     const { serviceLayer, calls, leaseStore } = localFixture(
       (request) =>

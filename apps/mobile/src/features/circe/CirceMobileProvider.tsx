@@ -74,7 +74,11 @@ import {
   type MobileCirceDraft,
   type MobileCirceTurn,
 } from "./mobileCirceTurn";
-import { speakInLiveConversation, registerLiveConversationDelegate } from "./liveVoiceBridge";
+import {
+  speakInLiveConversation,
+  registerLiveConversationDelegate,
+  registerLiveConversationPendingReply,
+} from "./liveVoiceBridge";
 import {
   hasEnvironmentConnected,
   isAppForegroundTransition,
@@ -322,6 +326,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
   // The node-owned interaction this phone is following. The server owns the
   // pending question and its revision; this ref only carries the identity
   // needed to resume it from any device.
+  const hostPendingReplyRef = useRef(false);
   const voiceInteractionRef = useRef<{
     readonly interactionId: CirceInteractionId;
     readonly revision: number;
@@ -1679,6 +1684,7 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         setMessage("Circe couldn't interpret that request safely. Try again.");
         return;
       }
+      hostPendingReplyRef.current = interactionValue.status === "question";
       if (interactionValue.status !== "delegated") {
         voiceInteractionRef.current =
           interactionValue.status === "answered" || interactionValue.status === "cancelled"
@@ -2180,6 +2186,19 @@ export function CirceMobileProvider(props: { readonly children: ReactNode }) {
         return true;
       }),
     [createTextTurn, runInstruction],
+  );
+
+  useEffect(
+    () =>
+      registerLiveConversationPendingReply(
+        () =>
+          pendingRoute.current !== null ||
+          pendingModelAnswer.current !== null ||
+          pendingServerAnswer.current !== null ||
+          pendingSurfaceRef.current !== null ||
+          (voiceInteractionRef.current !== null && hostPendingReplyRef.current),
+      ),
+    [],
   );
 
   // Every user-visible lane message is also spoken while a live conversation is

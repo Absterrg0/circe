@@ -11,6 +11,12 @@ export const CIRCE_LIVE_VOICE_DEFAULT_MODEL = "gpt-live-1";
 export const CIRCE_LIVE_VOICE_DEFAULT_VOICE = "marin";
 export const CIRCE_LIVE_VOICE_MAX_SDP_LENGTH = 100_000;
 export const CIRCE_LIVE_VOICE_MAX_CONTEXT_LENGTH = 2_000;
+/**
+ * The longest a live session may run before the node closes it, above the
+ * client's own 10-minute cap. The relay derives its reservation ceiling from
+ * this, so a reservation can never lapse while its session is still allowed.
+ */
+export const CIRCE_LIVE_VOICE_SESSION_CEILING_MS = 12 * 60_000;
 
 export const CirceLiveVoiceCreateInput = Schema.Struct({
   /** Session Description Protocol offer from the renderer peer connection. */
@@ -75,10 +81,18 @@ export class CirceLiveVoiceUnavailableError extends Schema.TaggedError<CirceLive
   },
 ) {}
 
+export const CirceLiveVoiceRuntimeReason = Schema.Literals([
+  /** The account's single cloud conversation slot is already held. */
+  "session-in-use",
+]);
+export type CirceLiveVoiceRuntimeReason = typeof CirceLiveVoiceRuntimeReason.Type;
+
 export class CirceLiveVoiceRuntimeError extends Schema.TaggedError<CirceLiveVoiceRuntimeError>()(
   "CirceLiveVoiceRuntimeError",
   {
     message: Schema.String,
+    /** Set only for failures a client or the node handles differently. */
+    reason: Schema.optional(CirceLiveVoiceRuntimeReason),
   },
 ) {}
 

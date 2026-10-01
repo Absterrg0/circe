@@ -47,10 +47,8 @@ export type CirceLiveVoiceStartupStage =
 export const CIRCE_LIVE_VOICE_DELEGATION_RETRY_MS = 2_500;
 
 /**
- * Silence endpointing for providers that do not delegate. After this long
- * without new input speech, the committed utterance is admitted anyway. This
- * replaces transcript-shape heuristics and assistant-output triggers: one
- * admission contract, two endpoint signals.
+ * Silence endpoint for a reply owed to the Circe host. Ordinary conversation
+ * reaches the host only through an explicit provider delegation.
  */
 export const CIRCE_LIVE_VOICE_ENDPOINT_MS = 2_000;
 
@@ -429,9 +427,9 @@ export function createCirceLiveVoiceController(
    * The audio turn the current input transcript belongs to. The backend's
    * start_ms is the item identity; a delta that repeats it is a revision of
    * the same spoken turn, not a new one. Without it, a new turn only opens
-   * once the assistant has answered the committed turn.
+   * once the assistant has answered the previous turn.
    */
-  let currentInputTurnStartMs: number | null = null;
+  let currentInputTurnStartMs: number | null | undefined;
   let lastInputTurnHadOutput = false;
   let endpointTimer: TimeoutHandle | null = null;
   // A delegated request is still outstanding at the backend. The session must
@@ -687,8 +685,11 @@ export function createCirceLiveVoiceController(
     if (readStatus() === "idle" || readStatus() === "failed") {
       teardown();
       if (readStatus() !== "failed") setStatus("idle");
-      await sessionCreation?.catch(() => undefined);
-      await releasePending;
+      // Never block the toggle on in-flight startup or release RPCs: a hung
+      // upstream call must not wedge close() forever. Generation guards keep
+      // late answers from reviving the torn-down session.
+      void sessionCreation?.catch(() => undefined);
+      void releasePending.then(() => undefined);
       return;
     }
     if (readStatus() === "closing") return closePromise ?? Promise.resolve();
@@ -702,12 +703,27 @@ export function createCirceLiveVoiceController(
     clearStartupTimer();
     clearIdleTimer();
     clearMaxTimer();
+    clearRenewTimer();
     // Stop billing input locally right away instead of after the round trip.
     // Delegated Director work already accepted keeps running on the node.
     stopMicrophone();
     if (cloudSessionId !== null) {
       releaseCloudSession();
-      await releasePending;
+      // A hung release RPC must never wedge the toggle in "closing" and block
+      // every later session behind closingRef: bound the wait, then tear down
+      // locally. The node retries unconfirmed closes on its own sweep.
+      const bounded = new Promise<void>((resolve) => {
+        clearCloseTimer();
+        closeTimer = setTimeout(resolve, options.closeTimeoutMs ?? 15_000);
+      });
+      const waiter = (async () => {
+        await Promise.race([releasePending, bounded]);
+      })();
+      closePromise = waiter.then(() => {
+        closePromise = null;
+      });
+      await waiter;
+      clearCloseTimer();
       // The data channel can close while the release RPC is in flight, and
       // `data.onclose` then finalizes the session and reports the close. Stop
       // here so the same close is not reported twice.
@@ -749,8 +765,11 @@ export function createCirceLiveVoiceController(
     void gracefulChannel;
     teardown();
     if (readStatus() !== "failed") setStatus("idle");
-    await sessionCreation?.catch(() => undefined);
-    await releasePending;
+    // The graceful waits above already bounded startup and release; the toggle
+    // reports closed without re-awaiting them here, so a hung RPC can never
+    // wedge a second close behind the first.
+    void sessionCreation?.catch(() => undefined);
+    void releasePending.then(() => undefined);
     notifyClosed(finishedReason);
   };
 
@@ -777,18 +796,23 @@ export function createCirceLiveVoiceController(
   };
 
   /**
-   * Endpoint fallback: after a silence window with no provider delegation, the
-   * user's committed speech is admitted anyway. This is silence endpointing,
-   * not a guess at the transcript's shape, and it never runs while the
-   * assistant is speaking.
+   * The host owns answers to its pending questions. It may admit these after
+   * silence without waiting for the speech model. For every other utterance,
+   * the provider decides whether backend work is needed through delegation.
    */
   const scheduleEndpoint = () => {
     clearEndpointTimer();
-    if (!listen || readStatus() !== "live") return;
+    if (!listen || readStatus() !== "live" || options.awaitingReply?.() !== true) return;
     const gen = generation;
     endpointTimer = setTimeout(() => {
       endpointTimer = null;
-      if (gen !== generation || readStatus() !== "live" || committedForCurrentTurn) return;
+      if (
+        gen !== generation ||
+        readStatus() !== "live" ||
+        committedForCurrentTurn ||
+        options.awaitingReply?.() !== true
+      )
+        return;
       const taken = takeCirceLiveVoiceDelegateUtterance(transcript, {
         ownedReply: options.awaitingReply?.() === true,
       });
@@ -809,7 +833,7 @@ export function createCirceLiveVoiceController(
         }
         clearStartupTimer();
         lastUserSpeechAt = now();
-        currentInputTurnStartMs = null;
+        currentInputTurnStartMs = undefined;
         lastInputTurnHadOutput = false;
         setStatus("live");
         if (!listen) {
@@ -830,25 +854,30 @@ export function createCirceLiveVoiceController(
       case "session.input_transcript.delta":
       case "session.output_transcript.delta": {
         if (readStatus() !== "live") break;
-        transcript = applyCirceLiveVoiceTranscript(transcript, event);
-        options.onTranscript?.(transcript);
         if (event.type === "session.input_transcript.delta" && event.delta.length > 0) {
           const startMs = event.startMs;
           // A delta that revises the same audio item must not reopen
           // admission: partial transcript revisions would otherwise admit the
           // same spoken turn more than once. A new turn is a different
           // start_ms, or (when the backend reports none) speech that follows
-          // the assistant's answer to the committed turn.
+          // the assistant's answer to the previous turn.
           const newTurn =
-            currentInputTurnStartMs === null ||
+            currentInputTurnStartMs === undefined ||
             (startMs !== null && startMs !== currentInputTurnStartMs) ||
-            (startMs === null && committedForCurrentTurn && lastInputTurnHadOutput);
+            (startMs === null && lastInputTurnHadOutput);
           if (newTurn) {
+            if (lastInputTurnHadOutput && startMs === null) {
+              // An answered conversational turn must not become part of the
+              // next delegated command when the provider omits audio timing.
+              transcript = { ...transcript, pendingUserText: "", pendingUserFragments: [] };
+            }
             currentInputTurnStartMs = startMs;
             lastInputTurnHadOutput = false;
             committedForCurrentTurn = false;
             awaitingDelegation = false;
           }
+          transcript = applyCirceLiveVoiceTranscript(transcript, event);
+          options.onTranscript?.(transcript);
           lastUserSpeechAt = now();
           scheduleIdle();
           scheduleEndpoint();
@@ -869,6 +898,8 @@ export function createCirceLiveVoiceController(
           }
         }
         if (event.type === "session.output_transcript.delta" && event.delta.length > 0) {
+          transcript = applyCirceLiveVoiceTranscript(transcript, event);
+          options.onTranscript?.(transcript);
           // The assistant speaking does not finish the backend operation and
           // does not admit a request; only the committed utterance does. It
           // does, however, close the committed audio turn: speech after the

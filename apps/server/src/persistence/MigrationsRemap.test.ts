@@ -49,6 +49,8 @@ const EXPECTED_MANIFEST: ReadonlyArray<readonly [number, string]> = [
   [70, "CirceInteractions"],
   [71, "CirceInteractionRequestOperations"],
   [72, "CirceBots"],
+  [73, "ProjectionProjectsWorkspaceKind"],
+  [74, "CirceLiveVoiceRelayRoute"],
 ];
 
 layer("MigrationRemap", (it) => {
@@ -56,10 +58,13 @@ layer("MigrationRemap", (it) => {
     Effect.gen(function* () {
       const ids = migrationManifest.map(([id]) => id as number);
       const names = migrationManifest.map(([, name]) => name as string);
-      // Contiguous 1..72: no gaps, no duplicates, no renumbered slots.
+      // Contiguous 1..74: no gaps, no duplicates, no renumbered slots. A gap
+      // would let a database record a later id first and skip the missing
+      // migration forever, since the migrator only applies ids above the
+      // highest one recorded.
       assert.deepEqual(
         ids,
-        Array.from({ length: 72 }, (_, index) => index + 1),
+        Array.from({ length: 74 }, (_, index) => index + 1),
       );
       assert.equal(new Set(names).size, names.length);
       for (const [id, name] of EXPECTED_MANIFEST) {
@@ -68,7 +73,7 @@ layer("MigrationRemap", (it) => {
     }),
   );
 
-  it.effect("upgrades a shipped 1-58 database by applying only 59-72", () =>
+  it.effect("upgrades a shipped 1-58 database by applying only 59-74", () =>
     Effect.gen(function* () {
       const sql = yield* SqlClient.SqlClient;
 
@@ -78,7 +83,7 @@ layer("MigrationRemap", (it) => {
       const second = yield* runMigrations();
       assert.deepEqual(
         second.map(([id]) => Number(id)),
-        [59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72],
+        [59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74],
       );
 
       // The shifted 47/48/49 rows keep the names databases recorded before
@@ -86,7 +91,7 @@ layer("MigrationRemap", (it) => {
       const recorded = yield* sql<{ readonly migration_id: number; readonly name: string }>`
         SELECT migration_id, name FROM effect_sql_migrations ORDER BY migration_id
       `;
-      assert.equal(recorded.length, 72);
+      assert.equal(recorded.length, 74);
       assert.deepEqual(
         recorded.slice(46, 49).map((row) => [Number(row.migration_id), row.name]),
         [
@@ -112,6 +117,8 @@ layer("MigrationRemap", (it) => {
           [70, "CirceInteractions"],
           [71, "CirceInteractionRequestOperations"],
           [72, "CirceBots"],
+          [73, "ProjectionProjectsWorkspaceKind"],
+          [74, "CirceLiveVoiceRelayRoute"],
         ],
       );
 
