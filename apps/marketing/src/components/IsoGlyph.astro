@@ -1,0 +1,79 @@
+---
+import { makeIso } from "../lib/iso";
+
+interface Props {
+  kind: "layers" | "machines" | "desktop";
+}
+const { kind } = Astro.props;
+
+// Small isometric marks for the three pillars. Same angle and light as the
+// hero scene, with one accent face each.
+const iso = makeIso(13, 44, 30);
+const shapes: Array<{ box: ReturnType<typeof iso.box>; accent?: boolean; dark?: boolean }> = [];
+let screen: string | undefined;
+
+if (kind === "layers") {
+  // A request settles through real catalogs, top layer first.
+  shapes.push({ box: iso.box(0, 0, 0, 3, 3, 0.34) });
+  shapes.push({ box: iso.box(0, 0, 0.75, 3, 3, 0.34) });
+  shapes.push({ box: iso.box(0, 0, 1.5, 3, 3, 0.34), accent: true });
+} else if (kind === "machines") {
+  shapes.push({ box: iso.box(0, 0, 0, 1.25, 1.25, 1.25) });
+  shapes.push({ box: iso.box(2.1, 0.2, 0, 1.25, 1.25, 1.25), accent: true });
+  shapes.push({ box: iso.box(0.4, 2.1, 0, 1.25, 1.25, 1.25) });
+} else {
+  shapes.push({ box: iso.box(0, 0, 0, 3.2, 2.4, 0.28) });
+  shapes.push({ box: iso.box(0.5, 0.9, 0.28, 2.4, 0.16, 1.7) });
+  screen = iso.onLeftFace(1.06, 0.66, 0.44, 2.74, 1.82);
+  shapes.push({ box: iso.box(1.3, 1.65, 0.28, 0.5, 0.5, 0.12), accent: true });
+}
+---
+
+<svg class="glyph" viewBox="0 0 88 84" width="88" height="84" aria-hidden="true">
+  {
+    shapes.map((shape) => (
+      <g class:list={["block", shape.accent && "is-accent"]}>
+        <polygon class="face-left" points={shape.box.left} />
+        <polygon class="face-right" points={shape.box.right} />
+        <polygon class="face-top" points={shape.box.top} />
+      </g>
+    ))
+  }
+  {screen && <polygon class="screen" points={screen} />}
+</svg>
+
+<style>
+  .glyph {
+    display: block;
+    overflow: visible;
+  }
+  .block polygon {
+    stroke: #c4c4cb;
+    stroke-width: 1;
+    stroke-linejoin: round;
+  }
+  .face-top {
+    fill: #ffffff;
+  }
+  .face-left {
+    fill: #f4f4f5;
+  }
+  .face-right {
+    fill: #e6e6ea;
+  }
+  .is-accent polygon {
+    stroke: #cc4a14;
+  }
+  .is-accent .face-top {
+    fill: #f58a60;
+  }
+  .is-accent .face-left {
+    fill: #f26b3a;
+  }
+  .is-accent .face-right {
+    fill: #cc4a14;
+  }
+  .screen {
+    fill: #18181a;
+  }
+</style>

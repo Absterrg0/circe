@@ -1,0 +1,431 @@
+---
+import { Image } from "astro:assets";
+import circeMark from "../assets/circe-mark.png";
+import { makeIso } from "../lib/iso";
+
+// The hero illustration: the Circe orb in the middle of one floor, and a
+// machine at the end of each axis. A request spoken on the phone is routed to
+// the machine that owns the project. Drawn in grid units; see lib/iso.ts.
+const WIDTH = 1080;
+const HEIGHT = 640;
+const UNIT = 36;
+const SIZE = 17;
+const CENTER = SIZE / 2;
+const iso = makeIso(UNIT, WIDTH / 2, 40);
+
+const floorLines = Array.from({ length: SIZE + 1 }, (_, index) => [
+  iso.points([
+    [index, 0],
+    [index, SIZE],
+  ]),
+  iso.points([
+    [0, index],
+    [SIZE, index],
+  ]),
+]).flat();
+
+// Build box: at the far end of the x axis.
+const server = {
+  platform: iso.box(0.7, 7, 0, 3, 3, 0.16),
+  units: [0, 1, 2].map((level) => iso.box(1.2, 7.5, 0.16 + level * 0.62, 2, 2, 0.5)),
+  lights: [0, 1, 2].flatMap((level) =>
+    [0.35, 0.7].map((offset) => iso.project(3.2, 7.5 + offset, 0.16 + level * 0.62 + 0.25)),
+  ),
+};
+
+// Desktop: at the far end of the y axis, screen facing the orb.
+const desktop = {
+  platform: iso.box(6.8, 0.6, 0, 3.4, 3.2, 0.16),
+  tower: iso.box(9, 1.1, 0.16, 0.9, 1.5, 1.9),
+  stand: iso.box(7.85, 2.25, 0.16, 0.5, 0.3, 0.5),
+  monitor: iso.box(7.15, 2.3, 0.6, 1.9, 0.14, 1.35),
+  screen: iso.onLeftFace(2.44, 7.27, 0.72, 8.93, 1.83),
+  line: iso.points([
+    [7.45, 2.44, 1.5],
+    [8.35, 2.44, 1.5],
+  ]),
+  lineMuted: iso.points([
+    [7.45, 2.44, 1.22],
+    [8.7, 2.44, 1.22],
+  ]),
+};
+
+// Laptop: at the near end of the y axis.
+const laptop = {
+  platform: iso.box(6.9, 13.3, 0, 3.2, 3, 0.16),
+  base: iso.box(7.4, 13.95, 0.16, 2.2, 1.5, 0.1),
+  lid: iso.box(7.4, 13.85, 0.26, 2.2, 0.08, 1.3),
+  screen: iso.onLeftFace(13.93, 7.52, 0.36, 9.48, 1.46),
+};
+
+// Phone: at the near end of the x axis. This is where the request is spoken.
+const phone = {
+  platform: iso.box(13.3, 7.5, 0, 2, 2, 0.16),
+  body: iso.box(13.95, 8.45, 0.16, 0.72, 0.1, 1.3),
+  screen: iso.onLeftFace(8.55, 14.03, 0.26, 14.59, 1.36),
+};
+
+const pedestal = {
+  base: iso.box(CENTER - 0.8, CENTER - 0.8, 0, 1.6, 1.6, 0.22),
+  glow: iso.onFloor(CENTER - 0.55, CENTER - 0.55, CENTER + 0.55, CENTER + 0.55, 0.22),
+};
+const orbCenter = iso.project(CENTER, CENTER, 1.7);
+const ORB = 92;
+
+// Every route runs straight along an axis, from the pedestal to a platform.
+const routes = {
+  chosen: iso.points([
+    [CENTER, CENTER - 0.8],
+    [CENTER, 3.8],
+  ]),
+  laptop: iso.points([
+    [CENTER, CENTER + 0.8],
+    [CENTER, 13.3],
+  ]),
+  server: iso.points([
+    [CENTER - 0.8, CENTER],
+    [3.7, CENTER],
+  ]),
+  voice: iso.points([
+    [13.3, CENTER],
+    [CENTER + 0.8, CENTER],
+  ]),
+};
+const chosenEnd = iso.project(CENTER, 3.8);
+
+const labels = [
+  { at: iso.project(8.5, 2.2, 3.9), name: "Desktop", detail: "Rivvl · Running", active: true },
+  { at: iso.project(2.2, 8.5, 3.6), name: "Build box", detail: "Portfolio · Online", active: false },
+  { at: iso.project(8.5, 14.8, 3.1), name: "Laptop", detail: "Portfolio · Online", active: false },
+  { at: iso.project(14.3, 8.5, 2.75), name: "Phone", detail: "You, speaking", active: false },
+];
+---
+
+<div class="scene">
+  <svg
+    viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
+    role="img"
+    aria-label="Isometric illustration: a request spoken on a phone goes to Circe, which routes it to the desktop that owns the project. A laptop and a build box stay idle."
+  >
+    <defs>
+      <radialGradient id="scene-fade" cx="50%" cy="53%" r="52%">
+        <stop offset="0.5" stop-color="#fff" stop-opacity="1"></stop>
+        <stop offset="1" stop-color="#fff" stop-opacity="0"></stop>
+      </radialGradient>
+      <mask id="scene-mask">
+        <rect width={WIDTH} height={HEIGHT} fill="url(#scene-fade)"></rect>
+      </mask>
+      <radialGradient id="orb-glow" cx="50%" cy="50%" r="50%">
+        <stop offset="0" stop-color="#f26b3a" stop-opacity="0.55"></stop>
+        <stop offset="1" stop-color="#f26b3a" stop-opacity="0"></stop>
+      </radialGradient>
+    </defs>
+
+    <g mask="url(#scene-mask)">
+      <g class="floor">
+        {floorLines.map((line) => <polyline points={line} />)}
+      </g>
+    </g>
+
+    <!-- Routes sit on the floor, under the machines. -->
+    <polyline class="route route-idle" points={routes.server}></polyline>
+    <polyline class="route route-idle" points={routes.laptop}></polyline>
+    <polyline class="route route-voice" points={routes.voice}></polyline>
+    <polyline class="route route-chosen" points={routes.chosen} pathLength="1"></polyline>
+    <circle class="route-end" cx={chosenEnd[0]} cy={chosenEnd[1]} r="4"></circle>
+
+    <!-- Build box -->
+    <g class="block block-platform">
+      <polygon class="face-top" points={server.platform.top}></polygon>
+      <polygon class="face-left" points={server.platform.left}></polygon>
+      <polygon class="face-right" points={server.platform.right}></polygon>
+    </g>
+    {
+      server.units.map((unit) => (
+        <g class="block">
+          <polygon class="face-left" points={unit.left} />
+          <polygon class="face-right" points={unit.right} />
+          <polygon class="face-top" points={unit.top} />
+        </g>
+      ))
+    }
+    {server.lights.map(([cx, cy]) => <circle class="light" cx={cx} cy={cy} r="2.2" />)}
+
+    <!-- Desktop -->
+    <g class="block block-platform is-target">
+      <polygon class="face-top" points={desktop.platform.top}></polygon>
+      <polygon class="face-left" points={desktop.platform.left}></polygon>
+      <polygon class="face-right" points={desktop.platform.right}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={desktop.tower.left}></polygon>
+      <polygon class="face-right" points={desktop.tower.right}></polygon>
+      <polygon class="face-top" points={desktop.tower.top}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={desktop.stand.left}></polygon>
+      <polygon class="face-right" points={desktop.stand.right}></polygon>
+      <polygon class="face-top" points={desktop.stand.top}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={desktop.monitor.left}></polygon>
+      <polygon class="face-right" points={desktop.monitor.right}></polygon>
+      <polygon class="face-top" points={desktop.monitor.top}></polygon>
+      <polygon class="screen" points={desktop.screen}></polygon>
+      <polyline class="screen-line is-accent" points={desktop.line}></polyline>
+      <polyline class="screen-line" points={desktop.lineMuted}></polyline>
+    </g>
+
+    <!-- The orb on its pedestal -->
+    <g class="block block-pedestal">
+      <polygon class="face-left" points={pedestal.base.left}></polygon>
+      <polygon class="face-right" points={pedestal.base.right}></polygon>
+      <polygon class="face-top" points={pedestal.base.top}></polygon>
+      <polygon class="pedestal-glow" points={pedestal.glow}></polygon>
+    </g>
+    <circle cx={orbCenter[0]} cy={orbCenter[1]} r={ORB * 0.72} fill="url(#orb-glow)"></circle>
+    <circle class="orb-disc" cx={orbCenter[0]} cy={orbCenter[1]} r={ORB / 2 + 6}></circle>
+
+    <!-- Laptop -->
+    <g class="block block-platform">
+      <polygon class="face-top" points={laptop.platform.top}></polygon>
+      <polygon class="face-left" points={laptop.platform.left}></polygon>
+      <polygon class="face-right" points={laptop.platform.right}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={laptop.lid.left}></polygon>
+      <polygon class="face-right" points={laptop.lid.right}></polygon>
+      <polygon class="face-top" points={laptop.lid.top}></polygon>
+      <polygon class="screen" points={laptop.screen}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={laptop.base.left}></polygon>
+      <polygon class="face-right" points={laptop.base.right}></polygon>
+      <polygon class="face-top" points={laptop.base.top}></polygon>
+    </g>
+
+    <!-- Phone -->
+    <g class="block block-platform">
+      <polygon class="face-top" points={phone.platform.top}></polygon>
+      <polygon class="face-left" points={phone.platform.left}></polygon>
+      <polygon class="face-right" points={phone.platform.right}></polygon>
+    </g>
+    <g class="block">
+      <polygon class="face-left" points={phone.body.left}></polygon>
+      <polygon class="face-right" points={phone.body.right}></polygon>
+      <polygon class="face-top" points={phone.body.top}></polygon>
+      <polygon class="screen" points={phone.screen}></polygon>
+    </g>
+
+    <g class="labels">
+      {
+        labels.map((label) => (
+          <g transform={`translate(${label.at[0].toFixed(1)} ${label.at[1].toFixed(1)})`}>
+            <rect
+              class:list={["label-box", label.active && "is-active"]}
+              x="-66"
+              y="-22"
+              width="132"
+              height="44"
+              rx="10"
+            />
+            <text class="label-name" x="0" y="-4" text-anchor="middle">
+              {label.name}
+            </text>
+            <text
+              class:list={["label-detail", label.active && "is-active"]}
+              x="0"
+              y="12"
+              text-anchor="middle"
+            >
+              {label.detail}
+            </text>
+          </g>
+        ))
+      }
+    </g>
+  </svg>
+
+  <!-- The mark is artwork, not geometry: it floats above the pedestal, unprojected. -->
+  <span
+    class="orb"
+    style={`left:${((orbCenter[0] / WIDTH) * 100).toFixed(3)}%;top:${((orbCenter[1] / HEIGHT) * 100).toFixed(3)}%;width:${((ORB / WIDTH) * 100).toFixed(3)}%`}
+    aria-hidden="true"
+  >
+    <Image src={circeMark} alt="" width={ORB * 2} height={ORB * 2} loading="eager" />
+  </span>
+</div>
+
+<style>
+  .scene {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    overflow: visible;
+  }
+
+  .floor polyline {
+    fill: none;
+    stroke: #dcdce1;
+    stroke-width: 1;
+  }
+
+  /* One light source: top brightest, right face darkest. */
+  .block polygon {
+    stroke: #c9c9cf;
+    stroke-width: 1;
+    stroke-linejoin: round;
+  }
+  .face-top {
+    fill: #ffffff;
+  }
+  .face-left {
+    fill: #f4f4f5;
+  }
+  .face-right {
+    fill: #e6e6ea;
+  }
+  .block-platform .face-top {
+    fill: #fbfbfc;
+  }
+  .block-platform.is-target .face-top {
+    fill: #fdeee6;
+  }
+  .block-platform.is-target polygon {
+    stroke: rgba(204, 74, 20, 0.55);
+  }
+  .block-platform.is-target .face-left {
+    fill: #fbe0d2;
+  }
+  .block-platform.is-target .face-right {
+    fill: #f6cdb9;
+  }
+  .block-pedestal .face-top {
+    fill: #18181a;
+  }
+  .block-pedestal .face-left {
+    fill: #232326;
+  }
+  .block-pedestal .face-right {
+    fill: #111113;
+  }
+  .block-pedestal polygon {
+    stroke: #111113;
+  }
+  .pedestal-glow {
+    fill: rgba(242, 107, 58, 0.35);
+    stroke: none !important;
+  }
+  .screen {
+    fill: #18181a;
+    stroke: none !important;
+  }
+  .screen-line {
+    fill: none;
+    stroke: #55555b;
+    stroke-width: 3;
+    stroke-linecap: round;
+  }
+  .screen-line.is-accent {
+    stroke: #f26b3a;
+  }
+  .light {
+    fill: #3fa36f;
+  }
+  .orb-disc {
+    fill: #111113;
+  }
+
+  .route {
+    fill: none;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  .route-idle {
+    stroke: #c9c9cf;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 7;
+  }
+  .route-voice {
+    stroke: #18181b;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 7;
+  }
+  .route-chosen {
+    stroke: #f26b3a;
+    stroke-width: 2.5;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0;
+    animation: draw 1100ms cubic-bezier(0.2, 0.8, 0.2, 1) 500ms backwards;
+  }
+  .route-end {
+    fill: #f26b3a;
+    stroke: #fff;
+    stroke-width: 2;
+    animation: appear 300ms ease-out 1500ms backwards;
+  }
+  @keyframes draw {
+    from {
+      stroke-dashoffset: 1;
+    }
+  }
+  @keyframes appear {
+    from {
+      opacity: 0;
+    }
+  }
+
+  .label-box {
+    fill: #ffffff;
+    stroke: #e4e4e7;
+    stroke-width: 1;
+    filter: drop-shadow(0 4px 10px rgba(24, 24, 27, 0.08));
+  }
+  .label-box.is-active {
+    stroke: rgba(204, 74, 20, 0.5);
+  }
+  .label-name {
+    fill: #18181b;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 600;
+  }
+  .label-detail {
+    fill: #63636b;
+    font-family: var(--font-sans);
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .label-detail.is-active {
+    fill: #cc4a14;
+  }
+
+  .orb {
+    position: absolute;
+    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+  .orb :global(img) {
+    width: 100%;
+    height: 100%;
+  }
+
+  @media (max-width: 720px) {
+    .labels {
+      display: none;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .route-chosen,
+    .route-end {
+      animation: none;
+    }
+  }
+</style>

@@ -1,7 +1,11 @@
 ---
 import { Image } from "astro:assets";
 import circeMark from "../assets/circe-mark.png";
+import IsoGlyph from "../components/IsoGlyph.astro";
+import IsoScene from "../components/IsoScene.astro";
+import IsoStack from "../components/IsoStack.astro";
 import Layout from "../layouts/Layout.astro";
+import { isoGridDataUri } from "../lib/iso";
 import { DEMOS_URL, GITHUB_REPOSITORY_URL, INSTALL_DOC_URL, RELEASES_URL } from "../lib/site";
 
 // Every transcript below is copied from a real run of the scripts in demos/.
@@ -78,17 +82,17 @@ node demos/01-ground-a-spoken-request.ts`;
 
 const pillars = [
   {
-    icon: "mic",
+    glyph: "layers",
     title: "Voice you can trust",
     body: "A spoken request is matched against the real projects, tasks, and machines you have. When a name is unclear, Circe asks. A model never invents an id or picks between two matches on its own.",
   },
   {
-    icon: "machines",
+    glyph: "machines",
     title: "Many machines, one assistant",
     body: "Each machine owns its projects, credentials, and history. Work runs on the machine that owns the project, or the one you name. A disconnected machine is reported, never swapped for another.",
   },
   {
-    icon: "pointer",
+    glyph: "desktop",
     title: "Desktop use that asks first",
     body: "Circe can open apps, click, type, and scroll in your own signed-in apps. It repeats the goal before it touches anything, types only words you said, and reports done only when the screen shows it.",
   },
@@ -155,7 +159,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
 
 <Layout>
   <!-- Hero -->
-  <section class="hero">
+  <section class="hero" style={`--iso-grid:${isoGridDataUri(44, "#e6e6ea")}`}>
     <div class="container hero-inner">
       <p class="pill reveal">
         <span class="pill-dot" aria-hidden="true"></span>
@@ -176,13 +180,21 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
       </div>
     </div>
 
-    <!-- The one brand moment: a command box over a warm glow and a horizon line. -->
+    <!-- The one brand moment: a request, and the machines it can reach. -->
     <div class="container">
-      <figure class="stage reveal" aria-label="Illustration: a spoken request routed to the machine that owns the project">
-        <div class="stage-glow" aria-hidden="true"></div>
+      <figure class="stage reveal">
         <div class="command">
           <span class="command-mic" aria-hidden="true">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
+            <svg
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="1.75"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+            >
               <rect x="9" y="3" width="6" height="11" rx="3"></rect>
               <path d="M5 11a7 7 0 0 0 14 0M12 18v3"></path>
             </svg>
@@ -192,38 +204,27 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
           </span>
           <span class="command-key">Ctrl Shift J</span>
         </div>
+        <p class="route-note">
+          heard “rival” <span aria-hidden="true">→</span> <strong>Rivvl</strong>, on Desktop
+        </p>
 
-        <div class="route" aria-hidden="true">
-          <span class="route-line"></span>
-          <span class="route-note">
-            heard “rival” <span class="route-arrow">→</span> <strong>Rivvl</strong>, on Desktop
-          </span>
-        </div>
+        <IsoScene />
 
         <ul class="machines">
           <li class="machine is-target">
-            <div class="machine-head">
-              <span class="machine-name">Desktop</span>
-              <span class="state state-running"><i></i>Running</span>
-            </div>
-            <p class="machine-project">Rivvl</p>
-            <p class="machine-task">Fix the login bug · Claude Code</p>
+            <span class="machine-name">Desktop</span>
+            <span class="machine-project">Rivvl</span>
+            <span class="state state-running"><i></i>Running</span>
           </li>
           <li class="machine">
-            <div class="machine-head">
-              <span class="machine-name">Laptop</span>
-              <span class="state state-idle"><i></i>Online</span>
-            </div>
-            <p class="machine-project">Portfolio</p>
-            <p class="machine-task">Nothing running</p>
+            <span class="machine-name">Laptop</span>
+            <span class="machine-project">Portfolio</span>
+            <span class="state state-idle"><i></i>Online</span>
           </li>
           <li class="machine">
-            <div class="machine-head">
-              <span class="machine-name">Build box</span>
-              <span class="state state-idle"><i></i>Online</span>
-            </div>
-            <p class="machine-project">Portfolio</p>
-            <p class="machine-task">Nothing running</p>
+            <span class="machine-name">Build box</span>
+            <span class="machine-project">Portfolio</span>
+            <span class="state state-idle"><i></i>Online</span>
           </li>
         </ul>
         <figcaption>
@@ -248,27 +249,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
         {
           pillars.map((pillar) => (
             <article class="card pillar reveal">
-              <span class="pillar-icon" aria-hidden="true">
-                {pillar.icon === "mic" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="9" y="3" width="6" height="11" rx="3" />
-                    <path d="M5 11a7 7 0 0 0 14 0M12 18v3" />
-                  </svg>
-                )}
-                {pillar.icon === "machines" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <rect x="3" y="4" width="12" height="9" rx="1.5" />
-                    <path d="M7 17h4M9 13v4" />
-                    <rect x="17" y="8" width="4" height="9" rx="1" />
-                  </svg>
-                )}
-                {pillar.icon === "pointer" && (
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="m5 4 5.2 14 2.1-5.7L18 10.2 5 4Z" />
-                    <path d="m13 13 5 5" />
-                  </svg>
-                )}
-              </span>
+              <IsoGlyph kind={pillar.glyph} />
               <h3>{pillar.title}</h3>
               <p>{pillar.body}</p>
             </article>
@@ -279,7 +260,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   </section>
 
   <!-- Demos -->
-  <section class="section section-tint" id="demos">
+  <section class="section section-tint section-dots" id="demos">
     <div class="container">
       <div class="section-head reveal">
         <p class="eyebrow">Demos</p>
@@ -411,7 +392,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   <!-- Voice moment: the one dark surface on the page. -->
   <section class="section">
     <div class="container">
-      <div class="voice reveal">
+      <div class="voice reveal" style={`--iso-grid:${isoGridDataUri(40, "rgba(255,255,255,0.07)")}`}>
         <div class="voice-orb" aria-hidden="true">
           <span class="voice-ring"></span>
           <Image src={circeMark} alt="" width={220} height={220} densities={[1, 2]} loading="lazy" />
@@ -445,17 +426,24 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
           repository.
         </p>
       </div>
-      <ol class="steps reveal">
-        {
-          steps.map((step, index) => (
-            <li class="step">
-              <span class="step-index">{String(index + 1).padStart(2, "0")}</span>
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-            </li>
-          ))
-        }
-      </ol>
+      <div class="how reveal">
+        <div class="how-figure">
+          <IsoStack count={steps.length} />
+        </div>
+        <ol class="steps">
+          {
+            steps.map((step, index) => (
+              <li class="step">
+                <span class="step-index">{String(index + 1).padStart(2, "0")}</span>
+                <div>
+                  <h3>{step.title}</h3>
+                  <p>{step.body}</p>
+                </div>
+              </li>
+            ))
+          }
+        </ol>
+      </div>
       <div class="agents reveal">
         <p>Directs the agents you already have</p>
         <ul>
@@ -466,7 +454,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   </section>
 
   <!-- Status -->
-  <section class="section section-tint" id="status">
+  <section class="section section-tint section-dots" id="status">
     <div class="container">
       <div class="section-head reveal">
         <p class="eyebrow">Status</p>
@@ -495,7 +483,7 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   <!-- Closing -->
   <section class="section closing">
     <div class="container">
-      <div class="closing-card reveal">
+      <div class="closing-card reveal" style={`--iso-grid:${isoGridDataUri(40, "rgba(255,255,255,0.16)")}`}>
         <h2 class="display display-small">Think. Do. <em>Across your machines.</em></h2>
         <p>
           The code is public and MIT licensed. Read it, run the demos, or try a build and tell me
@@ -642,6 +630,23 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     border-bottom: 1px solid var(--border);
     background: var(--surface-1);
   }
+  /* A dot grid in the corner of tinted sections, fading into the page. */
+  .section-dots {
+    position: relative;
+  }
+  .section-dots::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(circle at 1px 1px, #d9d9de 1px, transparent 1.5px);
+    background-size: 22px 22px;
+    -webkit-mask-image: radial-gradient(ellipse 46% 70% at 100% 0%, #000, transparent 72%);
+    mask-image: radial-gradient(ellipse 46% 70% at 100% 0%, #000, transparent 72%);
+    pointer-events: none;
+  }
+  .section-dots > * {
+    position: relative;
+  }
   .section-head {
     max-width: 720px;
     margin-bottom: 48px;
@@ -690,7 +695,22 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
 
   /* Hero */
   .hero {
+    position: relative;
     padding: 72px 0 40px;
+    overflow: hidden;
+  }
+  .hero::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--iso-grid);
+    background-position: center top;
+    -webkit-mask-image: radial-gradient(ellipse 70% 46% at 50% 14%, #000 10%, transparent 76%);
+    mask-image: radial-gradient(ellipse 70% 46% at 50% 14%, #000 10%, transparent 76%);
+    pointer-events: none;
+  }
+  .hero > * {
+    position: relative;
   }
   .hero-inner {
     display: flex;
@@ -736,40 +756,31 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     margin-top: 32px;
   }
 
-  /* Stage */
+  /* Stage: the command, then the machines it can reach. No frame; the scene
+     sits on the page's own grid. */
   .stage {
     position: relative;
-    margin: 64px 0 0;
-    padding: 56px 40px 0;
-    overflow: hidden;
-    border: 1px solid var(--border);
-    border-radius: var(--radius-xl);
-    background: var(--surface-1);
-    box-shadow: var(--shadow-soft);
+    margin: 56px 0 0;
+    text-align: center;
   }
-  .stage-glow {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(56% 44% at 50% 100%, rgba(242, 107, 58, 0.26), transparent 72%),
-      radial-gradient(30% 22% at 50% 100%, rgba(255, 164, 122, 0.55), transparent 72%);
-  }
-  .stage-glow::after {
+  .stage::before {
     content: "";
     position: absolute;
-    left: 10%;
-    right: 10%;
-    bottom: 104px;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(204, 74, 20, 0.3), transparent);
+    left: 50%;
+    top: 34%;
+    width: min(760px, 92%);
+    aspect-ratio: 2 / 1;
+    transform: translateX(-50%);
+    background: radial-gradient(closest-side, rgba(242, 107, 58, 0.16), transparent);
+    pointer-events: none;
   }
   .command {
     position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
     gap: 12px;
-    max-width: 640px;
+    max-width: 600px;
     min-height: 56px;
     margin: 0 auto;
     padding: 8px 14px 8px 10px;
@@ -810,19 +821,11 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     font-family: var(--font-mono);
     font-size: 11px;
   }
-  .route {
-    position: relative;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    margin: 0 auto;
-  }
-  .route-line {
-    width: 1px;
-    height: 28px;
-    background: linear-gradient(var(--border-strong), var(--orange));
-  }
   .route-note {
+    position: relative;
+    z-index: 1;
+    display: inline-block;
+    margin-top: 14px;
     padding: 6px 12px;
     border: 1px solid rgba(204, 74, 20, 0.22);
     border-radius: var(--radius-pill);
@@ -833,36 +836,29 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   .route-note strong {
     font-weight: 600;
   }
-  .route-arrow {
-    margin: 0 2px;
-  }
+  /* The scene's labels carry this on wide screens; on phones they are too
+     small to read, so the same facts become a short list. */
   .machines {
-    position: relative;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    max-width: 860px;
-    margin: 28px auto 0;
+    display: none;
+    margin: 4px 0 0;
     padding: 0;
     list-style: none;
-  }
-  .machine {
-    padding: 16px;
     border: 1px solid var(--border);
     border-radius: var(--radius-lg);
-    background: rgba(255, 255, 255, 0.86);
+    background: var(--surface-1);
     text-align: left;
   }
-  .machine.is-target {
-    border-color: rgba(204, 74, 20, 0.45);
-    box-shadow: 0 0 0 3px rgba(242, 107, 58, 0.12);
-  }
-  .machine-head {
-    display: flex;
+  .machine {
+    display: grid;
+    grid-template-columns: 88px 1fr auto;
+    gap: 12px;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
-    margin-bottom: 12px;
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .machine:first-child {
+    border-top: 0;
   }
   .machine-name {
     color: var(--text-secondary);
@@ -870,6 +866,9 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     font-weight: 600;
     letter-spacing: 0.04em;
     text-transform: uppercase;
+  }
+  .machine-project {
+    font-weight: 600;
   }
   .state {
     display: inline-flex;
@@ -895,22 +894,14 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   .state-idle i {
     background: var(--success);
   }
-  .machine-project {
-    font-size: 16px;
-    font-weight: 600;
-  }
-  .machine-task {
-    margin-top: 2px;
-    color: var(--text-secondary);
-    font-size: 13px;
+  .stage :global(.scene) {
+    margin-top: -12px;
   }
   .stage figcaption {
     position: relative;
-    margin-top: 28px;
-    padding: 16px 0 104px;
-    color: var(--text-secondary);
+    margin-top: -20px;
+    color: var(--text-muted);
     font-size: 13px;
-    text-align: center;
   }
 
   /* Pillars */
@@ -922,15 +913,8 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
   .pillar {
     padding: 24px;
   }
-  .pillar-icon {
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    margin-bottom: 20px;
-    border-radius: var(--radius-md);
-    background: var(--accent-soft);
-    color: var(--accent);
+  .pillar :global(.glyph) {
+    margin: -8px 0 12px -8px;
   }
   .pillar h3 {
     margin-bottom: 8px;
@@ -1193,6 +1177,29 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
       var(--charcoal);
     color: #f5f5f4;
   }
+  .voice {
+    position: relative;
+  }
+  .voice::before,
+  .closing-card::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background-image: var(--iso-grid);
+    pointer-events: none;
+  }
+  .voice::before {
+    -webkit-mask-image: linear-gradient(100deg, transparent 30%, #000 100%);
+    mask-image: linear-gradient(100deg, transparent 30%, #000 100%);
+  }
+  .closing-card::before {
+    -webkit-mask-image: radial-gradient(ellipse 70% 90% at 50% 100%, #000, transparent 75%);
+    mask-image: radial-gradient(ellipse 70% 90% at 50% 100%, #000, transparent 75%);
+  }
+  .voice > *,
+  .closing-card > * {
+    position: relative;
+  }
   .voice-orb {
     position: relative;
     display: grid;
@@ -1252,44 +1259,52 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     font-size: 14px;
   }
 
-  /* Steps */
-  .steps {
+  /* How it works: an exploded stack beside the steps it stands for. */
+  .how {
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 0;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: 56px;
+    align-items: center;
+  }
+  .how-figure {
+    padding: 8px 0;
+  }
+  .steps {
     margin: 0;
     padding: 0;
     list-style: none;
-    border-top: 1px solid var(--border-strong);
   }
   .step {
-    position: relative;
-    padding: 24px 20px 0 0;
+    display: grid;
+    grid-template-columns: 40px 1fr;
+    gap: 16px;
+    padding: 18px 0;
+    border-top: 1px solid var(--border);
   }
-  .step::before {
-    content: "";
-    position: absolute;
-    top: -4px;
-    left: 0;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: var(--orange);
+  .step:first-child {
+    padding-top: 0;
+    border-top: 0;
+  }
+  .step:last-child {
+    padding-bottom: 0;
   }
   .step-index {
+    padding-top: 3px;
     color: var(--text-muted);
     font-family: var(--font-mono);
     font-size: 12px;
   }
+  .step:first-child .step-index {
+    color: var(--accent);
+  }
   .step h3 {
-    margin-top: 8px;
     font-size: 16px;
     font-weight: 600;
   }
   .step p {
-    margin-top: 6px;
+    margin-top: 4px;
     color: var(--text-secondary);
-    font-size: 14px;
+    font-size: 15px;
     line-height: 1.55;
   }
   .agents {
@@ -1359,6 +1374,8 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     background: linear-gradient(125deg, #3a1408 0%, #6f2810 40%, #a8401a 72%, #cc4a14 100%);
     color: #fff;
     text-align: center;
+    position: relative;
+    overflow: hidden;
   }
   .closing-card p {
     max-width: 520px;
@@ -1402,20 +1419,13 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     .panel-copy {
       position: static;
     }
-    .steps {
-      grid-template-columns: 1fr;
-      border-top: 0;
-      border-left: 1px solid var(--border-strong);
+    .how {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 32px;
     }
-    .step {
-      padding: 0 0 28px 24px;
-    }
-    .step::before {
-      top: 6px;
-      left: -4px;
-    }
-    .step:last-child {
-      padding-bottom: 0;
+    .how-figure {
+      max-width: 320px;
+      margin: 0 auto;
     }
   }
 
@@ -1426,22 +1436,17 @@ const agents = ["Claude Code", "Codex", "Cursor", "Grok Build", "OpenCode", "Ant
     .hero {
       padding-top: 48px;
     }
-    .stage {
-      margin-top: 44px;
-      padding: 28px 16px 0;
-    }
-    .stage figcaption {
-      padding-bottom: 96px;
-    }
-    .stage-glow::after {
-      bottom: 76px;
-    }
     .command-key {
       display: none;
     }
+    .stage {
+      margin-top: 40px;
+    }
     .machines {
-      grid-template-columns: 1fr;
-      gap: 10px;
+      display: block;
+    }
+    .stage figcaption {
+      margin-top: 16px;
     }
     .panel {
       padding: 20px;

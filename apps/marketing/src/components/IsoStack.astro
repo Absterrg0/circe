@@ -1,0 +1,112 @@
+---
+import { makeIso } from "../lib/iso";
+
+interface Props {
+  count: number;
+}
+const { count } = Astro.props;
+
+// An exploded stack: one slab per step a request passes through, top first.
+const WIDTH = 420;
+const GAP = 1.18;
+const iso = makeIso(34, WIDTH / 2, 30);
+const HEIGHT = Math.round((count - 1) * GAP * 34 + 5 * 34 + 70);
+const slabs = Array.from({ length: count }, (_, index) => {
+  // Draw from the bottom up so upper slabs overlap lower ones.
+  const level = count - 1 - index;
+  const z = index * GAP;
+  return {
+    step: level + 1,
+    box: iso.box(0, 0, z, 5, 5, 0.3),
+    badge: iso.project(5, 0, z + 0.15),
+    accent: level === 0,
+  };
+});
+const spineTop = iso.project(2.5, 2.5, (count - 1) * GAP + 0.3);
+const spineBottom = iso.project(2.5, 2.5, 0);
+// The whole stack sits lower than its origin by the height of the tallest slab.
+const lift = (count - 1) * GAP * 34;
+---
+
+<svg class="stack" viewBox={`0 ${-lift} ${WIDTH} ${HEIGHT}`} aria-hidden="true">
+  {
+    slabs.map((slab) => (
+      <g class:list={["slab", slab.accent && "is-accent"]}>
+        <polygon class="face-left" points={slab.box.left} />
+        <polygon class="face-right" points={slab.box.right} />
+        <polygon class="face-top" points={slab.box.top} />
+      </g>
+    ))
+  }
+  <line
+    class="spine"
+    x1={spineTop[0]}
+    y1={spineTop[1] - 26}
+    x2={spineBottom[0]}
+    y2={spineBottom[1]}></line>
+  {
+    slabs.map((slab) => (
+      <g transform={`translate(${(slab.badge[0] + 18).toFixed(1)} ${slab.badge[1].toFixed(1)})`}>
+        <line class="tick" x1="-16" y1="0" x2="-2" y2="0" />
+        <text class:list={["badge", slab.accent && "is-accent"]} x="4" y="4">
+          {String(slab.step).padStart(2, "0")}
+        </text>
+      </g>
+    ))
+  }
+</svg>
+
+<style>
+  .stack {
+    display: block;
+    width: 100%;
+    max-width: 420px;
+    height: auto;
+    margin: 0 auto;
+    overflow: visible;
+  }
+  .slab polygon {
+    stroke: #c9c9cf;
+    stroke-width: 1;
+    stroke-linejoin: round;
+  }
+  .face-top {
+    fill: rgba(255, 255, 255, 0.92);
+  }
+  .face-left {
+    fill: #f4f4f5;
+  }
+  .face-right {
+    fill: #e6e6ea;
+  }
+  .is-accent polygon {
+    stroke: #cc4a14;
+  }
+  .is-accent .face-top {
+    fill: #fdeee6;
+  }
+  .is-accent .face-left {
+    fill: #f58a60;
+  }
+  .is-accent .face-right {
+    fill: #f26b3a;
+  }
+  .spine {
+    stroke: #f26b3a;
+    stroke-width: 1.5;
+    stroke-dasharray: 2 6;
+    stroke-linecap: round;
+  }
+  .tick {
+    stroke: #c9c9cf;
+    stroke-width: 1;
+  }
+  .badge {
+    fill: #8a8a92;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .badge.is-accent {
+    fill: #cc4a14;
+  }
+</style>
