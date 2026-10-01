@@ -295,7 +295,10 @@ export async function loadCirceCore(): Promise<CirceCore | undefined> {
         return {
           say: (utterance, sayOptions) => circe.say(utterance, sayOptions),
           refresh: async () => (await circe.refresh()).map(noticeText),
-          onNotice: (listener) => circe.onNotice((notice) => listener(noticeText(notice))),
+          onNotice: (listener) =>
+            circe.onNotice((notice: Parameters<typeof noticeText>[0]) =>
+              listener(noticeText(notice)),
+            ),
         };
       },
       JevTimeoutError: core.JevTimeoutError,
