@@ -1,3 +1,4 @@
+import { CIRCE_LIVE_VOICE_SESSION_CEILING_MS } from "@circe/contracts";
 import { describe, expect, it } from "@effect/vitest";
 import type { SQL } from "drizzle-orm";
 import { PgDialect } from "drizzle-orm/pg-core";
@@ -11,6 +12,7 @@ import * as EnvironmentLinks from "../environments/EnvironmentLinks.ts";
 import * as RelayDb from "../db.ts";
 import { relayLiveVoiceStarts } from "../persistence/schema.ts";
 import * as LiveVoiceSessions from "./LiveVoiceSessions.ts";
+import { LIVE_VOICE_RESERVATION_CEILING_MILLIS } from "./LiveVoiceSessions.ts";
 import {
   LiveVoiceUpstream,
   LiveVoiceUpstreamCreateFailed,
@@ -44,6 +46,7 @@ function matchesSession(condition: SQL, row: SessionRow): boolean {
   }
   if (text.includes('"reservation_id"') && row.reservationId !== params[index]) return false;
   if (text.includes('"expires_at"') && row.expiresAt > String(params[index])) return false;
+  if (text.includes('"created_at"') && row.createdAt > String(params[index])) return false;
   if (text.includes('"session_id"') && row.sessionId !== params[index]) return false;
   return true;
 }
@@ -160,6 +163,8 @@ function makeFakeDb(
                   userId: row.userId,
                   sessionId: row.sessionId,
                   reservationId: row.reservationId,
+                  createdAt: row.createdAt,
+                  expiresAt: row.expiresAt,
                 })),
             );
           return { orderBy: () => ({ limit: limited }), limit: limited };
@@ -386,7 +391,7 @@ describe("LiveVoiceSessions", () => {
     );
   });
 
-  it.effect("retains the slot when the upstream cannot confirm the session ended", () => {
+  it.effect("holds the slot on an unconfirmed close, but only until the ceiling", () => {
     const { db, sessions } = makeFakeDb();
     const { service } = makeUpstream({ failEnd: true });
     return Effect.gen(function* () {
@@ -401,6 +406,12 @@ describe("LiveVoiceSessions", () => {
         voice.create({ environmentId: "env-2", sdpOffer: "offer" }),
       );
       expect(createError._tag).toBe("LiveVoiceSessionInUse");
+      // The provider never confirms. Past the ceiling the account starts a new
+      // session anyway instead of staying blocked.
+      yield* TestClock.adjust(LIVE_VOICE_RESERVATION_CEILING_MILLIS + 1);
+      const second = yield* voice.create({ environmentId: "env-2", sdpOffer: "offer" });
+      expect(second.sessionId).not.toBe(first.sessionId);
+      expect(sessions.get("user-1")?.sessionId).toBe(second.sessionId);
     }).pipe(
       Effect.provide(
         makeLayer({ db, links: makeLinks(["user-1"]), upstream: service, apiKey: "sk-test" }),
@@ -483,7 +494,7 @@ describe("LiveVoiceSessions", () => {
       expect(sessions.has("user-1")).toBe(false);
       expect(sessions.has("user-2")).toBe(false);
       expect(sessions.has("user-3")).toBe(true);
-      // An unknown upstream identity is never freed by a guess.
+      // Inside its ceiling an unknown upstream identity is never freed by a guess.
       expect(sessions.has("user-4")).toBe(true);
     }).pipe(
       Effect.provide(
@@ -520,8 +531,8 @@ describe("LiveVoiceSessions", () => {
     return Effect.gen(function* () {
       const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
       yield* voice.sweepExpired();
-      // Both rows are kept (never freed by a guess) but deferred to a later
-      // retry, so the next batch can reach other expired reservations.
+      // Inside the ceiling both rows are kept but deferred to a later retry, so
+      // the next batch can reach other expired reservations.
       expect(sessions.get("user-null")?.expiresAt).not.toBe("1969-01-01T00:00:00.000Z");
       expect(sessions.get("user-fail")?.expiresAt).not.toBe("1969-01-01T00:00:00.000Z");
       expect(sessions.has("user-null")).toBe(true);
@@ -692,82 +703,83 @@ describe("LiveVoiceSessions reservation ownership", () => {
     },
   );
 
-  it.effect("retains an unknown creation outcome across expiry and service restart", () => {
+  it.effect("frees the slot at once when the creation outcome is unknown", () => {
     const fake = makeFakeDb();
     const upstream = makeUpstream();
+    let lost = true;
     const service = LiveVoiceUpstream.of({
       ...upstream.service,
       create: (input) =>
-        upstream.service
-          .create(input)
-          .pipe(
-            Effect.flatMap(() =>
-              Effect.fail(
-                new LiveVoiceUpstreamCreateFailed({ outcome: "unknown", cause: "lost response" }),
-              ),
-            ),
+        upstream.service.create(input).pipe(
+          Effect.flatMap((created) =>
+            lost
+              ? Effect.fail(
+                  new LiveVoiceUpstreamCreateFailed({
+                    outcome: "unknown",
+                    cause: "lost response",
+                  }),
+                )
+              : Effect.succeed(created),
           ),
+        ),
     });
     return Effect.gen(function* () {
       const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
       const error = yield* Effect.flip(voice.create({ environmentId: "env-1", sdpOffer: "offer" }));
       expect(error._tag).toBe("LiveVoiceUpstreamFailed");
-      expect(fake.sessions.get("user-1")?.sessionId).toBeNull();
-      yield* TestClock.adjust("1 day");
-      const restarted = yield* LiveVoiceSessions.make;
-      const retry = yield* Effect.flip(
-        restarted.create({ environmentId: "env-2", sdpOffer: "offer" }),
-      );
-      expect(retry._tag).toBe("LiveVoiceSessionInUse");
-      expect(upstream.active.size).toBe(1);
-    }).pipe(
-      Effect.provide(
-        Layer.mergeAll(
-          makeLayer({
-            db: fake.db,
-            links: makeLinks(["user-1"]),
-            upstream: service,
-            apiKey: "sk-test",
-          }),
-          Layer.succeed(RelayDb.RelayDb, fake.db),
-          Layer.succeed(EnvironmentLinks.EnvironmentLinks, makeLinks(["user-1"])),
-          Layer.succeed(RelayConfiguration, makeConfiguration("sk-test")),
-          Layer.succeed(LiveVoiceUpstream, service),
-        ),
-      ),
-    );
-  });
-
-  it.effect("cannot release an empty legacy reservation", () => {
-    const fake = makeFakeDb([
-      {
-        userId: "user-1",
-        reservationId: "legacy",
-        sessionId: "",
-        environmentId: "env-1",
-        createdAt: "1969-01-01",
-        expiresAt: "1969-01-02",
-      },
-    ]);
-    const upstream = makeUpstream();
-    return Effect.gen(function* () {
-      const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
-      const release = yield* Effect.flip(voice.release({ environmentId: "env-1", sessionId: "" }));
-      expect(release._tag).toBe("LiveVoiceSessionInUse");
-      const retry = yield* Effect.flip(voice.create({ environmentId: "env-1", sdpOffer: "offer" }));
-      expect(retry._tag).toBe("LiveVoiceSessionInUse");
-      expect(fake.sessions.size).toBe(1);
+      // One lost provider response must not turn into a blocked microphone.
+      expect(fake.sessions.size).toBe(0);
+      lost = false;
+      const retry = yield* voice.create({ environmentId: "env-1", sdpOffer: "offer" });
+      expect(fake.sessions.get("user-1")?.sessionId).toBe(retry.sessionId);
     }).pipe(
       Effect.provide(
         makeLayer({
           db: fake.db,
           links: makeLinks(["user-1"]),
-          upstream: upstream.service,
+          upstream: service,
           apiKey: "sk-test",
         }),
       ),
     );
   });
+
+  it.effect(
+    "an empty legacy reservation cannot be released by id but clears at its ceiling",
+    () => {
+      const fake = makeFakeDb([
+        {
+          userId: "user-1",
+          reservationId: "legacy",
+          sessionId: "",
+          environmentId: "env-1",
+          createdAt: "1969-01-01",
+          expiresAt: "1969-01-02",
+        },
+      ]);
+      const upstream = makeUpstream();
+      return Effect.gen(function* () {
+        const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
+        const release = yield* Effect.flip(
+          voice.release({ environmentId: "env-1", sessionId: "" }),
+        );
+        expect(release._tag).toBe("LiveVoiceSessionInUse");
+        expect(fake.sessions.get("user-1")?.reservationId).toBe("legacy");
+        // The row is long past its ceiling, so the next start replaces it.
+        const next = yield* voice.create({ environmentId: "env-1", sdpOffer: "offer" });
+        expect(fake.sessions.get("user-1")?.sessionId).toBe(next.sessionId);
+      }).pipe(
+        Effect.provide(
+          makeLayer({
+            db: fake.db,
+            links: makeLinks(["user-1"]),
+            upstream: upstream.service,
+            apiKey: "sk-test",
+          }),
+        ),
+      );
+    },
+  );
 
   it.effect("a delayed duplicate release cannot remove a replacement reservation", () =>
     Effect.gen(function* () {
@@ -813,7 +825,7 @@ describe("LiveVoiceSessions reservation ownership", () => {
     }),
   );
 
-  it.effect("interruption during upstream creation retains uncertainty", () =>
+  it.effect("interruption during upstream creation retains uncertainty until the ceiling", () =>
     Effect.gen(function* () {
       const fake = makeFakeDb();
       const upstream = makeUpstream();
@@ -840,6 +852,11 @@ describe("LiveVoiceSessions reservation ownership", () => {
         );
         expect(retry._tag).toBe("LiveVoiceSessionInUse");
         expect(upstream.active.size).toBe(1);
+        // No id was ever recorded, so nothing can close or release it. The
+        // ceiling is the only way out, and the sweep applies it.
+        yield* TestClock.adjust(LIVE_VOICE_RESERVATION_CEILING_MILLIS);
+        yield* voice.sweepExpired();
+        expect(fake.sessions.size).toBe(0);
       }).pipe(
         Effect.provide(
           makeLayer({
@@ -863,7 +880,7 @@ it.effect(
         reservationId: "own",
         sessionId: "sess_own",
         environmentId: "env-1",
-        createdAt: "1969-01-01",
+        createdAt: "1999-01-01",
         expiresAt: "1969-01-02",
       },
       {
@@ -871,7 +888,7 @@ it.effect(
         reservationId: "other",
         sessionId: "sess_other",
         environmentId: "env-2",
-        createdAt: "1969-01-01",
+        createdAt: "1999-01-01",
         expiresAt: "1969-01-02",
       },
     ]);
@@ -1018,5 +1035,115 @@ describe("explicit release reconciliation", () => {
         }),
       ),
     );
+  });
+});
+
+describe("reservation ceiling", () => {
+  const layerFor = (
+    fake: ReturnType<typeof makeFakeDb>,
+    upstream: ReturnType<typeof makeUpstream>,
+  ) =>
+    makeLayer({
+      db: fake.db,
+      links: makeLinks(["user-1"]),
+      upstream: upstream.service,
+      apiKey: "sk-test",
+    });
+
+  // The production incident: a session nobody released, a provider that never
+  // confirmed its closure, and a sweep that kept pushing the expiry forward.
+  // The account stayed blocked for a day until the row was deleted by hand.
+  it.effect("an old reservation the sweep keeps deferring cannot block a new session", () => {
+    const fake = makeFakeDb([
+      {
+        userId: "user-1",
+        reservationId: "orphan",
+        sessionId: "sess_orphan",
+        environmentId: "env-1",
+        createdAt: "1969-12-31T00:00:00.000Z",
+        expiresAt: "1970-01-01T00:04:00.000Z",
+      },
+    ]);
+    const upstream = makeUpstream({ failEnd: true });
+    return Effect.gen(function* () {
+      const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
+      const next = yield* voice.create({ environmentId: "env-1", sdpOffer: "offer" });
+      expect(fake.sessions.get("user-1")).toMatchObject({ sessionId: next.sessionId });
+      expect(fake.sessions.get("user-1")?.reservationId).not.toBe("orphan");
+    }).pipe(Effect.provide(layerFor(fake, upstream)));
+  });
+
+  it.effect("an old reservation with no session id cannot block a new session", () => {
+    const fake = makeFakeDb([
+      {
+        userId: "user-1",
+        reservationId: "unknown",
+        sessionId: null,
+        environmentId: "env-1",
+        createdAt: "1969-12-31T00:00:00.000Z",
+        expiresAt: "1970-01-01T00:04:00.000Z",
+      },
+    ]);
+    const upstream = makeUpstream();
+    return Effect.gen(function* () {
+      const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
+      const next = yield* voice.create({ environmentId: "env-1", sdpOffer: "offer" });
+      expect(fake.sessions.get("user-1")?.sessionId).toBe(next.sessionId);
+    }).pipe(Effect.provide(layerFor(fake, upstream)));
+  });
+
+  it.effect("the sweep removes overdue reservations it cannot close and keeps younger ones", () => {
+    const fake = makeFakeDb([
+      {
+        userId: "user-overdue",
+        reservationId: "r-overdue",
+        sessionId: "sess_overdue",
+        environmentId: "env",
+        createdAt: "1969-12-31T00:00:00.000Z",
+        expiresAt: "1970-01-01T00:04:00.000Z",
+      },
+      {
+        userId: "user-overdue-unknown",
+        reservationId: "r-overdue-unknown",
+        sessionId: null,
+        environmentId: "env",
+        createdAt: "1969-12-31T00:00:00.000Z",
+        expiresAt: "1970-01-01T00:04:00.000Z",
+      },
+      {
+        userId: "user-young",
+        reservationId: "r-young",
+        sessionId: "sess_young",
+        environmentId: "env",
+        createdAt: "1969-12-31T23:50:00.000Z",
+        expiresAt: "1969-12-31T23:59:00.000Z",
+      },
+    ]);
+    const upstream = makeUpstream({ failEnd: true });
+    return Effect.gen(function* () {
+      const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
+      yield* voice.sweepExpired();
+      expect([...fake.sessions.keys()]).toEqual(["user-young"]);
+    }).pipe(Effect.provide(layerFor(fake, upstream)));
+  });
+
+  it.effect("a session the node still allows is never doubled, even when closure fails", () => {
+    const fake = makeFakeDb();
+    const upstream = makeUpstream({ failEnd: true });
+    return Effect.gen(function* () {
+      const voice = yield* LiveVoiceSessions.LiveVoiceSessions;
+      const first = yield* voice.create({ environmentId: "env-1", sdpOffer: "offer" });
+      // The node closes a session at this point at the latest. Until then, and
+      // for the margin after it, the reservation must still hold.
+      yield* TestClock.adjust(CIRCE_LIVE_VOICE_SESSION_CEILING_MS);
+      const blocked = yield* Effect.flip(
+        voice.create({ environmentId: "env-1", sdpOffer: "offer" }),
+      );
+      expect(blocked._tag).toBe("LiveVoiceSessionInUse");
+      expect(fake.sessions.get("user-1")?.sessionId).toBe(first.sessionId);
+      expect(LIVE_VOICE_RESERVATION_CEILING_MILLIS).toBeGreaterThan(
+        CIRCE_LIVE_VOICE_SESSION_CEILING_MS,
+      );
+    }).pipe(Effect.provide(layerFor(fake, upstream)));
   });
 });

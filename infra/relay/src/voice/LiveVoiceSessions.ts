@@ -3,10 +3,15 @@ import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
+import type * as Redacted from "effect/Redacted";
 import * as Schema from "effect/Schema";
 
 import type { RelayLiveVoiceSessionCreateResponse } from "@circe/contracts/relay";
-import { CIRCE_LIVE_VOICE_DEFAULT_MODEL, CIRCE_LIVE_VOICE_DEFAULT_VOICE } from "@circe/contracts";
+import {
+  CIRCE_LIVE_VOICE_DEFAULT_MODEL,
+  CIRCE_LIVE_VOICE_DEFAULT_VOICE,
+  CIRCE_LIVE_VOICE_SESSION_CEILING_MS,
+} from "@circe/contracts";
 
 import { RelayConfiguration } from "../Config.ts";
 import * as EnvironmentLinks from "../environments/EnvironmentLinks.ts";
@@ -16,6 +21,17 @@ import { LiveVoiceUpstream } from "./LiveVoiceUpstream.ts";
 
 /** When to attempt closure after a device disappears; never proof of closure. */
 const LIVE_VOICE_SESSION_TTL_MILLIS = 10 * 60_000;
+/**
+ * The longest one reservation may hold an account's slot, counted from its
+ * creation. The node closes every session at its own ceiling, so past that plus
+ * a margin the reservation no longer describes a conversation a second session
+ * could collide with. It is then removed whether or not the provider confirmed
+ * closure. Before the ceiling, only confirmed closure frees the slot; after it,
+ * nothing can keep the account blocked: not an unknown session id, a provider
+ * that never confirms, or a sweep that keeps deferring the row.
+ */
+export const LIVE_VOICE_RESERVATION_CEILING_MILLIS =
+  CIRCE_LIVE_VOICE_SESSION_CEILING_MS + 3 * 60_000;
 /** Expired reservations closed per sweep pass, so one pass never monopolizes a request. */
 const LIVE_VOICE_SWEEP_BATCH = 50;
 /**
@@ -99,7 +115,8 @@ export interface LiveVoiceSessionsShape {
   /**
    * Close every expired reservation, not only the requesting account's. The
    * scheduled sweep is the server-side timer that bounds billing after a killed
-   * renderer or node; a reservation is freed only after confirmed closure.
+   * renderer or node. Before its ceiling a reservation is freed only after
+   * confirmed closure; past it the reservation is removed regardless.
    */
   readonly sweepExpired: () => Effect.Effect<void, LiveVoiceSessionsError>;
 }
@@ -152,13 +169,44 @@ export const make = Effect.gen(function* () {
       eq(relayLiveVoiceSessions.reservationId, reservationId),
     );
 
-  // Only a confirmed rejection or closure can free an account's slot. The
-  // token fences delayed cleanup from a later reservation for the same account.
+  // The token fences delayed cleanup from a later reservation for the same
+  // account.
   const deleteReservation = (userId: string, reservationId: string) =>
     db
       .delete(relayLiveVoiceSessions)
       .where(reservationIdentity(userId, reservationId))
       .pipe(Effect.mapError(persistence("release-reservation")));
+
+  const ceilingCutoff = (now: DateTime.DateTime) =>
+    DateTime.formatIso(DateTime.add(now, { milliseconds: -LIVE_VOICE_RESERVATION_CEILING_MILLIS }));
+
+  // Removes a reservation that outlived its ceiling. A known session gets one
+  // last hangup, but the row goes either way: this is the bound that keeps an
+  // unconfirmable closure from holding the account. An unconfirmed removal is
+  // logged with the ids needed to check the provider by hand.
+  const retireOverdue = (
+    row: {
+      readonly userId: string;
+      readonly reservationId: string;
+      readonly sessionId: string | null;
+    },
+    apiKey: Redacted.Redacted<string>,
+  ) =>
+    Effect.gen(function* () {
+      const closed = row.sessionId
+        ? yield* upstream.end({ apiKey, sessionId: row.sessionId }).pipe(
+            Effect.as(true),
+            Effect.catch(() => Effect.succeed(false)),
+          )
+        : false;
+      if (!closed) {
+        yield* Effect.logError(
+          "Cloud voice reservation removed at its ceiling without confirmed closure",
+          { userId: row.userId, reservationId: row.reservationId, sessionId: row.sessionId },
+        );
+      }
+      yield* deleteReservation(row.userId, row.reservationId);
+    });
 
   return LiveVoiceSessions.of({
     create: Effect.fn("relay.live_voice.create")(function* (input) {
@@ -179,36 +227,34 @@ export const make = Effect.gen(function* () {
         DateTime.add(now, { milliseconds: -LIVE_VOICE_USAGE_WINDOW_MILLIS }),
       );
 
-      // End the requesting account's expired backstop session before reserving.
-      // A failed close keeps the row so a still-live session cannot free its
-      // slot. Scoped to this account so one request never sweeps the fleet.
-      const expired = yield* db
+      // Settle the requesting account's own reservation before reserving.
+      // Scoped to this account so one request never sweeps the fleet.
+      const held = yield* db
         .select({
           reservationId: relayLiveVoiceSessions.reservationId,
           sessionId: relayLiveVoiceSessions.sessionId,
+          createdAt: relayLiveVoiceSessions.createdAt,
+          expiresAt: relayLiveVoiceSessions.expiresAt,
         })
         .from(relayLiveVoiceSessions)
-        .where(
-          and(
-            eq(relayLiveVoiceSessions.userId, userId),
-            lte(relayLiveVoiceSessions.expiresAt, nowIso),
-          ),
-        )
+        .where(eq(relayLiveVoiceSessions.userId, userId))
         .limit(1)
-        .pipe(Effect.mapError(persistence("list-expired")));
-      const expiredRow = expired[0];
-      // Missing identity is uncertainty, not proof that nothing was created.
-      // This also handles empty ids written by earlier relay versions. Leave
-      // such reservations blocked through expiry and process restarts.
-      if (expiredRow?.sessionId) {
-        const ended = yield* upstream
-          .end({ apiKey: publicKey, sessionId: expiredRow.sessionId })
-          .pipe(
-            Effect.as(true),
-            Effect.catch(() => Effect.succeed(false)),
-          );
+        .pipe(Effect.mapError(persistence("list-held")));
+      const heldRow = held[0];
+      if (heldRow !== undefined && heldRow.createdAt <= ceilingCutoff(now)) {
+        // Past its ceiling the reservation cannot block anyone, whatever the
+        // sweep last deferred its expiry to.
+        yield* retireOverdue({ userId, ...heldRow }, publicKey);
+      } else if (heldRow?.sessionId && heldRow.expiresAt <= nowIso) {
+        // Expired but still inside the ceiling: a failed close keeps the row so
+        // a session that may still be live cannot free its slot. A missing id
+        // is uncertainty, not proof that nothing was created, so it waits too.
+        const ended = yield* upstream.end({ apiKey: publicKey, sessionId: heldRow.sessionId }).pipe(
+          Effect.as(true),
+          Effect.catch(() => Effect.succeed(false)),
+        );
         if (ended) {
-          yield* deleteReservation(userId, expiredRow.reservationId);
+          yield* deleteReservation(userId, heldRow.reservationId);
         }
       }
 
@@ -269,9 +315,18 @@ export const make = Effect.gen(function* () {
         .pipe(
           Effect.catch((cause) =>
             Effect.gen(function* () {
-              if (cause.outcome === "rejected") {
-                yield* deleteReservation(userId, reservationId);
+              // A failed create frees the slot at once. When the outcome is
+              // unknown a session may exist upstream, but its answer never
+              // reached a client, so it has no peer and cannot carry a
+              // conversation. Holding the account for it only turns one
+              // provider timeout into a blocked microphone.
+              if (cause.outcome === "unknown") {
+                yield* Effect.logWarning("Cloud voice creation outcome is unknown", {
+                  userId,
+                  reservationId,
+                });
               }
+              yield* deleteReservation(userId, reservationId);
               return yield* new LiveVoiceUpstreamFailed({
                 environmentId: input.environmentId,
                 cause,
@@ -350,9 +405,8 @@ export const make = Effect.gen(function* () {
       const userId = yield* resolveUserId(input.environmentId, false);
       // Public release accepts an upstream session id, never a reservation
       // token or an empty identity. The RPC schema already requires a
-      // non-empty id; this guards direct callers. Uncertain (null-id)
-      // reservations are reconciled only by the expired-session sweep on
-      // create, never by a public release.
+      // non-empty id; this guards direct callers. A reservation with no
+      // session id cannot be released by id; it clears at its ceiling.
       if (input.sessionId.length === 0) {
         return yield* new LiveVoiceSessionInUse({ userId });
       }
@@ -373,13 +427,11 @@ export const make = Effect.gen(function* () {
       const row = rows[0];
       // Idempotent: nothing to release. The lookup matches the exact upstream
       // session id, so a missing row is proof there is nothing to close.
-      // Uncertain (null-id) reservations are reconciled only by the
-      // expired-session sweep on create, never by a public release.
       if (row === undefined) return;
       // Mark the exact reservation eligible for reconciliation before the
       // hangup. If the hangup fails, times out, or this process dies, the
-      // expired-session sweep retries it on the next create; the slot is still
-      // freed only after a confirmed close.
+      // expired-session sweep retries it on the next create. Until its ceiling
+      // the slot is freed only by a confirmed close.
       const markedAtIso = DateTime.formatIso(yield* DateTime.now);
       yield* db
         .update(relayLiveVoiceSessions)
@@ -415,6 +467,22 @@ export const make = Effect.gen(function* () {
           .set({ expiresAt: deferredIso })
           .where(reservationIdentity(userId, reservationId))
           .pipe(Effect.mapError(persistence("defer-reservation")));
+      // Overdue reservations go first and unconditionally: this pass is what
+      // guarantees no account stays blocked past the ceiling.
+      const overdue = yield* db
+        .select({
+          userId: relayLiveVoiceSessions.userId,
+          reservationId: relayLiveVoiceSessions.reservationId,
+          sessionId: relayLiveVoiceSessions.sessionId,
+        })
+        .from(relayLiveVoiceSessions)
+        .where(lte(relayLiveVoiceSessions.createdAt, ceilingCutoff(now)))
+        .orderBy(asc(relayLiveVoiceSessions.createdAt))
+        .limit(LIVE_VOICE_SWEEP_BATCH)
+        .pipe(Effect.mapError(persistence("sweep-overdue")));
+      for (const row of overdue) {
+        yield* retireOverdue(row, publicKey).pipe(Effect.catch(() => Effect.void));
+      }
       const rows = yield* db
         .select({
           userId: relayLiveVoiceSessions.userId,
@@ -430,8 +498,7 @@ export const make = Effect.gen(function* () {
         .pipe(Effect.mapError(persistence("sweep-expired")));
       for (const row of rows) {
         // A null id is uncertainty, never proof that nothing was created. The
-        // sweep cannot close it and must not free the slot; defer it and surface
-        // it for the operator recovery procedure instead.
+        // sweep cannot close it, so it waits for the ceiling pass above.
         if (!row.sessionId) {
           yield* Effect.logWarning("Cloud voice expired reservation has no upstream id", {
             userId: row.userId,
@@ -449,7 +516,7 @@ export const make = Effect.gen(function* () {
             Effect.catch(() => Effect.void),
           );
         } else {
-          // Keep the slot: a still-live session must never be freed by a guess.
+          // Inside the ceiling a still-live session is never freed by a guess.
           yield* Effect.logWarning("Cloud voice sweep could not confirm upstream closure", {
             userId: row.userId,
             reservationId: row.reservationId,

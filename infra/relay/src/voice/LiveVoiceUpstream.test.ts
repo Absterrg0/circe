@@ -180,4 +180,15 @@ describe("LiveVoiceUpstream hangup", () => {
       ).toMatchObject({ _tag: "LiveVoiceUpstreamEndFailed" });
     }).pipe(Effect.provide(withClient(client)));
   });
+  // What the provider actually sends for a session it has dropped. Rejecting it
+  // left a dead session holding an account's only slot for a day.
+  it.effect("treats the provider's empty 404 as a session it no longer has", () => {
+    const client = HttpClient.make((request) =>
+      Effect.succeed(HttpClientResponse.fromWeb(request, new Response(null, { status: 404 }))),
+    );
+    return Effect.gen(function* () {
+      const upstream = yield* LiveVoiceUpstream;
+      yield* upstream.end({ apiKey: Redacted.make("sk-test"), sessionId: "live_original" });
+    }).pipe(Effect.provide(withClient(client)));
+  });
 });

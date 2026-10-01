@@ -103,43 +103,62 @@ Data-channel events can be observed in the browser devtools WebRTC internals or 
   a session billing. While a session is live the renderer renews a server-side lease through the
   node every 20 seconds; the node closes any session whose lease lapses (three missed renewals) or
   whose 12-minute ceiling passes. Cloud sessions close over their original authenticated relay
-  route; local-key sessions close straight against the provider with the node's key. Every closure
-  is confirmed with `POST /v1/live/sessions/{session_id}/hangup` before anything is treated as
-  ended. Local-key leases are persisted, so a node restart still closes one whose renderer was
-  killed: a recovered session gets one lease window of grace for a live renderer to resume
-  heartbeats, a session whose ceiling already passed closes on startup, and a session the node
-  cannot close (for example no local key) keeps its durable record for the next attempt.
+  route; local-key sessions close straight against the provider with the node's key. A closure
+  counts once `POST /v1/live/sessions/{session_id}/hangup` answers 2xx, answers
+  `session_id_not_found`, or answers the empty 404 the provider sends for a session it has already
+  dropped. Leases for both routes are persisted, so a node restart still closes a session whose
+  renderer was killed: a recovered session gets one lease window of grace for a live renderer to
+  resume heartbeats, a session whose ceiling already passed closes on startup, and a session the
+  node cannot close (no local key, or a cloud session on an unlinked node) keeps its durable record
+  for the next attempt.
+- When the relay answers a cloud create with "session in use", the node frees only its own cloud
+  sessions that no renderer is renewing (recovered and not yet reclaimed, or lapsed) and retries
+  once. It never ends a session that is still being renewed, and it cannot free a slot held by
+  another device.
 - The relay independently sweeps expired cloud reservations on its scheduled cron, across every
-  account, so billing stays bounded even if the node itself dies. A reservation is freed only after
-  confirmed upstream closure; a reservation whose upstream id is unknown is surfaced for the
-  recovery procedure below instead of being guessed away.
+  account, so billing stays bounded even if the node itself dies.
 - If the data channel closes unexpectedly, the renderer reports the failure and stops
   automatically. Pressing **Live conversation** starts a fresh session; work already accepted by the
   Director continues on the node.
 
-## Recover a blocked cloud-voice reservation
+## How long a cloud reservation can hold an account
 
-The relay reserves one cloud session per account before calling upstream. A null `session_id`
-means creation is in progress or its outcome is unknown. It does not mean no session was created.
-The ten-minute `expires_at` schedules a closure attempt for a known session; it never authorizes
-replacing an unknown session. A definitive upstream rejection frees the reservation. Lost responses,
-timeouts, interrupted requests, and unconfirmed closure retain it across restarts.
+The relay reserves one cloud session per account before calling upstream, and the reservation is
+what answers "session in use". Two rules decide when it goes away:
 
-Apply the relay migration before deploying this version. It adds a database-generated
-`reservation_id` and converts legacy empty session ids to null. Drain the older relay version
-before migration: older code assumes every session id is a string and may discard an empty id.
+- Inside its ceiling, only confirmed closure frees it. A session that may still be live is never
+  replaced on a guess. A reservation with no session id (creation was interrupted) cannot be closed
+  or released by id, so it waits for the ceiling.
+- Past its ceiling, it is removed regardless. The ceiling is the node's 12-minute session limit plus
+  a 3-minute margin, counted from creation. Nothing extends it: not an unknown session id, a
+  provider that never confirms, or a sweep that keeps deferring the retry. The next create for the
+  account and the scheduled sweep both apply it. A removal without confirmed closure logs
+  `Cloud voice reservation removed at its ceiling without confirmed closure` with the user,
+  reservation, and session ids.
 
-On the node, release is idempotent: releasing an unknown session id on an
-unlinked node succeeds without contacting the relay, so a stale renderer can
-never wedge future sessions. Pending cloud releases retry on the next cloud
-session create and never block local-key sessions.
+A failed create frees the slot at once, including when the outcome is unknown. A session whose
+answer never reached a client has no peer and cannot carry a conversation, so holding the account
+for it only turns one provider timeout into a blocked microphone.
 
-Ship the node, relay, and renderer together. Older renderers ignore the
-`releaseRequired` flag, so a cloud session started by an old client is never
-released and its reservation is freed only by the recovery procedure below.
+The ceiling exists because of an incident: a session nobody released, a provider answering an empty
+404 that the relay did not accept as closure, and a sweep that pushed the retry five minutes ahead
+on every pass. The account stayed blocked for a day until the row was deleted by hand. Accepting the
+empty 404 fixes that case; the ceiling is what makes the whole class impossible, including a
+provider that renames the hangup route or rejects the deployment key.
 
-For an account reporting `live_voice_session_in_use` after a failed start, inspect the relay database
-with a read-only query, binding the account id as `$1`:
+Accepting the empty 404 has a cost. The provider sends the same answer for any path it cannot
+route, so a renamed hangup route would read as closure while sessions stay open until their client
+disconnects. Watch for sessions that outlive their conversation if the provider changes that API.
+
+On the node, release is idempotent: releasing an unknown session id on an unlinked node succeeds
+without contacting the relay, so a stale renderer can never wedge future sessions. Pending cloud
+releases retry on the next cloud session create and never block local-key sessions.
+
+Ship the node, relay, and renderer together. Older renderers ignore the `releaseRequired` flag, so a
+cloud session started by an old client is never released and its reservation lasts until the
+ceiling.
+
+To see what holds an account, query the relay database read-only, binding the account id as `$1`:
 
 ```sql
 SELECT user_id, reservation_id, session_id, environment_id, created_at, expires_at
@@ -147,23 +166,5 @@ FROM relay_live_voice_sessions
 WHERE user_id = $1;
 ```
 
-- With a known `session_id`, retry the authenticated release endpoint from its owning linked node.
-  The relay deletes the reservation only after upstream confirms hangup or reports that this exact session no longer exists.
-- If `session_id` is null, correlate the exact `reservation_id` with the relay error log
-  `Cloud voice cleanup requires confirmed upstream closure`. The log includes the upstream id
-  when creation returned one but persistence failed. With that verified identity, bind account,
-  reservation and upstream session ids as `$1`, `$2`, `$3`, then retry the ordinary release:
-
-```sql
-UPDATE relay_live_voice_sessions
-SET session_id = $3
-WHERE user_id = $1 AND reservation_id = $2 AND session_id IS NULL
-RETURNING session_id;
-```
-
-If the upstream id was never received, stop the originating request/worker and verify with the
-provider that its session was not created or has ended before removing the exact reservation.
-Use both `user_id` and `reservation_id` in the deletion condition. Never clear a reservation merely
-because the local TTL elapsed or the database recovered. There is no verified automatic lookup
-by reservation id, so an unknown outcome may require operator recovery. The normal client API
-cannot force-clear it or release another session by guessing an empty id.
+`created_at` plus 15 minutes is when the row stops blocking. `expires_at` is only the next closure
+attempt. A row older than that means the relay running is older than this document.

@@ -36,7 +36,11 @@ export interface LiveVoiceUpstreamShape {
     { readonly sessionId: string; readonly sdpAnswer: string },
     LiveVoiceUpstreamCreateFailed
   >;
-  /** A confirmed hangup or exact session_id_not_found response proves the slot is free. */
+  /**
+   * Succeeds when the provider hung the session up or no longer has it: a 2xx,
+   * a `session_id_not_found` body, or the empty 404 it sends for a session it
+   * has already dropped.
+   */
   readonly end: (input: {
     readonly apiKey: Redacted.Redacted<string>;
     readonly sessionId: string;
@@ -47,8 +51,9 @@ export class LiveVoiceUpstream extends Context.Service<LiveVoiceUpstream, LiveVo
   "@circe/relay/voice/LiveVoiceUpstream",
 ) {}
 
-// Proof is the exact session_id_not_found code. Sibling fields may drift, but
-// a generic 404 is not proof: it could be a missing route or proxy response.
+// A 404 with a body must carry the exact session_id_not_found code. Sibling
+// fields may drift, but another error code or a proxy page is not the provider
+// talking about this session.
 const SessionNotFound = Schema.Struct({
   error: Schema.Struct({
     code: Schema.Literal("session_id_not_found"),
@@ -127,10 +132,20 @@ export const layer = Layer.effect(
           .pipe(
             Effect.flatMap((response) => {
               if (response.status >= 200 && response.status < 300) return Effect.void;
-              // A generic 404 is not proof: it could be a missing route or proxy response.
+              // The provider routes this path by session. Once it has dropped a
+              // session it answers an empty 404, the same answer any path it
+              // cannot route gets, so a renamed route would also read as closed.
+              // Requiring more than that left dead sessions holding accounts
+              // forever; the reservation ceiling bounds the renamed-route case.
               if (response.status === 404)
-                return HttpClientResponse.schemaBodyJson(SessionNotFound)(response).pipe(
-                  Effect.asVoid,
+                return response.text.pipe(
+                  Effect.flatMap((body) =>
+                    body.trim().length === 0
+                      ? Effect.void
+                      : HttpClientResponse.schemaBodyJson(SessionNotFound)(response).pipe(
+                          Effect.asVoid,
+                        ),
+                  ),
                 );
               return HttpClientResponse.filterStatusOk(response).pipe(Effect.asVoid);
             }),
