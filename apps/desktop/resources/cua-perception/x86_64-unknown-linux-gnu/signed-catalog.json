@@ -1,0 +1,25 @@
+{
+  "payload": {
+    "schema_version": 1,
+    "catalog_version": 1,
+    "expires_unix": 1822278037,
+    "publisher_id": "absterrg0",
+    "publisher_name": "Absterrg0",
+    "key_id": "absterrg0-extension-ed25519-2026-09",
+    "extension_id": "cua-perception",
+    "version": "0.3.0",
+    "target": "x86_64-unknown-linux-gnu",
+    "archive": "cua-perception-0.3.0-x86_64-unknown-linux-gnu.tar.gz",
+    "archive_size": 237293514,
+    "archive_sha256": "b8a2f42566eccc4b4b0d4f3a9ea6017ff0882575404549f233cf8699faeb3c44",
+    "manifest_sha256": "786323d73538ad07ea6cfdc7026a837870e192bbbb26b34b2a0ff3404bcaaabe",
+    "license": "LicenseRef-Mixed",
+    "source": "https://github.com/Absterrg0/cua",
+    "corresponding_source_uri": "source/cua-perception-source.tar.gz",
+    "corresponding_source_revision": "4f19840be50dd63a6c3cb726c36fdfc1004fb097",
+    "provenance": "metadata/provenance.redacted.json",
+    "next_key": null
+  },
+  "signature_algorithm": "ed25519",
+  "signature": "d6RSBN5QXxk24JmJ9olfL8EUZkEP+ULngS6oDJsWMP9KJ5OafRavDRqFwNkUiUmp0D7XmkAL7Ura7POGb77UCQ=="
+}

@@ -317,11 +317,9 @@ describe("ControlCenter composer to runtime boundary", () => {
 
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     await Promise.resolve();
     render();
@@ -375,11 +373,9 @@ describe("ControlCenter composer to runtime boundary", () => {
 
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     await Promise.resolve();
     render();
@@ -455,11 +451,9 @@ describe("ControlCenter composer to runtime boundary", () => {
 
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     render();
     const composer = mustFind(
@@ -508,11 +502,9 @@ describe("ControlCenter composer to runtime boundary", () => {
 
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     await Promise.resolve();
     render();
@@ -521,11 +513,9 @@ describe("ControlCenter composer to runtime boundary", () => {
 
     const taskSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe task target",
+      (element) => element.props["aria-label"] === "Circe task options",
     );
-    (taskSelect.props.onChange as (event: unknown) => void)({
-      target: { value: deskThread },
-    });
+    (taskSelect.props.onValueChange as (value: unknown) => void)(deskThread);
     render();
     await Promise.resolve();
     render();
@@ -587,11 +577,9 @@ describe("ControlCenter composer to runtime boundary", () => {
     render();
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     await Promise.resolve();
     render();
@@ -599,11 +587,9 @@ describe("ControlCenter composer to runtime boundary", () => {
     render();
     const taskSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe task target",
+      (element) => element.props["aria-label"] === "Circe task options",
     );
-    (taskSelect.props.onChange as (event: unknown) => void)({
-      target: { value: deskThread },
-    });
+    (taskSelect.props.onValueChange as (value: unknown) => void)(deskThread);
     render();
     await Promise.resolve();
     render();
@@ -674,11 +660,9 @@ describe("ControlCenter composer to runtime boundary", () => {
     render();
     const projectSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe project target",
+      (element) => element.props["aria-label"] === "Circe project options",
     );
-    (projectSelect.props.onChange as (event: unknown) => void)({
-      target: { value: `${localNode}:${localProject}` },
-    });
+    (projectSelect.props.onValueChange as (value: unknown) => void)(`${localNode}:${localProject}`);
     render();
     await Promise.resolve();
     render();
@@ -686,9 +670,9 @@ describe("ControlCenter composer to runtime boundary", () => {
     render();
     const taskSelect = mustFind(
       consoleTree,
-      (element) => element.props["aria-label"] === "Circe task target",
+      (element) => element.props["aria-label"] === "Circe task options",
     );
-    (taskSelect.props.onChange as (event: unknown) => void)({ target: { value: deskThread } });
+    (taskSelect.props.onValueChange as (value: unknown) => void)(deskThread);
     render();
     await Promise.resolve();
     render();

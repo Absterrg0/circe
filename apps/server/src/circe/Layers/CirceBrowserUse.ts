@@ -48,6 +48,8 @@ export const refusalMessage = (reason: ComputerStepRefusal): string => {
       return "The page changed before I could act on it.";
     case "missing-parameter":
       return "I couldn't tell which thing to act on for that step.";
+    case "unsupported-target":
+      return "That control cannot receive the requested input. Observe the page again to choose a supported control.";
   }
 };
 

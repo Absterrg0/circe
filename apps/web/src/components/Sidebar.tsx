@@ -4960,7 +4960,6 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                               <SidebarSectionHeader
                                 key="snoozed-shelf-header"
                                 marker="snoozed-header"
-                                className="mt-auto"
                                 label={
                                   snoozedShelfExpanded
                                     ? "Snoozed"
@@ -4978,7 +4977,6 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                               <SidebarSectionHeader
                                 key="settled-shelf-header"
                                 marker="settled-header"
-                                className={cn(snoozedThreads.length === 0 && "mt-auto")}
                                 label={
                                   settledShelfExpanded
                                     ? "Settled"

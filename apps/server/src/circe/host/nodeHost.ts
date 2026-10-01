@@ -270,6 +270,7 @@ export const makeNodeHost = (options: NodeHostOptions = {}) =>
             name: project.title,
             about: "General questions and requests that are not about a coding project.",
             general: true,
+            kind: "general",
           } satisfies Project;
         }
         let description = described.get(project.id);

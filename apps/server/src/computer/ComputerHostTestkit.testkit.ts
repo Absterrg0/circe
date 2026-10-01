@@ -142,6 +142,8 @@ export const startFakeHost = async (): Promise<FakeHostServer> => {
               keyboard: true,
               windows: true,
               browser: false,
+              nativeGrounding: true,
+              visualGrounding: false,
             },
           });
           continue;

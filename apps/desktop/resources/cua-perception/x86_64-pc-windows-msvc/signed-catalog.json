@@ -1,0 +1,25 @@
+{
+  "payload": {
+    "schema_version": 1,
+    "catalog_version": 1,
+    "expires_unix": 1822278036,
+    "publisher_id": "absterrg0",
+    "publisher_name": "Absterrg0",
+    "key_id": "absterrg0-extension-ed25519-2026-09",
+    "extension_id": "cua-perception",
+    "version": "0.3.0",
+    "target": "x86_64-pc-windows-msvc",
+    "archive": "cua-perception-0.3.0-x86_64-pc-windows-msvc.tar.gz",
+    "archive_size": 234272430,
+    "archive_sha256": "c024268045cbe09af8df324a544cfc27b6e512125df5eca1e5935a757f5933b3",
+    "manifest_sha256": "d97b8adfe48e730492ad1de5f398f00d33541cbb9591a25ea1acf922ad1181b4",
+    "license": "LicenseRef-Mixed",
+    "source": "https://github.com/Absterrg0/cua",
+    "corresponding_source_uri": "source/cua-perception-source.tar.gz",
+    "corresponding_source_revision": "4f19840be50dd63a6c3cb726c36fdfc1004fb097",
+    "provenance": "metadata/provenance.redacted.json",
+    "next_key": null
+  },
+  "signature_algorithm": "ed25519",
+  "signature": "/LyrD6lFF6fzp4BKuHtGrbrUgq/poz1QWOzO+SFu8d+aFCG9Cu9ERJqeHwiLiBmDTxRhUNEoCx5IXZxXxljNDg=="
+}

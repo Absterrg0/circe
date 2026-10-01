@@ -18,8 +18,12 @@ export interface Project {
   /** One line describing what the project is. */
   readonly about: string;
   readonly areas?: ReadonlyArray<string>;
-  /** Not a codebase: where general questions go. At most one. */
+  /** Not a codebase: where general questions go. At most one. Read by cores before 0.3. */
   readonly general?: boolean;
+  /** What this is when not a codebase; cores from 0.3 read this instead of `general`. */
+  readonly kind?: "codebase" | "general" | "place";
+  /** For a place: what starting work there does, such as "use this computer". */
+  readonly action?: string;
 }
 
 export interface PendingRequest {
@@ -118,6 +122,140 @@ export interface Circe {
   onNotice(listener: (notice: string) => void): () => void;
 }
 
+/**
+ * Carrying out a goal on this node's desktop (circe-core 0.4 and later). The
+ * host supplies observation and input; circe-core plans with the planner,
+ * grounds each step against a fresh observation and has Jev choose among
+ * the grounded candidates.
+ */
+export interface DesktopHost {
+  apps(): Promise<ReadonlyArray<DesktopApp>>;
+  launch(app: DesktopApp): Promise<DesktopLaunch>;
+  observe(window: DesktopWindow, options?: { readonly closer?: boolean }): Promise<DesktopView>;
+  act(view: DesktopView, action: DesktopAction): Promise<DesktopReceipt>;
+}
+
+export interface DesktopWindow {
+  readonly id: string;
+  readonly app: string;
+  readonly title: string;
+}
+
+export interface DesktopApp {
+  readonly id: string;
+  readonly name: string;
+  readonly running: boolean;
+  readonly windows: ReadonlyArray<DesktopWindow>;
+}
+
+export interface DesktopLaunch {
+  readonly receipt: DesktopReceipt;
+  readonly window?: DesktopWindow;
+}
+
+export interface DesktopControl {
+  readonly id: string;
+  readonly role: string | null;
+  readonly name: string;
+  readonly description?: string;
+  readonly value?: string;
+  readonly state?: string;
+  readonly source: "native" | "visual";
+  readonly editable?: boolean;
+}
+
+export interface DesktopView {
+  readonly window: DesktopWindow;
+  readonly ref: string;
+  readonly title: string;
+  readonly controls: ReadonlyArray<DesktopControl>;
+  readonly text?: ReadonlyArray<string>;
+  readonly partial?: boolean;
+}
+
+export type DesktopKey =
+  | "enter"
+  | "tab"
+  | "escape"
+  | "backspace"
+  | "arrowup"
+  | "arrowdown"
+  | "arrowleft"
+  | "arrowright"
+  | "pageup"
+  | "pagedown";
+
+export type DesktopAction =
+  | { readonly kind: "click"; readonly control: string }
+  | { readonly kind: "type"; readonly control: string; readonly text: string }
+  | { readonly kind: "key"; readonly control: string; readonly key: DesktopKey }
+  | { readonly kind: "scroll"; readonly direction: "up" | "down" | "left" | "right" };
+
+export interface DesktopReceipt {
+  readonly delivery: "confirmed" | "delivered" | "not-delivered" | "unknown";
+  readonly detail?: string;
+}
+
+export interface DesktopPlanner {
+  plan(request: { readonly prompt: string; readonly signal?: AbortSignal }): Promise<unknown>;
+}
+
+export interface DesktopProgress {
+  readonly phase: "planning" | "opening" | "acting" | "verifying";
+  readonly text: string;
+}
+
+export interface DesktopGoalOptions {
+  readonly goal: string;
+  readonly host: DesktopHost;
+  readonly jev: Jev;
+  readonly planner?: DesktopPlanner;
+  readonly plan?: unknown;
+  readonly app?: string;
+  readonly text?: string;
+  readonly signal?: AbortSignal;
+  readonly onProgress?: (progress: DesktopProgress) => void;
+  readonly limits?: {
+    readonly plans?: number;
+    readonly actions?: number;
+    readonly jevCalls?: number;
+  };
+}
+
+interface Timed {
+  readonly calls: number;
+  readonly ms: number;
+}
+
+export interface DesktopOutcome {
+  readonly status:
+    | "done"
+    | "unverified"
+    | "uncertain"
+    | "cancelled"
+    | "refused"
+    | "clarify"
+    | "unsupported"
+    | "unavailable";
+  readonly said: string;
+  readonly evidence?: string;
+  readonly actions: number;
+  readonly metrics: {
+    readonly totalMs: number;
+    readonly planner: Timed;
+    readonly jev: Timed;
+    readonly launch: Timed;
+    readonly observe: Timed;
+    readonly act: Timed;
+    readonly verify: Timed;
+  };
+  readonly trace: ReadonlyArray<{
+    readonly atMs: number;
+    readonly kind: string;
+    readonly detail: string;
+  }>;
+}
+
 export interface CirceCore {
   /** One Circe in front of `host`, remembering across restarts in `memoryFile`. */
   readonly createCirce: (options: {
@@ -128,7 +266,12 @@ export interface CirceCore {
   }) => Circe;
   readonly JevTimeoutError: new (message?: string) => Error;
   readonly httpJev: () => Jev;
+  /** Absent from cores before 0.4; desktop goals then use the node's own step loop. */
+  readonly runDesktopGoal: ((options: DesktopGoalOptions) => Promise<DesktopOutcome>) | undefined;
 }
+
+const noticeText = (notice: string | { readonly text: string }): string =>
+  typeof notice === "string" ? notice : notice.text;
 
 /**
  * The installed core, or undefined when this checkout does not have it. With
@@ -141,15 +284,26 @@ export async function loadCirceCore(): Promise<CirceCore | undefined> {
       "@absterrg0/circe-core"
     );
     return {
-      createCirce: (options) =>
-        new core.Circe({
+      createCirce: (options) => {
+        const circe = new core.Circe({
           host: options.host,
           jev: options.jev,
           store: core.fileMemory(options.memoryFile),
           logFile: options.logFile,
-        }),
+        });
+        // Cores from 0.2 report notices as objects; this server speaks their text.
+        return {
+          say: (utterance, sayOptions) => circe.say(utterance, sayOptions),
+          refresh: async () => (await circe.refresh()).map(noticeText),
+          onNotice: (listener) => circe.onNotice((notice) => listener(noticeText(notice))),
+        };
+      },
       JevTimeoutError: core.JevTimeoutError,
       httpJev: core.httpJev,
+      runDesktopGoal:
+        "runDesktopGoal" in core
+          ? (options: DesktopGoalOptions): Promise<DesktopOutcome> => core.runDesktopGoal(options)
+          : undefined,
     };
   } catch {
     return undefined;

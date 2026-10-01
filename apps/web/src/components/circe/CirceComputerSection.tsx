@@ -188,6 +188,9 @@ function OnlineComputerSection({ environmentId }: { readonly environmentId: Envi
             One thing uses the computer at a time. Actions are grounded against the real window and
             audited.
           </p>
+          {access?.limitation === undefined ? null : (
+            <p className="circe-muted-note">{access.limitation}</p>
+          )}
         </>
       )}
 

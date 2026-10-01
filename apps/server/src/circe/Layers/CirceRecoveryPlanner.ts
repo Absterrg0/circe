@@ -13,10 +13,15 @@ import * as Schema from "effect/Schema";
 
 import { ProviderRegistry } from "../../provider/Services/ProviderRegistry.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
-import { CirceRecoveryPlanner } from "../Services/CirceRecoveryPlanner.ts";
+import {
+  CirceDesktopPlanUnavailable,
+  CirceRecoveryPlanner,
+} from "../Services/CirceRecoveryPlanner.ts";
 
 const MAX_ELEMENTS = 60;
 const RECOVERY_TIMEOUT = "20 seconds";
+/** A desktop plan can take a whole goal; the executor has nothing to do until it arrives. */
+const DESKTOP_PLAN_TIMEOUT = "45 seconds";
 
 const RecoveryStep = Schema.Union([
   Schema.Struct({
@@ -126,6 +131,42 @@ export const buildGoalPlanPrompt = (input: ComputerPlanInput): string => {
   ].join("\n");
 };
 
+const DesktopTarget = Schema.Struct({
+  role: Schema.optional(Schema.String.check(Schema.isMaxLength(80))),
+  name: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+  description: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+});
+const DesktopExpectation = Schema.Struct({
+  shows: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+  in: Schema.optional(DesktopTarget),
+});
+/**
+ * The shape circe-core's desktop planner asks for, so the provider's
+ * structured output has a schema to follow. circe-core validates the answer
+ * again; this schema only has to be no stricter than it.
+ */
+export const CirceDesktopPlan = Schema.Struct({
+  steps: Schema.Array(
+    Schema.Struct({
+      verb: Schema.Literals(["launch", "click", "fill", "select", "press", "scroll", "inspect"]),
+      intent: Schema.String.check(Schema.isMaxLength(200)),
+      app: Schema.optional(Schema.String.check(Schema.isMaxLength(120))),
+      newWindow: Schema.optional(Schema.Boolean),
+      target: Schema.optional(DesktopTarget),
+      text: Schema.optional(Schema.String.check(Schema.isMaxLength(4_096))),
+      replace: Schema.optional(Schema.Boolean),
+      option: Schema.optional(Schema.String.check(Schema.isMaxLength(200))),
+      key: Schema.optional(Schema.String.check(Schema.isMaxLength(20))),
+      direction: Schema.optional(Schema.Literals(["up", "down", "left", "right"])),
+      requires: Schema.optional(DesktopTarget),
+      expect: Schema.optional(DesktopExpectation),
+    }),
+  ).check(Schema.isMaxLength(8)),
+  done: Schema.optional(DesktopExpectation),
+  clarify: Schema.optional(Schema.String.check(Schema.isMaxLength(300))),
+  unsupported: Schema.optional(Schema.String.check(Schema.isMaxLength(300))),
+});
+
 export const make = Effect.gen(function* () {
   const providerRegistry = yield* ProviderRegistry;
   const fileSystem = yield* FileSystem.FileSystem;
@@ -201,7 +242,68 @@ export const make = Effect.gen(function* () {
     return generated.value.steps;
   });
 
-  return CirceRecoveryPlanner.of({ plan, planGoal });
+  const planDesktop = Effect.fn("CirceRecoveryPlanner.planDesktop")(function* (prompt: string) {
+    const unavailable = (reason: string) => new CirceDesktopPlanUnavailable({ reason });
+    const settings = yield* serverSettings.getSettings.pipe(
+      Effect.mapError(() => unavailable("the node's settings could not be read")),
+    );
+    const selection = settings.circeSupervisorModelSelection ?? settings.circeDefaultModelSelection;
+    if (selection === undefined || selection === null)
+      return yield* unavailable("no planning model is configured");
+    const generation = yield* providerRegistry
+      .getTextGenerationForInstance(selection.instanceId)
+      .pipe(
+        Effect.mapError(() => unavailable(`the planning model ${selection.model} is unavailable`)),
+      );
+    if (generation === undefined)
+      return yield* unavailable(`the planning model ${selection.model} is unavailable`);
+    const generated = yield* Effect.scoped(
+      fileSystem.makeTempDirectoryScoped({ prefix: "circe-desktop-plan-" }).pipe(
+        Effect.flatMap((cwd) =>
+          generation.generateStructured({
+            cwd,
+            prompt,
+            outputSchema: CirceDesktopPlan,
+            modelSelection: selection,
+          }),
+        ),
+      ),
+    ).pipe(
+      Effect.timeoutOption(DESKTOP_PLAN_TIMEOUT),
+      Effect.tapCause((cause) => Effect.logWarning("Circe desktop planning failed", { cause })),
+      Effect.catchTag("TextGenerationError", (error) =>
+        Effect.fail(unavailable(desktopPlanFailureReason(selection.model, error.detail))),
+      ),
+      Effect.catchCause(() =>
+        Effect.fail(unavailable(desktopPlanFailureReason(selection.model, undefined))),
+      ),
+    );
+    if (Option.isNone(generated))
+      return yield* unavailable(
+        `the planning model ${selection.model} did not answer within ${DESKTOP_PLAN_TIMEOUT}`,
+      );
+    return generated.value as unknown;
+  });
+
+  return CirceRecoveryPlanner.of({ plan, planGoal, planDesktop });
 });
+
+/**
+ * Why the planning model failed, in words the user can act on. Provider CLIs
+ * echo the whole prompt before the cause, and put the actionable part — a
+ * usage limit and when it resets, a missing sign-in — on the last `ERROR:`
+ * line, so only that line is kept.
+ */
+export function desktopPlanFailureReason(model: string, detail: string | undefined): string {
+  const errorLine = detail
+    ?.split("\n")
+    .map((line) => line.trim())
+    .findLast((line) => line.startsWith("ERROR:"))
+    ?.slice("ERROR:".length)
+    .trim();
+  return errorLine
+    ? `the planning model ${model} failed: ${errorLine}`
+    : `the planning model ${model} failed`;
+}
 
 export const CirceRecoveryPlannerLive = Layer.effect(CirceRecoveryPlanner, make);

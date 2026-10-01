@@ -61,6 +61,7 @@ const WorkspaceConfig = Schema.Struct({
   overrides: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   patchedDependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   allowBuilds: Schema.optional(Schema.Record(Schema.String, Schema.Boolean)),
+  packageExtensions: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 });
 type WorkspaceConfig = typeof WorkspaceConfig.Type;
 
@@ -77,6 +78,7 @@ const StageWorkspaceConfig = Schema.Struct({
   patchedDependencies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   overrides: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   nodeLinker: Schema.optional(Schema.Literals(["hoisted"])),
+  packageExtensions: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)),
 });
 type StageWorkspaceConfig = typeof StageWorkspaceConfig.Type;
 
@@ -124,6 +126,29 @@ export function resolveResourceMonitorRustTargets(
     return [arch === "arm64" ? "aarch64-unknown-linux-gnu" : "x86_64-unknown-linux-gnu"];
   }
   return [arch === "arm64" ? "aarch64-pc-windows-msvc" : "x86_64-pc-windows-msvc"];
+}
+
+/**
+ * The signed Cua Perception catalog for each target the app is built for. The
+ * archive it names is downloaded on first use and verified by the driver, so
+ * only the catalog and its release URL ship with the app. A target without a
+ * published catalog ships none, and the app reports screen reading as
+ * unavailable there.
+ */
+export const CUA_PERCEPTION_RESOURCE_DIR = "apps/desktop/resources/cua-perception";
+export const CUA_PERCEPTION_RESOURCE_FILES = ["signed-catalog.json", "distribution.json"] as const;
+
+export function cuaPerceptionExtraResources(
+  platform: typeof BuildPlatform.Type,
+  arch: typeof BuildArch.Type,
+  available: (target: string) => boolean,
+): ReadonlyArray<{ readonly from: string; readonly to: string }> {
+  return resolveResourceMonitorRustTargets(platform, arch)
+    .filter(available)
+    .map((target) => ({
+      from: `${CUA_PERCEPTION_RESOURCE_DIR}/${target}`,
+      to: `cua-perception/${target}`,
+    }));
 }
 
 export function resourceMonitorExecutableName(platform: typeof BuildPlatform.Type): string {
@@ -1023,6 +1048,7 @@ interface StagePackageJson {
   readonly main: string;
   readonly build: Record<string, unknown>;
   readonly dependencies: Record<string, unknown>;
+  readonly optionalDependencies: Record<string, string>;
   readonly devDependencies: {
     readonly electron: string;
   };
@@ -1655,6 +1681,7 @@ export function createStageWorkspaceConfig(input: {
   readonly allowBuilds?: Record<string, boolean>;
   readonly patchedDependencies?: Record<string, string>;
   readonly overrides?: Record<string, string>;
+  readonly packageExtensions?: Record<string, unknown>;
   // The Windows server sidecar stage runs both the Windows primary and the
   // WSL Linux backend from one dependency tree, so it needs win32 + linux
   // natives (e.g. @yuuang/ffi-rs-linux-x64-gnu) — and a hoisted (physical,
@@ -1663,7 +1690,15 @@ export function createStageWorkspaceConfig(input: {
   // symlink/junction layout surviving the trip.
   readonly linuxServerBackend?: boolean;
 }): StageWorkspaceConfig {
-  const { platform, arch, allowBuilds, patchedDependencies, overrides, linuxServerBackend } = input;
+  const {
+    platform,
+    arch,
+    allowBuilds,
+    patchedDependencies,
+    overrides,
+    packageExtensions,
+    linuxServerBackend,
+  } = input;
   const hostOs = platform === "mac" ? "darwin" : platform === "win" ? "win32" : "linux";
   const hostCpu = arch === "universal" ? ["arm64", "x64"] : [arch];
   // Linux AppImages execute a Linux/glibc Node process that loads
@@ -1694,6 +1729,9 @@ export function createStageWorkspaceConfig(input: {
       ? { patchedDependencies }
       : {}),
     ...(overrides && Object.keys(overrides).length > 0 ? { overrides } : {}),
+    ...(packageExtensions && Object.keys(packageExtensions).length > 0
+      ? { packageExtensions }
+      : {}),
     ...(linuxServerBackend ? { nodeLinker: "hoisted" as const } : {}),
   };
 }
@@ -2729,6 +2767,25 @@ export function resolveDesktopRuntimeDependencies(
   return resolveCatalogDependencies(runtimeDependencies, catalog, "apps/desktop");
 }
 
+/** Preserve optional native roots and let pnpm select the packaging target. */
+export function resolveDesktopStageRuntimeDependencies(
+  manifest: {
+    readonly dependencies?: Record<string, string>;
+    readonly optionalDependencies?: Record<string, string>;
+  },
+  catalog: Record<string, string>,
+  platform: typeof BuildPlatform.Type,
+) {
+  return {
+    dependencies: resolveDesktopRuntimeDependencies(manifest.dependencies, catalog, platform),
+    optionalDependencies: resolveDesktopRuntimeDependencies(
+      manifest.optionalDependencies,
+      catalog,
+      platform,
+    ),
+  };
+}
+
 export const resolveGitHubPublishConfig = Effect.fn("resolveGitHubPublishConfig")(function* (
   updateChannel: "latest" | "nightly",
 ) {
@@ -2848,6 +2905,24 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
   wslRuntimeBundled = false,
   includeFxResources = false,
 ) {
+  const perceptionTargets = yield* Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const path = yield* Path.Path;
+    const repoRoot = yield* RepoRoot;
+    const available: Array<string> = [];
+    for (const target of resolveResourceMonitorRustTargets(platform, arch)) {
+      let complete = true;
+      for (const file of CUA_PERCEPTION_RESOURCE_FILES)
+        if (
+          !(yield* fs
+            .exists(path.join(repoRoot, CUA_PERCEPTION_RESOURCE_DIR, target, file))
+            .pipe(Effect.orElseSucceed(() => false)))
+        )
+          complete = false;
+      if (complete) available.push(target);
+    }
+    return available;
+  });
   const buildConfig: Record<string, unknown> = {
     appId: DESKTOP_APP_ID,
     productName: resolveDesktopProductName(version),
@@ -2873,6 +2948,9 @@ export const createBuildConfig = Effect.fn("createBuildConfig")(function* (
       ...(platform === "linux" ? LINUX_CAPTURE_EXTRA_RESOURCES : []),
       ...(platform === "linux" ? LINUX_BROWSER_SECRET_EXTRA_RESOURCES : []),
       ...(includeFxResources ? [DESKTOP_FX_EXTRA_RESOURCE] : []),
+      ...cuaPerceptionExtraResources(platform, arch, (target) =>
+        perceptionTargets.includes(target),
+      ),
       ...(platform === "win" ? WINDOWS_SERVER_EXTRA_RESOURCES : []),
       ...(platform === "win" && wslRuntimeBundled ? WSL_RUNTIME_EXTRA_RESOURCES : []),
     ],
@@ -3387,6 +3465,13 @@ function windowsPayloadAllowedPaths(input: {
     windowsPayloadResourcePath("app-update.yml"),
     windowsPayloadResourcePath("elevate.exe"),
     windowsPayloadResourcePath("resource-monitor/circe-resource-monitor.exe"),
+    // The signed perception catalog and its release URL; the archive itself
+    // is downloaded on first use and verified by the driver.
+    ...["x86_64-pc-windows-msvc", "aarch64-pc-windows-msvc"].flatMap((target) =>
+      CUA_PERCEPTION_RESOURCE_FILES.map((file) =>
+        windowsPayloadResourcePath(`cua-perception/${target}/${file}`),
+      ),
+    ),
     // The WSL sidecar ships loose in resources/ when bundled; the validator
     // below enforces its presence, hash, and members, so the generic
     // unexpected-files gate must let it through instead of failing first.
@@ -3909,10 +3994,10 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
   const resolvedServerRuntimeExternalDependencies = selectCliRuntimeExternalDependencies(
     resolvedServerDependencies,
   );
-  const resolvedDesktopRuntimeDependencies = yield* Effect.try({
+  const resolvedDesktopRuntime = yield* Effect.try({
     try: () =>
-      resolveDesktopRuntimeDependencies(
-        desktopPackageJson.dependencies,
+      resolveDesktopStageRuntimeDependencies(
+        desktopPackageJson,
         workspaceCatalog,
         options.platform,
       ),
@@ -3923,6 +4008,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
         cause,
       }),
   });
+  const resolvedDesktopRuntimeDependencies = resolvedDesktopRuntime.dependencies;
 
   const appVersion = options.version ?? serverPackageJson.version;
   const iconAssets = resolveDesktopBuildIconAssets(appVersion);
@@ -4245,6 +4331,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
       bundlesCirceFxResources(options),
     ),
     dependencies: stageDependencies,
+    optionalDependencies: resolvedDesktopRuntime.optionalDependencies,
     devDependencies: {
       electron: electronVersion,
     },
@@ -4258,6 +4345,7 @@ const buildDesktopArtifact = Effect.fn("buildDesktopArtifact")(function* (
     allowBuilds: workspaceAllowBuilds,
     patchedDependencies: stagePatchedDependencies,
     overrides: resolvedOverrides,
+    packageExtensions: workspaceConfig.packageExtensions ?? {},
   });
   const stageWorkspaceConfigString = yield* encodeStageWorkspaceConfig(stageWorkspaceConfig);
   yield* fs.writeFileString(

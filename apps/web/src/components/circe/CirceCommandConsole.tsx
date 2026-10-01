@@ -37,6 +37,15 @@ import { circeMeshEnvironment } from "../../state/circeMesh";
 import { useAtomCommand } from "../../state/use-atom-command";
 import { Button } from "../ui/button";
 import {
+  Menu,
+  MenuItem,
+  MenuPopup,
+  MenuRadioGroup,
+  MenuRadioItem,
+  MenuSeparator,
+  MenuTrigger,
+} from "../ui/menu";
+import {
   getCirceLiveVoiceUiState,
   setCirceLiveVoiceActive,
   subscribeCirceLiveVoice,
@@ -190,6 +199,12 @@ export function CirceCommandConsole({
     targetAvailable: targetSnapshot?.available ?? false,
   });
   const activeTask = tasks.find((task) => task.threadId === targetSnapshot?.contextThreadId);
+  const selectedProjectKey = targetSnapshot?.projectRef
+    ? `${targetSnapshot.projectRef.nodeId}:${targetSnapshot.projectRef.projectId}`
+    : "";
+  const selectedProjectLabel = targetProject
+    ? `${targetProject.title} · ${targetProject.nodeLabel}`
+    : "Any project";
   const presenceMode = circePresenceMode({
     listening: liveVoice.active && liveVoice.status === "live",
     submitting: commandBusy,
@@ -221,87 +236,106 @@ export function CirceCommandConsole({
         />
         <div className="circe-composer-footer">
           <div className="circe-command-fields">
-            <label className="circe-chip" data-selected={Boolean(targetSnapshot?.projectRef)}>
-              <FolderGit2Icon aria-hidden className="size-3.5 shrink-0" />
-              <select
-                id="circe-target-project"
+            <Menu>
+              <MenuTrigger
                 aria-label="Circe project target"
-                className="circe-select"
-                disabled={commandPending}
-                value={
-                  targetSnapshot?.projectRef
-                    ? `${targetSnapshot.projectRef.nodeId}:${targetSnapshot.projectRef.projectId}`
-                    : ""
-                }
-                onChange={(event) => {
-                  const value = event.target.value;
-                  if (value === "") {
-                    requestCirceTarget({ type: "clear" });
-                    return;
-                  }
-                  const project = projects.find(
-                    (candidate) => `${candidate.ref.nodeId}:${candidate.ref.projectId}` === value,
-                  );
-                  if (project) {
-                    requestCirceTarget({
-                      type: "select-project",
-                      projectRef: project.ref,
-                      projectTitle: project.title,
-                      nodeLabel: project.nodeLabel,
-                    });
-                  }
-                }}
-              >
-                <option value="">Any project</option>
-                {projects.map((project) => (
-                  <option
-                    key={`${project.ref.nodeId}:${project.ref.projectId}`}
-                    value={`${project.ref.nodeId}:${project.ref.projectId}`}
-                  >
-                    {project.title} · {project.nodeLabel}
-                  </option>
-                ))}
-              </select>
-              <ChevronDownIcon aria-hidden className="size-3 shrink-0 opacity-60" />
-            </label>
-            {tasks.length > 0 ? (
-              <label
                 className="circe-chip"
-                data-selected={Boolean(targetSnapshot?.contextThreadId)}
+                data-selected={Boolean(targetSnapshot?.projectRef)}
+                disabled={commandPending}
               >
-                <ListTodoIcon aria-hidden className="size-3.5 shrink-0" />
-                <select
-                  id="circe-target-task"
-                  aria-label="Circe task target"
-                  className="circe-select"
-                  disabled={commandPending}
-                  value={targetSnapshot?.contextThreadId ?? ""}
-                  onChange={(event) => {
-                    const threadId = event.target.value;
-                    if (threadId === "") return;
-                    const task = tasks.find((candidate) => candidate.threadId === threadId);
-                    if (task === undefined) return;
-                    requestCirceTarget({
-                      type: "select-task",
-                      projectRef: task.projectRef,
-                      threadId: task.threadId,
-                      title: task.title,
-                      ...(task.taskRef === undefined ? {} : { taskRef: task.taskRef }),
-                      ...(task.pendingReply === undefined
-                        ? {}
-                        : { pendingReply: task.pendingReply }),
-                    });
+                <FolderGit2Icon aria-hidden className="size-3.5 shrink-0" />
+                <span className="circe-select circe-select__label">{selectedProjectLabel}</span>
+                <ChevronDownIcon aria-hidden className="size-3 shrink-0 opacity-60" />
+              </MenuTrigger>
+              <MenuPopup align="start" className="max-h-80 w-max min-w-52 max-w-72 overflow-y-auto">
+                <MenuRadioGroup
+                  aria-label="Circe project options"
+                  value={selectedProjectKey}
+                  onValueChange={(value) => {
+                    if (value === selectedProjectKey) return;
+                    if (value === "") {
+                      requestCirceTarget({ type: "clear" });
+                      return;
+                    }
+                    const project = projects.find(
+                      (candidate) => `${candidate.ref.nodeId}:${candidate.ref.projectId}` === value,
+                    );
+                    if (project) {
+                      requestCirceTarget({
+                        type: "select-project",
+                        projectRef: project.ref,
+                        projectTitle: project.title,
+                        nodeLabel: project.nodeLabel,
+                      });
+                    }
                   }}
                 >
-                  <option value="">New task</option>
-                  {tasks.map((task) => (
-                    <option key={task.threadId} value={task.threadId}>
-                      {task.title}
-                    </option>
+                  <MenuRadioItem value="" closeOnClick>
+                    Any project
+                  </MenuRadioItem>
+                  {projects.map((project) => (
+                    <MenuRadioItem
+                      key={`${project.ref.nodeId}:${project.ref.projectId}`}
+                      value={`${project.ref.nodeId}:${project.ref.projectId}`}
+                      closeOnClick
+                    >
+                      <span className="block min-w-0 truncate">
+                        {project.title} · {project.nodeLabel}
+                      </span>
+                    </MenuRadioItem>
                   ))}
-                </select>
-                <ChevronDownIcon aria-hidden className="size-3 shrink-0 opacity-60" />
-              </label>
+                </MenuRadioGroup>
+              </MenuPopup>
+            </Menu>
+            {tasks.length > 0 ? (
+              <Menu>
+                <MenuTrigger
+                  aria-label="Circe task target"
+                  className="circe-chip"
+                  data-selected={Boolean(targetSnapshot?.contextThreadId)}
+                  disabled={commandPending}
+                >
+                  <ListTodoIcon aria-hidden className="size-3.5 shrink-0" />
+                  <span className="circe-select circe-select__label">
+                    {activeTask?.title ?? "New task"}
+                  </span>
+                  <ChevronDownIcon aria-hidden className="size-3 shrink-0 opacity-60" />
+                </MenuTrigger>
+                <MenuPopup
+                  align="start"
+                  className="max-h-80 w-max min-w-52 max-w-72 overflow-y-auto"
+                >
+                  <MenuRadioGroup
+                    aria-label="Circe task options"
+                    value={targetSnapshot?.contextThreadId ?? ""}
+                    onValueChange={(threadId) => {
+                      if (threadId === "" || threadId === targetSnapshot?.contextThreadId) return;
+                      const task = tasks.find((candidate) => candidate.threadId === threadId);
+                      if (task === undefined) return;
+                      requestCirceTarget({
+                        type: "select-task",
+                        projectRef: task.projectRef,
+                        threadId: task.threadId,
+                        title: task.title,
+                        ...(task.taskRef === undefined ? {} : { taskRef: task.taskRef }),
+                        ...(task.pendingReply === undefined
+                          ? {}
+                          : { pendingReply: task.pendingReply }),
+                      });
+                    }}
+                  >
+                    <MenuRadioItem value="" closeOnClick disabled>
+                      New task
+                    </MenuRadioItem>
+                    <MenuSeparator />
+                    {tasks.map((task) => (
+                      <MenuRadioItem key={task.threadId} value={task.threadId} closeOnClick>
+                        <span className="block min-w-0 truncate">{task.title}</span>
+                      </MenuRadioItem>
+                    ))}
+                  </MenuRadioGroup>
+                </MenuPopup>
+              </Menu>
             ) : null}
             {targetSnapshot?.projectRef ? (
               <button

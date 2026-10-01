@@ -40,6 +40,8 @@ export const computerProject: Project = {
   name: TITLE,
   about:
     "Not a codebase: the desktop of the computer Circe runs on. Opens apps, the web browser and websites, and clicks, types and reads what is on screen for the user.",
+  kind: "place",
+  action: "use this computer",
 };
 
 /** The requests circe-core should see: the latest settled one, and the one waiting or running. */

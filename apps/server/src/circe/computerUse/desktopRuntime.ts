@@ -21,10 +21,14 @@ import * as Effect from "effect/Effect";
 export type DesktopScrollDirection = "up" | "down" | "left" | "right";
 
 export interface DesktopActuator<E = never> {
-  /** Click the grounded element by its observation token. */
-  readonly click: (element: ComputerElement) => Effect.Effect<void, E>;
-  /** Type into the grounded element by its observation token. */
-  readonly typeInto: (element: ComputerElement, text: string) => Effect.Effect<void, E>;
+  /**
+   * Click the grounded element through its executable address. False means
+   * nothing was dispatched (a consumed or refused capture, a stale token) and
+   * the surface must be observed again; it is never a cue to retry.
+   */
+  readonly click: (element: ComputerElement) => Effect.Effect<boolean, E>;
+  /** Type into the grounded native element; false means nothing was dispatched. */
+  readonly typeInto: (element: ComputerElement, text: string) => Effect.Effect<boolean, E>;
   /** Press one key in the mission's target window. */
   readonly pressKey: (key: string) => Effect.Effect<void, E>;
   /** Type into the mission's focused surface without re-targeting. */
@@ -37,6 +41,8 @@ export interface DesktopUseRuntimeInput<E = never> {
   readonly observe: () => Effect.Effect<ComputerSurface, E>;
   readonly select: (request: DecisionRequest) => Effect.Effect<DecisionAnswers, E>;
   readonly actuator: DesktopActuator<E>;
+  /** A richer observation of the same window, or undefined when there is none. */
+  readonly escalate?: () => Effect.Effect<ComputerSurface | undefined, E>;
 }
 
 export const makeDesktopUseRuntime = <E = never>(
@@ -49,16 +55,23 @@ export const makeDesktopUseRuntime = <E = never>(
   let generation = 0;
   const find = (id: string): ComputerElement | undefined =>
     observed.find((element) => element.id === id);
+  const adopt = (surface: ComputerSurface): ComputerSurface => {
+    observed = surface.elements;
+    generation += 1;
+    observedRef = `observation-${generation}`;
+    return { ...surface, observationRef: observedRef };
+  };
+  const escalate = input.escalate;
   return {
-    capture: () =>
-      input.observe().pipe(
-        Effect.map((surface) => {
-          observed = surface.elements;
-          generation += 1;
-          observedRef = `observation-${generation}`;
-          return { ...surface, observationRef: observedRef };
+    capture: () => input.observe().pipe(Effect.map(adopt)),
+    ...(escalate === undefined
+      ? {}
+      : {
+          escalate: () =>
+            escalate().pipe(
+              Effect.map((surface) => (surface === undefined ? undefined : adopt(surface))),
+            ),
         }),
-      ),
     select: input.select,
     apply: (action: ComputerAction, context) =>
       Effect.gen(function* () {
@@ -69,18 +82,16 @@ export const makeDesktopUseRuntime = <E = never>(
           case "click": {
             const element = find(action.elementId);
             if (element === undefined) return false;
-            yield* input.actuator.click(element);
-            return true;
+            return yield* input.actuator.click(element);
           }
           case "type": {
             const element = find(action.elementId);
             if (element === undefined) return false;
-            yield* input.actuator.typeInto(element, action.text);
-            return true;
+            return yield* input.actuator.typeInto(element, action.text);
           }
           case "press": {
             const element = find(action.elementId);
-            if (element === undefined) return false;
+            if (element === undefined || element.source === "visual") return false;
             // Keyboard input goes to the mission's exact target window, not to
             // whatever happens to hold ambient focus after a click.
             yield* input.actuator.pressKey(action.key);

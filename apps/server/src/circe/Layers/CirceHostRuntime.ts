@@ -11,13 +11,11 @@ import {
   type CirceHostTranscribeResult,
   type OrchestrationV2DomainEvent,
 } from "@circe/contracts";
-import type { DecisionRequest } from "@circe/core/decision";
 import * as Config from "effect/Config";
 import * as Crypto from "effect/Crypto";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
 import * as Exit from "effect/Exit";
-import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Path from "effect/Path";
 import * as PubSub from "effect/PubSub";
@@ -27,14 +25,8 @@ import * as Stream from "effect/Stream";
 
 import * as ServerConfig from "../../config.ts";
 import { OrchestratorV2 } from "../../orchestration-v2/Orchestrator.ts";
-import {
-  loadCirceCore,
-  type CirceCore,
-  type Focus,
-  type Jev,
-  type JevRequest,
-  type JevResponse,
-} from "../host/core.ts";
+import { loadCirceCore, type Focus } from "../host/core.ts";
+import { makeJevRoute } from "../host/jevRoute.ts";
 import { approvalQuestion, isComputerPlace } from "../host/computerPlace.ts";
 import { makeNodeHost } from "../host/nodeHost.ts";
 import { makeNodeVoice } from "../host/nodeVoice.ts";
@@ -83,7 +75,6 @@ export const CirceHostRuntimeLive = Layer.effect(
     const path = yield* Path.Path;
     const crypto = yield* Crypto.Crypto;
     const orchestrator = yield* OrchestratorV2;
-    const decision = yield* CirceDecision;
     const bots = yield* CirceBots;
     const computer = yield* CirceComputerAccess;
     // circe-core handles one turn at a time; the node host reads the turn's
@@ -104,46 +95,7 @@ export const CirceHostRuntimeLive = Layer.effect(
     const context = yield* Effect.context<never>();
     const run = <A>(effect: Effect.Effect<A>) => Effect.runPromiseWith(context)(effect);
 
-    // Every Circe turn waits on these calls, so the user's own TypeSafe key
-    // (TYPESAFE_API_KEY or ~/.config/circe/typesafe-key) is used directly
-    // when there is one: the relay adds about a second per call. Without
-    // one, the node's own route: its configured key, or the linked relay.
-    const fs = yield* FileSystem.FileSystem;
-    const home = yield* Config.string("HOME").pipe(
-      Config.withDefault(""),
-      Effect.orElseSucceed(() => ""),
-    );
-    const ownKey =
-      (yield* Config.string("TYPESAFE_API_KEY").pipe(
-        Config.withDefault(""),
-        Effect.orElseSucceed(() => ""),
-      )).length > 0 ||
-      (home.length > 0 &&
-        (yield* fs
-          .exists(path.join(home, ".config", "circe", "typesafe-key"))
-          .pipe(Effect.orElseSucceed(() => false))));
-    const routedJev = (core: CirceCore): Jev => {
-      const direct = core.httpJev();
-      return {
-        async ask(request) {
-          if (ownKey) return direct.ask(request);
-          const started = performance.now();
-          const outcome = await run(decision.decide(request as unknown as DecisionRequest));
-          if (outcome.status === "answered") {
-            return checked(request, {
-              model: outcome.model,
-              answers: outcome.answers as JevResponse["answers"],
-              usage: { input_tokens: 0, output_tokens: 0 },
-              latencyMs: performance.now() - started,
-              cached: false,
-            });
-          }
-          if (outcome.reason === "decision-timeout")
-            throw new core.JevTimeoutError("TypeSafe did not answer in time");
-          throw new Error(`TypeSafe declined: ${outcome.reason}`);
-        },
-      };
-    };
+    const routedJev = yield* makeJevRoute(yield* CirceDecision);
 
     const directory = path.join(config.stateDir, "circe-host");
     const circe =
@@ -416,14 +368,3 @@ export const CirceHostRuntimeLive = Layer.effect(
     });
   }),
 );
-
-/** A response that answers every question asked, with the type asked; anything else is a failed call. */
-function checked(request: JevRequest, response: JevResponse): JevResponse {
-  for (const [id, question] of Object.entries(request.questions)) {
-    const answer = response.answers[id];
-    if (answer === undefined) throw new Error(`TypeSafe omitted answer ${id}`);
-    if (answer.type !== question.type)
-      throw new Error(`TypeSafe answered ${id} with ${answer.type}, expected ${question.type}`);
-  }
-  return response;
-}

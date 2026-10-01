@@ -19,11 +19,21 @@ import { NONE_OPTION } from "./toolRegistry.ts";
  * selector. The selector only chooses where and when to type it.
  */
 
+/**
+ * Where a grounded element came from. `native` is an accessibility element the
+ * host acts on by its driver token; `visual` is a region the driver's
+ * perception read from one screen capture, which the host can only click, and
+ * only through that capture.
+ */
+export type ComputerElementSource = "native" | "visual";
+
 /** A grounded, addressable element. `id` is host-derived and stable per surface. */
 export interface ComputerElement {
   readonly id: string;
   readonly role: string | null;
   readonly name: string;
+  /** Absent means native. */
+  readonly source?: ComputerElementSource;
   /** Owning application name, when the surface can report one. */
   readonly app?: string;
   /**
@@ -34,6 +44,10 @@ export interface ComputerElement {
   readonly value?: string;
   /** Compact state names such as `checked` or `selected`. */
   readonly state?: string;
+  /** The accessible description, such as a tooltip. */
+  readonly description?: string;
+  /** Whether a native element takes typed text; absent when unknown. */
+  readonly editable?: boolean;
   readonly bounds: {
     readonly x: number;
     readonly y: number;
@@ -210,7 +224,12 @@ export type ComputerAction =
   | { readonly kind: "scroll"; readonly direction: ComputerScrollDirection }
   | { readonly kind: "wait" };
 
-export type ComputerStepRefusal = "confidence-too-low" | "unknown-element" | "missing-parameter";
+export type ComputerStepRefusal =
+  | "confidence-too-low"
+  | "unknown-element"
+  | "missing-parameter"
+  /** The chosen element cannot take that action, such as typing into text read from pixels. */
+  | "unsupported-target";
 
 export type ComputerStep =
   | { readonly kind: "action"; readonly action: ComputerAction }
@@ -237,7 +256,7 @@ const ACTION_CRITERIA: Readonly<Record<string, string>> = {
 };
 
 const elementLabel = (element: ComputerElement): string =>
-  `${element.app === undefined ? "" : `${element.app}: `}${element.role ?? "element"}: ${element.name}${
+  `${element.app === undefined ? "" : `${element.app}: `}${element.source === "visual" ? "seen on screen, click only, " : ""}${element.role ?? "element"}: ${element.name}${
     element.value === undefined || element.value.length === 0
       ? ""
       : ` = ${JSON.stringify(element.value.slice(0, 80))}`
@@ -274,6 +293,7 @@ function boundedSurface(surface: ComputerSurface, maxElements: number) {
     elementCount: surface.elements.length,
     elements: surface.elements.slice(0, maxElements).map((element) => ({
       id: element.id,
+      ...(element.source === "visual" ? { source: "visual" as const } : {}),
       role: element.role,
       name: element.name.slice(0, 200),
       ...(element.app === undefined ? {} : { app: element.app.slice(0, 80) }),
@@ -392,7 +412,8 @@ function selectedElement(
 /**
  * The element an input action may touch. Only an explicitly chosen element or
  * the element the observation reported as focused is legal; nothing falls back
- * to whatever happens to have ambient focus.
+ * to whatever happens to have ambient focus. A visual region is never a key or
+ * text target: it names pixels, not a focusable control.
  */
 function inputTarget(
   surface: ComputerSurface,
@@ -400,10 +421,14 @@ function inputTarget(
 ):
   | { readonly status: "element"; readonly id: string }
   | { readonly status: "missing" }
-  | { readonly status: "unknown" } {
+  | { readonly status: "unknown" }
+  | { readonly status: "unsupported" } {
   const element = selectedElement(surface, answers);
   if (element.status === "unknown") return { status: "unknown" };
-  if (element.status === "element") return element;
+  if (element.status === "element")
+    return surface.elements.some((entry) => entry.id === element.id && entry.source === "visual")
+      ? { status: "unsupported" }
+      : element;
   const focused = surface.focusedElementId;
   if (focused !== undefined && surface.elements.some((element) => element.id === focused)) {
     return { status: "element", id: focused };
@@ -454,6 +479,7 @@ export function composeComputerStep(input: ComposeComputerStepInput): ComputerSt
     const target = inputTarget(input.surface, input.answers);
     if (target.status === "unknown") return { kind: "refused", reason: "unknown-element" };
     if (target.status === "missing") return { kind: "refused", reason: "missing-parameter" };
+    if (target.status === "unsupported") return { kind: "refused", reason: "unsupported-target" };
     return { kind: "action", action: { kind: "type", elementId: target.id, text } };
   }
 
@@ -464,6 +490,7 @@ export function composeComputerStep(input: ComposeComputerStepInput): ComputerSt
     const target = inputTarget(input.surface, input.answers);
     if (target.status === "unknown") return { kind: "refused", reason: "unknown-element" };
     if (target.status === "missing") return { kind: "refused", reason: "missing-parameter" };
+    if (target.status === "unsupported") return { kind: "refused", reason: "unsupported-target" };
     return { kind: "action", action: { kind: "press", elementId: target.id, key } };
   }
 
@@ -520,6 +547,12 @@ export interface ComputerUseRuntime<E = never> {
     action: ComputerAction,
     context?: { readonly observationRef?: string },
   ) => Effect.Effect<boolean, E>;
+  /**
+   * A richer observation of the same target, offered once when the selector
+   * could not ground a step on the captured surface. Undefined means the
+   * surface has nothing more to offer; the refusal then stands.
+   */
+  readonly escalate?: () => Effect.Effect<ComputerSurface | undefined, E>;
 }
 
 /**
@@ -549,12 +582,16 @@ export function validateRecoveryStep(
         : null;
     case "type":
       return step.text.length > 0 &&
-        surface.elements.some((element) => element.id === step.elementId)
+        surface.elements.some(
+          (element) => element.id === step.elementId && element.source !== "visual",
+        )
         ? { kind: "type", elementId: step.elementId, text: step.text }
         : null;
     case "press":
       return (COMPUTER_PRESS_KEYS as ReadonlyArray<string>).includes(step.key) &&
-        surface.elements.some((element) => element.id === step.elementId)
+        surface.elements.some(
+          (element) => element.id === step.elementId && element.source !== "visual",
+        )
         ? { kind: "press", elementId: step.elementId, key: step.key }
         : null;
     case "scroll":
@@ -662,6 +699,7 @@ export function resolvePlanStep(
         });
   if (matches.length !== 1) return null;
   const element = matches[0]!;
+  if (element.source === "visual" && step.action !== "click") return null;
   switch (step.action) {
     case "click":
       return { kind: "click", elementId: element.id };
@@ -959,7 +997,7 @@ export const runComputerUse = <E = never>(
       // Bound the surface once and share it with composition, so an answer can
       // only name an element the request actually offered.
       const captured = yield* input.runtime.capture();
-      const surface: ComputerSurface = {
+      let surface: ComputerSurface = {
         ...captured,
         elements: captured.elements.slice(0, maxElements),
       };
@@ -1099,28 +1137,53 @@ export const runComputerUse = <E = never>(
         }
       }
       if (step === undefined) {
-        const request = buildComputerStepRequest({
-          model: input.model,
-          goal: input.goal,
-          surface,
-          maxElements,
-          ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
-          history,
-          ...(surfaceChangedSinceStart === undefined ? {} : { surfaceChangedSinceStart }),
-          ...(surfaceChangedAfterLastAction === undefined ? {} : { surfaceChangedAfterLastAction }),
-        });
-        const answers = yield* input.runtime.select(request);
+        const selectOn = (candidate: ComputerSurface) =>
+          Effect.gen(function* () {
+            const request = buildComputerStepRequest({
+              model: input.model,
+              goal: input.goal,
+              surface: candidate,
+              maxElements,
+              ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
+              history,
+              ...(surfaceChangedSinceStart === undefined ? {} : { surfaceChangedSinceStart }),
+              ...(surfaceChangedAfterLastAction === undefined
+                ? {}
+                : { surfaceChangedAfterLastAction }),
+            });
+            const answers = yield* input.runtime.select(request);
+            return composeComputerStep({
+              goal: input.goal,
+              surface: candidate,
+              answers,
+              ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
+            });
+          });
+        step = yield* selectOn(surface);
         // A stop may land while the model is deciding; check again before the
-        // selection is turned into an action.
+        // selection is turned into an action or a richer observation.
         if (input.shouldStop !== undefined && (yield* input.shouldStop())) {
           return { status: "cancelled", steps: index } as const;
         }
-        step = composeComputerStep({
-          goal: input.goal,
-          surface,
-          answers,
-          ...(input.typeText === undefined ? {} : { typeText: input.typeText }),
-        });
+        // One richer look when the model could not ground this step on what
+        // was captured. The escalated surface replaces the captured one for
+        // this step only; progress digests stay on the captured surface.
+        if (
+          step.kind === "refused" &&
+          (step.reason === "confidence-too-low" || step.reason === "missing-parameter") &&
+          input.runtime.escalate !== undefined
+        ) {
+          const escalated = yield* input.runtime.escalate();
+          if (escalated !== undefined) {
+            surface = { ...escalated, elements: escalated.elements.slice(0, maxElements) };
+            lastSurface = surface;
+            history.push("looked closer at the screen");
+            step = yield* selectOn(surface);
+            if (input.shouldStop !== undefined && (yield* input.shouldStop())) {
+              return { status: "cancelled", steps: index } as const;
+            }
+          }
+        }
       }
       if (input.onStep !== undefined) yield* input.onStep(step, index);
       if (step.kind === "done") {

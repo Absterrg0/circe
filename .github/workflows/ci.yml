@@ -74,6 +74,9 @@ jobs:
           --filter @circe/scripts
           typecheck
 
+      - name: Check the bundled Cua Perception catalogs
+        run: node scripts/check-cua-perception.ts
+
       - name: Install native build dependencies
         run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config
 

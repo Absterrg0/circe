@@ -29,6 +29,7 @@ import {
   DESKTOP_FILE_EXCLUSIONS,
   BROWSER_CONNECTOR_EXTRA_RESOURCES,
   DESKTOP_EXTRA_RESOURCES,
+  cuaPerceptionExtraResources,
   LINUX_CAPTURE_EXTRA_RESOURCES,
   LINUX_BROWSER_SECRET_EXTRA_RESOURCES,
   MAC_FILE_EXCLUSIONS,
@@ -52,6 +53,7 @@ import {
   resolveClerkPasskeyNativeArtifacts,
   resolveMacPasskeySigningConfiguration,
   resolveDesktopRuntimeDependencies,
+  resolveDesktopStageRuntimeDependencies,
   resolveMacStageDependencies,
   resolveFffNativeDependencies,
   resolveBuildOptions,
@@ -418,6 +420,37 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
     );
   });
 
+  it("keeps the fork-native packages as optional roots in packaged desktop installs", () => {
+    const nativeName = "@trycua/cua-driver-linux-x64-gnu";
+    const nativeUrl =
+      "https://github.com/Absterrg0/cua/releases/download/absterrg0-v0.30.4-1/trycua-cua-driver-linux-x64-gnu-0.30.4-absterrg0.1.tgz";
+    assert.deepStrictEqual(
+      resolveDesktopStageRuntimeDependencies(
+        {
+          dependencies: { "@trycua/cua-driver": "0.30.4", electron: "44.1.0" },
+          optionalDependencies: { [nativeName]: nativeUrl },
+        },
+        {},
+        "linux",
+      ),
+      {
+        dependencies: { "@trycua/cua-driver": "0.30.4" },
+        optionalDependencies: { [nativeName]: nativeUrl },
+      },
+    );
+    const extensions = {
+      "@trycua/cua-driver@0.30.4": {
+        peerDependencies: { [nativeName]: "0.30.4-absterrg0.1" },
+        peerDependenciesMeta: { [nativeName]: { optional: true } },
+      },
+    };
+    assert.deepStrictEqual(
+      createStageWorkspaceConfig({ platform: "linux", arch: "x64", packageExtensions: extensions })
+        .packageExtensions,
+      extensions,
+    );
+  });
+
   it("keeps Linux capture support while keeping global hooks out of macOS Full", () => {
     assert.deepStrictEqual(
       resolveDesktopRuntimeDependencies(
@@ -740,6 +773,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
         ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
         ...LINUX_CAPTURE_EXTRA_RESOURCES,
         { from: "apps/desktop/prod-resources/browser-secret", to: "browser-secret" },
+        {
+          from: "apps/desktop/resources/cua-perception/x86_64-unknown-linux-gnu",
+          to: "cua-perception/x86_64-unknown-linux-gnu",
+        },
       ]);
       assert.include(win.files as string[], "!**/node_modules/uiohook-napi/prebuilds/linux-x64/**");
       assert.notInclude(
@@ -777,6 +814,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
           to: "circe-official-release.json",
         },
         ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
+        {
+          from: "apps/desktop/resources/cua-perception/x86_64-pc-windows-msvc",
+          to: "cua-perception/x86_64-pc-windows-msvc",
+        },
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
         ...WSL_RUNTIME_EXTRA_RESOURCES,
       ]);
@@ -785,6 +826,10 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.deepStrictEqual(winWithoutWslPrebuild.extraResources, [
         ...DESKTOP_EXTRA_RESOURCES,
         ...BROWSER_CONNECTOR_EXTRA_RESOURCES,
+        {
+          from: "apps/desktop/resources/cua-perception/x86_64-pc-windows-msvc",
+          to: "cua-perception/x86_64-pc-windows-msvc",
+        },
         ...WINDOWS_SERVER_EXTRA_RESOURCES,
       ]);
       assert.deepStrictEqual(win.nsis, { differentialPackage: true });
@@ -2122,6 +2167,24 @@ it.layer(NodeServices.layer)("build-desktop-artifact", (it) => {
       assert.notProperty(win, "azureSignOptions");
     }).pipe(Effect.provide(ConfigProvider.layer(ConfigProvider.fromEnv({ env: {} })))),
   );
+
+  it("ships only the perception catalogs published for the build's own targets", () => {
+    const published = new Set(["aarch64-apple-darwin", "x86_64-unknown-linux-gnu"]);
+    const has = (target: string) => published.has(target);
+    assert.deepStrictEqual(cuaPerceptionExtraResources("mac", "universal", has), [
+      {
+        from: "apps/desktop/resources/cua-perception/aarch64-apple-darwin",
+        to: "cua-perception/aarch64-apple-darwin",
+      },
+    ]);
+    assert.deepStrictEqual(cuaPerceptionExtraResources("linux", "x64", has), [
+      {
+        from: "apps/desktop/resources/cua-perception/x86_64-unknown-linux-gnu",
+        to: "cua-perception/x86_64-unknown-linux-gnu",
+      },
+    ]);
+    assert.deepStrictEqual(cuaPerceptionExtraResources("win", "arm64", has), []);
+  });
 
   it("stages the resource monitor as an external executable resource", () => {
     assert.deepStrictEqual(DESKTOP_EXTRA_RESOURCES, [

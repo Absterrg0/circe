@@ -23,7 +23,7 @@
     "@crowecawcaw/xa11y": "0.13.0",
     "@effect/platform-node": "catalog:",
     "@napi-rs/keyring": "^1.3.0",
-    "@trycua/cua-driver": "0.28.2",
+    "@trycua/cua-driver": "0.30.4",
     "dbus-next": "0.10.2",
     "effect": "catalog:",
     "electron": "44.1.0",
@@ -42,6 +42,11 @@
     "electron-builder": "26.15.6",
     "tailwindcss": "^4.0.0",
     "vite-plus": "catalog:"
+  },
+  "optionalDependencies": {
+    "@trycua/cua-driver-darwin-arm64": "https://github.com/Absterrg0/cua/releases/download/absterrg0-v0.30.4-1/trycua-cua-driver-darwin-arm64-0.30.4-absterrg0.1.tgz",
+    "@trycua/cua-driver-linux-x64-gnu": "https://github.com/Absterrg0/cua/releases/download/absterrg0-v0.30.4-1/trycua-cua-driver-linux-x64-gnu-0.30.4-absterrg0.1.tgz",
+    "@trycua/cua-driver-win32-x64-msvc": "https://github.com/Absterrg0/cua/releases/download/absterrg0-v0.30.4-1/trycua-cua-driver-win32-x64-msvc-0.30.4-absterrg0.1.tgz"
   },
   "productName": "Circe"
 }

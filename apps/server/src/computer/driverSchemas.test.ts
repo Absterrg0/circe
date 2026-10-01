@@ -1,8 +1,50 @@
 import { describe, expect, it } from "@effect/vitest";
 
-import { groundElements, observationIsPartial, readWindowState } from "./driverSchemas.ts";
+import {
+  groundElements,
+  observationIsPartial,
+  readWindowState,
+  readLaunchPid,
+  readOnlyText,
+} from "./driverSchemas.ts";
 
 describe("driverSchemas", () => {
+  it("preserves passive native labels as evidence without inventing action tokens", () => {
+    const state = readWindowState({
+      tree_markdown:
+        '- label = "BLACK STAR"\n- button = "Delete"\n- label = "Search Result"\n- label = "BLACK STAR"\n- label = "bad\\q"',
+      elements: [],
+    });
+    expect(readOnlyText(state!)).toEqual(["BLACK STAR", "Search Result"]);
+    expect(groundElements(state!)).toEqual([]);
+  });
+
+  it("recognizes GTK editing actions while leaving copy-only text read-only", () => {
+    const state = readWindowState({
+      elements: [
+        {
+          element_token: "s1:1",
+          role: "search box",
+          actions: ["clipboard.cut", "clipboard.copy", "clipboard.paste", "selection.select-all"],
+          frame: { x: 0, y: 0, w: 20, h: 20 },
+        },
+        {
+          element_token: "s1:2",
+          role: "text box",
+          actions: ["clipboard.copy", "selection.select-all"],
+          frame: { x: 0, y: 0, w: 20, h: 20 },
+        },
+      ],
+    });
+    expect(groundElements(state!).map((element) => element.editable)).toEqual([true, false]);
+  });
+  it("takes launch identity only from a positive process id", () => {
+    expect(readLaunchPid({ pid: 151839, launcher_pid: 999 })).toBe(151839);
+    for (const pid of [0, -1, 1.5, "151839", null, undefined])
+      expect(readLaunchPid({ pid })).toBeUndefined();
+    expect(readLaunchPid({ launcher_pid: 151839 })).toBeUndefined();
+  });
+
   it("keeps valid elements when a structural row has no token or frame", () => {
     const state = readWindowState({
       window_title: "Calculator",

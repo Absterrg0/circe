@@ -107,6 +107,8 @@ const makeExecutor = Effect.gen(function* () {
     Effect.gen(function* () {
       const cancellation = yield* CirceMissionCancellation;
       return {
+        wholeGoals: false,
+        runInMission: () => Effect.die("an agent's mission is not run by Circe's executor here"),
         run: (input: CirceComputerUseInput) => {
           const requestId = input.requestMetadata?.requestId ?? "";
           return cancellation
@@ -149,7 +151,7 @@ const makeNode = Effect.gen(function* () {
   const runs = new Map<string, RunId | null>([[threadUi, runOne]]);
   const layer = CirceComputerAccessLive.pipe(
     Layer.provideMerge(computer.layer),
-    Layer.provide(executor.layer),
+    Layer.provideMerge(executor.layer),
     Layer.provideMerge(CirceMissionCancellationLive),
     Layer.provideMerge(
       Layer.mock(OrchestratorV2)({

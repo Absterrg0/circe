@@ -26,9 +26,20 @@ import {
 } from "@circe/contracts";
 import * as Schema from "effect/Schema";
 
-import { HostProcessEnvironment, HostProcessPlatform } from "@circe/shared/hostProcess";
+import {
+  HostProcessArchitecture,
+  HostProcessEnvironment,
+  HostProcessPlatform,
+} from "@circe/shared/hostProcess";
 
 import { CuaRuntime, type CuaRuntimeState } from "./CuaRuntime.ts";
+import {
+  readBundledCatalog,
+  releaseStagedArchive,
+  stagePerception,
+  type ArchiveFetch,
+  type PerceptionSource,
+} from "./PerceptionStaging.ts";
 
 /**
  * The desktop host owns the Cua runtime and the OS session for one node. It
@@ -58,10 +69,11 @@ const READ_DEADLINE_GRACE_MS = 250;
 const PERMISSION_CACHE_MS = 15_000;
 
 /**
- * Tools that accept Cua's optional `session` label, from the pinned 0.28.2
+ * Tools that accept Cua's optional `session` label, from the pinned 0.30
  * tool schemas. The host injects the mission's label here and ignores any
  * caller-supplied value, so the session that is closed is the session that
- * acted. `listToolsJson` refines this set at runtime when available.
+ * acted, and a capture parsed under a mission is the capture that mission
+ * observed. The driver's own manifest replaces this set at runtime.
  */
 const DEFAULT_SESSION_AWARE_TOOLS: ReadonlySet<string> = new Set([
   "browser_click",
@@ -89,6 +101,7 @@ const DEFAULT_SESSION_AWARE_TOOLS: ReadonlySet<string> = new Set([
   "mouse_button_up",
   "mouse_drag",
   "move_cursor",
+  "parse_visual_regions",
   "press_key",
   "right_click",
   "scroll",
@@ -209,13 +222,26 @@ const normalizeImages = (value: unknown): ComputerHostToolResult["images"] => {
   return images;
 };
 
+/** Perception extension state as the host last observed it. */
+interface PerceptionState {
+  readonly ready: boolean;
+  readonly reason?: string;
+}
+
 export interface ComputerHostOptions {
   readonly runtime?: CuaRuntime;
+  /** Structured diagnostics for host-owned work that has no caller to answer. */
+  readonly log?: (message: string, fields: Record<string, unknown>) => void;
+  /** The perception extension Circe ships for this target, if any. */
+  readonly perception?: PerceptionSource;
+  /** Test seam for the archive download. */
+  readonly fetchArchive?: ArchiveFetch;
   readonly appVersion?: string;
   /** Test seam for the per-run socket directory. */
   readonly runtimeDirectory?: string;
   /** Injected host runtime references so tests do not read globals. */
   readonly platform?: NodeJS.Platform;
+  readonly architecture?: string;
   readonly environment?: NodeJS.ProcessEnv;
 }
 
@@ -229,6 +255,7 @@ export class ComputerHost {
   private readonly requestedDirectory: string | undefined;
   private readonly capability: string;
   private readonly hostPlatform: NodeJS.Platform;
+  private readonly hostArchitecture: string;
   private readonly environment: NodeJS.ProcessEnv;
   private server: NodeNet.Server | undefined;
   private directory: string | undefined;
@@ -245,13 +272,26 @@ export class ComputerHost {
   private closed = false;
   private sessionTools: ReadonlySet<string> | undefined;
   private permissionCache: { readonly atMs: number; readonly value: unknown } | undefined;
+  private perceptionCache: { readonly atMs: number; readonly value: PerceptionState } | undefined;
+  private provisioning: Promise<void> | undefined;
+  private provisioningFailures = 0;
+  private nextProvisioningAttemptAt = 0;
+  /** Aborted by close so a download or install never outlives the host. */
+  private readonly provisioningAbort = new AbortController();
+  private readonly log: (message: string, fields: Record<string, unknown>) => void;
+  private readonly perception: PerceptionSource | undefined;
+  private readonly fetchArchive: ArchiveFetch | undefined;
 
   constructor(options: ComputerHostOptions = {}) {
     this.runtime = options.runtime ?? new CuaRuntime();
     this.requestedDirectory = options.runtimeDirectory;
     this.capability = NodeCrypto.randomBytes(CAPABILITY_BYTES).toString("hex");
     this.hostPlatform = options.platform ?? HostProcessPlatform.defaultValue();
+    this.hostArchitecture = options.architecture ?? HostProcessArchitecture.defaultValue();
     this.environment = options.environment ?? HostProcessEnvironment.defaultValue();
+    this.log = options.log ?? (() => undefined);
+    this.perception = options.perception;
+    this.fetchArchive = options.fetchArchive;
   }
 
   get runtimeState(): CuaRuntimeState {
@@ -286,9 +326,14 @@ export class ComputerHost {
   async status(): Promise<ComputerHostStatus> {
     const graphical = this.hasGraphicalSession();
     const sessionType = this.sessionType();
-    const runtimeFailed = this.runtime.state === "failed";
     const runtimeReady = this.runtime.state === "ready";
     const permissions = runtimeReady ? await this.probePermissions() : undefined;
+    if (runtimeReady) void this.provisionPerception();
+    const manifest = runtimeReady
+      ? await this.runtime.toolManifest().catch(() => undefined)
+      : undefined;
+    const perception = runtimeReady ? await this.probePerception(manifest) : undefined;
+    const runtimeFailed = this.closed || this.runtime.state === "failed";
     // A permission the driver reports as denied removes what it gates: input
     // needs the platform's input route (AT-SPI, X11, or macOS Accessibility),
     // and capture needs screen recording. Unknown fields grant nothing new.
@@ -306,6 +351,9 @@ export class ComputerHost {
       keyboard: graphical && !runtimeFailed && !permissionDenied,
       windows: graphical && !runtimeFailed,
       browser: false,
+      nativeGrounding:
+        graphical && !runtimeFailed && (manifest?.tools.has("get_window_state") ?? runtimeReady),
+      visualGrounding: graphical && !runtimeFailed && !captureDenied && perception?.ready === true,
     };
     const metadata = runtimeReady ? await this.tryMetadata() : undefined;
     const reason = !graphical
@@ -325,6 +373,9 @@ export class ComputerHost {
       ...(metadata ? { driverVersion: metadata.driverVersion, driverPid: metadata.pid } : {}),
       ...(permissions !== undefined ? { permissions } : {}),
       ...(reason ? { reason } : {}),
+      ...(perception !== undefined && !perception.ready && perception.reason !== undefined
+        ? { visualReason: perception.reason }
+        : {}),
       capabilities,
     };
   }
@@ -342,6 +393,7 @@ export class ComputerHost {
 
   async close(): Promise<void> {
     this.closed = true;
+    this.provisioningAbort.abort(new Error("host-shutdown"));
     const connection = this.connection;
     this.connection = undefined;
     this.connectionEpoch += 1;
@@ -417,6 +469,161 @@ export class ComputerHost {
       // The probe is optional; status falls back to runtime-level evidence.
     }
     return undefined;
+  }
+
+  /**
+   * Visual grounding needs both halves of the driver contract, capture-bound
+   * clicks and region parsing, plus an installed, healthy perception
+   * extension. A stock driver without the extension store reports why.
+   */
+  private async probePerception(
+    manifest: Awaited<ReturnType<CuaRuntime["toolManifest"]>> | undefined,
+  ): Promise<PerceptionState> {
+    if (manifest === undefined)
+      return { ready: false, reason: "the driver tool manifest is unavailable" };
+    if (!manifest.tools.has("parse_visual_regions") || !manifest.captureBoundClick)
+      return { ready: false, reason: "this driver build cannot parse and act on screen captures" };
+    if (!manifest.tools.has("extension_status"))
+      return {
+        ready: false,
+        reason: `screen reading is not distributed for ${this.platform}/${this.hostArchitecture}; native controls remain available`,
+      };
+    const now = Date.now();
+    if (this.perceptionCache && now - this.perceptionCache.atMs < PERMISSION_CACHE_MS)
+      return this.perceptionCache.value;
+    const value = await this.readPerceptionStatus().then(
+      (status): PerceptionState =>
+        status.installed && status.healthy
+          ? { ready: true }
+          : {
+              ready: false,
+              reason: status.installed
+                ? `the perception extension is unhealthy: ${status.detail}`
+                : "the perception extension is not installed",
+            },
+      (error: unknown): PerceptionState => ({
+        ready: false,
+        reason: `perception status is unavailable: ${error instanceof Error ? error.message : String(error)}`,
+      }),
+    );
+    this.perceptionCache = { atMs: now, value };
+    return value;
+  }
+
+  private async readPerceptionStatus(): Promise<{
+    readonly installed: boolean;
+    readonly healthy: boolean;
+    readonly activeVersion: string | undefined;
+    readonly detail: string;
+  }> {
+    const raw = asRecord(await this.runtime.callTool("extension_status", { name: "perception" }));
+    const structured = asRecord(parseStructured(raw?.structuredJson));
+    if (raw?.isError === true || structured === undefined)
+      throw new Error(typeof raw?.text === "string" ? raw.text : "no extension status");
+    return {
+      installed: structured.installed === true,
+      healthy: structured.healthy === true,
+      activeVersion:
+        typeof structured.active_version === "string" ? structured.active_version : undefined,
+      detail: typeof structured.detail === "string" ? structured.detail : "unknown",
+    };
+  }
+
+  /**
+   * Install or update the perception extension Circe ships for this target.
+   * This is Circe's own pinned dependency, so the host confirms the driver's
+   * verified plan itself; confirmation names the exact plan digest, and the
+   * driver rereads and reverifies the catalog before any mutation. Nothing is
+   * copied into the driver's store except by the driver.
+   */
+  private provisionPerception(): Promise<void> {
+    if (this.provisioning !== undefined) return this.provisioning;
+    if (this.provisioningFailures >= 3 || Date.now() < this.nextProvisioningAttemptAt)
+      return Promise.resolve();
+    let failed = false;
+    const source = this.perception;
+    const run = (async () => {
+      if (source === undefined || this.closed) return;
+      const signal = this.provisioningAbort.signal;
+      const manifest = await this.runtime.toolManifest();
+      if (!manifest.tools.has("install_extension") || !manifest.tools.has("extension_status"))
+        return;
+      const bundled = await readBundledCatalog(source.bundledCatalog);
+      if (this.closed) return;
+      const current = await this.readPerceptionStatus().catch(() => undefined);
+      if (
+        current?.installed === true &&
+        current.healthy &&
+        current.activeVersion === bundled.version
+      )
+        return;
+      const started = Date.now();
+      await stagePerception(source, bundled, {
+        signal,
+        ...(this.fetchArchive === undefined ? {} : { fetch: this.fetchArchive }),
+      });
+      // A closed host has shut its runtime down; a call now would restart it.
+      if (this.closed) return;
+      const preview = asRecord(
+        await this.runtime.callTool("install_extension", { name: "perception" }),
+      );
+      const plan = asRecord(parseStructured(preview?.structuredJson));
+      const planDigest = plan?.plan_sha256;
+      if (
+        preview?.isError === true ||
+        typeof planDigest !== "string" ||
+        plan?.version !== bundled.version
+      ) {
+        failed = true;
+        this.log("perception extension plan was refused", {
+          version: bundled.version,
+          detail: typeof preview?.text === "string" ? preview.text : "no plan",
+        });
+        return;
+      }
+      if (this.closed) return;
+      const installed = asRecord(
+        await this.runtime.callTool("install_extension", {
+          name: "perception",
+          confirm: true,
+          plan_sha256: planDigest,
+        }),
+      );
+      this.perceptionCache = undefined;
+      failed = installed?.isError === true;
+      if (installed?.isError !== true) await releaseStagedArchive(source, bundled);
+      this.log(
+        installed?.isError === true
+          ? "perception extension install failed"
+          : "perception extension installed from the bundled catalog",
+        {
+          version: bundled.version,
+          planSha256: planDigest,
+          publisher: plan?.publisher_id,
+          previousVersion: current?.activeVersion,
+          elapsedMs: Date.now() - started,
+          detail: typeof installed?.text === "string" ? installed.text : undefined,
+        },
+      );
+    })()
+      .catch((error: unknown) => {
+        failed = true;
+        this.log("perception extension provisioning failed", {
+          detail: error instanceof Error ? error.message : String(error),
+        });
+      })
+      .finally(() => {
+        if (failed) {
+          // A transient install failure must not disable visual grounding for
+          // the whole app lifetime. Calls may retry after backoff, at most three
+          // failures per runtime; successful provisioning stays cached.
+          this.provisioningFailures += 1;
+          this.nextProvisioningAttemptAt = Date.now() + 30_000;
+          this.provisioning = undefined;
+        }
+      });
+    this.provisioning = run;
+    return run;
   }
 
   private missionTargets(missionId?: string): ReadonlyArray<MissionState> {
@@ -772,6 +979,9 @@ export class ComputerHost {
     let dispatched = false;
     try {
       await this.ensureSession(mission);
+      // The runtime is up now; bring the bundled perception extension up to
+      // date in the background so the first screen read does not wait on it.
+      void this.provisionPerception();
       // Every session-aware call carries the mission's own label; a caller
       // value is overridden so the session that acts is the session that ends.
       const callArgs = await this.withMissionSession(mission, tool, args);
@@ -807,8 +1017,8 @@ export class ComputerHost {
 
   private async sessionAwareTools(): Promise<ReadonlySet<string>> {
     if (this.sessionTools !== undefined) return this.sessionTools;
-    const discovered = await this.runtime.sessionAwareToolNames().catch(() => undefined);
-    this.sessionTools = discovered ?? DEFAULT_SESSION_AWARE_TOOLS;
+    const discovered = await this.runtime.toolManifest().catch(() => undefined);
+    this.sessionTools = discovered?.sessionAware ?? DEFAULT_SESSION_AWARE_TOOLS;
     return this.sessionTools;
   }
 
@@ -840,6 +1050,8 @@ export class ComputerHost {
     const structuredRecord = asRecord(structured);
     const isError = record.isError === true;
     const errorCode = typeof record.errorCode === "string" ? record.errorCode : undefined;
+    const driverCode =
+      errorCode ?? (typeof structuredRecord?.code === "string" ? structuredRecord.code : undefined);
     const effect =
       normalizeEffectName(structuredRecord?.effect) ??
       (errorCode ? "refused" : undefined) ??
@@ -859,6 +1071,7 @@ export class ComputerHost {
       ...(errorCode
         ? { refusalCode: errorCode.includes("interrupt") ? "input-interrupted" : "driver-refused" }
         : {}),
+      ...(isError && driverCode !== undefined ? { driverCode } : {}),
       ...(structured !== undefined ? { structured } : {}),
       images: isError ? [] : normalizeImages(record.images),
     };

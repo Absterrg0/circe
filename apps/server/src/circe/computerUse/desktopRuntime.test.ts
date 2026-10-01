@@ -30,8 +30,8 @@ describe("makeDesktopUseRuntime", () => {
             element: { type: "choice", choice: element.id, probabilities: {}, confidence: 1 },
           }),
         actuator: {
-          click: () => Ref.update(clicks, (count) => count + 1).pipe(Effect.asVoid),
-          typeInto: () => Effect.void,
+          click: () => Ref.update(clicks, (count) => count + 1).pipe(Effect.as(true)),
+          typeInto: () => Effect.succeed(true),
           pressKey: () => Effect.void,
           typeText: () => Effect.void,
           scroll: () => Effect.void,
@@ -58,7 +58,7 @@ describe("makeDesktopUseRuntime", () => {
             Ref.update(actions, (count) => count + 1).pipe(
               Effect.andThen(Effect.fail("click failed")),
             ),
-          typeInto: () => Effect.void,
+          typeInto: () => Effect.succeed(true),
           pressKey: () => Effect.void,
           typeText: () => Ref.update(actions, (count) => count + 1).pipe(Effect.asVoid),
           scroll: () => Effect.void,
@@ -83,9 +83,9 @@ describe("makeDesktopUseRuntime", () => {
         observe: () => Effect.succeed(surface()),
         select: () => Effect.die("unused"),
         actuator: {
-          click: () => Effect.void,
+          click: () => Effect.succeed(true),
           typeInto: (_element, text) =>
-            Ref.update(typed, (entries) => [...entries, text]).pipe(Effect.asVoid),
+            Ref.update(typed, (entries) => [...entries, text]).pipe(Effect.as(true)),
           pressKey: () => Effect.void,
           typeText: () => Effect.die("untargeted typing must not run"),
           scroll: () => Effect.void,
@@ -107,8 +107,8 @@ describe("makeDesktopUseRuntime", () => {
         observe: () => Effect.succeed(surface()),
         select: () => Effect.die("unused"),
         actuator: {
-          click: () => Ref.update(clicks, (count) => count + 1).pipe(Effect.asVoid),
-          typeInto: () => Effect.void,
+          click: () => Ref.update(clicks, (count) => count + 1).pipe(Effect.as(true)),
+          typeInto: () => Effect.succeed(true),
           pressKey: () => Effect.void,
           typeText: () => Effect.void,
           scroll: () => Effect.void,

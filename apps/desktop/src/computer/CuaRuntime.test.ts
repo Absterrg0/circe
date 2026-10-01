@@ -33,6 +33,60 @@ const fakeModule = () => {
 };
 
 describe("CuaRuntime", () => {
+  it.each([{ DISPLAY: ":0" }, { WAYLAND_DISPLAY: "wayland-0", CUA_DRIVER_RS_ENABLE_WAYLAND: "0" }])(
+    "preserves an X11 session or explicit Wayland override: %j",
+    async (environment) => {
+      const env: NodeJS.ProcessEnv = { ...environment };
+      const prior = env.CUA_DRIVER_RS_ENABLE_WAYLAND;
+      const fake = fakeModule();
+      const runtime = new CuaRuntime({ environment: env, load: async () => fake.module });
+      try {
+        await runtime.callTool("list_windows", {});
+        expect(env.CUA_DRIVER_RS_ENABLE_WAYLAND).toBe(prior);
+      } finally {
+        await runtime.shutdown();
+      }
+    },
+  );
+  it("enables native Wayland discovery before loading the driver on a mixed Wayland/XWayland desktop", async () => {
+    const environment: NodeJS.ProcessEnv = { DISPLAY: ":0", WAYLAND_DISPLAY: "wayland-0" };
+    const fake = fakeModule();
+    const runtime = new CuaRuntime({
+      environment,
+      load: async () => {
+        expect(environment.CUA_DRIVER_RS_ENABLE_WAYLAND).toBe("1");
+        return fake.module;
+      },
+    });
+    try {
+      await runtime.callTool("list_windows", {});
+    } finally {
+      await runtime.shutdown();
+    }
+  });
+
+  it("cannot create a driver when shutdown overtakes its import", async () => {
+    const fake = fakeModule();
+    let finishLoad!: (module: unknown) => void;
+    const runtime = new CuaRuntime({
+      load: () =>
+        new Promise((resolve) => {
+          finishLoad = resolve;
+        }),
+    });
+    const pending = runtime.callTool("list_apps", {});
+    const rejected = expect(pending).rejects.toThrow("shut down");
+    await runtime.shutdown();
+    finishLoad(fake.module);
+    await rejected;
+    expect(fake.events).toEqual([]);
+    expect(runtime.state).toBe("stopped");
+    await expect(runtime.metadata()).rejects.toThrow("shut down");
+    await expect(runtime.toolManifest()).rejects.toThrow("shut down");
+    await expect(runtime.callTool("install_extension", {})).rejects.toThrow("shut down");
+    expect(fake.events).toEqual([]);
+  });
+
   it("releases a driver that stopped being available before creating the next", async () => {
     const fake = fakeModule();
     const runtime = new CuaRuntime({ load: async () => fake.module });

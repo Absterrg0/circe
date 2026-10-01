@@ -1,8 +1,7 @@
 # Desktop use
 
-Desktop use lets Circe see and control the desktop of the machine a node runs on: open apps and
-websites, click, type, press keys, and scroll in your own signed-in apps and browser. Because a node only ever controls its own display, this works for a real device in your mesh
-rather than a cloud virtual machine.
+Desktop use lets Circe open apps and websites, click, type, press keys, and scroll in your own
+signed-in apps and browser. Each node controls the desktop of the machine it runs on.
 
 ## Asking Circe
 
@@ -25,6 +24,19 @@ Every waiting request also shows on the node's Computer card, on desktop and on 
 screen, with Approve and Deny. Use those to answer from any device, or when you missed the spoken
 question. While something runs, the same card has Stop.
 
+Circe uses the app's window that is already open unless you ask for a new one. It types a whole
+entry at once, such as `12*7` for "twelve times seven", and it reports done only when the screen
+shows the result. If the app shows something else, Circe tells you what it shows.
+
+The agent cursor marks input in the target window. When another window covers that target,
+background actions can continue, but their cursor stays hidden instead of appearing over the
+foreground app.
+
+On native Wayland, arbitrary background keys may be unavailable even when accessible controls
+work. Circe uses native control actions where possible and reports a refusal when CUA cannot
+deliver the requested action in the background. Covered windows can still expose native controls,
+but Circe does not use screenshots containing the covering window's pixels to choose actions.
+
 One thing uses the computer at a time. If it is busy, Circe says what it is doing; stop that first.
 
 ## Letting a coding agent use it
@@ -34,6 +46,14 @@ it just changed. The request reaches you the same way: Circe says which agent wa
 for what, and you approve or decline it by voice or on the Computer card. Once approved, that agent
 alone can drive the computer until it hands it back, its run ends, or you say stop. If the agent's
 run ends before you answer, the request goes away on its own.
+
+Ask in chat the way you would ask Circe ("calculate 12 times 7 in the calculator"). The agent hands
+the whole goal to Circe, which carries it out and checks the result the same way.
+
+If the app exposes only the text Circe entered, such as a search box without readable results,
+Circe reports that it could not verify completion. The agent must report that limitation. A
+finished goal cannot be repeated through the step tools or request approval again in the same
+turn. A new request from you starts a new turn and can try again.
 
 ## Controlling a remote node
 
@@ -47,39 +67,36 @@ its local desktop through authenticated clients, but runs coding agents on remot
 
 ## What each platform needs
 
-Linux, X11: install `xrandr`, `xdotool`, and a capture helper (`imagemagick`, `scrot`, or
-`ffmpeg`). Install `wmctrl` for window discovery and focus. On Debian/Ubuntu, `xrandr` comes
-with `x11-xserver-utils`. Start the node within your graphical session.
+Linux: run Circe in an X11 or Wayland graphical session with the AT-SPI accessibility bus available.
+Circe enables native Wayland discovery automatically. GNOME Wayland also needs the CUA WinRects
+Shell helper enabled so Circe can identify native windows.
 
-Linux, Wayland: wlroots compositors need `wlr-randr` and `grim`; GNOME needs `gjs` and
-`gnome-screenshot`. Other compositors currently report unavailable when their display geometry
-cannot be queried. `wtype` provides keyboard input on compositors with the virtual-keyboard
-protocol. Pointer input needs a running `ydotoold` daemon with `/dev/uinput` access and a socket
-accessible to the node. `ydotool` is also a keyboard fallback, limited to ASCII text and US-layout
-key positions. Wayland window discovery and focus are currently unsupported.
+macOS: grant Accessibility and Screen Recording to Circe when macOS asks. You can change these
+permissions in System Settings under Privacy & Security.
 
-macOS: capture and input use system tools. Grant Screen Recording and Accessibility to the app
-or terminal hosting the node when macOS requests them. Window discovery and shortcuts can also
-request Automation access to System Events. Restart the node after changing permissions. Circe
-reads app controls through System Events; autonomous native control on macOS is still validated
-per app.
+Windows: run Circe in your signed-in desktop session. Circe reads controls through UI Automation.
+Windows can refuse input to elevated applications and secure desktops.
 
-Windows: capture and input use built-in PowerShell. Run the node in the signed-in graphical
-session. Circe reads app controls through UI Automation. Windows can refuse input to elevated
-applications and secure desktops; desktop use does not bypass those restrictions.
+## Apps that draw their own controls
 
-## Action limits
+Circe first reads the controls an app exposes through accessibility. When the perception component
+is available, it can also read text and controls from the screen in apps that draw their own
+interface. Circe downloads that component once on first use and updates it when needed. Reading
+the screen makes these steps slower, often several seconds for each look.
 
-Input is serialized across connected agents and controllers. Drags release their button on
-completion or cancellation. If release fails, further input is blocked until cleanup succeeds.
-Requests can still partially act before an error, so take a new screenshot before retrying.
-
-Coordinates refer to the returned screenshot, including on scaled monitors. Targets outside the
-selected display are refused. Text, scrolling, drag duration and pending requests are bounded.
+Screen reading currently ships for macOS on Apple silicon, Windows x64, and Linux x64. Other
+supported architectures use accessible controls. If screen reading is unavailable or its download fails, apps with
+accessible controls still work. The Computer card shows the limitation. Circe stops when it cannot
+find a usable control instead of guessing where to click.
 
 ## Troubleshooting
 
 - "Desktop use is unavailable": the Circe desktop app is not running on the node, or the node has no
   graphical session. Circe says the reason when you ask it to use the computer.
-- Wayland capture is unavailable: check the compositor-specific helpers above. Circe does not use
-  XWayland screenshots as a fallback for native Wayland windows.
+- A Linux app is missing: on GNOME Wayland, check that the CUA WinRects Shell helper is enabled.
+- An app's controls cannot be read: check the Computer card for a screen-reading limitation and
+  check your network connection if the component has not downloaded yet.
+- A screen-based click is refused because the target is covered: bring the target window into view
+  and ask again. Circe refuses clicks that would land on a different application.
+- macOS cannot control or capture an app: check Circe's Accessibility and Screen Recording
+  permissions in System Settings.

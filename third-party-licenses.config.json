@@ -1,6 +1,39 @@
 {
   "customNotices": [
     {
+      "bundles": ["desktop"],
+      "license": "MIT AND Apache-2.0",
+      "name": "Cua Perception 0.3.0 (installed by the desktop app on first use)",
+      "sourceUrl": "https://github.com/Absterrg0/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT",
+          "copyrights": ["Copyright (c) Microsoft Corporation"],
+          "preamble": [
+            "OmniParser icon_detect_v3 detector, microsoft/OmniParser-v2.0 revision f55d0750e5b94db2125ef0b45b0fa4a85ddc59b4, converted to ONNX."
+          ]
+        },
+        {
+          "licenseId": "Apache-2.0",
+          "preamble": [
+            "PP-OCRv5 mobile detector and English recognizer from PaddlePaddle (PP-OCRv5_mobile_det_onnx e6f4fa85f00e168c862bc462aebca69eef9b3d3d, en_PP-OCRv5_mobile_rec_onnx 3fafbc3b5dcf93dd72add9f48368be8a3a2cd33b)."
+          ]
+        },
+        {
+          "licenseId": "MIT",
+          "copyrights": ["Copyright (c) Microsoft Corporation"],
+          "preamble": ["ONNX Runtime 1.26.0 CPU library."]
+        },
+        {
+          "licenseId": "MIT",
+          "copyrights": ["Copyright (c) 2025 Cua AI, Inc."],
+          "preamble": [
+            "Cua Perception worker, built from the Absterrg0/cua distribution of trycua/cua."
+          ]
+        }
+      ]
+    },
+    {
       "bundles": ["assets", "desktop", "web"],
       "license": "CC0-1.0",
       "name": "Notification Sound 1 by deadrobotmusic",
@@ -514,7 +547,7 @@
     },
     {
       "name": "@trycua/cua-driver",
-      "version": "0.28.2",
+      "version": "0.30.4",
       "license": "MIT",
       "sourceUrl": "https://github.com/trycua/cua",
       "generatedNotice": {
@@ -522,8 +555,64 @@
       }
     },
     {
+      "name": "@trycua/cua-driver-darwin-arm64",
+      "version": "0.30.4-absterrg0.1",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/Absterrg0/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
+      "name": "@trycua/cua-driver-darwin-x64",
+      "version": "0.30.4",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/trycua/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
+      "name": "@trycua/cua-driver-linux-arm64-gnu",
+      "version": "0.30.4",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/trycua/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
       "name": "@trycua/cua-driver-linux-x64-gnu",
-      "version": "0.28.2",
+      "version": "0.30.4-absterrg0.1",
+      "license": "MIT AND MPL-2.0",
+      "sourceUrl": "https://github.com/Absterrg0/cua",
+      "generatedNotices": [
+        {
+          "licenseId": "MIT"
+        },
+        {
+          "licenseId": "MPL-2.0"
+        }
+      ]
+    },
+    {
+      "name": "@trycua/cua-driver-win32-arm64-msvc",
+      "version": "0.30.4",
       "license": "MIT AND MPL-2.0",
       "sourceUrl": "https://github.com/trycua/cua",
       "generatedNotices": [
@@ -537,9 +626,9 @@
     },
     {
       "name": "@trycua/cua-driver-win32-x64-msvc",
-      "version": "0.28.2",
+      "version": "0.30.4-absterrg0.1",
       "license": "MIT AND MPL-2.0",
-      "sourceUrl": "https://github.com/trycua/cua",
+      "sourceUrl": "https://github.com/Absterrg0/cua",
       "generatedNotices": [
         {
           "licenseId": "MIT"

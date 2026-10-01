@@ -271,6 +271,53 @@
   height: 20px;
 }
 
+/* Persistent sign-in state at the rail bottom: the account avatar when signed
+   in, a sign-in action otherwise. Rail-sized like the other bottom icons. */
+.circe-rail-account {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--sidebar-muted-foreground);
+}
+
+.circe-rail-account:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+
+/* Persistent sign-in state: the account avatar when signed in. Sits with the
+   other bottom-of-rail controls so every panel answers "am I signed in?". */
+.circe-rail-account {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--sidebar-muted-foreground);
+  cursor: pointer;
+}
+
+.circe-rail-account:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+
+/* Persistent sign-in state: the account avatar, rail-sized and centered. */
+.circe-rail-account {
+  display: grid;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 10px;
+  color: var(--sidebar-muted-foreground);
+}
+
+.circe-rail-account:hover {
+  background: var(--sidebar-row-hover);
+}
+
 /* Narrow windows: the rail runs across the top of the sidebar sheet. */
 .circe-rail--horizontal {
   position: static;

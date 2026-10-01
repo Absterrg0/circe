@@ -1,14 +1,7 @@
 import { scopeThreadRef } from "@circe/client/environment";
 import type { EnvironmentId } from "@circe/contracts";
 import { Link, useNavigate } from "@tanstack/react-router";
-import {
-  BookOpenIcon,
-  BugIcon,
-  GitBranchIcon,
-  MonitorIcon,
-  PackageIcon,
-  ServerIcon,
-} from "lucide-react";
+import { GitBranchIcon, MonitorIcon, ServerIcon } from "lucide-react";
 import { useMemo, useState, type ReactNode } from "react";
 
 import { isElectron } from "../../env";
@@ -30,7 +23,7 @@ import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPr
 import { ScrollArea } from "../ui/scroll-area";
 import { SidebarInset } from "../ui/sidebar";
 import { CirceCardHeader, CirceCardLinkLabel } from "./CirceCard";
-import { CirceCommandConsole, type CirceCommandSuggestion } from "./CirceCommandConsole";
+import { CirceCommandConsole } from "./CirceCommandConsole";
 import {
   buildCirceHomeTasks,
   collectCirceHomePullRequests,
@@ -63,17 +56,6 @@ const PULL_REQUEST_STATE: Record<
   failing: { label: "Checks failing", tone: "failed" },
   draft: { label: "Draft", tone: "idle" },
 };
-
-const SUGGESTIONS: ReadonlyArray<CirceCommandSuggestion> = [
-  { label: "Fix failing tests", icon: <BugIcon />, text: "Fix the failing tests in " },
-  {
-    label: "Review open PRs",
-    icon: <PullRequestGlyph.pullRequest />,
-    text: "Review the open pull requests in ",
-  },
-  { label: "Update dependencies", icon: <PackageIcon />, text: "Update the dependencies in " },
-  { label: "Explain a codebase", icon: <BookOpenIcon />, text: "Explain how this project works: " },
-];
 
 type HomeTab = "needsYou" | "running" | "recent";
 
@@ -201,18 +183,12 @@ function PullRequestRow({ pullRequest }: { readonly pullRequest: CirceHomePullRe
   );
 }
 
-interface AgentSummary {
-  readonly entry: ProviderInstanceEntry;
-  readonly running: number;
-  readonly machines: number;
-  readonly ready: boolean;
-}
-
 /**
  * Circe's landing page: say what you want, then see what waits on you, what
- * is running, which pull requests are open, and which agents and machines are
- * up. Everything below the command box is a view over typed state the client
- * already holds; Home adds no subscriptions or host queries of its own.
+ * is running, which pull requests are open, and which devices are up and what
+ * each one runs. Everything below the command box is a view over typed state
+ * the client already holds; Home adds no subscriptions or host queries of its
+ * own.
  */
 export function CirceHome() {
   const navigate = useNavigate();
@@ -270,38 +246,6 @@ export function CirceHome() {
     }
     return counts;
   }, [tasks.running]);
-  // One row per agent, however many machines run it, busiest first.
-  const agents = useMemo(() => {
-    const byName = new Map<string, AgentSummary>();
-    for (const entries of providerEntries.values()) {
-      for (const entry of entries.values()) {
-        if (!entry.enabled) continue;
-        const ready = entry.isAvailable && entry.status === "ready";
-        const current = byName.get(entry.displayName);
-        byName.set(entry.displayName, {
-          entry: current?.entry ?? entry,
-          running: current?.running ?? 0,
-          machines: (current?.machines ?? 0) + 1,
-          ready: (current?.ready ?? false) || ready,
-        });
-      }
-    }
-    for (const task of tasks.running) {
-      const entry = providerEntries
-        .get(task.thread.environmentId)
-        ?.get(task.thread.runtime?.providerInstanceId ?? task.thread.modelSelection.instanceId);
-      const current = entry === undefined ? undefined : byName.get(entry.displayName);
-      if (current !== undefined && entry !== undefined) {
-        byName.set(entry.displayName, { ...current, running: current.running + 1 });
-      }
-    }
-    return [...byName.values()].toSorted(
-      (left, right) =>
-        right.running - left.running ||
-        Number(right.ready) - Number(left.ready) ||
-        left.entry.displayName.localeCompare(right.entry.displayName),
-    );
-  }, [providerEntries, tasks.running]);
 
   // Open on what matters most until the user picks a tab.
   const tab: HomeTab =
@@ -355,7 +299,6 @@ export function CirceHome() {
       : tasks.running.length > 0
         ? `${tasks.running.length} ${tasks.running.length === 1 ? "agent is" : "agents are"} working. Nothing needs you.`
         : "Tell Circe what to do. It picks the machine and project, and asks when it isn't sure.";
-  const readyAgents = agents.filter((agent) => agent.ready).length;
   const onlineMachines = view.devices.filter(
     (device) => device.node.reachability === "online",
   ).length;
@@ -377,7 +320,7 @@ export function CirceHome() {
                 </h2>
                 <p>{summary}</p>
               </header>
-              <CirceCommandConsole catalog={catalog} suggestions={SUGGESTIONS} />
+              <CirceCommandConsole catalog={catalog} />
             </section>
 
             <section className="circe-card circe-home__work" aria-label="Your tasks">
@@ -425,7 +368,7 @@ export function CirceHome() {
               </div>
             </section>
 
-            <div className="circe-home__grid" data-columns={pullRequestsSupported ? 3 : 2}>
+            <div className="circe-home__grid" data-columns={pullRequestsSupported ? 2 : 1}>
               {pullRequestsSupported ? (
                 <section className="circe-card" aria-label="Pull requests">
                   <CirceCardHeader
@@ -456,65 +399,9 @@ export function CirceHome() {
                 </section>
               ) : null}
 
-              <section className="circe-card" aria-label="Agents">
+              <section className="circe-card" aria-label="Devices">
                 <CirceCardHeader
-                  title="Agents"
-                  count={agents.length}
-                  subtitle={agents.length > 0 ? `${readyAgents} ready` : undefined}
-                  link={
-                    <Link to="/settings/providers" className="circe-card__link">
-                      <CirceCardLinkLabel>Manage</CirceCardLinkLabel>
-                    </Link>
-                  }
-                />
-                {agents.length === 0 ? (
-                  <p className="circe-card__empty">
-                    Turn on a coding agent in Settings to start working.
-                  </p>
-                ) : (
-                  <ul className="circe-rows">
-                    {agents.slice(0, 5).map((agent) => {
-                      const tone: CirceTone =
-                        agent.running > 0 ? "running" : agent.ready ? "done" : "attention";
-                      return (
-                        <li key={agent.entry.displayName}>
-                          <div className="circe-row">
-                            <span className="circe-row__icon">
-                              <ProviderInstanceIcon
-                                driverKind={agent.entry.driverKind}
-                                displayName={agent.entry.displayName}
-                                acpRegistryAgentId={agent.entry.acpRegistryAgentId}
-                                acpRegistryIconUrl={agent.entry.acpRegistryIconUrl}
-                                iconClassName="size-4"
-                              />
-                            </span>
-                            <span className="circe-row__text">
-                              <span className="circe-row__title">{agent.entry.displayName}</span>
-                              {agent.machines > 1 ? (
-                                <span className="circe-row__meta">
-                                  <span>On {agent.machines} machines</span>
-                                </span>
-                              ) : null}
-                            </span>
-                            <span className="circe-state" data-tone={tone}>
-                              <span className="circe-status-dot" aria-hidden />
-                              {agent.running > 0
-                                ? `${agent.running} running`
-                                : agent.ready
-                                  ? "Ready"
-                                  : "Needs setup"}
-                            </span>
-                          </div>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-              </section>
-
-              <section className="circe-card" aria-label="Machines">
-                <CirceCardHeader
-                  title="Machines"
+                  title="Devices"
                   count={view.devices.length}
                   subtitle={view.devices.length > 0 ? `${onlineMachines} online` : undefined}
                   link={
@@ -539,7 +426,16 @@ export function CirceHome() {
                     {view.devices.slice(0, 5).map((device) => {
                       const online = device.node.reachability === "online";
                       const running = runningByNode.get(device.node.nodeId) ?? 0;
-                      const tone: CirceTone = !online ? "idle" : running > 0 ? "running" : "done";
+                      const ready = device.providers.filter(
+                        (provider) => provider.available,
+                      ).length;
+                      const tone: CirceTone = !online
+                        ? "idle"
+                        : running > 0
+                          ? "running"
+                          : ready === 0
+                            ? "attention"
+                            : "done";
                       return (
                         <li key={device.node.nodeId}>
                           <Link
@@ -564,12 +460,40 @@ export function CirceHome() {
                                   {device.projects.length > 0
                                     ? ` · ${device.projects.length} ${device.projects.length === 1 ? "project" : "projects"}`
                                     : ""}
+                                  {device.providers.length > 0
+                                    ? ` · ${ready}/${device.providers.length} agents`
+                                    : ""}
                                 </span>
                               </span>
                             </span>
+                            {device.providers.length > 0 ? (
+                              <span
+                                className="circe-device-agents"
+                                aria-label={`${ready} of ${device.providers.length} agents ready`}
+                              >
+                                {device.providers.slice(0, 4).map((provider) => (
+                                  <ProviderInstanceIcon
+                                    key={provider.snapshot.instanceId}
+                                    driverKind={provider.snapshot.driver}
+                                    displayName={
+                                      provider.snapshot.displayName ?? provider.snapshot.driver
+                                    }
+                                    iconClassName={
+                                      provider.available ? "size-4" : "size-4 opacity-40"
+                                    }
+                                  />
+                                ))}
+                              </span>
+                            ) : null}
                             <span className="circe-state" data-tone={tone}>
                               <span className="circe-status-dot" aria-hidden />
-                              {!online ? "Offline" : running > 0 ? `${running} running` : "Online"}
+                              {!online
+                                ? "Offline"
+                                : running > 0
+                                  ? `${running} running`
+                                  : ready === 0
+                                    ? "Needs setup"
+                                    : "Online"}
                             </span>
                           </Link>
                         </li>

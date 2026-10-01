@@ -45,6 +45,8 @@ export const CirceComputerAccessView = Schema.Struct({
   /** Whether the node's desktop host is connected and can act now; `reason` says why not. */
   available: Schema.Boolean,
   reason: Schema.optional(Schema.String),
+  /** A limit on an otherwise usable computer, such as unreadable custom-drawn apps. */
+  limitation: Schema.optional(Schema.String),
   pending: Schema.NullOr(CirceComputerRequestView),
   active: Schema.NullOr(
     Schema.Struct({

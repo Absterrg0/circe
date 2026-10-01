@@ -3,7 +3,7 @@ import type { CirceBotSummary, EnvironmentId } from "@circe/contracts";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import * as Option from "effect/Option";
 import { AsyncResult } from "effect/unstable/reactivity";
-import { RefreshCwIcon } from "lucide-react";
+import { RadarIcon } from "lucide-react";
 import { memo, useCallback, useEffect } from "react";
 
 import { useEnvironments } from "../../state/environments";
@@ -130,7 +130,7 @@ export function SidebarBotsPanel({ isElectron }: { readonly isElectron: boolean 
         title="Bots"
         actions={
           <SidebarHeaderIconButton
-            label="Look for bots again"
+            label="Scan for bots again"
             disabled={nodes.length === 0}
             onClick={() => {
               for (const node of nodes) {
@@ -140,7 +140,7 @@ export function SidebarBotsPanel({ isElectron }: { readonly isElectron: boolean 
               }
             }}
           >
-            <RefreshCwIcon />
+            <RadarIcon />
           </SidebarHeaderIconButton>
         }
       />

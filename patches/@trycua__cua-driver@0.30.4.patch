@@ -1,0 +1,22 @@
+diff --git a/dist/native/node-runtime.js b/dist/native/node-runtime.js
+index 55ab567901e59e09f73fd0c2a9c7cb6c290c7efe..3138a8fd1b2957d8e2e57cd06903104f0bbca896 100644
+--- a/dist/native/node-runtime.js
++++ b/dist/native/node-runtime.js
+@@ -1,6 +1,16 @@
+ import { createRequire } from "node:module";
+ import { dirname, join } from "node:path";
+-import { resolveLibPath } from "@ubjs/node/typescript/dist/resolve-lib.js";
++import { existsSync } from "node:fs";
++import { resolveLibPath as resolvePackagedLibPath } from "@ubjs/node/typescript/dist/resolve-lib.js";
++// Circe patch: inside a packaged Electron app the platform package resolves
++// under app.asar, where the dynamic loader cannot open files. Electron only
++// redirects process.dlopen to app.asar.unpacked; this library is opened by
++// its own FFI loader, so the redirect happens here for every caller.
++const resolveLibPath = (options) => {
++    const path = resolvePackagedLibPath(options);
++    const unpacked = path.replace(/([\\/])app\.asar([\\/])/, "$1app.asar.unpacked$2");
++    return unpacked !== path && existsSync(unpacked) ? unpacked : path;
++};
+ const FfiType = {
+     UInt8: { tag: "UInt8" },
+     Int8: { tag: "Int8" },

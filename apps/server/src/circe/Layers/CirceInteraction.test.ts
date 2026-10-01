@@ -113,7 +113,14 @@ const supportLayer = (recorder: MissionRecorder = {}) =>
           Effect.succeed({ status: "done" as const, message: "Done: browser goal", steps: 2 }),
       }),
     ),
-    Layer.succeed(CirceComputerUse, CirceComputerUse.of({ run: () => desktopRun(recorder) })),
+    Layer.succeed(
+      CirceComputerUse,
+      CirceComputerUse.of({
+        run: () => desktopRun(recorder),
+        runInMission: () => desktopRun(recorder),
+        wholeGoals: true,
+      }),
+    ),
     // The computer's owner as this route sees it: an approved run reaches the
     // same desktop executor.
     Layer.mock(CirceComputerAccess)({
@@ -215,6 +222,8 @@ const supportLayer = (recorder: MissionRecorder = {}) =>
                   keyboard: true,
                   windows: true,
                   browser: false,
+                  nativeGrounding: true,
+                  visualGrounding: false,
                 },
               }
             : undefined,
@@ -1054,6 +1063,35 @@ it.effect("refuses a submission that names a different node", () =>
     }).pipe(Effect.provide(layer)),
   ),
 );
+
+it.effect("never runs computer use for a confirmation that names another node", () => {
+  // Device A asked node B; this node is not B. The confirmation reaches this
+  // node, which must record the mismatch instead of driving its own desktop.
+  let computerRuns = 0;
+  return withMemory(
+    { classify: () => Effect.succeed(computerProposal) },
+    (layer) =>
+      Effect.gen(function* () {
+        const interaction = yield* CirceInteraction;
+        const asked = yield* interaction.submit(submitInput("remote-1", "click 7"));
+        assert.strictEqual(asked.status, "question");
+        if (asked.status !== "question") return;
+        const confirm = submitInput("remote-2", "yes", {
+          interactionId: asked.state.interactionId,
+          expectedRevision: asked.state.revision,
+        }) as unknown as Record<string, unknown>;
+        const other = yield* interaction.submit({ ...confirm, preferredNodeId: "node-b" } as never);
+        assert.strictEqual(other.status, "unavailable");
+        assert.strictEqual(computerRuns, 0);
+      }).pipe(Effect.provide(layer)),
+    {
+      desktopReady: true,
+      onComputerRun: () => {
+        computerRuns += 1;
+      },
+    },
+  );
+});
 
 it.effect("keeps an accepted operation running and settles it after its requester goes away", () =>
   Effect.gen(function* () {

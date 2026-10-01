@@ -1,4 +1,5 @@
 import { OrchestratorV2 } from "../../../orchestration-v2/Orchestrator.ts";
+import { CirceComputerUse } from "../../../circe/Services/CirceComputerUse.ts";
 import { ProjectionStoreV2 } from "../../../orchestration-v2/ProjectionStore.ts";
 import { ProjectionSnapshotQuery } from "../../../orchestration/Services/ProjectionSnapshotQuery.ts";
 import { DeviceService } from "../../../device/DeviceService.ts";
@@ -44,6 +45,7 @@ const StubServicesLive = Layer.mergeAll(
   Layer.mock(VcsStatusBroadcaster)({}),
   Layer.mock(ComputerService)({}),
   Layer.mock(CirceComputerAccess)({ controllable: true }),
+  Layer.mock(CirceComputerUse)({ wholeGoals: false }),
 );
 
 const ToolsListPayload = Schema.fromJsonString(

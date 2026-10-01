@@ -1,0 +1,25 @@
+{
+  "payload": {
+    "schema_version": 1,
+    "catalog_version": 1,
+    "expires_unix": 1822278021,
+    "publisher_id": "absterrg0",
+    "publisher_name": "Absterrg0",
+    "key_id": "absterrg0-extension-ed25519-2026-09",
+    "extension_id": "cua-perception",
+    "version": "0.3.0",
+    "target": "aarch64-apple-darwin",
+    "archive": "cua-perception-0.3.0-aarch64-apple-darwin.tar.gz",
+    "archive_size": 239197936,
+    "archive_sha256": "98a12f41ea2314d2e802a8b2b1b9c1954b0294808d1c5e8cb625e2d52968e34d",
+    "manifest_sha256": "6260a1dd9c6eefc32b6cd866b73575d7af14a7321111c2e7960079705fedf141",
+    "license": "LicenseRef-Mixed",
+    "source": "https://github.com/Absterrg0/cua",
+    "corresponding_source_uri": "source/cua-perception-source.tar.gz",
+    "corresponding_source_revision": "4f19840be50dd63a6c3cb726c36fdfc1004fb097",
+    "provenance": "metadata/provenance.redacted.json",
+    "next_key": null
+  },
+  "signature_algorithm": "ed25519",
+  "signature": "l07XtQzoOTQj1e6KFRkabm6MyVcLpd/AtEp5pmXhgjPrchOezS+joSJy0HXKc7k3gu4aPPSCOOgseaxIqS2oAw=="
+}

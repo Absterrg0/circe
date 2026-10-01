@@ -17,9 +17,12 @@ export type ComputerHostPlatform = typeof ComputerHostPlatform.Type;
 
 /**
  * Read-only driver tools. They observe the desktop without dispatching input.
+ * `parse_visual_regions` reads an existing driver-owned capture and never
+ * sends input; it is a read even though it runs the perception worker.
  */
 export const COMPUTER_HOST_READ_TOOLS = [
   "check_permissions",
+  "extension_status",
   "get_accessibility_tree",
   "get_cursor_position",
   "get_desktop_state",
@@ -28,6 +31,7 @@ export const COMPUTER_HOST_READ_TOOLS = [
   "get_window_state",
   "list_apps",
   "list_windows",
+  "parse_visual_regions",
 ] as const;
 
 /**
@@ -46,6 +50,7 @@ export const COMPUTER_HOST_MUTATION_TOOLS = [
   "move_cursor",
   "press_key",
   "scroll",
+  "set_value",
   "set_window_frame",
   "type_text",
 ] as const;
@@ -105,6 +110,12 @@ export const ComputerHostToolResult = Schema.Struct({
   effect: ComputerHostEffect,
   text: Schema.String,
   refusalCode: Schema.optional(ComputerHostRefusalCode),
+  /**
+   * The driver's own stable error code, such as `capture_expired` or
+   * `stale_element_token`, when it reported one. `refusalCode` is the host's
+   * coarse class; this is what decides whether reobserving can help.
+   */
+  driverCode: Schema.optional(Schema.String),
   structured: Schema.optional(Schema.Unknown),
   images: Schema.Array(ComputerHostImage),
 });
@@ -203,6 +214,14 @@ export const ComputerHostCapabilities = Schema.Struct({
   keyboard: Schema.Boolean,
   windows: Schema.Boolean,
   browser: Schema.Boolean,
+  /** Accessibility elements can be targeted by their driver token. */
+  nativeGrounding: Schema.Boolean,
+  /**
+   * The driver advertises capture-bound clicks and visual region parsing, and
+   * its perception extension is installed and healthy. Both halves are
+   * required: regions without capture-bound clicks cannot be acted on.
+   */
+  visualGrounding: Schema.Boolean,
 });
 export type ComputerHostCapabilities = typeof ComputerHostCapabilities.Type;
 
@@ -220,6 +239,8 @@ export const ComputerHostStatus = Schema.Struct({
   /** Driver-reported route and permission facts, when a probe succeeded. */
   permissions: Schema.optional(Schema.Unknown),
   reason: Schema.optional(TrimmedNonEmptyString),
+  /** Why visual grounding is off while the computer is otherwise usable. */
+  visualReason: Schema.optional(TrimmedNonEmptyString),
   capabilities: ComputerHostCapabilities,
 });
 export type ComputerHostStatus = typeof ComputerHostStatus.Type;

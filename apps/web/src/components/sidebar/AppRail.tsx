@@ -1,10 +1,12 @@
 import { isChatWorkspace } from "@circe/contracts";
+import { useAuth } from "@clerk/react";
 import { Link, useLocation, useParams } from "@tanstack/react-router";
 import {
   BotIcon,
   ChartNoAxesColumnIcon,
   FolderPlusIcon,
   HouseIcon,
+  LogInIcon,
   MessageCircleIcon,
   MessagesSquareIcon,
   MonitorSmartphoneIcon,
@@ -17,6 +19,8 @@ import {
 } from "lucide-react";
 import {
   cloneElement,
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useState,
@@ -26,6 +30,7 @@ import {
 import { create } from "zustand";
 
 import { getCirceCommandState, onCirceCommandState } from "../../circeBus";
+import { hasCloudPublicConfig } from "../../cloud/publicConfig";
 import { useComposerDraftStore } from "../../composerDraftStore";
 import { useNowMinute } from "../../hooks/useNowMinute";
 import { useStartNewWork } from "../../hooks/useStartNewWork";
@@ -39,6 +44,7 @@ import { getCirceLiveVoiceUiState, subscribeCirceLiveVoice } from "../circe/Circ
 import { CirceOrb, type CirceOrbState } from "../circe/CirceOrb";
 import { PullRequestGlyph } from "../pullRequest/pullRequestIcons";
 import { readPullRequestListPreferences } from "../pullRequest/pullRequestListPreferences";
+import { useT3ConnectAuthPrompt } from "../clerk/useT3ConnectAuthPrompt";
 import { Menu, MenuItem, MenuPopup, MenuTrigger } from "../ui/menu";
 import { useSidebar } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
@@ -101,6 +107,45 @@ function useCircePresence(): CirceOrbState {
 }
 
 type Orientation = "vertical" | "horizontal";
+
+const RailAccountAvatar = lazy(() =>
+  import("../clerk/T3ConnectSidebarSignIn").then((module) => ({
+    default: module.T3ConnectSidebarAvatar,
+  })),
+);
+
+/**
+ * Persistent sign-in state at the rail's bottom: the account avatar when
+ * signed in, a sign-in action when not. The full account management stays in
+ * Settings; this only answers "am I signed in?" from every panel.
+ */
+function ConfiguredRailAccountButton({ orientation }: { readonly orientation: Orientation }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  const { openAuthPrompt } = useT3ConnectAuthPrompt();
+  if (!isLoaded) return null;
+  if (isSignedIn) {
+    return (
+      <div className="circe-rail-account" title="Signed in to Circe Mesh">
+        <Suspense fallback={null}>
+          <RailAccountAvatar />
+        </Suspense>
+      </div>
+    );
+  }
+  return (
+    <RailButton
+      orientation={orientation}
+      label="Sign in to Circe Mesh"
+      icon={<LogInIcon />}
+      onClick={openAuthPrompt}
+    />
+  );
+}
+
+function RailAccountButton({ orientation }: { readonly orientation: Orientation }) {
+  if (!hasCloudPublicConfig()) return null;
+  return <ConfiguredRailAccountButton orientation={orientation} />;
+}
 
 function RailButton({
   label,
@@ -222,6 +267,14 @@ export function AppRail({
         />
         <RailButton
           orientation={orientation}
+          label="Bots"
+          icon={<BotIcon />}
+          current={page === null && panel === "bots"}
+          panelShown={panelShown("bots")}
+          onClick={() => showPanel("bots")}
+        />
+        <RailButton
+          orientation={orientation}
           label="Agents"
           icon={<SquareTerminalIcon />}
           current={page === null && panel === "agents"}
@@ -235,14 +288,6 @@ export function AppRail({
           current={page === null && panel === "chats"}
           panelShown={panelShown("chats")}
           onClick={() => showPanel("chats")}
-        />
-        <RailButton
-          orientation={orientation}
-          label="Bots"
-          icon={<BotIcon />}
-          current={page === null && panel === "bots"}
-          panelShown={panelShown("bots")}
-          onClick={() => showPanel("bots")}
         />
         {pullRequestsSupported ? (
           <RailButton
@@ -259,6 +304,8 @@ export function AppRail({
             }
           />
         ) : null}
+      </div>
+      <div className="circe-rail__group circe-rail__group--end">
         <RailButton
           orientation={orientation}
           label="Machines"
@@ -274,37 +321,29 @@ export function AppRail({
           current={page === "usage"}
           link={<Link to="/usage" onClick={closeSheet} />}
         />
-      </div>
-      <div className="circe-rail__group circe-rail__group--end">
         <Menu>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <MenuTrigger
-                  render={<button type="button" className="circe-rail-new" aria-label="New" />}
-                />
-              }
-            >
-              <PlusIcon />
-            </TooltipTrigger>
-            <TooltipPopup side={orientation === "vertical" ? "right" : "bottom"}>New</TooltipPopup>
-          </Tooltip>
+          <MenuTrigger
+            render={
+              <button type="button" className="circe-rail-new" aria-label="New" title="New" />
+            }
+          >
+            <PlusIcon />
+          </MenuTrigger>
           <MenuPopup
             side={orientation === "vertical" ? "right" : "bottom"}
             align="end"
             className="min-w-52"
           >
-            {startChat !== null ? (
-              <MenuItem
-                onClick={() => {
-                  closeSheet();
-                  startChat();
-                }}
-              >
-                <MessageCircleIcon />
-                New chat
-              </MenuItem>
-            ) : null}
+            <MenuItem
+              disabled={startChat === null}
+              onClick={() => {
+                closeSheet();
+                startChat?.();
+              }}
+            >
+              <MessageCircleIcon />
+              New chat
+            </MenuItem>
             <MenuItem
               onClick={() => {
                 closeSheet();
@@ -336,6 +375,7 @@ export function AppRail({
           panelShown={panelShown("settings")}
           link={<Link to="/settings" />}
         />
+        <RailAccountButton orientation={orientation} />
       </div>
     </nav>
   );

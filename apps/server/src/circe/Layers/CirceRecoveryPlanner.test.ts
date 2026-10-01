@@ -2,7 +2,11 @@ import type { ComputerRecoveryInput } from "@circe/core/computerUse";
 import * as Schema from "effect/Schema";
 import { describe, expect, it } from "vite-plus/test";
 
-import { buildRecoveryPrompt, CirceRecoveryPlan } from "./CirceRecoveryPlanner.ts";
+import {
+  buildRecoveryPrompt,
+  CirceRecoveryPlan,
+  desktopPlanFailureReason,
+} from "./CirceRecoveryPlanner.ts";
 
 const input: ComputerRecoveryInput = {
   goal: "save the notes file",
@@ -54,5 +58,22 @@ describe("circe recovery planner", () => {
         steps: Array.from({ length: 5 }, () => ({ kind: "wait" as const })),
       }),
     ).toThrow();
+  });
+
+  it("reports the provider's own reason when desktop planning fails", () => {
+    const detail = [
+      "Codex CLI command failed: OpenAI Codex v0.159.2",
+      "user",
+      "Plan how to carry out a goal on a computer's desktop.",
+      "ERROR: Goal: echoed prompt text that is not the cause",
+      "warning: Code Mode is unavailable because code-mode host is disabled.",
+      "ERROR: You've hit your usage limit. Try again at 9:48 PM.",
+    ].join("\n");
+    expect(desktopPlanFailureReason("gpt-5.6-luna", detail)).toBe(
+      "the planning model gpt-5.6-luna failed: You've hit your usage limit. Try again at 9:48 PM.",
+    );
+    expect(desktopPlanFailureReason("gpt-5.6-luna", "Codex CLI command failed with code 1.")).toBe(
+      "the planning model gpt-5.6-luna failed",
+    );
   });
 });

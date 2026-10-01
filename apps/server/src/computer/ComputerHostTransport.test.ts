@@ -29,7 +29,7 @@ describe("ComputerHostTransport", () => {
       });
       try {
         transport.start();
-        await waitFor(() => transport.connected);
+        await waitFor(() => transport.connected && host.hellos.length > 0);
         expect(host.hellos[0]).toMatchObject({
           platform: "linux",
           capability: host.bootstrap.capability,

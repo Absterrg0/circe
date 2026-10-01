@@ -919,3 +919,89 @@ describe("computer use runner", () => {
     }),
   );
 });
+
+describe("visual candidates", () => {
+  const visualSurface: ComputerSurface = {
+    kind: "desktop",
+    title: "Canvas",
+    elements: [
+      {
+        id: "visual:text-3",
+        source: "visual",
+        role: "text",
+        name: "Send",
+        bounds: { x: 378, y: 274, width: 31, height: 17 },
+      },
+    ],
+  };
+
+  it("offers visual regions as click-only and never as key or text targets", () => {
+    const request = buildComputerStepRequest({
+      model: "m",
+      goal: "send it",
+      surface: visualSurface,
+    });
+    const element = request.questions.element as { criteria: Record<string, string> };
+    expect(element.criteria["visual:text-3"]).toContain("seen on screen, click only");
+    for (const action of ["type", "press"] as const) {
+      const step = composeComputerStep({
+        goal: 'type "hi"',
+        surface: visualSurface,
+        answers: selecting(
+          ["action", choice(action)],
+          ["element", choice("visual:text-3")],
+          ["type_text", choice("hi")],
+          ["press_key", choice("enter")],
+        ),
+      });
+      expect(step).toEqual({ kind: "refused", reason: "unsupported-target" });
+    }
+    expect(
+      composeComputerStep({
+        goal: "send it",
+        surface: visualSurface,
+        answers: selecting(["action", choice("click")], ["element", choice("visual:text-3")]),
+      }),
+    ).toEqual({ kind: "action", action: { kind: "click", elementId: "visual:text-3" } });
+  });
+
+  it.effect("looks closer once when the model cannot ground a step", () =>
+    Effect.gen(function* () {
+      let escalations = 0;
+      const offered: Array<ReadonlyArray<string>> = [];
+      const applied: Array<string> = [];
+      const result = yield* runComputerUse({
+        model: "m",
+        goal: "send it",
+        maxSteps: 1,
+        runtime: {
+          capture: () => Effect.succeed({ kind: "desktop", title: "Canvas", elements: [] }),
+          escalate: () =>
+            Effect.sync(() => {
+              escalations += 1;
+              return visualSurface;
+            }),
+          select: (request) =>
+            Effect.sync(() => {
+              const element = request.questions.element as
+                | { criteria: Record<string, string> }
+                | undefined;
+              offered.push(Object.keys(element?.criteria ?? {}));
+              return element === undefined
+                ? selecting(["action", choice("click")])
+                : selecting(["action", choice("click")], ["element", choice("visual:text-3")]);
+            }),
+          apply: (action) =>
+            Effect.sync(() => {
+              if (action.kind === "click") applied.push(action.elementId);
+              return true;
+            }),
+        },
+      });
+      expect(escalations).toBe(1);
+      expect(offered).toEqual([[], ["visual:text-3", "none"]]);
+      expect(applied).toEqual(["visual:text-3"]);
+      expect(result.status).toBe("budget-exhausted");
+    }),
+  );
+});

@@ -1,6 +1,6 @@
-# Release Checklist
+# Release checklist
 
-> For maintainers. Using T3 Code? See [docs/user](../user/).
+> For maintainers. Using Circe? See [docs/user](../user/).
 
 This repository currently exposes two manual coordinators. `Release` (`release.yml`) publishes
 `@absterrg0/circe` to npm before desktop artifacts and optional hosted deployments. `Circe core
@@ -79,6 +79,47 @@ Release checklist:
 4. After publication, confirm the release contains the verified asset set plus `SHA256SUMS`. Stable
    releases are latest; preview releases are prereleases and must remain non-latest and visibly
    marked unsigned.
+
+## Cua perception distribution
+
+Visual grounding needs the native SDK and signed perception catalog from the `Absterrg0/cua`
+fork, built with its publisher trust root. Keep the JavaScript SDK at `@trycua/cua-driver` 0.30.4
+while using compatible fork native packages. Stock native builds cannot use this distribution.
+The pinned distribution is `absterrg0-v0.30.4-1`, with perception 0.3.0 for Linux x64,
+Windows x64, and macOS arm64. Other architectures continue with native accessibility.
+
+To cut and ship a new distribution:
+
+1. Run the fork's **Distribution release** workflow (`distribution-release.yml`). Set
+   `sdk_version`, `release_tag`, and a strictly increasing `catalog_version`. Use the fork's
+   publisher trust root for both native builds and catalog signing.
+2. For each published target, copy the release's `cua-perception-<version>-<target>.catalog.json`
+   to `apps/desktop/resources/cua-perception/<target>/signed-catalog.json`. Beside it, write
+   `distribution.json` with the matching archive URL:
+
+   ```json
+   { "archiveUrl": "https://github.com/Absterrg0/cua/releases/download/<tag>/<archive>" }
+   ```
+
+   `<archive>` is the `.tar.gz` named in the signed catalog. Ship these two files only; the desktop
+   host downloads the archive on first use. Targets without a catalog keep native grounding only.
+
+3. Update `apps/desktop/package.json` optional dependencies for each published
+   `@trycua/cua-driver-<platform>` artifact. The workspace removes those SDK transitive edges
+   and reconnects them as optional peers so pnpm keeps `blockExoticSubdeps` enabled.
+   Update the fork versions in `third-party-licenses.config.json` as well. The native libraries
+   and release gate must trust the key that signed the catalog.
+4. Run `node scripts/check-cua-perception.ts --download` before releasing Circe.
+
+CI runs the static check for signed-catalog metadata, target identity, and the archive URL.
+The release preflight adds `--download`: it checks archive size and SHA-256, then audits files and
+nested source archives. It rejects the retired AGPL `icon_detect` weights, ONNX conversion, and
+Ultralytics source digests; prohibited names; copyleft SBOM licenses; and missing license texts,
+notices, or `metadata/sbom.spdx.json`. Cua verifies catalog signatures and trust during installation.
+
+Catalogs expire after 365 days. Refresh them in a Circe release before expiry, even if the model
+payload is unchanged. The signing key stays outside the repository: the fork Actions secret is
+`DISTRIBUTION_EXTENSION_SIGNING_KEY_PEM`, with the maintainer copy under `~/.config/absterrg0-cua/`.
 
 ## Headless Node release
 

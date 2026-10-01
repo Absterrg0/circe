@@ -518,8 +518,10 @@ button.circe-row:hover {
   border: 1px solid var(--circe-line);
   border-radius: 999px;
   padding: 0 11px;
+  background: transparent;
   color: var(--circe-text-muted);
   font-size: 12.5px;
+  font-family: inherit;
   cursor: pointer;
   transition:
     background-color var(--circe-duration-micro) var(--ease-circe),
@@ -536,9 +538,21 @@ button.circe-row:hover {
   color: var(--circe-text);
 }
 
-.circe-chip:focus-within {
+.circe-chip:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.circe-chip:focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 1px;
+}
+
+.circe-select__label {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .circe-select {
@@ -548,6 +562,7 @@ button.circe-row:hover {
   border: 0;
   background: transparent;
   color: inherit;
+  color-scheme: light dark;
   font: inherit;
   text-overflow: ellipsis;
   outline: none;
@@ -819,6 +834,17 @@ button.circe-row:hover {
 /* Task rows: status, what and where, which agent, then how long. */
 .circe-task-row .circe-tag {
   display: none;
+}
+
+/* A device's agents as an overlapping mini stack; unavailable agents dim. */
+.circe-device-agents {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+}
+
+.circe-device-agents > * + * {
+  margin-left: -6px;
 }
 
 .circe-task-row__status {

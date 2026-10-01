@@ -49,6 +49,18 @@ jobs:
           fetch-depth: 1
           fetch-tags: false
 
+      - name: Setup Node for the perception audit
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      # Each bundled catalog names an archive the app installs on first use.
+      # Download every one, check it against its signed catalog, and fail on
+      # the retired AGPL detector, prohibited names, copyleft licenses, or
+      # missing notices and SBOM.
+      - name: Audit the Cua Perception artifacts the app installs
+        run: node scripts/check-cua-perception.ts --download
+
       - id: identity
         name: Verify main, package versions, and clean release identity
         shell: bash

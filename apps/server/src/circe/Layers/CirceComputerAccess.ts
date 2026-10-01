@@ -172,15 +172,31 @@ export const CirceComputerAccessLive = Layer.effect(
     const stopIdOf = (request: CirceComputerRequest) =>
       request.cancelId ?? `computer-access:${request.id}`;
 
-    const unavailableReason = Effect.gen(function* () {
-      if (!controllable) return "This node has no desktop to control.";
+    /**
+     * Whether the computer can be used now (`reason` says why not), and what
+     * an otherwise usable computer cannot do. Screen reading is a limitation,
+     * not a blocker: accessible apps keep working without it.
+     */
+    const availability = Effect.gen(function* () {
+      if (!controllable)
+        return { reason: "This node has no desktop to control.", limitation: undefined };
       const status = yield* computer.status;
-      if (status.available) return null;
-      return (
-        status.host?.reason ??
-        "Computer use needs the Circe desktop app running on this node, with its desktop session connected."
-      );
+      if (!status.available)
+        return {
+          reason:
+            status.host?.reason ??
+            "Computer use needs the Circe desktop app running on this node, with its desktop session connected.",
+          limitation: undefined,
+        };
+      return {
+        reason: null,
+        limitation:
+          status.host?.capabilities.visualGrounding === false
+            ? "Circe can't read apps that draw their own controls on this computer, so it works only in apps that expose accessibility controls."
+            : undefined,
+      };
     });
+    const unavailableReason = availability.pipe(Effect.map((current) => current.reason));
 
     const cleanGoal = (goal: string) => goal.replace(/\s+/gu, " ").trim().slice(0, GOAL_MAX_CHARS);
 
@@ -216,9 +232,20 @@ export const CirceComputerAccessLive = Layer.effect(
           CirceComputerAccessState,
         ] => {
           if (state.active !== null) {
-            // The agent run that holds the computer keeps using its mission.
+            // The agent run that holds the computer keeps using its mission
+            // for the approved goal. A changed goal needs its own approval,
+            // so it waits for the current one to finish instead of spending
+            // the existing grant on different work.
             if (requester.kind === "agent" && sameAsker(state.active.requester, requester)) {
-              return [{ kind: "request", request: baseRequest(state.active) }, state];
+              return state.active.goal === goal
+                ? [{ kind: "request", request: baseRequest(state.active) }, state]
+                : [
+                    {
+                      kind: "refused",
+                      reason: `you hold the computer for "${state.active.goal}"; finish that first`,
+                    },
+                    state,
+                  ];
             }
             return [
               {
@@ -664,11 +691,12 @@ export const CirceComputerAccessLive = Layer.effect(
 
     const toView = (
       state: CirceComputerAccessState,
-      reason: string | null,
+      current: { readonly reason: string | null; readonly limitation: string | undefined },
     ): CirceComputerAccessView => ({
       controllable,
-      available: reason === null,
-      ...(reason === null ? {} : { reason }),
+      available: current.reason === null,
+      ...(current.reason === null ? {} : { reason: current.reason }),
+      ...(current.limitation === undefined ? {} : { limitation: current.limitation }),
       pending: state.pending === null ? null : requestView(state.pending),
       active:
         state.active === null
@@ -705,8 +733,8 @@ export const CirceComputerAccessLive = Layer.effect(
         ),
       ).pipe(
         Stream.mapEffect(() =>
-          Effect.all([SubscriptionRef.get(ref), unavailableReason]).pipe(
-            Effect.map(([state, reason]) => toView(state, reason)),
+          Effect.all([SubscriptionRef.get(ref), availability]).pipe(
+            Effect.map(([state, current]) => toView(state, current)),
           ),
         ),
       ),

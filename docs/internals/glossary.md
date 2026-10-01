@@ -1,6 +1,6 @@
 # Glossary
 
-Terms whose meaning matters across T3 Code. Architecture and lifecycle constraints belong in the
+Terms whose meaning matters across Circe. Architecture and lifecycle constraints belong in the
 [overview](./overview.md), not in these definitions.
 
 ## Workspace and conversation
@@ -116,7 +116,41 @@ The client-runtime catalog and lifecycle owner for paired environments. `Environ
 
 #### Desktop use
 
-The in-house capability that lets a node capture its own display and inject pointer and keyboard events. A node drives only the machine it runs on; there is no cloud or virtual-desktop execution path. Agents reach it through the `t3-code` MCP toolkit and controllers reach it through the `desktopUse.*` WebSocket RPCs. See [desktop-use.md](./desktop-use.md).
+Circe's capability for observing and controlling the target node's own desktop through Cua Driver.
+Circe goals and provider `computer_*` tools share the node's computer access owner. See
+[desktop-use.md](./desktop-use.md).
+
+#### Cua Driver
+
+The in-process SDK that owns desktop observations and input in Circe's Electron host. It is the
+only computer-use execution path.
+
+#### Grounded observation
+
+A read of one exact window that binds offered control ids to native element tokens or
+capture-bound visual points. A provider's `controlId` is valid only for its latest observation;
+any action retires it.
+
+#### Accessibility snapshot
+
+The native control tree from a window observation. Its `snapshot_id` scopes the element tokens
+and is distinct from the screen capture's `capture_id`.
+
+#### Capture-bound click
+
+A click at a visual region's center authorized by the exact screen capture that produced the
+region. A capture authorizes at most one click.
+
+#### Visual grounding
+
+Reading OCR text and labeled controls from a captured window when accessibility cannot ground a
+step. Visual candidates support clicks only. It requires capture-bound clicks and a healthy
+perception extension.
+
+#### Perception extension
+
+Cua's screen-parsing component, downloaded from a signed distribution catalog and installed by
+the driver in Circe's own Cua home. Accessible apps remain usable without it.
 
 #### Multi-node catalog
 

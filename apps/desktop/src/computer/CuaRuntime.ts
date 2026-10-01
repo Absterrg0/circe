@@ -41,10 +41,32 @@ export interface CuaRuntimeMetadata {
   readonly embedded: boolean;
 }
 
+/**
+ * What the loaded driver advertises, read once from its own tool manifest.
+ * Capabilities come from this, not from the driver version: a stock build
+ * and a perception-capable build of the same version differ here.
+ */
+export interface CuaToolManifest {
+  readonly tools: ReadonlySet<string>;
+  /** Tools whose schema accepts the driver's `session` label. */
+  readonly sessionAware: ReadonlySet<string>;
+  /** `click` accepts a `capture_id` that binds the point to one capture. */
+  readonly captureBoundClick: boolean;
+}
+
 export interface CuaRuntimeOptions {
   /** Test seam: replace the dynamic import of `@trycua/cua-driver`. */
   readonly load?: () => Promise<unknown>;
   readonly requestTimeoutMs?: number;
+  /**
+   * Driver state home (`CUA_DRIVER_RS_HOME`). Circe keeps its own so its
+   * extension store and publisher trust never mix with a separate Cua install.
+   */
+  readonly home?: string;
+  /** Signed perception catalog the driver's `install_extension` reads. */
+  readonly perceptionCatalog?: string;
+  /** Test seam for the process environment the driver reads. */
+  readonly environment?: NodeJS.ProcessEnv;
 }
 
 export class CuaRuntimeUnavailableError extends Error {
@@ -74,6 +96,7 @@ const withTimeout = (signal: AbortSignal, timeoutMs: number): AbortSignal =>
   linkSignals([signal, AbortSignal.timeout(timeoutMs)]);
 
 export class CuaRuntime {
+  private closed = false;
   private driver: CuaDriverLike | undefined;
   private starting: Promise<CuaDriverLike> | undefined;
   private runState: CuaRuntimeState = "stopped";
@@ -81,11 +104,22 @@ export class CuaRuntime {
   private readonly inFlight = new Set<AbortController>();
   private readonly requestTimeoutMs: number;
   private readonly load: () => Promise<unknown>;
+  private readonly home: string | undefined;
+  private readonly catalog: string | undefined;
+  private readonly environment: NodeJS.ProcessEnv;
+  private manifest: Promise<CuaToolManifest> | undefined;
 
   constructor(options: CuaRuntimeOptions = {}) {
     this.requestTimeoutMs = options.requestTimeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS;
     this.load =
       options.load ?? (() => import("@trycua/cua-driver").then((module) => module as unknown));
+    this.home = options.home;
+    this.catalog = options.perceptionCatalog;
+    this.environment = options.environment ?? process.env;
+  }
+
+  get perceptionCatalog(): string | undefined {
+    return this.catalog;
   }
 
   get state(): CuaRuntimeState {
@@ -101,27 +135,43 @@ export class CuaRuntime {
   }
 
   /**
-   * Tool names whose schema accepts the driver's `session` label, read from
-   * the driver's own manifest. The host injects the mission label only into
-   * these calls, so unlabeled calls cannot outlive the named session. A
-   * manifest that cannot be decoded is an error, not an empty set: the caller
-   * falls back to its pinned list.
+   * The driver's advertised tools, read once per runtime. The host injects the
+   * mission label only into session-aware calls, so unlabeled calls cannot
+   * outlive the named session. A manifest that cannot be decoded is an error,
+   * not an empty manifest; a failed read is retried on the next request.
    */
-  async sessionAwareToolNames(): Promise<ReadonlySet<string>> {
-    const driver = await this.ensureStarted();
-    const manifest = await driver.listToolsJson();
-    const decoded = decodeDriverToolManifest(manifest);
-    if (decoded._tag === "None")
-      throw new CuaRuntimeUnavailableError("The driver tool manifest could not be decoded.");
-    return new Set(
-      decoded.value.tools.flatMap((tool) =>
-        tool.inputSchema?.properties?.session === undefined ? [] : [tool.name],
-      ),
-    );
+  toolManifest(): Promise<CuaToolManifest> {
+    if (this.closed)
+      return Promise.reject(new CuaRuntimeUnavailableError("Cua runtime is shut down."));
+    if (this.manifest !== undefined) return this.manifest;
+    const read = (async () => {
+      const driver = await this.ensureStarted();
+      const decoded = decodeDriverToolManifest(await driver.listToolsJson());
+      if (decoded._tag === "None")
+        throw new CuaRuntimeUnavailableError("The driver tool manifest could not be decoded.");
+      const tools = decoded.value.tools;
+      const properties = (name: string) =>
+        tools.find((tool) => tool.name === name)?.inputSchema?.properties;
+      return {
+        tools: new Set(tools.map((tool) => tool.name)),
+        sessionAware: new Set(
+          tools.flatMap((tool) =>
+            tool.inputSchema?.properties?.session === undefined ? [] : [tool.name],
+          ),
+        ),
+        captureBoundClick: properties("click")?.capture_id !== undefined,
+      } satisfies CuaToolManifest;
+    })();
+    this.manifest = read;
+    read.catch(() => {
+      if (this.manifest === read) this.manifest = undefined;
+    });
+    return read;
   }
 
   async metadata(): Promise<CuaRuntimeMetadata> {
     const driver = await this.ensureStarted();
+    this.requireOpen();
     const metadata = await driver.metadata();
     return {
       driverVersion: String(metadata.driverVersion),
@@ -142,6 +192,7 @@ export class CuaRuntime {
     options: { readonly signal?: AbortSignal | undefined } = {},
   ): Promise<unknown> {
     const driver = await this.ensureStarted();
+    this.requireOpen();
     const controller = new AbortController();
     this.inFlight.add(controller);
     const signal = withTimeout(
@@ -164,6 +215,9 @@ export class CuaRuntime {
   }
 
   async shutdown(): Promise<void> {
+    this.closed = true;
+    this.interrupt();
+    this.manifest = undefined;
     const driver = this.driver;
     this.driver = undefined;
     this.starting = undefined;
@@ -180,6 +234,7 @@ export class CuaRuntime {
   }
 
   private async ensureStarted(): Promise<CuaDriverLike> {
+    this.requireOpen();
     if (this.driver && this.driver.isAvailable()) return this.driver;
     if (this.starting) return this.starting;
     // One startup at a time, published before anything awaits: concurrent
@@ -188,17 +243,37 @@ export class CuaRuntime {
     // driver ever lives.
     const stale = this.driver;
     this.driver = undefined;
+    this.manifest = undefined;
     this.runState = "starting";
     this.failureReason = undefined;
     const start = (async () => {
       try {
         if (stale) await releaseDriver(stale);
+        this.requireOpen();
+        // The driver reads these per call from the process environment; they
+        // are set before the runtime exists so no call can see another home.
+        if (this.home !== undefined) this.environment.CUA_DRIVER_RS_HOME = this.home;
+        if (this.catalog !== undefined)
+          this.environment.CUA_DRIVER_PERCEPTION_CATALOG = this.catalog;
+        // DISPLAY also exists on Wayland desktops for XWayland clients. CUA's
+        // native backend is opt-in; without it native apps launch but vanish
+        // from discovery. An explicit override remains the user's choice.
+        if (
+          this.environment.WAYLAND_DISPLAY &&
+          this.environment.CUA_DRIVER_RS_ENABLE_WAYLAND === undefined
+        )
+          this.environment.CUA_DRIVER_RS_ENABLE_WAYLAND = "1";
         const module = (await this.load()) as CuaDriverModule;
+        this.requireOpen();
         const driver = module.CuaDriver.create(undefined);
         this.driver = driver;
         this.runState = "ready";
         return driver;
       } catch (error) {
+        if (this.closed) {
+          this.runState = "stopped";
+          throw new CuaRuntimeUnavailableError("Cua runtime is shut down.", { cause: error });
+        }
         this.runState = "failed";
         this.failureReason = error instanceof Error ? error.message : String(error);
         throw new CuaRuntimeUnavailableError(`Cua runtime failed to start: ${this.failureReason}`, {
@@ -210,6 +285,10 @@ export class CuaRuntime {
     })();
     this.starting = start;
     return start;
+  }
+
+  private requireOpen(): void {
+    if (this.closed) throw new CuaRuntimeUnavailableError("Cua runtime is shut down.");
   }
 
   /**

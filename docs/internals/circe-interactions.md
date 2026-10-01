@@ -146,8 +146,11 @@ never decide what an answer resumes. Device effects are owned by an
 ## Live voice admission
 
 - One committed utterance per user turn. The provider's
-  `session.delegation.created` and the silence endpoint both call
+  `session.delegation.created` admits ordinary requests. Silence admits only
+  replies owed to the host's typed pending question or confirmation. Both call
   `commitUtterance`, which stamps a monotonic revision and a stable host id.
+  GPT Live owns greetings and small talk; their transcripts never trigger
+  backend work just because the user stopped speaking.
 - The turn is identified by the provider's audio item (`start_ms`). A delta
   that revises the same item, including a corrected transcript, does not
   reopen admission and replaces the item's text instead of appending to it.

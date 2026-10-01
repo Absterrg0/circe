@@ -206,6 +206,7 @@ it.effect(
             name: CIRCE_CONVERSATIONS_PROJECT_TITLE,
             about: "General questions and requests that are not about a coding project.",
             general: true,
+            kind: "general",
           },
         ]);
         assert.deepStrictEqual(empty.threads, []);
