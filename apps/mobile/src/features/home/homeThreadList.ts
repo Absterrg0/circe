@@ -1,18 +1,18 @@
-import { buildProjectGroups } from "@t3tools/client-runtime/state/project-grouping";
+import { buildProjectGroups } from "@circe/client/state/project-grouping";
 import type {
   EnvironmentProject,
   EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import {
   getThreadSortTimestamp,
   toSortableTimestamp,
-} from "@t3tools/client-runtime/state/thread-sort";
+} from "@circe/client/state/thread-sort";
 import type {
   EnvironmentId,
   ScopedProjectRef,
   SidebarProjectGroupingMode,
   SidebarProjectSortOrder,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Arr from "effect/Array";
 import * as Order from "effect/Order";
 

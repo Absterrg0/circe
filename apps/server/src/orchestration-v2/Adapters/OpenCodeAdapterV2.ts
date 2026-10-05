@@ -9,9 +9,9 @@ import type {
   Todo as OpenCodeTodo,
   ToolPart,
 } from "@opencode-ai/sdk/v2";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
-import { getModelSelectionStringOptionValue } from "@t3tools/shared/model";
-import { causeErrorTag } from "@t3tools/shared/observability";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
+import { getModelSelectionStringOptionValue } from "@circe/shared/model";
+import { causeErrorTag } from "@circe/shared/observability";
 import {
   defaultInstanceIdForDriver,
   type ModelSelection,
@@ -37,7 +37,7 @@ import {
   type ProviderSessionId,
   type RuntimeRequestId,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Cause from "effect/Cause";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";

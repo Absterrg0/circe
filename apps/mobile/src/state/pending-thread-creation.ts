@@ -1,9 +1,9 @@
 import {
   presentThreadShell,
   type EnvironmentThreadShell,
-} from "@t3tools/client-runtime/state/shell";
+} from "@circe/client/state/shell";
 import type { LocalThreadMessage } from "../lib/threadActivity";
-import { DEFAULT_PROVIDER_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "@t3tools/contracts";
+import { DEFAULT_PROVIDER_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "@circe/contracts";
 import { Atom } from "effect/unstable/reactivity";
 import * as DateTime from "effect/DateTime";
 

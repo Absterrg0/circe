@@ -1,4 +1,4 @@
-import { type EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
+import { type EnvironmentConnectionPhase } from "@circe/client/connection";
 
 export type ThreadContentPresentation =
   | { readonly kind: "ready" }

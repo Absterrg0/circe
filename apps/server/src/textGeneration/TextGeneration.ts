@@ -6,8 +6,8 @@ import type {
   ChatAttachment,
   ModelSelection,
   ProviderInstanceId,
-} from "@t3tools/contracts";
-import { TextGenerationError } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { TextGenerationError } from "@circe/contracts";
 
 import * as ProviderInstanceRegistry from "../provider/Services/ProviderInstanceRegistry.ts";
 import type { ProviderInstance } from "../provider/ProviderDriver.ts";

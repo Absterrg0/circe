@@ -1,9 +1,9 @@
-import { Connection } from "@t3tools/client-runtime/connection";
-import { ShellSnapshotLoader } from "@t3tools/client-runtime/state/shell";
+import { Connection } from "@circe/client/connection";
+import { ShellSnapshotLoader } from "@circe/client/state/shell";
 import {
   boundedThreadSnapshotLoaderLayer,
   ThreadHistoryController,
-} from "@t3tools/client-runtime/state/threads";
+} from "@circe/client/state/threads";
 import * as Layer from "effect/Layer";
 import { Atom } from "effect/unstable/reactivity";
 

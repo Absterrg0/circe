@@ -1,12 +1,12 @@
-import { runRanAfter } from "@t3tools/shared/orchestrationV2ThreadError";
-import { resolveProjectSettings } from "@t3tools/shared/projectSettings";
+import { runRanAfter } from "@circe/shared/orchestrationV2ThreadError";
+import { resolveProjectSettings } from "@circe/shared/projectSettings";
 import {
   CommandId,
   MessageId,
   type OrchestrationV2Run,
   type RunId,
   type ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import type { ProjectionRuntimeRecoveryState } from "./ProjectionStore.ts";
 

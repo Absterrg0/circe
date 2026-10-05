@@ -1,4 +1,4 @@
-import type { PullRequestAction } from "@t3tools/contracts";
+import type { PullRequestAction } from "@circe/contracts";
 import { Effect } from "effect";
 import { AtomRegistry } from "effect/unstable/reactivity";
 import { appAtomRegistry } from "~/rpc/atomRegistry";

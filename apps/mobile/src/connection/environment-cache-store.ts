@@ -3,8 +3,8 @@ import {
   StoredOrchestrationShellSnapshot,
   StoredOrchestrationThreadSnapshot,
   Persistence,
-} from "@t3tools/client-runtime/platform";
-import { type EnvironmentId, ServerConfig, VcsListRefsResult } from "@t3tools/contracts";
+} from "@circe/client/platform";
+import { type EnvironmentId, ServerConfig, VcsListRefsResult } from "@circe/contracts";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";

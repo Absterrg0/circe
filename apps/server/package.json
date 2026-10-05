@@ -1,5 +1,5 @@
 {
-  "name": "t3",
+  "name": "@absterrg0/circe",
   "version": "0.0.45",
   "license": "MIT",
   "repository": {
@@ -50,11 +50,11 @@
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",
-    "@t3tools/contracts": "workspace:*",
-    "@t3tools/shared": "workspace:*",
-    "@t3tools/ssh": "workspace:*",
-    "@t3tools/tailscale": "workspace:*",
-    "@t3tools/web": "workspace:*",
+    "@circe/contracts": "workspace:*",
+    "@circe/shared": "workspace:*",
+    "@circe/ssh": "workspace:*",
+    "@circe/tailscale": "workspace:*",
+    "@circe/web": "workspace:*",
     "@types/node": "catalog:",
     "@types/proper-lockfile": "^4.1.4",
     "@types/yauzl": "^3.4.0",

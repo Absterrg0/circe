@@ -18,9 +18,9 @@ import {
   TrimmedNonEmptyString,
   type SourceControlRepositoryVisibility,
   type VcsError,
-} from "@t3tools/contracts";
-import { normalizeGitRemoteUrl } from "@t3tools/shared/git";
-import { decodeJsonResult } from "@t3tools/shared/schemaJson";
+} from "@circe/contracts";
+import { normalizeGitRemoteUrl } from "@circe/shared/git";
+import { decodeJsonResult } from "@circe/shared/schemaJson";
 
 import * as VcsProcess from "../vcs/VcsProcess.ts";
 import * as GitHubGraphQlBudget from "./githubGraphQlBudget.ts";

@@ -6,7 +6,7 @@ import {
   ProjectId,
   ScheduledTaskId,
   type ScheduledTask,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import {
   scheduledTaskDefaultModel,
   createDraft,

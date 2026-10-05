@@ -2,8 +2,8 @@ import {
   isLocalLoopbackHost,
   isPrivateNetworkHost,
   isTailnetHost,
-} from "@t3tools/shared/hostClassification";
-import type { DesktopSshEnvironmentTarget } from "@t3tools/contracts";
+} from "@circe/shared/hostClassification";
+import type { DesktopSshEnvironmentTarget } from "@circe/contracts";
 import * as Option from "effect/Option";
 
 import {

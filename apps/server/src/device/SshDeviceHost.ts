@@ -5,10 +5,10 @@ import {
   DeviceToolVersions,
   deviceToolInstallMessage,
   type SshDeviceHostConfig,
-} from "@t3tools/contracts";
-import { runSshCommand, baseSshArgs, resolveSshCommand } from "@t3tools/ssh/command";
-import * as NetService from "@t3tools/shared/Net";
-import { waitForHttpReady } from "@t3tools/shared/httpReadiness";
+} from "@circe/contracts";
+import { runSshCommand, baseSshArgs, resolveSshCommand } from "@circe/ssh/command";
+import * as NetService from "@circe/shared/Net";
+import { waitForHttpReady } from "@circe/shared/httpReadiness";
 import * as Exit from "effect/Exit";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";

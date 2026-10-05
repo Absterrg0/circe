@@ -1,4 +1,4 @@
-import { createAttachmentEnvironmentAtoms } from "@t3tools/client-runtime/state/attachments";
+import { createAttachmentEnvironmentAtoms } from "@circe/client/state/attachments";
 
 import { connectionAtomRuntime } from "../connection/runtime";
 

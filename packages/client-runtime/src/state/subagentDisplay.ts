@@ -3,8 +3,8 @@ import type {
   OrchestrationV2ThreadShell,
   OrchestrationProjectShell,
   ServerProvider,
-} from "@t3tools/contracts";
-import { formatModelSlugName, resolveSelectableModel } from "@t3tools/shared/model";
+} from "@circe/contracts";
+import { formatModelSlugName, resolveSelectableModel } from "@circe/shared/model";
 import { fileBasename } from "../markdownLinks.ts";
 import { isTerminalSubagentStatus } from "./subagentRuntime.ts";
 

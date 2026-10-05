@@ -12,7 +12,7 @@ import type {
   UsageCostSource,
   UsageModelPriceOverride,
   UsageTokenTotals,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import type { UsageRecord, UsageSpeed } from "./usageTranscripts.ts";
 

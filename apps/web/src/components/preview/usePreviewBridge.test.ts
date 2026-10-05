@@ -1,4 +1,4 @@
-import type { DesktopPreviewTabState } from "@t3tools/contracts";
+import type { DesktopPreviewTabState } from "@circe/contracts";
 import { describe, expect, it } from "vite-plus/test";
 
 import { projectDesktopState } from "./usePreviewBridge";

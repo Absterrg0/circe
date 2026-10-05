@@ -1,8 +1,8 @@
 import {
   formatProviderSubagentStatus,
   type ProviderSubagentStatus,
-} from "@t3tools/client-runtime/state/thread-execution";
-import { isOrchestrationV2WorkActive } from "@t3tools/contracts";
+} from "@circe/client/state/thread-execution";
+import { isOrchestrationV2WorkActive } from "@circe/contracts";
 import { useEffect, useState } from "react";
 import { View } from "react-native";
 

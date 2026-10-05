@@ -1,5 +1,5 @@
-import type { EnvironmentConnectionPhase } from "@t3tools/client-runtime/connection";
-import type { AssetUrlState as SharedAssetUrlState } from "@t3tools/client-runtime/state/assets";
+import type { EnvironmentConnectionPhase } from "@circe/client/connection";
+import type { AssetUrlState as SharedAssetUrlState } from "@circe/client/state/assets";
 
 export type AssetUrlFailureReason = "disconnected" | "failed";
 

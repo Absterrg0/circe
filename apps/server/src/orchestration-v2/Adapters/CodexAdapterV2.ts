@@ -27,12 +27,12 @@ import {
   isOrchestrationV2WorkActive,
   ProviderDriverKind,
   type ProviderSetupError,
-} from "@t3tools/contracts";
-import { SKILL_MENTION_PATTERN } from "@t3tools/shared/composerInlineTokens";
-import { HostProcessEnvironment } from "@t3tools/shared/hostProcess";
-import { dynamicToolTitle } from "@t3tools/shared/toolActivity";
-import { getModelSelectionStringOptionValue, modelSelectionsEqual } from "@t3tools/shared/model";
-import { resolveSpawnCommand } from "@t3tools/shared/shell";
+} from "@circe/contracts";
+import { SKILL_MENTION_PATTERN } from "@circe/shared/composerInlineTokens";
+import { HostProcessEnvironment } from "@circe/shared/hostProcess";
+import { dynamicToolTitle } from "@circe/shared/toolActivity";
+import { getModelSelectionStringOptionValue, modelSelectionsEqual } from "@circe/shared/model";
+import { resolveSpawnCommand } from "@circe/shared/shell";
 import type {
   ChatAttachment,
   OrchestrationV2AppThread,
@@ -60,7 +60,7 @@ import type {
   RuntimeMode,
   RuntimeRequestId,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 import * as CodexClient from "effect-codex-app-server/client";
 import * as CodexErrors from "effect-codex-app-server/errors";
 import * as CodexSchema from "effect-codex-app-server/schema";

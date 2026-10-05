@@ -16,8 +16,8 @@ import type {
   PullRequestReviewCapabilities,
   PullRequestReviewerCapabilities,
   SourceControlProviderKind,
-} from "@t3tools/contracts";
-import { PullRequestOperationError } from "@t3tools/contracts";
+} from "@circe/contracts";
+import { PullRequestOperationError } from "@circe/contracts";
 
 import * as ProjectService from "../project/ProjectService.ts";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";

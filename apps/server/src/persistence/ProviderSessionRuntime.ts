@@ -15,7 +15,7 @@ import {
   ProviderInstanceId,
   RuntimeMode,
   ThreadId,
-} from "@t3tools/contracts";
+} from "@circe/contracts";
 
 import {
   PersistenceDecodeError,
