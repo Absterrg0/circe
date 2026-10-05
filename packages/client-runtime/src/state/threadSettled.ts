@@ -335,6 +335,36 @@ export type CustomSnoozeInput =
       readonly unit: "minutes" | "hours" | "days";
     };
 
+type CustomSnoozeDateInput = Extract<CustomSnoozeInput, { readonly mode: "date" }>;
+
+/**
+ * Parse a local calendar input, rejecting rolled-over dates and nonexistent
+ * local times during DST changes.
+ */
+function parseCustomSnoozeDate(input: Pick<CustomSnoozeDateInput, "date" | "time">): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !/^\d{2}:\d{2}$/.test(input.time)) return null;
+  const wake = new Date(`${input.date}T${input.time}:00`);
+  if (localSnoozeDate(wake) !== input.date || localSnoozeTime(wake) !== input.time) return null;
+  return wake;
+}
+
+/**
+ * Why a calendar-time custom snooze did not resolve, for the dialog's message.
+ * "invalid" means the date or time does not exist in this zone (malformed
+ * input or a DST gap); "past" means a real local time that has already
+ * started, which is what picking the minute showing on the clock produces:
+ * the control picks minutes, the resolver compares milliseconds. Null when
+ * the input resolves.
+ */
+export function customSnoozeDateError(
+  input: Pick<CustomSnoozeDateInput, "date" | "time">,
+  now: Date,
+): "invalid" | "past" | null {
+  const wake = parseCustomSnoozeDate(input);
+  if (wake === null) return "invalid";
+  return wake.getTime() <= now.getTime() ? "past" : null;
+}
+
 /** Resolve local calendar input or elapsed time, rejecting past and invalid dates. */
 export function resolveCustomSnooze(input: CustomSnoozeInput, now: Date): string | null {
   let wake: Date;
@@ -344,10 +374,9 @@ export function resolveCustomSnooze(input: CustomSnoozeInput, now: Date): string
     const unitMs = { minutes: 60_000, hours: HOUR_MS, days: 24 * HOUR_MS }[input.unit];
     wake = new Date(now.getTime() + amount * unitMs);
   } else {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(input.date) || !/^\d{2}:\d{2}$/.test(input.time)) return null;
-    wake = new Date(`${input.date}T${input.time}:00`);
-    // Reject rolled-over dates and nonexistent local times during DST changes.
-    if (localSnoozeDate(wake) !== input.date || localSnoozeTime(wake) !== input.time) return null;
+    const parsed = parseCustomSnoozeDate(input);
+    if (parsed === null) return null;
+    wake = parsed;
   }
   return Number.isFinite(wake.getTime()) && wake.getTime() > now.getTime()
     ? wake.toISOString()

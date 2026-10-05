@@ -2,6 +2,7 @@ import { useEffect, useId, useState } from "react";
 import { Tabs } from "@base-ui/react/tabs";
 import { create } from "zustand";
 import {
+  customSnoozeDateError,
   localSnoozeDate,
   localSnoozeTime,
   resolveCustomSnooze,
@@ -77,13 +78,16 @@ function CustomSnoozeDialog() {
           className="flex min-h-0 flex-col"
           onSubmit={(event) => {
             event.preventDefault();
-            const snoozedUntil = resolveCustomSnooze(input, new Date());
+            const now = new Date();
+            const snoozedUntil = resolveCustomSnooze(input, now);
             if (!snoozedUntil) {
-              setError(
-                mode === "date"
-                  ? "Choose a valid date and time in the future."
-                  : "Enter a positive duration.",
-              );
+              if (mode === "duration") {
+                setError("Enter a positive duration.");
+              } else if (input.mode === "date" && customSnoozeDateError(input, now) === "past") {
+                setError("That time has already passed. Choose a later time.");
+              } else {
+                setError("Choose a valid date and time in the future.");
+              }
               return;
             }
             finish({ snoozedUntil });
