@@ -12,7 +12,7 @@ You need accounts you control. Nothing here reuses T3 infrastructure.
 
 - Cloudflare account with an API token that can manage Workers, Hyperdrive, Queues, Tunnels, DNS zones, and custom domains. Record the account ID.
 - Two DNS zones in that account, usually one for the relay API and one for managed tunnel endpoints. They can be the same zone.
-- PlanetScale organization with an API token ID and token that can create databases, branches, and roles.
+- Neon account with an API key that can create projects and branches. The Free plan works for a lightly used relay.
 - Axiom organization and token only if you want trace storage. Without them the stack still deploys but you get no Axiom datasets or ingest tokens.
 - Apple Developer APNs key only if you want iOS push. Set `APNS_ENABLED=false` for an Android-only relay and skip the rest of the APNs values.
 
@@ -58,7 +58,7 @@ APNS_PRIVATE_KEY=...
 FCM_SERVICE_ACCOUNT={...}
 ```
 
-`RELAY_DOMAIN` overrides the derived `relay.<RELAY_API_ZONE_NAME>` hostname. Leave it unset unless you need a fixed name. `FCM_SERVICE_ACCOUNT` is the Firebase service-account JSON and stays out of app builds. Account-level Cloudflare, PlanetScale, and Axiom credentials come from the process environment or your CI environment, not from this file.
+`RELAY_DOMAIN` overrides the derived `relay.<RELAY_API_ZONE_NAME>` hostname. Leave it unset unless you need a fixed name. `FCM_SERVICE_ACCOUNT` is the Firebase service-account JSON and stays out of app builds. Account-level Cloudflare, Neon, and Axiom credentials come from the process environment or your CI environment, not from this file. Set `NEON_API_KEY` in the process environment or authenticate Neon through Alchemy locally. For GitHub Actions, store it as the `NEON_API_KEY` secret in the `production` environment.
 
 ## Deploy
 
@@ -74,7 +74,7 @@ The deploy writes the relay URL and public tracing configuration back to the rep
 vp run --filter @circe/relay deploy -- --stage "$USER" --env-file .env.local
 ```
 
-Personal stages reuse the production zones and create an isolated PlanetScale branch. Never deploy a personal stage as `prod`.
+Personal stages reuse the production zones and create an isolated Neon branch. Never deploy a personal stage as `prod`.
 
 ## Point builds at the deployment
 

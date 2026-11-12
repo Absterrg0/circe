@@ -376,7 +376,9 @@ export const ApiLive = Api.make(
         ),
     );
 
-    yield* Cloudflare.Workers.cron("*/5 * * * *", () =>
+    // Neon scales to zero after 5 idle minutes. A tighter schedule keeps the compute awake all
+    // month and exhausts the free plan's 100 CU-hours.
+    yield* Cloudflare.Workers.cron("*/15 * * * *", () =>
       DpopProofs.DpopProofReplay.pipe(
         Effect.flatMap((dpopProofs) => dpopProofs.pruneExpired),
         // Close expired cloud voice reservations on the server's own timer, so

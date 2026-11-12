@@ -102,8 +102,8 @@ file from the relay directory. Runtime secrets include Clerk, APNs, and optional
 the configured API and tunnel DNS zones as retained Cloudflare resources. Personal stages reference
 the production-owned zones.
 
-The `prod` Alchemy stage owns the retained PlanetScale database for your deployment. Every other stage references that database and provisions an isolated
-PlanetScale branch and runtime role for local development, so deploy `prod` before creating
+The `prod` Alchemy stage owns the retained Neon database for your deployment. Every other stage references that database and provisions an isolated
+Neon branch for local development, so deploy `prod` before creating
 developer stages:
 
 ```sh
@@ -135,14 +135,11 @@ deploy personal non-production stages locally with any stage name other than `pr
 The repository must define these Actions variables shared by relay deployments:
 
 - `CLOUDFLARE_ACCOUNT_ID`
-- `PLANETSCALE_ORGANIZATION`
 - `AXIOM_ORG_ID`
 
 The repository must define these Actions secrets shared by relay deployments:
 
 - `CLOUDFLARE_API_TOKEN`
-- `PLANETSCALE_API_TOKEN_ID`
-- `PLANETSCALE_API_TOKEN`
 - `AXIOM_TOKEN`
 
 The `production` GitHub environment must define these Actions variables:
@@ -160,6 +157,7 @@ The `production` GitHub environment must define these Actions variables:
 
 The `production` GitHub environment must define these Actions secrets:
 
+- `NEON_API_KEY`
 - `CLERK_SECRET_KEY`
 - `APNS_PRIVATE_KEY`
 - `FCM_SERVICE_ACCOUNT` when Android push is enabled

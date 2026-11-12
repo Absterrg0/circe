@@ -1,7 +1,7 @@
 import type { PgClient } from "@effect/sql-pg/PgClient";
 import * as Cloudflare from "alchemy/Cloudflare";
 import * as Drizzle from "alchemy/Drizzle";
-import * as Planetscale from "alchemy/Planetscale";
+import * as Neon from "alchemy/Neon";
 import * as Alchemy from "alchemy";
 import * as RemovalPolicy from "alchemy/RemovalPolicy";
 import type { EffectPgDatabase } from "drizzle-orm/effect-postgres";
@@ -35,7 +35,7 @@ export class RelayTransactions extends Context.Service<
   );
 }
 
-export const PlanetscaleDatabase = Effect.gen(function* () {
+export const RelayDatabase = Effect.gen(function* () {
   const { stage } = yield* Alchemy.Stack;
   const schema = yield* Drizzle.Schema("RelaySchema", {
     schema: "./src/persistence/schema.ts",
@@ -44,38 +44,34 @@ export const PlanetscaleDatabase = Effect.gen(function* () {
   });
 
   const mode = relayDatabaseMode(stage);
-  const database =
+  const project =
     mode === "shared-database"
-      ? yield* Planetscale.PostgresDatabase("RelayPostgresDatabase", {
+      ? yield* Neon.Project("RelayNeonProject", {
           name: "circerelay",
-          region: { slug: "us-west" },
-          clusterSize: "PS_5",
+          region: "aws-us-west-2",
+          pgVersion: 18,
+          // Neon's free plan caps history at 6 hours; the provider default is 24.
+          historyRetentionSeconds: 21_600,
           migrations: { dir: schema.out, table: "relay_migrations" },
         }).pipe(RemovalPolicy.retain())
-      : yield* Planetscale.PostgresDatabase.ref("RelayPostgresDatabase", {
+      : yield* Neon.Project.ref("RelayNeonProject", {
           stage: "prod",
         });
   const branch =
     mode === "stage-branch"
-      ? yield* Planetscale.PostgresBranch("RelayPostgresBranch", {
-          database,
+      ? yield* Neon.Branch("RelayNeonBranch", {
+          project,
           migrations: { dir: schema.out, table: "relay_migrations" },
         })
       : undefined;
 
-  const runtimeRole = yield* Planetscale.PostgresRole("RelayPostgresRuntimeRole", {
-    database,
-    ...(branch ? { branch } : {}),
-    inheritedRoles: ["pg_read_all_data", "pg_write_all_data"],
-  });
-
-  return { branch, database, runtimeRole };
+  return { branch, project, origin: branch ? branch.origin : project.origin };
 });
 
 export const RelayHyperdrive = Effect.gen(function* () {
-  const { runtimeRole } = yield* PlanetscaleDatabase;
+  const { origin } = yield* RelayDatabase;
   return yield* Cloudflare.Hyperdrive.Connection("RelayHyperdrive", {
-    origin: runtimeRole.origin,
+    origin,
     caching: {
       disabled: true,
     },
