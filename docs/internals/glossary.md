@@ -84,7 +84,7 @@ The one user-facing Circe product installed on a device. It owns one launcher, u
 
 #### Chat space
 
-The one workspace each node keeps for chats: conversations that are not about a codebase. Every thread runs in a workspace, so chats run here, but clients never present it as a project and the node refuses to rename, move, or delete it. Marked `kind: "chats"` on the wire. See [Chat is not a project](./circe-decisions.md#chat-is-not-a-project).
+The one workspace each node keeps for chats: conversations that are not about a codebase. Every thread runs in a workspace, so chats run here, but clients never present it as a project and the node refuses to rename, move, or delete it. Stored and sent as `kind: "chats"`. See [Chat is not a project](./circe-decisions.md#chat-is-not-a-project).
 
 #### Grok Bot
 

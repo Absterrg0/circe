@@ -1,7 +1,7 @@
 import * as NodeServices from "@effect/platform-node/NodeServices";
 import { assert, it } from "@effect/vitest";
 import {
-  CIRCE_CONVERSATIONS_PROJECT_TITLE,
+  CHAT_SPACE_TITLE,
   CirceBotError,
   ProjectId,
   type CirceBotId,
@@ -165,7 +165,8 @@ const withProject = (
             {
               ...project,
               id: ProjectId.make("project:conversations"),
-              title: CIRCE_CONVERSATIONS_PROJECT_TITLE,
+              kind: "chats" as const,
+              title: CHAT_SPACE_TITLE,
               workspaceRoot: `${workspaceRoot}/conversations`,
             },
           ]),
@@ -203,7 +204,7 @@ it.effect(
           },
           {
             id: ProjectId.make("project:conversations"),
-            name: CIRCE_CONVERSATIONS_PROJECT_TITLE,
+            name: CHAT_SPACE_TITLE,
             about: "General questions and requests that are not about a coding project.",
             general: true,
           },
@@ -343,7 +344,7 @@ it.effect("keeps coding work in the world when the bot gateway fails", () =>
       const world = yield* Effect.promise(async () => host.state());
       assert.deepStrictEqual(
         world.projects.map((project) => project.name),
-        ["Billing", CIRCE_CONVERSATIONS_PROJECT_TITLE],
+        ["Billing", CHAT_SPACE_TITLE],
       );
       assert.deepStrictEqual(world.threads, []);
     }).pipe(Effect.provide(yield* withProject(root, failing)));

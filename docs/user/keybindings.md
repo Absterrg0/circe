@@ -125,6 +125,13 @@ shortcut; assign one in **Settings → Keybindings**.
 `chat.newLocal` skips that chooser. Both use your
 [new-thread defaults](./thread-sidebar.md#start-a-thread).
 
+## Tabs
+
+`tab.next` and `tab.previous` move between open tabs and default to `ctrl+tab` and
+`ctrl+shift+tab`. `tab.close` closes the current tab and defaults to `mod+shift+w`.
+Browsers keep `Ctrl+Tab` for their own tabs, so in a browser rebind these or use the
+desktop app.
+
 ## Reserved shortcuts
 
 In the desktop app, `mod+w` closes the focused terminal or the active right-panel

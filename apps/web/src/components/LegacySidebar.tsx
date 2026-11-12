@@ -196,7 +196,6 @@ import {
   ThreadStatusPill,
 } from "./Sidebar.logic";
 import { sortThreads } from "../lib/threadSort";
-import { SidebarChromeFooter, SidebarPanelHeader } from "./sidebar/SidebarChrome";
 import { useCopyToClipboard } from "~/hooks/useCopyToClipboard";
 import { useIsMobile } from "~/hooks/useMediaQuery";
 import { CommandDialogTrigger } from "./ui/command";
@@ -3142,7 +3141,15 @@ const SidebarProjectsContent = memo(function SidebarProjectsContent(
   );
 });
 
-export default function LegacySidebar() {
+export default function LegacySidebar({
+  header,
+  navigation,
+  footer,
+}: {
+  readonly header: React.ReactNode;
+  readonly navigation: React.ReactNode;
+  readonly footer: React.ReactNode;
+}) {
   const projects = useProjects();
   const sidebarThreads = useThreadShells();
   const projectExpandedById = useUiStateStore((store) => store.projectExpandedById);
@@ -3784,7 +3791,8 @@ export default function LegacySidebar() {
       {prewarmedSidebarThreadRefs.map((threadRef) => (
         <SidebarThreadDetailPrewarmer key={scopedThreadKey(threadRef)} threadRef={threadRef} />
       ))}
-      <SidebarPanelHeader isElectron={isElectron} title="Threads" />
+      {header}
+      <div className="px-[var(--sidebar-content-inset)] pb-1">{navigation}</div>
 
       <SidebarProjectsContent
         showArm64IntelBuildWarning={showArm64IntelBuildWarning}
@@ -3825,7 +3833,7 @@ export default function LegacySidebar() {
         attachProjectListAutoAnimateRef={attachProjectListAutoAnimateRef}
         projectsLength={projects.length}
       />
-      <SidebarChromeFooter />
+      {footer}
     </>
   );
 }

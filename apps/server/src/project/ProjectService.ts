@@ -6,7 +6,6 @@ import {
   type ProjectUpdatePayload,
   type ProjectSnapshot,
 } from "@circe/contracts";
-import { circeChatSpaceRoot, workspaceKindOf } from "../circe/chatSpace.ts";
 import * as Context from "effect/Context";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
@@ -152,14 +151,13 @@ export const make = Effect.gen(function* () {
   const idAllocator = yield* IdAllocatorV2;
   const legacyImporter = yield* LegacyV1ThreadImporter;
   const threadCommands = yield* ThreadCommandExecutor;
-  const chatSpaceRoot = yield* circeChatSpaceRoot;
 
   const toProject = (
     row: ProjectionProjects.ProjectionProject,
     enrichment: ProjectEnrichment | null,
   ): Project => ({
     id: row.projectId,
-    kind: workspaceKindOf(row.workspaceRoot, chatSpaceRoot),
+    kind: row.kind,
     title: row.title,
     workspaceRoot: row.workspaceRoot,
     repositoryIdentity: enrichment?.repositoryIdentity ?? null,
@@ -340,7 +338,7 @@ export const make = Effect.gen(function* () {
         return yield* new ProjectNotFoundError({ projectId: input.projectId });
       }
       if (
-        workspaceKindOf(existing.value.workspaceRoot, chatSpaceRoot) === "chats" &&
+        existing.value.kind === "chats" &&
         ((input.title !== undefined && input.title !== existing.value.title) ||
           (input.workspaceRoot !== undefined &&
             input.workspaceRoot !== existing.value.workspaceRoot))
@@ -410,7 +408,7 @@ export const make = Effect.gen(function* () {
       if (Option.isNone(existing) || existing.value.deletedAt !== null) {
         return yield* new ProjectNotFoundError({ projectId });
       }
-      if (workspaceKindOf(existing.value.workspaceRoot, chatSpaceRoot) === "chats") {
+      if (existing.value.kind === "chats") {
         return yield* new ProjectChatSpaceError({ projectId });
       }
 

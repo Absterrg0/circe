@@ -1,0 +1,178 @@
+/*
+ * The tab strip sits on the window chrome above the inset page card. Tabs are
+ * 8px pills inside a 12px card frame, 4px apart, so the radii stay concentric.
+ */
+
+.circe-tabstrip {
+  display: flex;
+  height: var(--app-tabstrip-height);
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding-inline: 8px;
+  /* Native window controls can sit over either end of the title bar. */
+  padding-right: max(8px, var(--workspace-native-controls-inset));
+  color: var(--sidebar-muted-foreground);
+}
+
+/* With the sidebar away, macOS traffic lights reach over the strip's start. */
+[data-sidebar-state="collapsed"] .circe-tabstrip {
+  padding-left: var(--workspace-controls-left);
+}
+
+.circe-tabstrip__toggle {
+  flex-shrink: 0;
+  color: var(--sidebar-muted-foreground);
+}
+
+.circe-tabstrip__tabs {
+  display: flex;
+  min-width: 0;
+  /* Shrink to the tabs, so the rest of the strip stays a window drag handle. */
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 2px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-app-region: no-drag;
+}
+.circe-tabstrip__tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.circe-worktab {
+  position: relative;
+  display: flex;
+  height: 30px;
+  min-width: 108px;
+  max-width: 208px;
+  flex: 1 1 208px;
+  align-items: center;
+  gap: 7px;
+  padding: 0 6px 0 9px;
+  border: 1px solid transparent;
+  border-radius: 8px;
+  color: var(--sidebar-muted-foreground);
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  user-select: none;
+  -webkit-app-region: no-drag;
+  transition:
+    background-color var(--circe-duration-micro) ease,
+    color var(--circe-duration-micro) ease;
+}
+
+.circe-worktab:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+
+.circe-worktab[data-active="true"] {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+  box-shadow: var(--circe-shadow-card);
+}
+
+.circe-worktab[data-dragging="true"] {
+  z-index: 1;
+  opacity: 0.9;
+  cursor: grabbing;
+}
+
+.circe-worktab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+.circe-worktab__icon {
+  display: grid;
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+  place-items: center;
+  opacity: 0.8;
+}
+.circe-worktab__icon > svg {
+  width: 15px;
+  height: 15px;
+}
+.circe-worktab[data-active="true"] .circe-worktab__icon {
+  opacity: 1;
+}
+
+.circe-worktab__title {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A preview tab is replaced by the next thing opened; italics say so. */
+.circe-worktab[data-preview="true"] .circe-worktab__title {
+  font-style: italic;
+}
+
+.circe-worktab__close {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 5px;
+  color: var(--sidebar-muted-foreground);
+  opacity: 0;
+  cursor: pointer;
+}
+.circe-worktab__close > svg {
+  width: 12px;
+  height: 12px;
+}
+.circe-worktab:hover .circe-worktab__close,
+.circe-worktab[data-active="true"] .circe-worktab__close,
+.circe-worktab__close:focus-visible {
+  opacity: 1;
+}
+.circe-worktab__close:hover {
+  background: var(--circe-surface-hover);
+  color: var(--foreground);
+}
+.circe-worktab__close:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+
+.circe-worktab-new {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--sidebar-muted-foreground);
+  cursor: pointer;
+  transition:
+    background-color var(--circe-duration-micro) ease,
+    color var(--circe-duration-micro) ease;
+}
+.circe-worktab-new > svg {
+  width: 16px;
+  height: 16px;
+}
+.circe-worktab-new:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+.circe-worktab-new:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circe-worktab,
+  .circe-worktab-new {
+    transition: none;
+  }
+}

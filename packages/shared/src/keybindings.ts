@@ -20,6 +20,9 @@ type WhenToken =
 
 export const DEFAULT_KEYBINDINGS: ReadonlyArray<KeybindingRule> = [
   { key: "mod+b", command: "sidebar.toggle" },
+  { key: "mod+shift+w", command: "tab.close", when: "!terminalFocus" },
+  { key: "ctrl+tab", command: "tab.next" },
+  { key: "ctrl+shift+tab", command: "tab.previous" },
   { key: "mod+j", command: "terminal.toggle" },
   { key: "mod+alt+b", command: "rightPanel.toggle" },
   { key: "mod+d", command: "terminal.split", when: "terminalFocus" },

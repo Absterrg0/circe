@@ -65,7 +65,6 @@ import { useTheme } from "~/hooks/useTheme";
 import type { PreviewPanelInlineSize } from "~/hooks/usePreviewPanelInlineSize";
 import { pullRequestEnvironment } from "~/state/pullRequests";
 import { useEnvironmentQuery } from "~/state/query";
-import { COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS } from "~/workspaceTitlebar";
 
 import { PreviewPanelShell, type PreviewPanelMode } from "./preview/PreviewPanelShell";
 import { FaviconImage } from "./preview/PreviewFaviconIcon";
@@ -1113,7 +1112,6 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
             (props.layoutControls
               ? "wco:pr-[var(--workspace-native-controls-inset)]"
               : "wco:pr-[calc(var(--workspace-native-controls-inset)+6rem)]"),
-          props.mode === "inline" && props.maximized && COLLAPSED_SIDEBAR_TITLEBAR_INSET_CLASS,
         )}
         data-right-panel-tabbar
       >
@@ -1383,7 +1381,7 @@ export function RightPanelTabs(props: RightPanelTabsProps) {
         {ownsDesktopTitleBar ? (
           <span
             aria-hidden
-            className="pointer-events-none fixed top-[var(--workspace-controls-top)] right-[var(--workspace-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
+            className="pointer-events-none fixed top-[var(--workspace-viewport-controls-top)] right-[var(--workspace-viewport-controls-right)] h-[var(--workspace-topbar-height)] w-28 [-webkit-app-region:no-drag]"
           />
         ) : null}
       </div>

@@ -517,6 +517,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
         case "project.created":
           yield* projectionProjectRepository.upsert({
             projectId: event.payload.projectId,
+            kind: event.payload.kind ?? "project",
             title: event.payload.title,
             workspaceRoot: event.payload.workspaceRoot,
             defaultModelSelection: event.payload.defaultModelSelection,
@@ -540,6 +541,7 @@ const makeOrchestrationProjectionPipeline = Effect.fn("makeOrchestrationProjecti
           }
           yield* projectionProjectRepository.upsert({
             ...existingRow.value,
+            ...(event.payload.kind !== undefined ? { kind: event.payload.kind } : {}),
             ...(event.payload.title !== undefined ? { title: event.payload.title } : {}),
             ...(event.payload.workspaceRoot !== undefined
               ? { workspaceRoot: event.payload.workspaceRoot }

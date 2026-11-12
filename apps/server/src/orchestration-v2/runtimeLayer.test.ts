@@ -1414,6 +1414,7 @@ it.layer(TestLayer)("OrchestrationV2LayerLive lifecycle", (it) => {
       const projectId = ProjectId.make("runtime-layer-lifecycle-project");
       const project = {
         projectId,
+        kind: "project",
         title: "Lifecycle project",
         workspaceRoot: "/workspace/project",
         defaultModelSelection: null,

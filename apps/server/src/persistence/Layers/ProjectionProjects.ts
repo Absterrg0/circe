@@ -35,6 +35,7 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
       sql`
         INSERT INTO projection_projects (
           project_id,
+          workspace_kind,
           title,
           workspace_root,
           default_model_selection_json,
@@ -49,6 +50,7 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
         )
         VALUES (
           ${row.projectId},
+          ${row.kind},
           ${row.title},
           ${row.workspaceRoot},
           ${row.defaultModelSelection !== null ? JSON.stringify(row.defaultModelSelection) : null},
@@ -63,6 +65,7 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
         )
         ON CONFLICT (project_id)
         DO UPDATE SET
+          workspace_kind = excluded.workspace_kind,
           title = excluded.title,
           workspace_root = excluded.workspace_root,
           default_model_selection_json = excluded.default_model_selection_json,
@@ -84,6 +87,7 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
       sql`
         SELECT
           project_id AS "projectId",
+          workspace_kind AS "kind",
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",
@@ -107,6 +111,7 @@ const makeProjectionProjectRepository = Effect.gen(function* () {
       sql`
         SELECT
           project_id AS "projectId",
+          workspace_kind AS "kind",
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",

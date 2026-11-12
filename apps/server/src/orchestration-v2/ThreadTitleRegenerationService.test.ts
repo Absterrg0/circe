@@ -66,6 +66,7 @@ function makeHarness(
         requestedProjectId === projectId
           ? Option.some({
               projectId,
+              kind: "project" as const,
               title: "Project",
               workspaceRoot: "/repo",
               defaultModelSelection: modelSelection,

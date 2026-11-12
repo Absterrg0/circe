@@ -95,6 +95,29 @@ export function requireActiveProjectWorkspaceRootAbsent(input: {
   );
 }
 
+/** A node has one chat space; a second would split its chats in two. */
+export function requireChatSpaceAbsent(input: {
+  readonly readModel: OrchestrationReadModel;
+  readonly command: OrchestrationCommand;
+  readonly exceptProjectId?: ProjectId;
+}): Effect.Effect<void, OrchestrationCommandInvariantError> {
+  const existing = input.readModel.projects.find(
+    (project) =>
+      project.deletedAt === null &&
+      project.kind === "chats" &&
+      project.id !== input.exceptProjectId,
+  );
+  if (existing === undefined) {
+    return Effect.void;
+  }
+  return Effect.fail(
+    invariantError(
+      input.command.type,
+      `Workspace '${existing.id}' is already this node's chat space.`,
+    ),
+  );
+}
+
 export function requireThread(input: {
   readonly readModel: OrchestrationReadModel;
   readonly command: OrchestrationCommand;

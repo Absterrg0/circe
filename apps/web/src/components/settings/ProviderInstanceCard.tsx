@@ -1062,15 +1062,10 @@ export function ProviderInstanceCard({
             ) : null}
           </div>
         ) : null}
-        <SettingsRow
-          title="Variables"
-          description="API keys, base URLs, and other per-instance CLI settings."
-        >
-          <ProviderEnvironmentSection
-            environment={genericEnvironment}
-            onChange={updateGenericEnvironment}
-          />
-        </SettingsRow>
+        <ProviderEnvironmentSection
+          environment={genericEnvironment}
+          onChange={updateGenericEnvironment}
+        />
       </SettingsSection>
 
       {driverOption !== undefined ? (

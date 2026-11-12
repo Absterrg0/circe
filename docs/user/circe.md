@@ -4,29 +4,39 @@ Circe lets you direct coding agents with text or voice and hear their real resul
 
 ## Getting around
 
-Two columns sit on the left. The narrow icon rail is always there; the wider sidebar next to it shows one list at a time.
+One sidebar sits on the left, and a row of tabs runs across the top of the page.
 
-The rail's pages:
+The sidebar, top to bottom:
 
+- **Search** looks through every thread, chats included.
 - **Home** is where Circe opens. Tell Circe what to do, and see what needs you, what is running, what finished recently, which pull requests are open, and which agents and machines are ready. The number on **Home** counts tasks waiting on you: an approval, a question, or a failed run.
 - **Pull requests** lists pull requests across your projects (shown when a connected machine supports them).
-- **Machines** shows the machine you pick in the sidebar's Machines list.
+- **Machines** shows your paired machines and the one you pick.
 - **Usage** shows cost, tokens, and plan limits.
-- **Settings** sits at the bottom of the rail.
+- **Agents**, **Chats**, and **Bots**, one under the other. See [Sidebar lists](#sidebar-lists).
+- **Settings** sits at the bottom. It swaps the sidebar for the settings pages; **Back** returns.
 
-The rail's lists, shown in the sidebar: **Agents**, **Chats**, and **Bots**. The current page is marked in orange; the list open in the sidebar only brightens, and the sidebar's title names it. Clicking the list that is already showing hides the sidebar; the panel button above Settings hides or shows it too, and so does `Ctrl+B` (`Command+B` on macOS). Opening a chat, a bot, Machines, or Settings switches the sidebar to that list on its own.
+The button at the left end of the tab row hides or shows the sidebar, and so does `Ctrl+B` (`Command+B` on macOS).
 
-The orange **+** on the rail starts a chat, starts an agent thread, or adds a project.
+### Tabs
+
+Everything you open gets a tab. Opening something that already has a tab goes to that tab.
+
+A new tab starts as a preview, with its name in italics. The next thing you open replaces it, so clicking through a list does not fill the row. A tab stays once you keep it: double-click the tab, type in it, drag it, or open the row with the middle mouse button (in Chats, `Ctrl`-click or `Command`-click works too).
+
+Drag tabs to reorder them. Close one with its **×**, a middle click, or `Ctrl+Shift+W` (`Command+Shift+W` on macOS); right-click for **Close others** and **Close to the right**. `Ctrl+Tab` and `Ctrl+Shift+Tab` move to the next and previous tab. The **+** at the end of the row starts a chat or an agent thread. Your tabs are remembered on this device.
+
+A thread that is running, waiting on you, or failed shows that on its tab.
 
 The command palette's **Open Circe** also goes Home. In the desktop app, `Ctrl+Shift+J` (`Command+Shift+J` on macOS) toggles the live conversation without leaving the page you are on; in a browser the same keys open Home.
 
 While Circe listens or works, the Home icon turns into Circe's orb, so you can see its state from anywhere. The orb is the Circe mark: still at rest, turning while Circe works, with a pulsing ring while it listens.
 
-On narrow windows the rail runs across the top of the sidebar, which opens from the button at the top left.
+On narrow windows the sidebar opens over the page from the button at the top left.
 
 ## Machines
 
-The sidebar's **Machines** list shows every paired node, with **This device** first on the desktop, and the devices linked to your Circe Mesh account below it. Pick a machine to see its role, whether it is online, how many tasks it is running, its agents and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
+The **Machines** page lists every paired node down its left side, with **This device** first on the desktop, and the devices linked to your Circe Mesh account below it. Pick a machine to see its role, whether it is online, how many tasks it is running, its agents and whether each is ready, and its projects. Each project and provider stays attached to the machine that owns it; Circe never merges credentials or workspaces between machines.
 
 The same page holds each machine's **Computer** access and its node settings, including **Default agent for new tasks** and **Live conversation**. **Manage** beside Agents opens that machine's provider settings. **Pair a machine** opens Settings → Connections. Connection changes refresh the list on their own; the refresh button reloads project and provider details.
 
@@ -87,11 +97,11 @@ project with its device.
 
 ## Sidebar lists
 
-- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. Each row shows the title and status on top, and the project, branch, pull request, and diff size underneath. The folder button in the header shows one project at a time; the pen starts an agent thread.
-- **Chats** holds conversations that are not about a codebase. The **+** in the header starts one, with no project to pick. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
-- **Bots** lists the Grok Bots on your machines, or says how to get one running when there are none. See [Grok Bots](./grok-bots.md).
+- **Agents** holds coding work in your projects: drafts, pinned and active threads, then snoozed and settled ones. Each row shows the title and status on top, and the project, branch, pull request, and diff size underneath. The folder button beside the heading shows one project at a time; the pen starts an agent thread.
+- **Chats** holds conversations that are not about a codebase. A chat's row is its name and nothing else, newest first; **Show more** reveals older ones. The **+** beside the heading starts one, with no project to pick. Right-click a chat to rename or delete it. Chats are not settled or snoozed, and a chat has no project, branch, or scripts. Every machine keeps its chats in a built-in chat space. It never appears in project lists, and it can't be renamed or deleted.
+- **Bots** lists the Grok Bots on your machines. See [Grok Bots](./grok-bots.md).
 
-Search at the top of Agents and Chats looks through every thread.
+Click **Chats** or **Bots** to fold that list away.
 
 ## One Circe product per node
 

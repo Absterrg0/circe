@@ -144,6 +144,10 @@ export function DraftHeroHeadline({
   const isChatDraft = activeWorkspace !== undefined && isChatWorkspace(activeWorkspace);
   const hasResolvedProject = activeProjectTitle !== null && !isChatDraft;
   const canChooseProject = projectPickerEntries.length > 0;
+  // A chat draft sits in the chat space, which is not a project to name.
+  const projectSelectorLabel = isChatDraft
+    ? "a project"
+    : (activeProjectDisplayName ?? "Choose a project");
   const shouldShowProjectMenu = canChooseProject;
 
   const projectSelector = shouldShowProjectMenu ? (
@@ -157,9 +161,9 @@ export function DraftHeroHeadline({
             />
           }
         >
-          {activeProjectDisplayName ?? "Choose a project"}
+          {projectSelectorLabel}
         </TooltipTrigger>
-        {activeProjectDisplayName ? (
+        {hasResolvedProject && activeProjectDisplayName ? (
           <TooltipPopup side="top" className="max-w-80">
             {activeProjectDisplayName}
           </TooltipPopup>

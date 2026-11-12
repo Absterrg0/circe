@@ -11,6 +11,8 @@ import { TestClock } from "effect/testing";
 import * as SqlClient from "effect/unstable/sql/SqlClient";
 
 import { ServerConfig } from "../config.ts";
+import { OrchestrationLayerLive } from "../orchestration/runtimeLayer.ts";
+import { OrchestrationEngineService } from "../orchestration/Services/OrchestrationEngine.ts";
 import { ProjectServiceLayerLive } from "../orchestration-v2/runtimeLayer.ts";
 import { SqlitePersistenceMemory } from "../persistence/Layers/Sqlite.ts";
 import * as WorkspacePaths from "../workspace/WorkspacePaths.ts";
@@ -50,7 +52,9 @@ const makeTestLayer = (
     | RepositoryIdentityResolver.RepositoryIdentityResolver
   >,
 ) =>
-  ProjectServiceLayerLive.pipe(
+  // The engine is merged in beside the service, sharing its one instance, so
+  // a test can dispatch what only the node itself dispatches.
+  Layer.merge(ProjectServiceLayerLive, OrchestrationLayerLive).pipe(
     Layer.provideMerge(ProjectEnrichmentService.layer),
     Layer.provideMerge(workspacePathsLayer),
     Layer.provideMerge(projectMetadataLayer),
@@ -440,16 +444,28 @@ it.layer(TestLayer)("ProjectService chat space", (it) => {
   it.effect("keeps the chat space typed and refuses to rename, move, or delete it", () =>
     Effect.gen(function* () {
       const service = yield* ProjectService.ProjectService;
+      const engine = yield* OrchestrationEngineService;
       const chatRoot = yield* circeChatSpaceRoot;
       const projectId = ProjectId.make("project:chat-space");
-      const created = yield* service.create({
+      // A client can put a project at the chat space's directory; that does
+      // not make it a chat space. Only the node's own command does.
+      const untyped = yield* service.create({
         commandId: CommandId.make("command:chat-space:create"),
         projectId,
         title: "Conversations",
         workspaceRoot: chatRoot,
         createWorkspaceRootIfMissing: true,
       });
+      assert.equal(untyped.kind, "project");
+      yield* engine.dispatch({
+        type: "project.chat-space.adopt",
+        commandId: CommandId.make("command:chat-space:adopt"),
+        projectId,
+        workspaceRoot: chatRoot,
+      });
+      const created = Option.getOrThrow(yield* service.getById(projectId));
       assert.equal(created.kind, "chats");
+      assert.equal(created.title, "Chats");
 
       const renamed = yield* service
         .update({
@@ -483,7 +499,8 @@ it.layer(TestLayer)("ProjectService chat space", (it) => {
         defaultModelSelection: modelSelection,
       });
       assert.deepStrictEqual(updated.defaultModelSelection, modelSelection);
-      assert.equal(updated.title, "Conversations");
+      assert.equal(updated.title, "Chats");
+      assert.equal(updated.kind, "chats");
 
       const other = yield* service.create({
         commandId: CommandId.make("command:ordinary:create"),

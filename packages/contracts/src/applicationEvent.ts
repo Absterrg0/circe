@@ -14,7 +14,7 @@ import {
 import { RepositoryIdentity, ThreadEnvMode } from "./environment.ts";
 import { ModelSelection } from "./modelSelection.ts";
 import type { OrchestrationV2StoredEvent } from "./orchestrationV2.ts";
-import { ProjectIconOverride, ProjectScript } from "./project.ts";
+import { ProjectIconOverride, ProjectScript, WorkspaceKind } from "./project.ts";
 
 /**
  * Which client dispatched the command that produced this event (#7774).
@@ -42,6 +42,9 @@ export type ApplicationEventMetadata = typeof ApplicationEventMetadata.Type;
 
 export const ApplicationProjectCreatedPayload = Schema.Struct({
   projectId: ProjectId,
+  // Absent means a project: every workspace recorded before chat spaces were
+  // typed, and every workspace a user adds.
+  kind: Schema.optional(WorkspaceKind),
   title: TrimmedNonEmptyString,
   workspaceRoot: TrimmedNonEmptyString,
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),
@@ -60,6 +63,8 @@ export type ApplicationProjectCreatedPayload = typeof ApplicationProjectCreatedP
 
 export const ApplicationProjectMetaUpdatedPayload = Schema.Struct({
   projectId: ProjectId,
+  // Set only when the node adopts a workspace as its chat space.
+  kind: Schema.optional(WorkspaceKind),
   title: Schema.optional(TrimmedNonEmptyString),
   workspaceRoot: Schema.optional(TrimmedNonEmptyString),
   repositoryIdentity: Schema.optional(Schema.NullOr(RepositoryIdentity)),

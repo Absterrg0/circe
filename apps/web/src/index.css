@@ -106,11 +106,16 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
   --glass-saturation: 1;
   --desktop-window-right-resize-inset: 0px;
   --workspace-topbar-height: 52px;
-  /* The icon rail left of the context sidebar; desktop widths only. */
-  --app-rail-width: 3.5rem;
+  /* The tab strip above the page card, the card's gutter, and page headers inside it. */
+  --app-tabstrip-height: 44px;
+  --app-frame-gap: 0.5rem;
+  --workspace-page-header-height: 48px;
   --workspace-controls-top: 0px;
   --workspace-controls-left: calc(env(safe-area-inset-left) + 0.75rem);
   --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
+  /* The same offsets for `position: fixed` controls, measured from the window. */
+  --workspace-viewport-controls-top: var(--workspace-controls-top);
+  --workspace-viewport-controls-right: var(--workspace-controls-right);
   --workspace-native-controls-inset: 0px;
   --workspace-titlebar-control-size: 1.75rem;
   --workspace-titlebar-control-gap: 0.75rem;
@@ -130,6 +135,7 @@ html[data-mobile-composer-route-transition="true"]::view-transition-old(t3-mobil
 
 .wco {
   --workspace-topbar-height: env(titlebar-area-height, 52px);
+  --app-tabstrip-height: max(44px, env(titlebar-area-height, 44px));
   --workspace-controls-top: env(titlebar-area-y, 0px);
   --workspace-controls-left: calc(env(titlebar-area-x, 0px) + 0.75rem);
   --workspace-controls-right: calc(

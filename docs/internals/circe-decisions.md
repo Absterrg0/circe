@@ -154,12 +154,21 @@ directory (`apps/server/src/circe/chatSpace.ts`). Chats therefore keep a
 would touch the event log, the thread table, and every git, worktree, diff, and
 pull request path, for no behavior a user could see.
 
-The chat space's root decides its kind, not its title, and `ProjectService`
-refuses to rename, move, or delete it. Clients must never show it as a project:
-lists and pickers read `useUserProjects`, while lookups by id keep using
-`useProjects`, because chat threads still resolve their workspace there.
-`isChatWorkspace` falls back to the old `Conversations` title only for a node
-that predates `kind`. Grok Bot conversations are not threads at all; see
+The kind is stored on the workspace and travels in the event log. It is not
+worked out from the directory: a node whose base directory moves would
+otherwise lose its chat space and show every chat under a project. Only the
+node sets it, through two commands no client can send
+(`project.chat-space.create` and `project.chat-space.adopt`), and the decider
+allows one chat space per node and refuses to rename, move, or delete it from
+any dispatch path. Startup adopts the workspace older nodes recorded as a
+project titled `Conversations`, retitles it `Chats`, and moves it when the
+node's directory moved, so chats keep their workspace id.
+
+Clients must never show the chat space as a project: lists and pickers read
+`useUserProjects`, while lookups by id keep using `useProjects`, because chat
+threads still resolve their workspace there. A chat has no details panel,
+branch bar, or settle state in the thread view. `isChatWorkspace` falls back to
+the old `Conversations` title only for a node that predates `kind`. Grok Bot conversations are not threads at all; see
 [Circe bots](./circe-bots.md).
 
 ## Open for review

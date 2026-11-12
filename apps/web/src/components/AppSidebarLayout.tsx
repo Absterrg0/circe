@@ -11,11 +11,7 @@ import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import { isElectron } from "../env";
 import { getLocalStorageItem, removeLocalStorageItem } from "../hooks/useLocalStorage";
-import {
-  isRichTextBoldShortcut,
-  resolveShortcutCommand,
-  shortcutLabelForCommand,
-} from "../keybindings";
+import { isRichTextBoldShortcut, resolveShortcutCommand } from "../keybindings";
 import { isMacPlatform } from "../lib/utils";
 import { primaryServerKeybindingsAtom } from "../state/server";
 import { useLegacySidebarEnabled } from "../hooks/useSettings";
@@ -25,15 +21,21 @@ import {
   usePanelNavigationSuppression,
 } from "../panelAnimations";
 
-import { SidebarBotsPanel } from "./bots/SidebarBots";
+import { SidebarBots } from "./bots/SidebarBots";
 import LegacyThreadSidebar from "./LegacySidebar";
 import { useThreadVisitedMigration } from "../hooks/useThreadVisitedMigration";
 import ThreadSidebar from "./Sidebar";
 import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
-import { AppRail, useRailPanelStore, useRouteRailPanelSync } from "./sidebar/AppRail";
-import { SidebarPanelHeader } from "./sidebar/SidebarChrome";
-import { SidebarMachinesPanel } from "./sidebar/SidebarMachinesPanel";
+import { SidebarChats } from "./sidebar/SidebarChats";
+import {
+  SidebarBrandHeader,
+  SidebarChromeFooter,
+  SidebarPrimaryNav,
+} from "./sidebar/SidebarChrome";
+import { WorkspaceTabStrip } from "./tabs/WorkspaceTabStrip";
+import { useWorkspaceTabSync } from "./tabs/useWorkspaceTabSync";
 import { useProjects } from "../state/entities";
+import { useWorkspaceTabsStore } from "../workspaceTabsStore";
 import {
   resolveInitialThreadSidebarWidth,
   resolveThreadSidebarMaximumWidth,
@@ -41,8 +43,7 @@ import {
   THREAD_SIDEBAR_MIN_WIDTH,
   THREAD_SIDEBAR_WIDTH_STORAGE_KEY,
 } from "./threadSidebarWidth";
-import { Sidebar, SidebarProvider, SidebarRail, SidebarTrigger, useSidebar } from "./ui/sidebar";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
+import { Sidebar, SidebarProvider, SidebarRail, useSidebar } from "./ui/sidebar";
 
 const MACOS_TRAFFIC_LIGHTS_LEFT_INSET = "var(--desktop-window-controls-inset, 90px)";
 
@@ -67,10 +68,10 @@ function readInitialThreadSidebarWidth(): number {
   }
 }
 
-function SidebarControl() {
+/** The sidebar toggle shortcut. The toggle button itself leads the tab strip. */
+function SidebarToggleShortcut() {
   const keybindings = useAtomValue(primaryServerKeybindingsAtom);
   const { toggleSidebar } = useSidebar();
-  const shortcutLabel = shortcutLabelForCommand(keybindings, "sidebar.toggle");
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -102,62 +103,44 @@ function SidebarControl() {
     return () => window.removeEventListener("keydown", onKeyDown, true);
   }, [keybindings, toggleSidebar]);
 
-  return (
-    // The right-side layout controls carry mr-px (border compensation inside
-    // the panel), so the trigger mirrors it: both clusters sit one extra pixel
-    // off their edge and the titlebar reads symmetric.
-    // Narrow windows only: on desktop the rail carries the toggle.
-    <div
-      className="pointer-events-none fixed left-[var(--workspace-controls-left)] top-[var(--workspace-controls-top)] z-50 ml-px flex h-[var(--workspace-topbar-height)] items-center md:hidden"
-      data-sidebar-control=""
-    >
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <SidebarTrigger className="pointer-events-auto" aria-label="Toggle main sidebar" />
-          }
-        />
-        <TooltipPopup side="bottom">
-          Toggle main sidebar{shortcutLabel ? ` (${shortcutLabel})` : ""}
-        </TooltipPopup>
-      </Tooltip>
-    </div>
-  );
-}
-
-/** The rail runs across the top of the sidebar sheet on narrow windows. */
-function MobileRail() {
-  const { isMobile } = useSidebar();
-  return isMobile ? <AppRail orientation="horizontal" /> : null;
+  return null;
 }
 
 /**
- * The context sidebar beside the rail: the list the rail picked, or the one
- * the current route belongs to.
+ * The one sidebar: pages, then Agents, Chats, and Bots as lists in a single
+ * scroll. Settings swaps it for its own navigation and a way back.
  */
-function ContextSidebarPanel({ legacySidebarEnabled }: { readonly legacySidebarEnabled: boolean }) {
-  useRouteRailPanelSync();
+function AppSidebarContent({ legacySidebarEnabled }: { readonly legacySidebarEnabled: boolean }) {
   const pathname = useLocation({ select: (location) => location.pathname });
-  const panel = useRailPanelStore((store) => store.panel);
-  switch (panel) {
-    case "settings":
-      return (
-        <>
-          <SidebarPanelHeader isElectron={isElectron} title="Settings" />
-          <SettingsSidebarNav pathname={pathname} />
-        </>
-      );
-    case "bots":
-      return <SidebarBotsPanel isElectron={isElectron} />;
-    case "machines":
-      return <SidebarMachinesPanel isElectron={isElectron} />;
-    case "agents":
-    case "chats":
-      return legacySidebarEnabled ? <LegacyThreadSidebar /> : <ThreadSidebar section={panel} />;
+  if (pathname === "/settings" || pathname.startsWith("/settings/")) {
+    return (
+      <>
+        <SidebarBrandHeader isElectron={isElectron} title="Settings" />
+        <SettingsSidebarNav pathname={pathname} />
+      </>
+    );
   }
+  const header = <SidebarBrandHeader isElectron={isElectron} />;
+  const navigation = <SidebarPrimaryNav />;
+  const footer = <SidebarChromeFooter />;
+  return legacySidebarEnabled ? (
+    <LegacyThreadSidebar header={header} navigation={navigation} footer={footer} />
+  ) : (
+    <ThreadSidebar
+      header={header}
+      navigation={navigation}
+      sections={
+        <>
+          <SidebarChats />
+          <SidebarBots />
+        </>
+      }
+      footer={footer}
+    />
+  );
 }
 
-// Other lists swap the thread sidebar out of the tree. Keep the lightweight
+// Settings swaps the thread sidebar out of the tree. Keep the lightweight
 // project projection subscribed so returning to a draft never renders the
 // zero-project state while the environment snapshot reconnects.
 function ProjectProjectionRetention() {
@@ -170,8 +153,10 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   const legacySidebarEnabled = useLegacySidebarEnabled();
   const { active: panelAnimationsActive, durationMs: panelAnimationDurationMs } =
     usePanelAnimationSettings();
-  // Seeds server-side visited tracking from this browser's localStorage the
+  // Seeds server-side visited tracking from this browser's localStorage.
   useThreadVisitedMigration();
+  useWorkspaceTabSync();
+  const keepActiveTab = useWorkspaceTabsStore((store) => store.keepActive);
   const pathname = useLocation({ select: (location) => location.pathname });
   const panelAnimationsSuppressed = usePanelNavigationSuppression(pathname);
   const routePanelAnimationsActive = panelAnimationsActive && !panelAnimationsSuppressed;
@@ -198,7 +183,6 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   });
   const sidebarProviderStyle = {
     "--sidebar-width": `${sidebarWidth}px`,
-    "--sidebar-left-offset": "var(--app-rail-width)",
     "--panel-animation-duration": `${panelAnimationDurationMs}ms`,
     ...(isMacosDesktop && !isWindowFullscreen
       ? { "--workspace-controls-left": MACOS_TRAFFIC_LIGHTS_LEFT_INSET }
@@ -245,18 +229,17 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
   return (
     <PanelAnimationSuppressionProvider value={panelAnimationsSuppressed}>
       <SidebarProvider
-        className="h-dvh! min-h-0!"
+        className="h-dvh! min-h-0! bg-sidebar"
         data-panel-animations={routePanelAnimationsActive ? "true" : "false"}
         defaultOpen
         style={sidebarProviderStyle}
       >
         <ProjectProjectionRetention />
-        <AppRail reserveTitlebar={isMacosDesktop && !isWindowFullscreen} />
         <Sidebar
           side="left"
           collapsible="offcanvas"
           data-app-sidebar=""
-          className="border-r border-sidebar-border bg-sidebar text-sidebar-foreground"
+          className="bg-sidebar text-sidebar-foreground group-data-[side=left]:border-r-0"
           resizable={{
             maxWidth: sidebarMaximumWidth,
             minWidth: THREAD_SIDEBAR_MIN_WIDTH,
@@ -267,12 +250,17 @@ export function AppSidebarLayout({ children }: { children: ReactNode }) {
             onResize: setSidebarWidth,
           }}
         >
-          <MobileRail />
-          <ContextSidebarPanel legacySidebarEnabled={legacySidebarEnabled} />
+          <AppSidebarContent legacySidebarEnabled={legacySidebarEnabled} />
           <SidebarRail onDoubleClick={resetSidebarWidth} />
         </Sidebar>
-        {children}
-        <SidebarControl />
+        <div className="circe-workspace">
+          <WorkspaceTabStrip />
+          {/* Typing in a tab is working in it, so the preview tab stays. */}
+          <div className="circe-workspace__page" onInputCapture={keepActiveTab}>
+            {children}
+          </div>
+        </div>
+        <SidebarToggleShortcut />
       </SidebarProvider>
     </PanelAnimationSuppressionProvider>
   );

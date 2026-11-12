@@ -986,12 +986,6 @@ export type CirceFocusTaskResult = typeof CirceFocusTaskResult.Type;
  */
 export const CIRCE_CONVERSATION_TITLE_PREFIX = "Conversation:";
 
-/**
- * The title a node gives its chat space when it creates it. Clients recognize
- * the chat space by `kind: "chats"` on the workspace, never by this title.
- */
-export const CIRCE_CONVERSATIONS_PROJECT_TITLE = "Conversations";
-
 export const CirceTaskCreatedActivityPayload = Schema.Struct({
   objective: TrimmedNonEmptyString.check(Schema.isMaxLength(16_000)),
   messageId: Schema.optional(MessageId),

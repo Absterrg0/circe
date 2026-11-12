@@ -135,7 +135,6 @@ import {
   useProjects,
   useThreadShells,
   useUserProjects,
-  useChatSpaces,
 } from "../state/entities";
 import { environmentServerConfigsAtom, primaryServerKeybindingsAtom } from "../state/server";
 import { vcsEnvironment } from "../state/vcs";
@@ -246,7 +245,8 @@ import {
   useComboboxFilter,
 } from "./ui/combobox";
 import { SidebarContent, SidebarGroup, useSidebar } from "./ui/sidebar";
-import { SidebarChromeFooter, SidebarPanelHeader } from "./sidebar/SidebarChrome";
+import { SidebarSectionTitle } from "./sidebar/SidebarChrome";
+import { useOpenThreadInBackgroundTab } from "./tabs/useOpenThreadInBackgroundTab";
 import { SidebarHeaderIconButton, SidebarThreadHeader } from "./sidebar/SidebarThreadHeader";
 import { Popover, PopoverPopup, PopoverTrigger } from "./ui/popover";
 import { Tooltip, TooltipPopup, TooltipProvider, TooltipTrigger } from "./ui/tooltip";
@@ -742,7 +742,7 @@ function SidebarSectionHeader(props: {
   const snoozed = props.marker === "snoozed-header";
   const className = cn(
     "flex h-full w-full items-center gap-2 px-2 text-left text-xs font-medium",
-    snoozed ? "text-blue-600 dark:text-blue-400" : "text-sidebar-muted-foreground/60",
+    snoozed ? "text-sidebar-muted-foreground" : "text-sidebar-muted-foreground/60",
     props.dragging && "text-sidebar-foreground/80",
     props.isDropTarget && "text-primary",
   );
@@ -753,7 +753,7 @@ function SidebarSectionHeader(props: {
         aria-hidden
         className={cn(
           "h-px min-w-2 flex-1",
-          snoozed ? "bg-blue-500/20 dark:bg-blue-400/15" : "bg-sidebar-border/60",
+          snoozed ? "bg-sidebar-border" : "bg-sidebar-border/60",
           props.dragging && "bg-sidebar-foreground/25",
           props.isDropTarget && "bg-primary/50",
         )}
@@ -1325,6 +1325,16 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     },
     [onThreadClick, threadRef],
   );
+  // Mod-click selects rows here, so a new tab is the middle button's job.
+  const openThreadInBackgroundTab = useOpenThreadInBackgroundTab();
+  const handleAuxClick = useCallback(
+    (event: ReactMouseEvent) => {
+      if (event.button !== 1) return;
+      event.preventDefault();
+      openThreadInBackgroundTab(threadRef);
+    },
+    [openThreadInBackgroundTab, threadRef],
+  );
   const handleAcknowledgeWokeClick = useCallback(
     (event: ReactMouseEvent) => {
       event.preventDefault();
@@ -1700,6 +1710,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                 aria-busy={isRegeneratingTitle || undefined}
                 className={cn(rowSurfaceClassName, "flex h-9 items-center gap-2.5 px-2.5")}
                 onClick={handleClick}
+                onAuxClick={handleAuxClick}
                 onDoubleClick={handleDoubleClick}
                 onKeyDown={handleKeyDown}
                 onContextMenu={handleContextMenu}
@@ -1856,6 +1867,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               aria-busy={isRegeneratingTitle || undefined}
               className={rowSurfaceClassName}
               onClick={handleClick}
+              onAuxClick={handleAuxClick}
               onDoubleClick={handleDoubleClick}
               onKeyDown={handleKeyDown}
               onContextMenu={handleContextMenu}
@@ -2214,15 +2226,26 @@ const SidebarSearchResultRow = memo(function SidebarSearchResultRow(props: {
 });
 
 /**
- * The context sidebar's Agents and Chats lists. Search spans every thread;
- * the list shows the rail's section.
+ * The app sidebar's search and Agents list. The layout passes the rest of the
+ * sidebar in: the brand header, page navigation above the search, and the
+ * sections listed under Agents. Search spans every thread, chats included, so
+ * the other sections step aside while it has a query.
  */
-export default function Sidebar({ section }: { readonly section: "agents" | "chats" }) {
+export default function Sidebar({
+  header,
+  navigation,
+  sections,
+  footer,
+}: {
+  readonly header: ReactNode;
+  readonly navigation: ReactNode;
+  readonly sections: ReactNode;
+  readonly footer: ReactNode;
+}) {
   const projects = useProjects();
   // Agents are grouped and scoped by codebase; each node's chat space is not
   // a project the user picks.
   const userProjects = useUserProjects();
-  const chatSpaces = useChatSpaces();
   const projectOrder = useUiStateStore((store) => store.projectOrder);
   const threads = useThreadShells();
   const router = useRouter();
@@ -2884,19 +2907,6 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
   // a ref keeps it out of attemptSettle's dependency array.
   const handleNewThreadRef = useRef(newThreadContext.handleNewThread);
   handleNewThreadRef.current = newThreadContext.handleNewThread;
-  // A new chat starts a draft in a node's chat space, preferring this
-  // device's node. No project choice is involved.
-  const chatSpaceRef = useMemo(() => {
-    const space =
-      chatSpaces.find((candidate) => candidate.environmentId === primaryEnvironmentId) ??
-      chatSpaces[0];
-    return space === undefined ? null : scopeProjectRef(space.environmentId, space.id);
-  }, [chatSpaces, primaryEnvironmentId]);
-  const startNewChat = useCallback(() => {
-    if (chatSpaceRef === null) return;
-    if (isMobile) setOpenMobile(false);
-    void handleNewThreadRef.current(chatSpaceRef);
-  }, [chatSpaceRef, isMobile, setOpenMobile]);
   const settledThreadKeys = useMemo(
     () =>
       new Set(
@@ -4609,41 +4619,13 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
 
   return (
     <>
-      <SidebarPanelHeader
-        isElectron={isElectron}
-        title={section === "chats" ? "Chats" : "Agents"}
-        actions={
-          section === "chats" ? (
-            chatSpaceRef === null ? null : (
-              <SidebarHeaderIconButton label="New chat" onClick={startNewChat}>
-                <PlusIcon />
-              </SidebarHeaderIconButton>
-            )
-          ) : (
-            <>
-              {projectScopeControl}
-              <SidebarHeaderIconButton
-                label="New agent thread"
-                tooltip={
-                  newThreadShortcutLabel
-                    ? `New agent thread (${newThreadShortcutLabel})`
-                    : "New agent thread"
-                }
-                disabled={userProjects.length === 0}
-                onClick={(event: ReactMouseEvent) => handleNewThreadClick(event)}
-              >
-                <SquarePenIcon />
-              </SidebarHeaderIconButton>
-            </>
-          )
-        }
-      />
+      {header}
       <SidebarContent
         className="gap-0 min-h-full"
         fixedHeader={
           // Lifted above the stage backdrop, whose fade bleeds below the
           // header and would otherwise paint across the search row's outline.
-          <SidebarGroup className="relative z-[1] gap-2 p-[var(--sidebar-content-inset)] pt-2">
+          <SidebarGroup className="relative z-[1] gap-1 p-[var(--sidebar-content-inset)] pt-1">
             <SidebarThreadHeader
               searchFieldRef={headerSearchRef}
               searchInputRef={threadSearchInputRef}
@@ -4658,10 +4640,33 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
               activeSearchResultIndex={activeSearchResultIndex}
               onClearSearch={clearThreadSearch}
             />
+            {navigation}
           </SidebarGroup>
         }
       >
-        <SidebarGroup className="ps-[calc(var(--sidebar-content-inset)+1px)] pe-[var(--sidebar-content-inset)] pb-1 pt-0 flex-1">
+        <SidebarGroup className="ps-[calc(var(--sidebar-content-inset)+1px)] pe-[var(--sidebar-content-inset)] pb-1 pt-0">
+          {!isSearchingThreads ? (
+            <SidebarSectionTitle
+              title="Agents"
+              actions={
+                <>
+                  {projectScopeControl}
+                  <SidebarHeaderIconButton
+                    label="New agent thread"
+                    tooltip={
+                      newThreadShortcutLabel
+                        ? `New agent thread (${newThreadShortcutLabel})`
+                        : "New agent thread"
+                    }
+                    disabled={userProjects.length === 0}
+                    onClick={(event: ReactMouseEvent) => handleNewThreadClick(event)}
+                  >
+                    <SquarePenIcon />
+                  </SidebarHeaderIconButton>
+                </>
+              }
+            />
+          ) : null}
           {isSearchingThreads ? (
             threadSearchResults.length > 0 ? (
               <TooltipProvider
@@ -4744,10 +4749,7 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                   <ul
                     ref={attachListMotionRef}
                     role="list"
-                    className={cn(
-                      "relative flex flex-col gap-px",
-                      sidebarListItems.length > 0 && "flex-1",
-                    )}
+                    className="relative flex flex-col gap-px"
                   >
                     {(() => {
                       const renderThreadRowInner = (
@@ -4882,23 +4884,7 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                         );
                       };
                       const from = dragState?.activeSection ?? null;
-                      // One list per rail section; bots have their own panel.
-                      // Chat rows are not sortable.
                       const items: ReactNode[] = [];
-                      if (section === "chats") {
-                        for (const thread of conversationThreads) {
-                          items.push(renderThreadRow(thread, "active"));
-                        }
-                        if (conversationThreads.length === 0) {
-                          items.push(
-                            <li key="chats-empty" className="circe-panel-empty">
-                              Questions for Circe that are not about a project land here. Start one
-                              with <strong>+</strong>.
-                            </li>,
-                          );
-                        }
-                        return items;
-                      }
                       items.push(
                         <SidebarDraftBlock
                           key="draft-sessions"
@@ -4960,7 +4946,6 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                               <SidebarSectionHeader
                                 key="snoozed-shelf-header"
                                 marker="snoozed-header"
-                                className="mt-auto"
                                 label={
                                   snoozedShelfExpanded
                                     ? "Snoozed"
@@ -4978,7 +4963,6 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                               <SidebarSectionHeader
                                 key="settled-shelf-header"
                                 marker="settled-header"
-                                className={cn(snoozedThreads.length === 0 && "mt-auto")}
                                 label={
                                   settledShelfExpanded
                                     ? "Settled"
@@ -5015,7 +4999,7 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
                       }
                       return items;
                     })()}
-                    {section === "agents" && settledShelfExpanded && hiddenSettledCount > 0 ? (
+                    {settledShelfExpanded && hiddenSettledCount > 0 ? (
                       <li className="list-none">
                         <button
                           type="button"
@@ -5033,14 +5017,13 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
             </TooltipProvider>
           ) : null}
           {!isSearchingThreads &&
-          section === "agents" &&
           visibleDraftSessionCount === 0 &&
           pinnedThreads.length +
             activeThreads.length +
             snoozedThreads.length +
             settledThreads.length ===
             0 ? (
-            <div className="flex flex-col items-center gap-2 px-2 py-6 text-center text-xs text-muted-foreground/60">
+            <div className="flex flex-col items-center gap-2 px-2 py-4 text-center text-xs text-muted-foreground/60">
               {userProjects.length === 0 ? (
                 <>
                   <span>Add a project to run coding agents on it.</span>
@@ -5061,8 +5044,9 @@ export default function Sidebar({ section }: { readonly section: "agents" | "cha
             </div>
           ) : null}
         </SidebarGroup>
+        {isSearchingThreads ? null : sections}
       </SidebarContent>
-      <SidebarChromeFooter />
+      {footer}
     </>
   );
 }

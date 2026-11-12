@@ -137,8 +137,15 @@ export type ProjectIconOverride = typeof ProjectIconOverride.Type;
 export const WorkspaceKind = Schema.Literals(["project", "chats"]);
 export type WorkspaceKind = typeof WorkspaceKind.Type;
 
-/** Title older nodes gave their chat space before `kind` existed. */
-const LEGACY_CHAT_SPACE_TITLE = "Conversations";
+/**
+ * Title nodes gave their chat space before `kind` existed. Only two readers
+ * need it: a client talking to a node that old, and a node recognizing the
+ * workspace it must adopt.
+ */
+export const LEGACY_CHAT_SPACE_TITLE = "Conversations";
+
+/** The stored title of a chat space. Clients name the list themselves. */
+export const CHAT_SPACE_TITLE = "Chats";
 
 /**
  * Whether a workspace is its node's chat space. Uses `kind` when the node

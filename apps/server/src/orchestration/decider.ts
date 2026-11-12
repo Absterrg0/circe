@@ -1,4 +1,5 @@
 import {
+  CHAT_SPACE_TITLE,
   EventId,
   MAX_SCRIPT_ID_LENGTH,
   SCRIPT_RUN_COMMAND_PATTERN,
@@ -20,6 +21,7 @@ import {
 import {
   listThreadsByProjectId,
   requireActiveProjectWorkspaceRootAbsent,
+  requireChatSpaceAbsent,
   requireProject,
   requireProjectAbsent,
   requireThread,
@@ -196,6 +198,18 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
           exceptProjectId: command.projectId,
         });
       }
+      // The node owns its chat space's name and directory. Checked here, not
+      // only in ProjectService, so no dispatch path can rename or move it.
+      if (
+        project.kind === "chats" &&
+        ((command.title !== undefined && command.title !== project.title) ||
+          (command.workspaceRoot !== undefined && command.workspaceRoot !== project.workspaceRoot))
+      ) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Workspace '${command.projectId}' is this node's chat space and cannot be renamed or moved.`,
+        });
+      }
       const occurredAt = yield* nowIso;
       return {
         ...(yield* withEventBase({
@@ -225,11 +239,17 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
     }
 
     case "project.delete": {
-      yield* requireProject({
+      const project = yield* requireProject({
         readModel,
         command,
         projectId: command.projectId,
       });
+      if (project.kind === "chats" && project.deletedAt === null) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Workspace '${command.projectId}' is this node's chat space and cannot be deleted.`,
+        });
+      }
       const activeThreads = listThreadsByProjectId(readModel, command.projectId).filter(
         (thread) => thread.deletedAt === null,
       );
@@ -271,6 +291,78 @@ export const decideOrchestrationCommand = Effect.fn("decideOrchestrationCommand"
         payload: {
           projectId: command.projectId,
           deletedAt: occurredAt,
+        },
+      };
+    }
+
+    case "project.chat-space.create": {
+      yield* requireProjectAbsent({ readModel, command, projectId: command.projectId });
+      yield* requireChatSpaceAbsent({ readModel, command });
+      yield* requireActiveProjectWorkspaceRootAbsent({
+        readModel,
+        command,
+        workspaceRoot: command.workspaceRoot,
+        exceptProjectId: command.projectId,
+      });
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "project",
+          aggregateId: command.projectId,
+          occurredAt: command.createdAt,
+          commandId: command.commandId,
+        })),
+        type: "project.created",
+        payload: {
+          projectId: command.projectId,
+          kind: "chats",
+          title: CHAT_SPACE_TITLE,
+          workspaceRoot: command.workspaceRoot,
+          defaultModelSelection: null,
+          faviconPath: null,
+          projectIcon: null,
+          scripts: [],
+          createdAt: command.createdAt,
+          updatedAt: command.createdAt,
+        },
+      };
+    }
+
+    case "project.chat-space.adopt": {
+      const project = yield* requireProject({
+        readModel,
+        command,
+        projectId: command.projectId,
+      });
+      if (project.deletedAt !== null) {
+        return yield* new OrchestrationCommandInvariantError({
+          commandType: command.type,
+          detail: `Workspace '${command.projectId}' was deleted and cannot become the chat space.`,
+        });
+      }
+      yield* requireChatSpaceAbsent({ readModel, command, exceptProjectId: command.projectId });
+      yield* requireActiveProjectWorkspaceRootAbsent({
+        readModel,
+        command,
+        workspaceRoot: command.workspaceRoot,
+        exceptProjectId: command.projectId,
+      });
+      const occurredAt = yield* nowIso;
+      return {
+        ...(yield* withEventBase({
+          aggregateKind: "project",
+          aggregateId: command.projectId,
+          occurredAt,
+          commandId: command.commandId,
+        })),
+        type: "project.meta-updated",
+        payload: {
+          projectId: command.projectId,
+          kind: "chats",
+          title: CHAT_SPACE_TITLE,
+          ...(command.workspaceRoot === project.workspaceRoot
+            ? {}
+            : { workspaceRoot: command.workspaceRoot }),
+          updatedAt: occurredAt,
         },
       };
     }

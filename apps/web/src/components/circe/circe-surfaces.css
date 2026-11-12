@@ -108,198 +108,237 @@
   }
 }
 
-/* ---------- App rail ---------- */
+/* ---------- App shell ---------- */
 
-.circe-rail {
-  position: sticky;
-  top: 0;
-  z-index: 20;
+/*
+ * The sidebar and the tab strip share the window chrome color. The page is a
+ * card set into it: a 12px radius, one hairline, and an 8px gutter on the
+ * sides that have no chrome of their own.
+ */
+.circe-workspace {
   display: flex;
-  width: var(--app-rail-width);
-  height: 100dvh;
-  flex-shrink: 0;
+  min-width: 0;
+  height: 100%;
+  flex: 1;
   flex-direction: column;
-  align-items: center;
-  padding-bottom: 12px;
-  border-right: 1px solid var(--sidebar-border);
-  background: var(--sidebar);
 }
 
-/* The vertical rail is a desktop fixture; narrow windows carry it in the sheet. */
-@media (max-width: 47.99rem) {
-  .circe-rail:not(.circe-rail--horizontal) {
-    display: none;
+.circe-workspace__page {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+  /*
+   * Pages lay their controls out from these. Inside the card they are
+   * measured from the card, so the title bar offsets reset here: the strip
+   * owns the title bar. Controls that are `position: fixed` are measured from
+   * the window instead, and read the -viewport- pair.
+   */
+  --workspace-topbar-height: var(--workspace-page-header-height);
+  --workspace-native-controls-inset: 0px;
+  --workspace-controls-top: 0px;
+  --workspace-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
+  --workspace-viewport-controls-top: var(--app-tabstrip-height);
+  --workspace-viewport-controls-right: calc(env(safe-area-inset-right) + 0.75rem);
+}
+
+@media (min-width: 48rem) {
+  .circe-workspace__page {
+    margin: 0 var(--app-frame-gap) var(--app-frame-gap) 0;
+    border: 1px solid var(--border);
+    border-radius: var(--circe-radius-md);
+    box-shadow: var(--circe-shadow-card);
+    /* The card's hairline sits between the strip and the page header. */
+    --workspace-viewport-controls-top: calc(var(--app-tabstrip-height) + 1px);
+    --workspace-viewport-controls-right: calc(
+      env(safe-area-inset-right) + 0.75rem + var(--app-frame-gap) + 1px
+    );
+  }
+  [data-sidebar-state="collapsed"] .circe-workspace__page {
+    margin-left: var(--app-frame-gap);
   }
 }
 
-.circe-rail__top {
-  display: flex;
-  width: 100%;
-  height: var(--workspace-topbar-height);
-  flex-shrink: 0;
+/* ---------- Sidebar chrome ---------- */
+
+.circe-sidebar-brand {
+  display: inline-flex;
+  min-width: 0;
   align-items: center;
-  justify-content: center;
+  gap: 9px;
+  border-radius: 8px;
+  -webkit-app-region: no-drag;
 }
-
-/* macOS draws its traffic lights over the top-left corner; the logo sits under them. */
-.circe-rail[data-reserve-titlebar="true"] .circe-rail__top {
-  height: calc(var(--workspace-topbar-height) + 20px);
-  align-items: flex-end;
+.circe-sidebar-brand:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 3px;
 }
-
-.circe-rail__logo {
+.circe-sidebar-brand__mark {
   display: grid;
-  width: 34px;
-  height: 34px;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
   place-items: center;
-  border-radius: 10px;
+  border-radius: 7px;
 }
-
-.circe-rail__logo img {
-  width: 28px;
-  height: 28px;
+.circe-sidebar-brand__mark img {
+  width: 22px;
+  height: 22px;
 }
-
 /* The mark is emissive art; on light chrome it sits on its charcoal tile. */
-:root:not(.dark) .circe-rail__logo {
+:root:not(.dark) .circe-sidebar-brand__mark {
   background: #111113;
 }
 
-.circe-rail__logo:focus-visible,
-.circe-rail-button:focus-visible,
-.circe-rail-new:focus-visible {
-  outline: 2px solid var(--ring);
-  outline-offset: 2px;
+.circe-sidebar-nav-item {
+  height: 32px;
+  font-size: 13px;
 }
-
-.circe-rail__group {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-  padding-top: 10px;
-}
-
-.circe-rail__group--end {
-  margin-top: auto;
-}
-
-.circe-rail-button {
-  position: relative;
-  display: grid;
-  width: 40px;
-  height: 40px;
-  place-items: center;
-  border-radius: 10px;
-  color: var(--sidebar-muted-foreground);
-  cursor: pointer;
-  transition:
-    background-color 120ms ease,
-    color 120ms ease;
-}
-
-.circe-rail-button > svg {
-  width: 19px;
-  height: 19px;
-}
-
-.circe-rail-button:hover {
-  background: var(--sidebar-row-hover);
+.circe-sidebar-nav-item[data-active="true"] {
   color: var(--sidebar-foreground);
 }
-
-/* The list open in the sidebar reads as lit, not selected: its title already
-   names it, and only the current page gets a fill. */
-.circe-rail-button[data-panel="true"] {
-  color: var(--sidebar-foreground);
-}
-
-.circe-rail-button[data-current="true"] {
-  background: color-mix(in srgb, var(--primary) 14%, transparent);
+.circe-sidebar-nav-item[data-active="true"] > svg {
   color: var(--primary);
 }
 
-.circe-rail-button[data-current="true"]::before {
-  content: "";
-  position: absolute;
-  top: 11px;
-  bottom: 11px;
-  left: -8px;
-  width: 3px;
-  border-radius: 0 3px 3px 0;
-  background: var(--primary);
-}
-
-.circe-rail-badge {
-  position: absolute;
-  top: 3px;
-  right: 2px;
-  display: inline-flex;
-  min-width: 17px;
-  height: 17px;
-  align-items: center;
-  justify-content: center;
-  border: 2px solid var(--sidebar);
+.circe-sidebar-nav-badge {
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  margin-left: auto;
+  padding: 0 5px;
+  place-items: center;
   border-radius: 999px;
-  padding: 0 3px;
   background: var(--primary);
   color: var(--primary-foreground);
-  font-size: 9.5px;
-  font-weight: 700;
+  font-size: 10.5px;
+  font-weight: 650;
   font-variant-numeric: tabular-nums;
 }
 
-.circe-rail-new {
-  display: grid;
-  width: 40px;
-  height: 40px;
-  margin-bottom: 6px;
-  place-items: center;
-  border-radius: 12px;
-  background: var(--primary);
-  color: var(--primary-foreground);
-  cursor: pointer;
-  box-shadow: 0 6px 18px -8px var(--circe-glow);
+/* A list inside the one sidebar: Agents, Chats, Bots. */
+.circe-sidebar-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 var(--sidebar-content-inset) 4px calc(var(--sidebar-content-inset) + 1px);
 }
 
-.circe-rail-new:hover {
-  background: var(--message-action-hover);
-}
-
-.circe-rail-new > svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* Narrow windows: the rail runs across the top of the sidebar sheet. */
-.circe-rail--horizontal {
-  position: static;
-  width: 100%;
-  height: auto;
-  flex-direction: row;
+.circe-sidebar-section {
+  display: flex;
+  height: 32px;
+  align-items: center;
   gap: 4px;
-  padding: 8px;
-  border-right: 0;
-  border-bottom: 1px solid var(--sidebar-border);
-  overflow-x: auto;
+  margin-top: 6px;
+  padding: 0 0 0 8px;
 }
-
-.circe-rail--horizontal .circe-rail__group {
-  flex-direction: row;
-  padding-top: 0;
+.circe-sidebar-section__title {
+  display: inline-flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  color: var(--sidebar-muted-foreground);
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
-
-.circe-rail--horizontal .circe-rail__group--end {
-  margin-top: 0;
+.circe-sidebar-section__toggle {
+  margin-left: -6px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.circe-sidebar-section__toggle:hover {
+  color: var(--sidebar-foreground);
+}
+.circe-sidebar-section__toggle:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -1px;
+}
+.circe-sidebar-section__toggle > svg {
+  width: 12px;
+  height: 12px;
+  opacity: 0;
+  transition:
+    opacity var(--circe-duration-micro) ease,
+    transform var(--circe-duration-micro) ease;
+}
+.circe-sidebar-section__toggle > svg[data-open="true"] {
+  transform: rotate(90deg);
+}
+.circe-sidebar-section:hover .circe-sidebar-section__toggle > svg,
+.circe-sidebar-section__toggle:focus-visible > svg,
+.circe-sidebar-section__toggle[aria-expanded="false"] > svg {
+  opacity: 0.7;
+}
+.circe-sidebar-section__count {
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.7;
+}
+.circe-sidebar-section__actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
   margin-left: auto;
+  color: var(--sidebar-muted-foreground);
 }
 
-.circe-rail--horizontal .circe-rail-new {
-  margin-bottom: 0;
+.circe-sidebar-list__empty {
+  padding: 4px 8px 8px;
+  color: var(--sidebar-muted-foreground);
+  font-size: 12px;
+  line-height: 1.45;
+  list-style: none;
+  opacity: 0.8;
 }
 
-.circe-rail--horizontal .circe-rail-button[data-current="true"]::before {
-  display: none;
+/* A chat is its name. No status, time, or controls on the row. */
+.circe-chat-row {
+  display: block;
+  width: 100%;
+  height: 30px;
+  overflow: hidden;
+  padding: 0 8px;
+  border-radius: 8px;
+  color: var(--sidebar-muted-foreground);
+  font-size: 13px;
+  line-height: 30px;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.circe-chat-row:hover {
+  background: var(--sidebar-row-hover);
+  color: var(--sidebar-foreground);
+}
+.circe-chat-row[data-active="true"] {
+  background: var(--sidebar-row-selected);
+  color: var(--sidebar-foreground);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--sidebar-border);
+}
+.circe-chat-row:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.circe-chat-row--editing {
+  background: var(--sidebar-row-selected);
+  color: var(--sidebar-foreground);
+  cursor: text;
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
+}
+.circe-chat-row--more {
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .circe-sidebar-section__toggle > svg {
+    transition: none;
+  }
 }
 
 /* ---------- Context sidebar ---------- */

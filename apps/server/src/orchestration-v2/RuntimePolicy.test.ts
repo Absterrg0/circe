@@ -62,6 +62,7 @@ const TestLayer = layerFromProjectRepository.pipe(
         Effect.succeed(
           Option.some({
             projectId,
+            kind: "project" as const,
             title: "Project",
             workspaceRoot: "/project-root",
             defaultModelSelection: null,

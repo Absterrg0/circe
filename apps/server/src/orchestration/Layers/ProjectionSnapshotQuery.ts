@@ -61,7 +61,6 @@ import { ProjectionThreadProposedPlan } from "../../persistence/Services/Project
 import { ProjectionThreadSession } from "../../persistence/Services/ProjectionThreadSessions.ts";
 import { ProjectionThread } from "../../persistence/Services/ProjectionThreads.ts";
 import { ProjectEnrichmentService } from "../../project/ProjectEnrichmentService.ts";
-import { circeChatSpaceRoot, workspaceKindOf } from "../../circe/chatSpace.ts";
 import {
   decodeThreadDetailPageCursor,
   encodeThreadDetailPageCursor,
@@ -374,11 +373,10 @@ function mapSessionRow(
 function mapProjectShellRow(
   row: Schema.Schema.Type<typeof ProjectionProjectDbRowSchema>,
   repositoryIdentity: OrchestrationProject["repositoryIdentity"],
-  chatSpaceRoot: string,
 ): OrchestrationProjectShell {
   return {
     id: row.projectId,
-    kind: workspaceKindOf(row.workspaceRoot, chatSpaceRoot),
+    kind: row.kind,
     title: row.title,
     workspaceRoot: row.workspaceRoot,
     repositoryIdentity,
@@ -419,7 +417,6 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
   const threadPlanProgress = yield* ThreadPlanProgressService;
   const sql = yield* SqlClient.SqlClient;
   const projectEnrichment = yield* ProjectEnrichmentService;
-  const chatSpaceRoot = yield* circeChatSpaceRoot;
   const getAvailableRepositoryIdentities = Effect.fn(
     "ProjectionSnapshotQuery.getAvailableRepositoryIdentities",
   )(function* (
@@ -466,6 +463,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       sql`
         SELECT
           project_id AS "projectId",
+          workspace_kind AS "kind",
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",
@@ -1066,6 +1064,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       sql`
         SELECT
           project_id AS "projectId",
+          workspace_kind AS "kind",
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",
@@ -1092,6 +1091,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
       sql`
         SELECT
           project_id AS "projectId",
+          workspace_kind AS "kind",
           title,
           workspace_root AS "workspaceRoot",
           default_model_selection_json AS "defaultModelSelection",
@@ -2170,7 +2170,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
 
               const projects: ReadonlyArray<OrchestrationProject> = projectRows.map((row) => ({
                 id: row.projectId,
-                kind: workspaceKindOf(row.workspaceRoot, chatSpaceRoot),
+                kind: row.kind,
                 title: row.title,
                 workspaceRoot: row.workspaceRoot,
                 repositoryIdentity: repositoryIdentities.get(row.projectId) ?? null,
@@ -2313,7 +2313,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 updatedAt = maxIso(updatedAt, row.updatedAt);
                 projects.push({
                   id: row.projectId,
-                  kind: workspaceKindOf(row.workspaceRoot, chatSpaceRoot),
+                  kind: row.kind,
                   title: row.title,
                   workspaceRoot: row.workspaceRoot,
                   defaultModelSelection: row.defaultModelSelection,
@@ -2540,7 +2540,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
                 snapshotSequence: computeSnapshotSequence(stateRows),
                 projects: Arr.filterMap(projectRows, (row) =>
                   row.deletedAt === null
-                    ? Result.succeed(mapProjectShellRow(row, null, chatSpaceRoot))
+                    ? Result.succeed(mapProjectShellRow(row, null))
                     : Result.failVoid,
                 ),
                 threads: Arr.filterMap(threadRows, (row) =>
@@ -2703,11 +2703,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
               projects: Arr.filterMap(projectRows, (row) =>
                 row.deletedAt === null && activeProjectIds.has(row.projectId)
                   ? Result.succeed(
-                      mapProjectShellRow(
-                        row,
-                        repositoryIdentities.get(row.projectId) ?? null,
-                        chatSpaceRoot,
-                      ),
+                      mapProjectShellRow(row, repositoryIdentities.get(row.projectId) ?? null),
                     )
                   : Result.failVoid,
               ),
@@ -2882,9 +2878,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
             projectEnrichment
               .getAvailable(row.workspaceRoot)
               .pipe(
-                Effect.map((enrichment) =>
-                  mapProjectShellRow(row, enrichment.repositoryIdentity, chatSpaceRoot),
-                ),
+                Effect.map((enrichment) => mapProjectShellRow(row, enrichment.repositoryIdentity)),
               ),
           { concurrency: 16 },
         ),
@@ -2907,9 +2901,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
               .getAvailable(option.value.workspaceRoot)
               .pipe(
                 Effect.map((enrichment) =>
-                  Option.some(
-                    mapProjectShellRow(option.value, enrichment.repositoryIdentity, chatSpaceRoot),
-                  ),
+                  Option.some(mapProjectShellRow(option.value, enrichment.repositoryIdentity)),
                 ),
               ),
       ),
@@ -2927,7 +2919,7 @@ const makeProjectionSnapshotQuery = Effect.gen(function* () {
         Effect.map((rows) =>
           Arr.filterMap(rows, (row) =>
             row.deletedAt === null
-              ? Result.succeed(mapProjectShellRow(row, null, chatSpaceRoot))
+              ? Result.succeed(mapProjectShellRow(row, null))
               : Result.failVoid,
           ),
         ),

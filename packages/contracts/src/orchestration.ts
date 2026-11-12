@@ -585,10 +585,36 @@ export const ProjectDeleteCommand = Schema.Struct({
   force: Schema.optional(Schema.Boolean),
 });
 
+/**
+ * The node creates its chat space. Server-only: a client cannot create a
+ * workspace of kind `chats`.
+ */
+const ChatSpaceCreateCommand = Schema.Struct({
+  type: Schema.Literal("project.chat-space.create"),
+  commandId: CommandId,
+  projectId: ProjectId,
+  workspaceRoot: TrimmedNonEmptyString,
+  createdAt: IsoDateTime,
+});
+
+/**
+ * The node takes an existing workspace as its chat space, and moves it when
+ * the node's own directory moved. Server-only. This is how a workspace that
+ * was recorded as a project titled "Conversations" becomes a chat space.
+ */
+const ChatSpaceAdoptCommand = Schema.Struct({
+  type: Schema.Literal("project.chat-space.adopt"),
+  commandId: CommandId,
+  projectId: ProjectId,
+  workspaceRoot: TrimmedNonEmptyString,
+});
+
 export const ProjectOrchestrationCommand = Schema.Union([
   ProjectCreateCommand,
   ProjectMetaUpdateCommand,
   ProjectDeleteCommand,
+  ChatSpaceCreateCommand,
+  ChatSpaceAdoptCommand,
 ]);
 export type ProjectOrchestrationCommand = typeof ProjectOrchestrationCommand.Type;
 
@@ -1106,6 +1132,8 @@ const ThreadPullRequestLinkSyncCommand = Schema.Struct({
 });
 
 const InternalOrchestrationCommand = Schema.Union([
+  ChatSpaceCreateCommand,
+  ChatSpaceAdoptCommand,
   ThreadAutoSettleCommand,
   ThreadPullRequestSyncCommand,
   ThreadPullRequestLinkSyncCommand,

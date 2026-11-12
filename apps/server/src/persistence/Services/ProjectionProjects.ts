@@ -13,6 +13,7 @@ import {
   ProjectId,
   ProjectScript,
   ThreadEnvMode,
+  WorkspaceKind,
 } from "@circe/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -23,6 +24,8 @@ import type { ProjectionRepositoryError } from "../Errors.ts";
 
 export const ProjectionProject = Schema.Struct({
   projectId: ProjectId,
+  /** Stored, so a workspace stays a chat space wherever the node's directory is. */
+  kind: WorkspaceKind,
   title: Schema.String,
   workspaceRoot: Schema.String,
   defaultModelSelection: Schema.NullOr(ModelSelection),

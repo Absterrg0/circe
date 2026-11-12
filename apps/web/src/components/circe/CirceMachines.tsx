@@ -28,6 +28,7 @@ import { SidebarInset } from "../ui/sidebar";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { CirceCardHeader, CirceCardLinkLabel } from "./CirceCard";
 import { CirceComputerSection } from "./CirceComputerSection";
+import { CirceMachineList } from "./CirceMachineList";
 import type { CirceControlCenterDevice } from "./CirceControlCenter.logic";
 import { CirceNodeAgentSettings } from "./CirceNodeAgentSettings";
 import type { CirceTone } from "./CirceStatusGlyph";
@@ -186,8 +187,8 @@ function ProjectSection({ projects }: { readonly projects: CirceControlCenterDev
 
 /**
  * One machine in full: whether it is online, what it can run, and its
- * settings for Circe's agent and computer use. The Machines list in the
- * context sidebar picks which one; the page follows the `node` search param.
+ * settings for Circe's agent and computer use. The list beside it picks which
+ * one; the page follows the `node` search param.
  * Pairing and removal stay in Settings → Connections.
  */
 export function CirceMachines({
@@ -216,7 +217,7 @@ export function CirceMachines({
   );
 
   return (
-    <SidebarInset className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
+    <SidebarInset className="h-full min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         <WorkspacePageHeader electron={isElectron} className="border-b border-border">
           <WorkspaceBreadcrumb ariaLabel="Machines breadcrumb" className="min-w-0">
@@ -252,59 +253,62 @@ export function CirceMachines({
             </Button>
           </div>
         </WorkspacePageHeader>
-        <ScrollArea className="min-h-0 flex-1">
-          <div className="circe-machines">
-            {error ? (
-              <p className="circe-alert" role="alert">
-                <CircleAlertIcon className="size-4 shrink-0" />
-                {error}
-              </p>
-            ) : null}
-            {pending && catalog === null && view.devices.length === 0 ? (
-              <p className="circe-section__empty" role="status">
-                Finding your machines…
-              </p>
-            ) : device === null ? (
-              <div className="circe-empty">
-                <h2>No machines connected</h2>
-                <p>Pair a machine in Connections and it shows up here.</p>
-                <Button size="sm" onClick={() => void navigate({ to: "/settings/connections" })}>
-                  Open Connections
-                </Button>
-              </div>
-            ) : (
-              <div className="circe-machines__detail" key={device.node.nodeId}>
-                <MachineHeader
-                  device={device}
-                  running={runningByNode.get(device.node.nodeId) ?? 0}
-                />
-                <div className="circe-machines__columns">
-                  <ProviderSection
-                    providers={device.providers}
-                    onManage={() =>
-                      void navigate({
-                        to: "/settings/providers",
-                        search: { environmentId: device.node.nodeId },
-                      })
-                    }
+        <div className="circe-machines-layout">
+          <CirceMachineList selectedId={device?.node.nodeId ?? null} />
+          <ScrollArea className="min-h-0 min-w-0 flex-1">
+            <div className="circe-machines">
+              {error ? (
+                <p className="circe-alert" role="alert">
+                  <CircleAlertIcon className="size-4 shrink-0" />
+                  {error}
+                </p>
+              ) : null}
+              {pending && catalog === null && view.devices.length === 0 ? (
+                <p className="circe-section__empty" role="status">
+                  Finding your machines…
+                </p>
+              ) : device === null ? (
+                <div className="circe-empty">
+                  <h2>No machines connected</h2>
+                  <p>Pair a machine in Connections and it shows up here.</p>
+                  <Button size="sm" onClick={() => void navigate({ to: "/settings/connections" })}>
+                    Open Connections
+                  </Button>
+                </div>
+              ) : (
+                <div className="circe-machines__detail" key={device.node.nodeId}>
+                  <MachineHeader
+                    device={device}
+                    running={runningByNode.get(device.node.nodeId) ?? 0}
                   />
-                  <ProjectSection
-                    projects={device.projects.filter((project) => !isChatWorkspace(project))}
+                  <div className="circe-machines__columns">
+                    <ProviderSection
+                      providers={device.providers}
+                      onManage={() =>
+                        void navigate({
+                          to: "/settings/providers",
+                          search: { environmentId: device.node.nodeId },
+                        })
+                      }
+                    />
+                    <ProjectSection
+                      projects={device.projects.filter((project) => !isChatWorkspace(project))}
+                    />
+                  </div>
+                  <CirceComputerSection
+                    environmentId={device.node.nodeId}
+                    online={device.node.reachability === "online"}
+                  />
+                  <CirceNodeAgentSettings
+                    environmentId={device.node.nodeId}
+                    online={device.node.reachability === "online"}
+                    executionEnabled={device.node.capabilities?.execution === true}
                   />
                 </div>
-                <CirceComputerSection
-                  environmentId={device.node.nodeId}
-                  online={device.node.reachability === "online"}
-                />
-                <CirceNodeAgentSettings
-                  environmentId={device.node.nodeId}
-                  online={device.node.reachability === "online"}
-                  executionEnabled={device.node.capabilities?.execution === true}
-                />
-              </div>
-            )}
-          </div>
-        </ScrollArea>
+              )}
+            </div>
+          </ScrollArea>
+        </div>
       </div>
     </SidebarInset>
   );
